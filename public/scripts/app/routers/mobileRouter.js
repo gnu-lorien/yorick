@@ -113,21 +113,17 @@ define([
             if (this._character === null) {
                 var q = new Parse.Query(Vampire);
                 q.equalTo("owner", Parse.User.current());
-                q.include("backgrounds");
                 return q.get(id).then(function(m) {
                     self._character = m;
-                    return m;
+                    return Parse.Object.fetchAll(m.get("backgrounds"));
+                }).then(function() {
+                    return self.get_character(id);
                 });
             }
             if (this._character.id != id) {
                 return this._character.save().then(function() {
-                    var q = new Parse.Query(Vampire);
-                    q.equalTo("owner", Parse.User.current());
-                    q.include("backgrounds");
-                    return q.get(id).then(function(m) {
-                        self._character = m;
-                        return m;
-                    });
+                    this._character = null;
+                    return self.get_character(id);
                 })
             }
             var p = new Parse.Promise;
