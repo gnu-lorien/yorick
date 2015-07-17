@@ -1,0 +1,192 @@
+<!doctype html>
+<html class="no-js ui-mobile-rendering" lang="en">
+<head>
+	<title>Backbone.js, Require.js, and jQuery Mobile</title>
+	<meta name="description" content="">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="css/themes/default/jquery.mobile.css">
+    <script data-main="scripts/app" src="scripts/lib/require.js"></script>
+</head>
+<body>
+
+<div id="categories" data-role="page" data-title="Categories">
+  
+	<div data-role="header">
+		<h1>Categories</h1>
+	</div><!-- /header -->
+
+	<div role="main" class="ui-content">
+        <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+            <li><a href="#characters?all">Characters</a></li>
+        </ul>
+	</div><!-- /content -->
+</div>
+
+<div id="character" data-role="page" data-title="Character">
+
+    <div data-role="header">
+        <h1>Character</h1>
+    </div><!-- /header -->
+
+    <div role="main" class="ui-content">
+    </div>
+</div>
+
+<script id="characterView" type="text/template">
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li><a href="#backgrounds/<%= m.id %>/all">Backgrounds</a></li>
+    </ul>
+</script>
+
+<div id="characters-all" data-role="page" data-title="All Characters">
+    <div data-role="header">
+        <h1>Characters</h1>
+    </div><!-- /header -->
+
+    <div role="main" class="ui-content">
+        <div role="main" class="ui-content">
+            <ul data-role="listview" data-inset="true">
+
+            </ul>
+        </div>
+    </div><!-- /content -->
+</div>
+
+<div id="backgrounds-all" data-role="page" data-title="BackgroundsAll">
+    <div data-role="header">
+        <h1>Backgrounds</h1>
+    </div>
+
+    <div role="main" class="ui-content">
+    </div>
+</div>
+
+<script id="backgroundView" type="text/template">
+    <ul>
+        <li><a href="#backgrounds/<%= c.id %>/new">Add New</a></li>
+    </ul>
+    <ul>
+        <% if (c.has("backgrounds")) { _.each(c.get("backgrounds"), function(e) { %>
+        <li>
+            <a href="#background/<%= c.id %>/<%= e.id %>" class="ui-btn ui-btn-icon-right ui-icon-carat-r"><%= e.get("name") %> x<%= e.get("value") %></a>
+        </li>
+        <% }); } %>
+    </ul>
+</script>
+
+<div id="background-change" data-role="page" data-title="BackgroundChange">
+    <div data-role="header">
+        <h1>Background to Change</h1>
+    </div>
+
+    <div role="main" class="ui-content">
+    </div>
+</div>
+
+<script id="backgroundChangeView" type="text/template">
+    <p><%= c.get("name") %> <%= b.get("name") %> <%= b.get("value") %></p>
+    <p>
+        <label for="slider">Slider:</label>
+        <input type="range" name="backgroundValue" id="slider" value="<%= b.get('value') %>" min="1" max="5">
+    </p>
+    <p>
+        <button class="remove ui-btn">Remove</button>
+        <button class="save ui-btn">Save Changes</button>
+    </p>
+</script>
+
+<div id="victims-all" data-role="page" data-title="VictimsAll">
+    <div data-role="header">
+        <h1>Victims</h1>
+    </div>
+
+    <div role="main" class="ui-content">
+        <ul>
+            <li>All</li>
+            <li>Idle</li>
+            <li>Occupied</li>
+        </ul>
+    </div>
+</div>
+
+<div id="animals" data-role="page" data-title="Animals">
+
+      <div data-role="header">
+	    <h1>Animals</h1>
+      </div><!-- /header -->
+  
+      <div role="main" class="ui-content">
+            <ul data-role="listview" data-inset="true">
+            </ul>
+      </div><!-- /content -->
+</div>
+
+<div id="colors" data-role="page" data-title="Colors">
+
+      <div data-role="header">
+	    <h1>Colors</h1>
+      </div><!-- /header -->
+
+      <div role="main" class="ui-content">
+            <ul data-role="listview" data-inset="true">
+            </ul>
+      </div><!-- /content -->
+
+</div>
+
+<div id="vehicles" data-role="page" data-title="Vehicles">
+
+      <div data-role="header">
+	    <h1>Vehicles</h1>
+      </div><!-- /header -->
+  
+      <div role="main" class="ui-content">
+            <ul data-role="listview" data-inset="true">
+            </ul>
+      </div><!-- /content -->
+
+</div>
+
+<div id="backgrounds-new" data-role="page" data-title="New Background">
+    <div data-role="header">
+        <h1>New Background</h1>
+    </div>
+
+    <div role="main" class="ui-content">
+        <ul data-role="listview" data-inset="true">
+
+        </ul>
+    </div>
+</div>
+
+<script id="characterLinkItems" type="text/template">
+    <% collection.each(function(e) { %>
+    <li>
+        <a href="#character?<%= e.id %>" class="ui-btn ui-btn-icon-right ui-icon-carat-r"><%= e.get("name") %></a>
+    </li>
+    <% }); %>
+</script>
+
+<script id="backgroundDescriptionItems" type="text/template">
+    <% collection.each(function(e) { %>
+        <li>
+            <a name="<%= e.get('name') %>"  href="#backgrounds/<%= character.id %>/all" class="ui-btn ui-btn-icon-right ui-icon-carat-r"><%= e.get("name") %></a>
+        </li>
+    <% }); %>
+</script>
+
+<!-- Underscore Template that is used to display all of the Category Models -->
+<script id="categoryItems" type="text/template">
+
+      <% _.each( collection.toJSON(), function( category, id ) { %>
+
+            <li class="ui-li-static">
+                  <%= category.type %>
+            </li>
+
+      <% }); %>
+
+</script>
+
+</body>
+</html>
