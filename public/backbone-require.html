@@ -36,6 +36,9 @@
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <li><a href="#backgrounds/<%= m.id %>/all">Backgrounds</a></li>
     </ul>
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li><a href="#simpletrait/disciplines/<%= m.id %>/all">Disciplines</a></li>
+    </ul>
 </script>
 
 <div id="characters-all" data-role="page" data-title="All Characters">
@@ -69,6 +72,28 @@
         <% if (c.has("backgrounds")) { _.each(c.get("backgrounds"), function(e) { %>
         <li>
             <a href="#background/<%= c.id %>/<%= e.id %>" class="ui-btn ui-btn-icon-right ui-icon-carat-r"><%= e.get("name") %> x<%= e.get("value") %></a>
+        </li>
+        <% }); } %>
+    </ul>
+</script>
+
+<div id="simpletraitcategory-all" data-role="page" data-title="SimpleTraitCategoryAll">
+    <div data-role="header">
+        <h1>Must do the template thing with this too muahahaha</h1>
+    </div>
+
+    <div role="main" class="ui-content">
+    </div>
+</div>
+
+<script id="simpleTraitCategoryView" type="text/template">
+    <ul>
+        <li><a href="#simpletrait/<%= category %>/<%= character.id %>/new">Add New <%= category %></a></li>
+    </ul>
+    <ul>
+        <% if (character.has(category)) { _.each(character.get(category), function(e) { %>
+        <li>
+            <a href="#simpletrait/<%= category %>/<%= character.id %>/<%= e.id %>" class="ui-btn ui-btn-icon-right ui-icon-carat-r"><%= e.get("name") %> x<%= e.get("value") %></a>
         </li>
         <% }); } %>
     </ul>
@@ -159,6 +184,19 @@
     </div>
 </div>
 
+<div id="simpletrait-new" data-role="page" data-title="New Simple Trait">
+    <div data-role="header">
+        <h1>New Simple Trait</h1>
+    </div>
+
+    <div role="main" class="ui-content">
+        aoeu
+        <ul data-role="listview" data-inset="true">
+            No?
+        </ul>
+    </div>
+</div>
+
 <script id="characterLinkItems" type="text/template">
     <% collection.each(function(e) { %>
     <li>
@@ -167,10 +205,10 @@
     <% }); %>
 </script>
 
-<script id="backgroundDescriptionItems" type="text/template">
+<script id="simpletraitcategoryDescriptionItems" type="text/template">
     <% collection.each(function(e) { %>
         <li>
-            <a name="<%= e.get('name') %>"  href="#backgrounds/<%= character.id %>/all" class="ui-btn ui-btn-icon-right ui-icon-carat-r"><%= e.get("name") %></a>
+            <a name="<%= e.get('name') %>"  href="#simpletrait/<%= category %>/<%= character.id %>/all" class="ui-btn ui-btn-icon-right ui-icon-carat-r"><%= e.get("name") %></a>
         </li>
     <% }); %>
 </script>

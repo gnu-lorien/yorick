@@ -16,7 +16,10 @@ define([
     "../views/CharacterView",
     "../views/BackgroundListView",
     "../views/BackgroundChangeView",
-], function ($, Parse, CategoryModel, CategoriesCollection, CategoryView, BackgroundDescriptions, BackgroundsNewView, CharactersListView, Vampire, Vampires, CharacterView, BackgroundListView, BackgroundChangeView) {
+    "../views/SimpleTraitCategoryView",
+    "../views/SimpleTraitNewView",
+    "../models/SimpleTrait"
+], function ($, Parse, CategoryModel, CategoriesCollection, CategoryView, BackgroundDescriptions, BackgroundsNewView, CharactersListView, Vampire, Vampires, CharacterView, BackgroundListView, BackgroundChangeView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait) {
 
     // Extends Backbone.Router
     var CategoryRouter = Parse.Router.extend( {
@@ -46,6 +49,9 @@ define([
             this.backgroundListView = new BackgroundListView({el: "#backgrounds-all"});
             this.backgroundChangeView = new BackgroundChangeView({el: "#background-change"});
 
+            this.simpleTraitCategoryView = new SimpleTraitCategoryView({el: "#simpletraitcategory-all"});
+            this.simpleTraitNewView = new SimpleTraitNewView({el: "#simpletrait-new"});
+
             if (!Parse.User.current()) {
                 Parse.User.logIn("devuser", "thedumbness");
             }
@@ -71,7 +77,9 @@ define([
 
             "character?:id": "character",
 
-            "background/:cid/:bid": "background"
+            "background/:cid/:bid": "background",
+
+            "simpletrait/:category/:cid/:type": "simpletrait"
         },
 
         // Home method
@@ -164,6 +172,25 @@ define([
                 } else {
                     $.mobile.changePage("#backgrounds-new", {reverse: false, changeHash:false});
                 }
+            }
+        },
+
+        simpletrait: function(category, cid, type) {
+            var self = this;
+            if ("all" == type) {
+                $.mobile.loading("show");
+                self.get_character(cid).done(function (c) {
+                    self.simpleTraitCategoryView.register(c, category);
+                    $.mobile.changePage("#simpletraitcategory-all", {reverse: false, changeHash: false});
+                });
+            }
+
+            if ("new" == type) {
+                $.mobile.loading("show");
+                self.get_character(cid).done(function (c) {
+                    self.simpleTraitNewView.register(c, category);
+                    $.mobile.changePage("#simpletrait-new", {reverse: false, changeHash: false});
+                });
             }
         },
 
