@@ -37,7 +37,7 @@
         <li><a href="#backgrounds/<%= m.id %>/all">Backgrounds</a></li>
     </ul>
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#simpletrait/disciplines/<%= m.id %>/all">Disciplines</a></li>
+        <li><a href="#simpletraits/disciplines/<%= m.id %>/all">Disciplines</a></li>
     </ul>
 </script>
 
@@ -88,7 +88,7 @@
 
 <script id="simpleTraitCategoryView" type="text/template">
     <ul>
-        <li><a href="#simpletrait/<%= category %>/<%= character.id %>/new">Add New <%= category %></a></li>
+        <li><a href="#simpletraits/<%= category %>/<%= character.id %>/new">Add New <%= category %></a></li>
     </ul>
     <ul>
         <% if (character.has(category)) { _.each(character.get(category), function(e) { %>
@@ -113,6 +113,27 @@
     <p>
         <label for="slider">Slider:</label>
         <input type="range" name="backgroundValue" id="slider" value="<%= b.get('value') %>" min="1" max="5">
+    </p>
+    <p>
+        <button class="remove ui-btn">Remove</button>
+        <button class="save ui-btn">Save Changes</button>
+    </p>
+</script>
+
+<div id="simpletrait-change" data-role="page" data-title="SimpleTraitChange">
+    <div data-role="header">
+        <h1>Simple Trait to Change</h1>
+    </div>
+
+    <div role="main" class="ui-content">
+    </div>
+</div>
+
+<script id="simpleTraitChangeView" type="text/template">
+    <p><%= c.get("name") %> <%= b.get("name") %> <%= b.get("value") %></p>
+    <p>
+        <label for="slider">Slider:</label>
+        <input type="range" name="simpleTraitValue" id="slider" value="<%= b.get('value') %>" min="1" max="5">
     </p>
     <p>
         <button class="remove ui-btn">Remove</button>
@@ -208,7 +229,7 @@
 <script id="simpletraitcategoryDescriptionItems" type="text/template">
     <% collection.each(function(e) { %>
         <li>
-            <a name="<%= e.get('name') %>"  href="#simpletrait/<%= category %>/<%= character.id %>/all" class="ui-btn ui-btn-icon-right ui-icon-carat-r"><%= e.get("name") %></a>
+            <a name="<%= e.get('name') %>"  href="#simpletraits/<%= category %>/<%= character.id %>/all" class="ui-btn ui-btn-icon-right ui-icon-carat-r"><%= e.get("name") %></a>
         </li>
     <% }); %>
 </script>

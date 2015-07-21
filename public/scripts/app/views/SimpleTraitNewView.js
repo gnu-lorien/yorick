@@ -80,7 +80,7 @@ define([
             b.save().done(function (bg) {
                 self.character.addUnique(self.category, b);
                 self.character.save().done(function () {
-                    window.location.hash = "#simpletrait/" + self.category + "/" + self.character.id + "/all";
+                    window.location.hash = "#simpletrait/" + self.category + "/" + self.character.id + "/" + b.id;
                 });
             });
 

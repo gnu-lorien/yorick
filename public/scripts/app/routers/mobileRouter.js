@@ -18,8 +18,9 @@ define([
     "../views/BackgroundChangeView",
     "../views/SimpleTraitCategoryView",
     "../views/SimpleTraitNewView",
-    "../models/SimpleTrait"
-], function ($, Parse, CategoryModel, CategoriesCollection, CategoryView, BackgroundDescriptions, BackgroundsNewView, CharactersListView, Vampire, Vampires, CharacterView, BackgroundListView, BackgroundChangeView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait) {
+    "../models/SimpleTrait",
+    "../views/SimpleTraitChangeView",
+], function ($, Parse, CategoryModel, CategoriesCollection, CategoryView, BackgroundDescriptions, BackgroundsNewView, CharactersListView, Vampire, Vampires, CharacterView, BackgroundListView, BackgroundChangeView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView) {
 
     // Extends Backbone.Router
     var CategoryRouter = Parse.Router.extend( {
@@ -51,6 +52,7 @@ define([
 
             this.simpleTraitCategoryView = new SimpleTraitCategoryView({el: "#simpletraitcategory-all"});
             this.simpleTraitNewView = new SimpleTraitNewView({el: "#simpletrait-new"});
+            this.simpleTraitChangeView = new SimpleTraitChangeView({el: "#simpletrait-change"});
 
             if (!Parse.User.current()) {
                 Parse.User.logIn("devuser", "thedumbness");
@@ -79,7 +81,9 @@ define([
 
             "background/:cid/:bid": "background",
 
-            "simpletrait/:category/:cid/:type": "simpletrait"
+            "simpletraits/:category/:cid/:type": "simpletraits",
+
+            "simpletrait/:category/:cid/:bid": "simpletrait"
         },
 
         // Home method
@@ -116,23 +120,32 @@ define([
             }
         },
 
-        get_character: function(id) {
+        get_character: function(id, categories) {
             var self = this;
-            if (this._character === null) {
+            categories = categories || [];
+            if (self._character === null) {
                 var q = new Parse.Query(Vampire);
                 q.equalTo("owner", Parse.User.current());
                 return q.get(id).then(function(m) {
                     self._character = m;
-                    return Parse.Object.fetchAll(m.get("backgrounds"));
-                }).then(function() {
-                    return self.get_character(id);
+                    return self.get_character(id, categories);
                 });
             }
-            if (this._character.id != id) {
-                return this._character.save().then(function() {
-                    this._character = null;
-                    return self.get_character(id);
+            if (self._character.id != id) {
+                return self._character.save().then(function() {
+                    self._character = null;
+                    return self.get_character(id, categories);
                 })
+            }
+            if (0 !== categories.length) {
+
+                var objectIds = _.chain(categories).map(function(category) {
+                    return self._character.get(category);
+                }).flatten().value();
+
+                return Parse.Object.fetchAllIfNeeded(objectIds).then(function () {
+                    return self.get_character(id, []);
+                });
             }
             var p = new Parse.Promise;
             _.defer(function() {
@@ -143,7 +156,7 @@ define([
 
         background: function(cid, bid) {
             var self = this;
-            self.get_character(cid).done(function(c) {
+            self.get_character(cid, ["backgrounds"]).done(function(c) {
                 var b = _.findWhere(c.get("backgrounds"), {id: bid});
                 self.backgroundChangeView.register_character(c, b);
                 $.mobile.changePage("#background-change", {reverse: false, changeHash: false});
@@ -154,7 +167,7 @@ define([
             var self = this;
             if ("all" == type) {
                 $.mobile.loading("show");
-                self.get_character(id).done(function (c) {
+                self.get_character(id, ["backgrounds"]).done(function (c) {
                     self.backgroundListView.register_character(c);
                     $.mobile.changePage("#backgrounds-all", {reverse: false, changeHash: false});
                 });
@@ -164,7 +177,7 @@ define([
                 if (!bgn.collection.length) {
                     $.mobile.loading("show");
                     bgn.collection.fetch({add: true}).done(function() {
-                        self.get_character(id).done(function (c) {
+                        self.get_character(id, ["backgrounds"]).done(function (c) {
                             bgn.register_character(c);
                             $.mobile.changePage("#backgrounds-new", {reverse: false, changeHash: false});
                         });
@@ -175,11 +188,20 @@ define([
             }
         },
 
-        simpletrait: function(category, cid, type) {
+        simpletrait: function(category, cid, bid) {
+            var self = this;
+            self.get_character(cid, [category]).done(function(c) {
+                var b = _.findWhere(c.get(category), {id: bid});
+                self.simpleTraitChangeView.register_character(c, b);
+                $.mobile.changePage("#simpletrait-change", {reverse: false, changeHash: false});
+            });
+        },
+
+        simpletraits: function(category, cid, type) {
             var self = this;
             if ("all" == type) {
                 $.mobile.loading("show");
-                self.get_character(cid).done(function (c) {
+                self.get_character(cid, [category]).done(function (c) {
                     self.simpleTraitCategoryView.register(c, category);
                     $.mobile.changePage("#simpletraitcategory-all", {reverse: false, changeHash: false});
                 });
@@ -187,7 +209,7 @@ define([
 
             if ("new" == type) {
                 $.mobile.loading("show");
-                self.get_character(cid).done(function (c) {
+                self.get_character(cid, [category]).done(function (c) {
                     self.simpleTraitNewView.register(c, category);
                     $.mobile.changePage("#simpletrait-new", {reverse: false, changeHash: false});
                 });
