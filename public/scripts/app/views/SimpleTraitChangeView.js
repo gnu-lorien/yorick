@@ -52,7 +52,7 @@ define([
         remove: function(a, b, c) {
             var self = this;
             $.mobile.loading("show");
-            console.log("remove value", category, self.simpletrait);
+            console.log("remove value", self.category, self.simpletrait);
             self.character.remove(self.category, self.simpletrait);
             self.character.save().then(function () {
                 return self.simpletrait.destroy({wait: true});

@@ -73,13 +73,9 @@ define([
 
             "victims?:type": "victims",
 
-            "backgrounds/:id/:type": "backgrounds",
-
             "characters?:type": "characters",
 
             "character?:id": "character",
-
-            "background/:cid/:bid": "background",
 
             "simpletraits/:category/:cid/:type": "simpletraits",
 
@@ -143,7 +139,7 @@ define([
                     return self._character.get(category);
                 }).flatten().value();
 
-                return Parse.Object.fetchAllIfNeeded(objectIds).then(function () {
+                return Parse.Object.fetchAllIfNeeded(objectIds).done(function () {
                     return self.get_character(id, []);
                 });
             }
