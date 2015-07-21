@@ -35,7 +35,7 @@ define([
                 self.stopListening(self.collection);
                 self.collection = new DescriptionCollection;
                 var q = new Parse.Query(Description);
-                q.equalTo("category", self.category);
+                q.equalTo("category", self.category).addAscending(["order", "name"]);
                 self.collection.query = q;
                 self.listenTo(self.collection, "add", self.render);
                 self.listenTo(self.collection, "reset", self.render);
