@@ -5,9 +5,9 @@
 define([
 	"jquery",
 	"backbone",
-	"../models/BackgroundDescription",
+	"../models/SimpleTrait",
     "../collections/BackgroundDescriptionsCollection"
-], function( $, Backbone, BackgroundDescription, BackgroundDescriptions ) {
+], function( $, Backbone, SimpleTrait ) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend({
@@ -17,17 +17,22 @@ define([
             _.bindAll(this, "remove", "update_value", "save_clicked");
         },
 
-        register_character: function (c, b) {
+        register: function (character, simpletrait, category) {
             var self = this;
             var changed = false;
-            if (c !== self.model) {
-                self.stopListening(self.model);
-                self.model = c;
+            if (character !== self.character) {
+                self.stopListening(self.character);
+                self.character = character;
                 changed = true;
             }
 
-            if (b !== self.background) {
-                self.background = b;
+            if (simpletrait !== self.simpletrait) {
+                self.simpletrait = simpletrait;
+                changed = true;
+            }
+
+            if (!_.isEqual(category, self.category)) {
+                self.category = category;
                 changed = true;
             }
 
@@ -47,32 +52,33 @@ define([
         remove: function(a, b, c) {
             var self = this;
             $.mobile.loading("show");
-            console.log("remove value");
-            self.model.remove("backgrounds", self.background);
-            self.model.save().then(function () {
-                return self.background.destroy({wait: true});
+            console.log("remove value", category, self.simpletrait);
+            self.character.remove(self.category, self.simpletrait);
+            self.character.save().then(function () {
+                return self.simpletrait.destroy({wait: true});
             }).done(function() {
-                window.location.hash = "#backgrounds/" + self.model.id + "/all";
+                window.location.hash = "#simpletraits/" + self.category + "/" + self.character.id + "/all";
             })
 
             return false;
         },
 
         update_value: function(a, b, c) {
+            var self = this;
             var v = this.$(a.target).val();
-            console.log("update value", this.$(a.target).val());
-            this.background.set("value", _.parseInt(this.$(a.target).val()));
+            console.log("update value", self.category, self.simpletrait, this.$(a.target).val());
+            this.simpletrait.set("value", _.parseInt(this.$(a.target).val()));
         },
 
         save_clicked: function(a, b, c) {
             var self = this;
-            console.log("save clicked");
-            this.background.save().then(function (a, b, c) {
-                console.log("asaved");
-                self.model.trigger("change:backgrounds");
-                window.location.hash = "#backgrounds/" + self.model.id + "/all";
+            console.log("save clicked", self.category, self.simpletrait);
+            this.simpletrait.save().then(function (a, b, c) {
+                console.log("asaved", self.category, self.simpletrait);
+                self.character.trigger("change:" + self.category);
+                window.location.hash = "#simpletraits/" + self.category + "/" + self.character.id + "/all";
             }, function(a, b, c) {
-                console.log('error');
+                console.log('error', a);
             });
             return false;
         },
@@ -81,7 +87,7 @@ define([
         render: function() {
 
             // Sets the view's template property
-            this.template = _.template( $( "script#backgroundChangeView" ).html(), { "c": this.model, "b": this.background } );
+            this.template = _.template( $( "script#simpleTraitChangeView" ).html(), { "c": this.character, "b": this.simpletrait, "category": this.category } );
 
             // Renders the view's template inside of the current listview element
             this.$el.find("div[role='main']").html(this.template);

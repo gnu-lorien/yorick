@@ -192,7 +192,7 @@ define([
             var self = this;
             self.get_character(cid, [category]).done(function(c) {
                 var b = _.findWhere(c.get(category), {id: bid});
-                self.simpleTraitChangeView.register_character(c, b);
+                self.simpleTraitChangeView.register(c, b, category);
                 $.mobile.changePage("#simpletrait-change", {reverse: false, changeHash: false});
             });
         },

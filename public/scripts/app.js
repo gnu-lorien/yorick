@@ -8,7 +8,7 @@ requirejs.config( {
 		// Core Libraries
 		jquery: "//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min",
 		jquerymobile: "//code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5",
-		underscore: "//cdn.jsdelivr.net/lodash/2.4.1/lodash.min",
+		underscore: "//cdn.jsdelivr.net/lodash/2.4.1/lodash",
 		backbone: "//cdnjs.cloudflare.com/ajax/libs/backbone.js/1.1.2/backbone-min",
 		//parse: "//www.parsecdn.com/js/parse-1.5.0.min",
 		parse: "//www.parsecdn.com/js/parse-1.5.0",
