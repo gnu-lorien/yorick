@@ -4,10 +4,8 @@
 // Includes file dependencies
 define([
 	"jquery",
-	"backbone",
-	"../models/BackgroundDescription",
-    "../collections/BackgroundDescriptionsCollection"
-], function( $, Backbone, BackgroundDescription, BackgroundDescriptions ) {
+	"backbone"
+], function( $, Backbone) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {

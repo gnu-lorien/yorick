@@ -5,8 +5,7 @@
 define([
 	"jquery",
 	"backbone",
-	"../models/SimpleTrait",
-    "../collections/BackgroundDescriptionsCollection"
+	"../models/SimpleTrait"
 ], function( $, Backbone, SimpleTrait ) {
 
     // Extends Backbone.View

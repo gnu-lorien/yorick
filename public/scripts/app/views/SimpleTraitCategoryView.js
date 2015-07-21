@@ -4,8 +4,7 @@
 // Includes file dependencies
 define([
 	"jquery",
-	"backbone",
-    "parse"
+	"backbone"
 ], function( $, Backbone ) {
 
     // Extends Backbone.View

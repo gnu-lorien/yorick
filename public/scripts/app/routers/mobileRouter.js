@@ -8,19 +8,15 @@ define([
 	"../models/CategoryModel",
 	"../collections/CategoriesCollection",
 	"../views/CategoryView",
-    "../collections/BackgroundDescriptionsCollection",
-    "../views/BackgroundNewView",
     "../views/CharactersListView",
     "../models/Vampire",
     "../collections/Vampires",
     "../views/CharacterView",
-    "../views/BackgroundListView",
-    "../views/BackgroundChangeView",
     "../views/SimpleTraitCategoryView",
     "../views/SimpleTraitNewView",
     "../models/SimpleTrait",
     "../views/SimpleTraitChangeView",
-], function ($, Parse, CategoryModel, CategoriesCollection, CategoryView, BackgroundDescriptions, BackgroundsNewView, CharactersListView, Vampire, Vampires, CharacterView, BackgroundListView, BackgroundChangeView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView) {
+], function ($, Parse, CategoryModel, CategoriesCollection, CategoryView, CharactersListView, Vampire, Vampires, CharacterView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView) {
 
     // Extends Backbone.Router
     var CategoryRouter = Parse.Router.extend( {
@@ -41,14 +37,9 @@ define([
             // Instantiates a new Vehicles Category View
             this.vehiclesView = new CategoryView( { el: "#vehicles", collection: new CategoriesCollection( [] , { type: "vehicles" } ) } );
 
-            this.backgroundsNew = new BackgroundsNewView( { el: "#backgrounds-new", collection: new BackgroundDescriptions()});
-
             this.characters = new CharactersListView( {el: "#characters-all", collection: new Vampires});
 
             this.character = new CharacterView({ el: "#character"});
-
-            this.backgroundListView = new BackgroundListView({el: "#backgrounds-all"});
-            this.backgroundChangeView = new BackgroundChangeView({el: "#background-change"});
 
             this.simpleTraitCategoryView = new SimpleTraitCategoryView({el: "#simpletraitcategory-all"});
             this.simpleTraitNewView = new SimpleTraitNewView({el: "#simpletrait-new"});
@@ -148,40 +139,6 @@ define([
                 p.resolve(self._character);
             });
             return p;
-        },
-
-        background: function(cid, bid) {
-            var self = this;
-            self.get_character(cid, ["backgrounds"]).done(function(c) {
-                var b = _.findWhere(c.get("backgrounds"), {id: bid});
-                self.backgroundChangeView.register_character(c, b);
-                $.mobile.changePage("#background-change", {reverse: false, changeHash: false});
-            });
-        },
-
-        backgrounds: function(id, type) {
-            var self = this;
-            if ("all" == type) {
-                $.mobile.loading("show");
-                self.get_character(id, ["backgrounds"]).done(function (c) {
-                    self.backgroundListView.register_character(c);
-                    $.mobile.changePage("#backgrounds-all", {reverse: false, changeHash: false});
-                });
-            }
-            if ("new" == type) {
-                var bgn = this.backgroundsNew;
-                if (!bgn.collection.length) {
-                    $.mobile.loading("show");
-                    bgn.collection.fetch({add: true}).done(function() {
-                        self.get_character(id, ["backgrounds"]).done(function (c) {
-                            bgn.register_character(c);
-                            $.mobile.changePage("#backgrounds-new", {reverse: false, changeHash: false});
-                        });
-                    });
-                } else {
-                    $.mobile.changePage("#backgrounds-new", {reverse: false, changeHash:false});
-                }
-            }
         },
 
         simpletrait: function(category, cid, bid) {
