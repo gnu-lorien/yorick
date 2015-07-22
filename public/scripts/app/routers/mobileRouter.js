@@ -16,7 +16,8 @@ define([
     "../views/SimpleTraitNewView",
     "../models/SimpleTrait",
     "../views/SimpleTraitChangeView",
-], function ($, Parse, CategoryModel, CategoriesCollection, CategoryView, CharactersListView, Vampire, Vampires, CharacterView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView) {
+    "../models/VampireCreation"
+], function ($, Parse, CategoryModel, CategoriesCollection, CategoryView, CharactersListView, Vampire, Vampires, CharacterView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView, VampireCreation) {
 
     // Extends Backbone.Router
     var CategoryRouter = Parse.Router.extend( {
@@ -134,11 +135,8 @@ define([
                     return self.get_character(id, []);
                 });
             }
-            var p = new Parse.Promise;
-            _.defer(function() {
-                p.resolve(self._character);
-            });
-            return p;
+            /* FIXME: Hack to inject something that should be created with the character */
+            return self._character.ensure_creation_rules_exist();
         },
 
         simpletrait: function(category, cid, bid) {

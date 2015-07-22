@@ -6,8 +6,9 @@ define([
 	"jquery",
 	"parse",
     "../models/SimpleTrait",
-    "../models/VampireChange"
-], function( $, Parse, SimpleTrait, VampireChange ) {
+    "../models/VampireChange",
+    "../models/VampireCreation"
+], function( $, Parse, SimpleTrait, VampireChange, VampireCreation ) {
 
     // The Model constructor
     var Model = Parse.Object.extend( "Vampire", {
@@ -89,7 +90,43 @@ define([
                 self.trigger("change:" + modified_trait.get(category));
                 return Parse.Promise.as(modified_trait);
             });
-        }
+        },
+
+        ensure_creation_rules_exist: function() {
+            var self = this;
+            if (self.has("creation")) {
+                return Parse.Promise.as(self);
+            }
+            var creation = new VampireCreation({
+                "owner": self,
+                "completed": false,
+                "concept": false,
+                "archetype": false,
+                "clan": false,
+                "attributes": false,
+                "focuses": false,
+                "skill_4_remaining": 1,
+                "skill_3_remaining": 2,
+                "skill_2_remaining": 3,
+                "skill_1_remaining": 4,
+                "background_3": false,
+                "background_2": false,
+                "background_1": false,
+                "discipline_2": false,
+                "discipline_1": false,
+                "initial_xp": false
+            });
+            return creation.save().then(function (newCreation) {
+                self.set("creation", newCreation);
+                return self.save();
+            });
+        },
+
+        is_being_created: function() {
+            return Parse.Object.fetchAllIfNecessary([self.get("creation")]).then(function (theCreation) {
+                return Parse.Promise.as(theCreation.get("completed"));
+            })
+        },
 
     } );
 
