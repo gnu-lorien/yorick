@@ -58,7 +58,7 @@ define([
                             b = st;
                         }
                     });
-                    b.set({"name": name, "value": value, "category": category});
+                    b.set({"name": name, "value": value, "category": category, "owner": self});
                     serverData = _.clone(b._serverData);
                     return b.save();
                 }
