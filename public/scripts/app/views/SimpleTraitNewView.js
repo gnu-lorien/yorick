@@ -71,18 +71,12 @@ define([
             "click": "clicked"
         },
 
-        clicked: function(e, b, c) {
+        clicked: function(e) {
             var self = this;
             $.mobile.loading("show");
-            var b = new SimpleTrait;
-            b.set("name", $(e.target).attr("name"));
-            b.set("category", self.category);
-            b.save().done(function (bg) {
-                self.character.addUnique(self.category, b);
-                self.character.save().done(function () {
-                    window.location.hash = "#simpletrait/" + self.category + "/" + self.character.id + "/" + b.id;
-                });
-            });
+            self.character.update_trait($(e.target).attr("name"), 1, self.category).done(function(b) {
+                window.location.hash = "#simpletrait/" + self.category + "/" + self.character.id + "/" + b.id;
+            })
 
             return false;
         }

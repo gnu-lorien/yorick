@@ -72,9 +72,8 @@ define([
         save_clicked: function(a, b, c) {
             var self = this;
             console.log("save clicked", self.category, self.simpletrait);
-            this.simpletrait.save().then(function (a, b, c) {
+            self.character.update_trait(self.simpletrait).then(function (a, b, c) {
                 console.log("asaved", self.category, self.simpletrait);
-                self.character.trigger("change:" + self.category);
                 window.location.hash = "#simpletraits/" + self.category + "/" + self.character.id + "/all";
             }, function(a, b, c) {
                 console.log('error', a);

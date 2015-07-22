@@ -128,7 +128,7 @@ define([
 
                 var objectIds = _.chain(categories).map(function(category) {
                     return self._character.get(category);
-                }).flatten().value();
+                }).flatten().without(undefined).value();
 
                 return Parse.Object.fetchAllIfNeeded(objectIds).done(function () {
                     return self.get_character(id, []);
