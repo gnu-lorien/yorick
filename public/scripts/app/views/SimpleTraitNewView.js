@@ -36,6 +36,8 @@ define([
                 self.collection = new DescriptionCollection;
                 var q = new Parse.Query(Description);
                 q.equalTo("category", self.category).addAscending(["order", "name"]);
+                var traitNames = _(self.character.get(category)).pluck("attributes").pluck("name").value();
+                q.notContainedIn("name", traitNames);
                 self.collection.query = q;
                 self.listenTo(self.collection, "add", self.render);
                 self.listenTo(self.collection, "reset", self.render);
