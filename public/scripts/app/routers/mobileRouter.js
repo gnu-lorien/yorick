@@ -17,8 +17,9 @@ define([
     "../models/SimpleTrait",
     "../views/SimpleTraitChangeView",
     "../models/VampireCreation",
-    "../views/CharacterCreateView"
-], function ($, Parse, CategoryModel, CategoriesCollection, CategoryView, CharactersListView, Vampire, Vampires, CharacterView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView, VampireCreation, CharacterCreateView) {
+    "../views/CharacterCreateView",
+    "../views/CharacterNewView"
+], function ($, Parse, CategoryModel, CategoriesCollection, CategoryView, CharactersListView, Vampire, Vampires, CharacterView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView, VampireCreation, CharacterCreateView, CharacterNewView) {
 
     // Extends Backbone.Router
     var CategoryRouter = Parse.Router.extend( {
@@ -48,6 +49,7 @@ define([
             this.simpleTraitChangeView = new SimpleTraitChangeView({el: "#simpletrait-change"});
 
             this.characterCreateView = new CharacterCreateView({el: "#character-create"});
+            this.characterNewView = new CharacterNewView({el: "#character-new"});
 
             if (!Parse.User.current()) {
                 Parse.User.logIn("devuser", "thedumbness");
@@ -80,6 +82,8 @@ define([
 
             "charactercreate/simpletraits/:category/:cid/pick/:i": "charactercreatepicksimpletrait",
 
+            "characternew": "characternew"
+
         },
 
         // Home method
@@ -88,6 +92,14 @@ define([
             // Programatically changes to the categories page
             $.mobile.changePage( "#categories" , { reverse: false, changeHash: false } );
 
+        },
+
+        characternew: function() {
+            var self = this;
+            $.mobile.loading("show");
+            self.characterNewView.model = new Vampire;
+            self.characterNewView.render();
+            $.mobile.changePage("#character-new", {reverse: false, changeHash: false});
         },
 
         charactercreate: function(cid) {

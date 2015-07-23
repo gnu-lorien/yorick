@@ -25,8 +25,8 @@ define([
             // Sets the view's template property
             this.template = _.template( $( "script#characterLinkItems" ).html(), { "collection": this.collection } );
 
-            // Renders the view's template inside of the current listview element
-            this.$el.find("ul").html(this.template);
+            // Renders the view's template inside of the current div element
+            this.$el.find("div[role='main']").html(this.template);
 
             // Maintains chainability
             return this;

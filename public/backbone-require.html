@@ -90,11 +90,6 @@
     </div><!-- /header -->
 
     <div role="main" class="ui-content">
-        <div role="main" class="ui-content">
-            <ul data-role="listview" data-inset="true">
-
-            </ul>
-        </div>
     </div><!-- /content -->
 </div>
 
@@ -202,12 +197,37 @@
     </div>
 </div>
 
+<div id="character-new" data-role="page" data-title="New Character">
+    <div data-role="header">
+        <h1>New Character</h1>
+    </div>
+
+    <div role="main" class="ui-content">
+    </div>
+</div>
+
+<script id="characterNewView" type="text/template">
+    <form>
+         <label for="characterName">Name:</label>
+         <input type="text" name="characterName" id="characterName" value="New Character Name">
+    </form>
+    <p>
+        <button class="cancel ui-btn">Cancel</button>
+        <button class="save ui-btn">Save Changes</button>
+    </p>
+</script>
+
 <script id="characterLinkItems" type="text/template">
-    <% collection.each(function(e) { %>
-    <li>
-        <a href="#character?<%= e.id %>" class="ui-btn ui-btn-icon-right ui-icon-carat-r"><%= e.get("name") %></a>
-    </li>
-    <% }); %>
+    <ul>
+        <li><a href="#characternew">Add New Vampire</a></li>
+    </ul>
+    <ul data-role="listview" data-inset="true">
+        <% collection.each(function(e) { %>
+        <li>
+            <a href="#character?<%= e.id %>" class="ui-btn ui-btn-icon-right ui-icon-carat-r"><%= e.get("name") %></a>
+        </li>
+        <% }); %>
+    </ul>
 </script>
 
 <script id="simpletraitcategoryDescriptionItems" type="text/template">
