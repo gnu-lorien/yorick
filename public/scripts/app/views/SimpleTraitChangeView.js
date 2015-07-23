@@ -20,7 +20,8 @@ define([
             var self = this;
             var changed = false;
             if (character !== self.character) {
-                self.stopListening(self.character);
+                if (self.character)
+                    self.stopListening(self.character);
                 self.character = character;
                 changed = true;
             }

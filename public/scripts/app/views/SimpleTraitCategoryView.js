@@ -21,7 +21,8 @@ define([
             var self = this;
             var changed = false;
             if (character !== self.character) {
-                self.stopListening(self.character);
+                if (self.character)
+                    self.stopListening(self.character);
                 self.character = character;
                 self.listenTo(self.character, "change:" + category, self.render);
                 changed = true;

@@ -17,7 +17,7 @@ define([
         // The View Constructor
         initialize: function() {
 
-            _.bindAll(this, "register");
+            _.bindAll(this, "register", "update_collection_query_and_fetch");
 
         },
 
@@ -31,23 +31,21 @@ define([
             }
 
             if (character !== self.character) {
-                self.stopListening(self.character);
+                if (self.character)
+                    self.stopListening(self.character);
                 self.character = character;
+                self.listenTo(self.character, "change:" + category, self.update_collection_query_and_fetch);
                 changed = true;
             }
 
             if (category != self.category) {
                 self.category = category;
-                self.stopListening(self.collection);
+                if (self.collection)
+                    self.stopListening(self.collection);
                 self.collection = new DescriptionCollection;
-                var q = new Parse.Query(Description);
-                q.equalTo("category", self.category).addAscending(["order", "name"]);
-                var traitNames = _(self.character.get(category)).pluck("attributes").pluck("name").value();
-                q.notContainedIn("name", traitNames);
-                self.collection.query = q;
                 self.listenTo(self.collection, "add", self.render);
                 self.listenTo(self.collection, "reset", self.render);
-                self.collection.fetch();
+                self.update_collection_query_and_fetch();
                 changed = true;
             }
 
@@ -55,6 +53,16 @@ define([
                 return self.render();
             }
             return self;
+        },
+
+        update_collection_query_and_fetch: function () {
+            var self = this;
+            var q = new Parse.Query(Description);
+            q.equalTo("category", self.category).addAscending(["order", "name"]);
+            var traitNames = _(self.character.get(self.category)).pluck("attributes").pluck("name").value();
+            q.notContainedIn("name", traitNames);
+            self.collection.query = q;
+            self.collection.fetch({reset: true});
         },
 
         // Renders all of the Category models on the UI
