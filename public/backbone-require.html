@@ -33,14 +33,54 @@
 </div>
 
 <script id="characterView" type="text/template">
+    <% if (character.is_being_created()) { %>
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#simpletraits/skills/<%= m.id %>/all">Skills</a></li>
+        <li><a href="#charactercreate/<%= character.id %>">Character Creation</a></li>
+    </ul>
+    <% } %>
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li><a href="#simpletraits/skills/<%= character.id %>/all">Skills</a></li>
     </ul>
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#simpletraits/disciplines/<%= m.id %>/all">Disciplines</a></li>
+        <li><a href="#simpletraits/disciplines/<%= character.id %>/all">Disciplines</a></li>
     </ul>
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#simpletraits/backgrounds/<%= m.id %>/all">Backgrounds</a></li>
+        <li><a href="#simpletraits/backgrounds/<%= character.id %>/all">Backgrounds</a></li>
+    </ul>
+</script>
+
+<div id="character-create" data-role="page" data-title="Create Character">
+
+    <div data-role="header">
+        <h1>Create Character</h1>
+    </div><!-- /header -->
+
+    <div role="main" class="ui-content">
+        createodapage
+    </div>
+</div>
+
+<script id="characterCreateView" type="text/template">
+    <% var creation = character.get("creation"); %>
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li data-role="list-divider">Skills<span class="ui-li-count">10</span></li>
+        <% _.each(_.range(5, 0, -1), function(i) { %>
+        <% var n = "skill_" + i + "_remaining"; %>
+        <% if (creation.get(n)) { %>
+        <li><a href="#charactercreate/simpletraits/skills/<%= character.id %>/pick/<%= i %>"><%= creation.get(n) %> skill picks at rating <%= i %></a></li>
+        <% }}); %>
+        <li data-role="list-divider">Disciplines<span class="ui-li-count">2</span></li>
+        <% _.each(_.range(3, 0, -1), function(i) { %>
+        <% var n = "discipline_" + i; %>
+        <% if (!creation.get(n)) { %>
+        <li><a href="#charactercreate/simpletraits/disciplines/<%= character.id %>/pick/<%= i %>">Pick in clan discipline at rating <%= i %></a></li>
+        <% }}); %>
+        <li data-role="list-divider">Backgrounds<span class="ui-li-count">3</span></li>
+        <% _.each(_.range(3, 0, -1), function(i) { %>
+        <% var n = "background_" + i; %>
+        <% if (!creation.get(n)) { %>
+        <li><a href="#charactercreate/simpletraits/backgrounds/<%= character.id %>/pick/<%= i %>">Pick a background at rating <%= i %></a></li>
+        <% }}); %>
     </ul>
 </script>
 
@@ -159,10 +199,6 @@
     </div>
 
     <div role="main" class="ui-content">
-        aoeu
-        <ul data-role="listview" data-inset="true">
-            No?
-        </ul>
     </div>
 </div>
 
@@ -175,11 +211,16 @@
 </script>
 
 <script id="simpletraitcategoryDescriptionItems" type="text/template">
+    <% if (freeValue) { %>
+        <p>Pick one for value <%= freeValue %></p>
+    <% } %>
+    <ul data-role="listview" data-inset="true">
     <% collection.each(function(e) { %>
         <li>
-            <a name="<%= e.get('name') %>"  href="#simpletraits/<%= category %>/<%= character.id %>/all" class="ui-btn ui-btn-icon-right ui-icon-carat-r"><%= e.get("name") %></a>
+            <a name="<%= e.get('name') %>"  href="#" class="ui-btn ui-btn-icon-right ui-icon-carat-r"><%= e.get("name") %></a>
         </li>
     <% }); %>
+    </ul>
 </script>
 
 <!-- Underscore Template that is used to display all of the Category Models -->

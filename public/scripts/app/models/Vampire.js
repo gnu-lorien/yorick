@@ -35,7 +35,7 @@ define([
                 return trait.destroy({wait: true});
             });
         },
-        update_trait: function(nameOrTrait, value, category) {
+        update_trait: function(nameOrTrait, value, category, freeValue) {
             var self = this;
             var modified_trait, name, trait, serverData;
             if (!_.isString(nameOrTrait)) {
@@ -59,7 +59,12 @@ define([
                             b = st;
                         }
                     });
-                    b.set({"name": name, "value": value, "category": category, "owner": self});
+                    b.set({"name": name,
+                        "value": freeValue || value,
+                        "category": category,
+                        "owner": self,
+                        "free_value": freeValue
+                    });
                     serverData = _.clone(b._serverData);
                     return b.save();
                 }
@@ -75,7 +80,8 @@ define([
                     "owner": self,
                     "old_value": serverData.value,
                     "value": st.get("value"),
-                    "type": serverData.value === undefined ? "define" : "update"
+                    "type": serverData.value === undefined ? "define" : "update",
+                    "free_value": st.get("free_value")
                 });
                 vc.save().then(function () {
                     console.log("Saved vc");
@@ -86,6 +92,26 @@ define([
 
                 self.addUnique(category, st);
                 return self.save();
+            }, function(error) {
+                console.log("Error saving new trait", error);
+            }).then(function () {
+                if (!freeValue) {
+                    return Parse.Promise.as(self);
+                }
+                /* FIXME Only valid for skills? */
+                if (category != "skills") {
+                    return Parse.Promise.as(self);
+                }
+                return Parse.Object.fetchAllIfNeeded([self.get("creation")]).then(function (creations) {
+                    var creation = creations[0];
+                    var stepName = "skill_" + freeValue + "_remaining";
+                    var listName = "skill_" + freeValue + "_picks";
+                    creation.increment(stepName, -1);
+                    creation.addUnique(listName, modified_trait);
+                    return creation.save();
+                }).then(function() {
+                    return Parse.Promise.as(self);
+                });
             }).then(function () {
                 self.trigger("change:" + modified_trait.get(category));
                 return Parse.Promise.as(modified_trait);
@@ -95,7 +121,9 @@ define([
         ensure_creation_rules_exist: function() {
             var self = this;
             if (self.has("creation")) {
-                return Parse.Promise.as(self);
+                return Parse.Object.fetchAllIfNeeded([self.get("creation")]).then(function() {
+                    return Parse.Promise.as(self);
+                })
             }
             var creation = new VampireCreation({
                 "owner": self,
@@ -123,10 +151,8 @@ define([
         },
 
         is_being_created: function() {
-            return Parse.Object.fetchAllIfNecessary([self.get("creation")]).then(function (theCreation) {
-                return Parse.Promise.as(theCreation.get("completed"));
-            })
-        },
+            return !this.get("creation").get("completed");
+        }
 
     } );
 

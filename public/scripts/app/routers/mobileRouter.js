@@ -16,8 +16,9 @@ define([
     "../views/SimpleTraitNewView",
     "../models/SimpleTrait",
     "../views/SimpleTraitChangeView",
-    "../models/VampireCreation"
-], function ($, Parse, CategoryModel, CategoriesCollection, CategoryView, CharactersListView, Vampire, Vampires, CharacterView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView, VampireCreation) {
+    "../models/VampireCreation",
+    "../views/CharacterCreateView"
+], function ($, Parse, CategoryModel, CategoriesCollection, CategoryView, CharactersListView, Vampire, Vampires, CharacterView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView, VampireCreation, CharacterCreateView) {
 
     // Extends Backbone.Router
     var CategoryRouter = Parse.Router.extend( {
@@ -46,6 +47,8 @@ define([
             this.simpleTraitNewView = new SimpleTraitNewView({el: "#simpletrait-new"});
             this.simpleTraitChangeView = new SimpleTraitChangeView({el: "#simpletrait-change"});
 
+            this.characterCreateView = new CharacterCreateView({el: "#character-create"});
+
             if (!Parse.User.current()) {
                 Parse.User.logIn("devuser", "thedumbness");
             }
@@ -71,7 +74,12 @@ define([
 
             "simpletraits/:category/:cid/:type": "simpletraits",
 
-            "simpletrait/:category/:cid/:bid": "simpletrait"
+            "simpletrait/:category/:cid/:bid": "simpletrait",
+
+            "charactercreate/:cid": "charactercreate",
+
+            "charactercreate/simpletraits/:category/:cid/pick/:i": "charactercreatepicksimpletrait",
+
         },
 
         // Home method
@@ -80,6 +88,26 @@ define([
             // Programatically changes to the categories page
             $.mobile.changePage( "#categories" , { reverse: false, changeHash: false } );
 
+        },
+
+        charactercreate: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.get_character(cid, []).done(function (character) {
+                self.characterCreateView.model = character;
+                self.characterCreateView.render();
+                $.mobile.changePage("#character-create", {reverse: false, changeHash: false});
+            })
+        },
+
+        charactercreatepicksimpletrait: function(category, cid, i) {
+            var self = this;
+            i = _.parseInt(i);
+            $.mobile.loading("show");
+            self.get_character(cid, [category]).done(function (c) {
+                self.simpleTraitNewView.register(c, category, i);
+                $.mobile.changePage("#simpletrait-new", {reverse: false, changeHash: false});
+            });
         },
 
         character: function(id) {

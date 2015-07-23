@@ -21,9 +21,15 @@ define([
 
         },
 
-        register: function(character, category) {
+        register: function(character, category, freeValue) {
             var self = this;
             var changed = false;
+
+            if (freeValue !== self.freeValue) {
+                self.freeValue = freeValue;
+                changed = true;
+            }
+
             if (character !== self.character) {
                 self.stopListening(self.character);
                 self.character = character;
@@ -58,12 +64,12 @@ define([
             this.template = _.template($("script#simpletraitcategoryDescriptionItems").html(), {
                 "collection": this.collection,
                 "character": this.character,
-                "category": this.category
+                "category": this.category,
+                "freeValue": this.freeValue
             });
 
             // Renders the view's template inside of the current listview element
-            this.$el.find("ul").html(this.template);
-            //this.$el.find("ul").html("oh hi there");
+            this.$el.find("div[role='main']").html(this.template);
 
             // Maintains chainability
             return this;
@@ -76,8 +82,12 @@ define([
         clicked: function(e) {
             var self = this;
             $.mobile.loading("show");
-            self.character.update_trait($(e.target).attr("name"), 1, self.category).done(function(b) {
-                window.location.hash = "#simpletrait/" + self.category + "/" + self.character.id + "/" + b.id;
+            self.character.update_trait($(e.target).attr("name"), 1, self.category, self.freeValue).done(function(b) {
+                if (self.freeValue) {
+                    window.location.hash = "#charactercreate/" + self.character.id;
+                } else {
+                    window.location.hash = "#simpletrait/" + self.category + "/" + self.character.id + "/" + b.id;
+                }
             })
 
             return false;
