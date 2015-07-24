@@ -48,6 +48,9 @@
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <li><a href="#simpletraits/backgrounds/<%= character.id %>/all">Backgrounds</a></li>
     </ul>
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li><a href="#character/<%= character.id %>/print">Print</a></li>
+    </ul>
 </script>
 
 <div id="character-create" data-role="page" data-title="Create Character">
@@ -280,9 +283,23 @@
         <% _.each(groupedSkills, function(three_group) { %>
         <tr>
             <% _.each(three_group, function(skill) { %>
-            <td><%= skill %>: <%= _.result(_.find(character.get("skills"), {name: skill}), 'name', 0) %></td>
+            <td><%= skill %></td><td>x</td><td><%= _.result(skillsLookup, skill + '[0].attributes.value', 0) %></td>
             <% }); %>
         </tr>
+        <% }); %>
+    </table>
+    <hr/>
+    <h1>Backgrounds</h1>
+    <table>
+        <% _.each(character.get("backgrounds"), function(background) { %>
+        <tr><td><%= background.get("name") %>: <%= background.get("value") %></td></tr>
+        <% }); %>
+    </table>
+    <hr/>
+    <h1>Disciplines</h1>
+    <table>
+        <% _.each(character.get("disciplines"), function(d) { %>
+        <tr><td><%= d.get("name") %>: <%= d.get("value") %></td></tr>
         <% }); %>
     </table>
 </script>
