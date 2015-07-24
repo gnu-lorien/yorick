@@ -17,6 +17,7 @@ define([
             this.listenTo(this.collection, "add", this.render);
             this.listenTo(this.collection, "reset", this.render);
 
+            return this.render();
         },
 
         // Renders all of the Category models on the UI

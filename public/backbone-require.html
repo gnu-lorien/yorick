@@ -65,19 +65,19 @@
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <li data-role="list-divider">Skills<span class="ui-li-count">10</span></li>
         <% _.each(_.range(5, 0, -1), function(i) { %>
-        <% var n = "skill_" + i + "_remaining"; %>
-        <% if (creation.get(n)) { %>
+        <% var n = "skills_" + i + "_remaining"; %>
+        <% if (creation.get(n) > 0) { %>
         <li><a href="#charactercreate/simpletraits/skills/<%= character.id %>/pick/<%= i %>"><%= creation.get(n) %> skill picks at rating <%= i %></a></li>
         <% }}); %>
         <li data-role="list-divider">Disciplines<span class="ui-li-count">2</span></li>
-        <% _.each(_.range(3, 0, -1), function(i) { %>
-        <% var n = "discipline_" + i; %>
+        <% _.each(_.range(2, 0, -1), function(i) { %>
+        <% var n = "disciplines_" + i; %>
         <% if (!creation.get(n)) { %>
         <li><a href="#charactercreate/simpletraits/disciplines/<%= character.id %>/pick/<%= i %>">Pick in clan discipline at rating <%= i %></a></li>
         <% }}); %>
         <li data-role="list-divider">Backgrounds<span class="ui-li-count">3</span></li>
         <% _.each(_.range(3, 0, -1), function(i) { %>
-        <% var n = "background_" + i; %>
+        <% var n = "backgrounds_" + i; %>
         <% if (!creation.get(n)) { %>
         <li><a href="#charactercreate/simpletraits/backgrounds/<%= character.id %>/pick/<%= i %>">Pick a background at rating <%= i %></a></li>
         <% }}); %>

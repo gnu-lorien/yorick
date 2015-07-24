@@ -35,6 +35,11 @@ define([
                 return trait.destroy({wait: true});
             });
         },
+        ensure_category: function(category) {
+            if (!this.has(category)) {
+                this.set(category, []);
+            }
+        },
         update_trait: function(nameOrTrait, value, category, freeValue) {
             var self = this;
             var modified_trait, name, trait, serverData;
@@ -44,6 +49,7 @@ define([
             } else {
                 name = nameOrTrait;
             };
+            self.ensure_category(category);
             return Parse.Object.fetchAllIfNeeded(self.get(category)).then(function(list) {
                 if (!_.isString(nameOrTrait)) {
                     var trait = nameOrTrait;
@@ -98,15 +104,19 @@ define([
                 if (!freeValue) {
                     return Parse.Promise.as(self);
                 }
-                /* FIXME Only valid for skills? */
-                if (category != "skills") {
+                /* FIXME Move to the creation model */
+                if (!_.contains(["skills", "disciplines", "backgrounds"], category)) {
                     return Parse.Promise.as(self);
                 }
                 return Parse.Object.fetchAllIfNeeded([self.get("creation")]).then(function (creations) {
                     var creation = creations[0];
-                    var stepName = "skill_" + freeValue + "_remaining";
-                    var listName = "skill_" + freeValue + "_picks";
-                    creation.increment(stepName, -1);
+                    var stepName = category + "_" + freeValue + "_remaining";
+                    var listName = category + "_" + freeValue + "_picks";
+                    if (category == "skills") {
+                        creation.increment(stepName, -1);
+                    } else {
+                        creation.set(stepName, true);
+                    }
                     creation.addUnique(listName, modified_trait);
                     return creation.save();
                 }).then(function() {
@@ -133,15 +143,15 @@ define([
                 "clan": false,
                 "attributes": false,
                 "focuses": false,
-                "skill_4_remaining": 1,
-                "skill_3_remaining": 2,
-                "skill_2_remaining": 3,
-                "skill_1_remaining": 4,
-                "background_3": false,
-                "background_2": false,
-                "background_1": false,
-                "discipline_2": false,
-                "discipline_1": false,
+                "skills_4_remaining": 1,
+                "skills_3_remaining": 2,
+                "skills_2_remaining": 3,
+                "skills_1_remaining": 4,
+                "backgrounds_3": false,
+                "backgrounds_2": false,
+                "backgrounds_1": false,
+                "disciplines_2": false,
+                "disciplines_1": false,
                 "initial_xp": false
             });
             return creation.save().then(function (newCreation) {

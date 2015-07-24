@@ -24,6 +24,8 @@ define([
             // Renders the view's template inside of the current listview element
             this.$el.find("div[role='main']").html(this.template);
 
+            this.$el.enhanceWithin();
+
             // Maintains chainability
             return this;
 
