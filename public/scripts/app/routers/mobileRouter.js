@@ -18,8 +18,9 @@ define([
     "../views/SimpleTraitChangeView",
     "../models/VampireCreation",
     "../views/CharacterCreateView",
-    "../views/CharacterNewView"
-], function ($, Parse, CategoryModel, CategoriesCollection, CategoryView, CharactersListView, Vampire, Vampires, CharacterView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView, VampireCreation, CharacterCreateView, CharacterNewView) {
+    "../views/CharacterNewView",
+    "../views/CharacterPrintView"
+], function ($, Parse, CategoryModel, CategoriesCollection, CategoryView, CharactersListView, Vampire, Vampires, CharacterView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView, VampireCreation, CharacterCreateView, CharacterNewView, CharacterPrintView) {
 
     // Extends Backbone.Router
     var CategoryRouter = Parse.Router.extend( {
@@ -50,6 +51,8 @@ define([
 
             this.characterCreateView = new CharacterCreateView({el: "#character-create"});
             this.characterNewView = new CharacterNewView({el: "#character-new"});
+
+            this.characterPrintView = new CharacterPrintView({el: "#printable-sheet"});
 
             if (!Parse.User.current()) {
                 Parse.User.logIn("devuser", "thedumbness");
@@ -97,7 +100,13 @@ define([
         },
 
         characterprint: function(cid) {
-            $.mobile.changePage("#printable-sheet", {reverse: false, changeHash: false});
+            var self = this;
+            $.mobile.loading("show");
+            self.get_character(cid, ["skills", "disciplines", "backgrounds"]).done(function (character) {
+                self.characterPrintView.model = character;
+                self.characterPrintView.render();
+                $.mobile.changePage("#printable-sheet", {reverse: false, changeHash: false});
+            });
         },
 
         characternew: function() {
@@ -142,7 +151,9 @@ define([
             if ("all" == type) {
                 $.mobile.loading("show");
                 var c = this.characters.collection;
-                var f = function() { $.mobile.changePage("#characters-all", {reverse: false, changeHash: false}); };
+                var f = function() {
+                    $.mobile.changePage("#characters-all", {reverse: false, changeHash: false});
+                };
                 if (!c.length) {
                     var q = new Parse.Query(Vampire);
                     q.equalTo("owner", Parse.User.current());

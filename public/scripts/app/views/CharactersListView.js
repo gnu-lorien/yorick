@@ -17,17 +17,16 @@ define([
             this.listenTo(this.collection, "add", this.render);
             this.listenTo(this.collection, "reset", this.render);
 
-            return this.render();
         },
 
         // Renders all of the Category models on the UI
         render: function() {
 
             // Sets the view's template property
-            this.template = _.template( $( "script#characterLinkItems" ).html(), { "collection": this.collection } );
+            this.template = _.template( $( "script#characterLinkItems" ).html() )({ "collection": this.collection } );
 
             // Renders the view's template inside of the current div element
-            this.$el.find("div[role='main']").html(this.template);
+            this.$el.find("ul[data-role='listview']").html(this.template);
 
             // Maintains chainability
             return this;

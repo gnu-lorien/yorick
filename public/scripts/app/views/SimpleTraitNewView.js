@@ -69,7 +69,7 @@ define([
         render: function() {
 
             // Sets the view's template property
-            this.template = _.template($("script#simpletraitcategoryDescriptionItems").html(), {
+            this.template = _.template($("script#simpletraitcategoryDescriptionItems").html())({
                 "collection": this.collection,
                 "character": this.character,
                 "category": this.category,

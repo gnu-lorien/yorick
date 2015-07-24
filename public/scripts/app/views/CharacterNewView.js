@@ -55,7 +55,7 @@ define([
         render: function() {
 
             // Sets the view's template property
-            this.template = _.template( $( "script#characterNewView" ).html(), { "model": this.model } );
+            this.template = _.template( $( "script#characterNewView" ).html())({ "model": this.model } );
 
             // Renders the view's template inside of the current listview element
             this.$el.find("div[role='main']").html(this.template);
