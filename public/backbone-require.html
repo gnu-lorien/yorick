@@ -71,14 +71,14 @@
         <% }}); %>
         <li data-role="list-divider">Disciplines<span class="ui-li-count">2</span></li>
         <% _.each(_.range(2, 0, -1), function(i) { %>
-        <% var n = "disciplines_" + i; %>
-        <% if (!creation.get(n)) { %>
+        <% var n = "disciplines_" + i + "_remaining"; %>
+        <% if (creation.get(n) > 0) { %>
         <li><a href="#charactercreate/simpletraits/disciplines/<%= character.id %>/pick/<%= i %>">Pick in clan discipline at rating <%= i %></a></li>
         <% }}); %>
         <li data-role="list-divider">Backgrounds<span class="ui-li-count">3</span></li>
         <% _.each(_.range(3, 0, -1), function(i) { %>
-        <% var n = "backgrounds_" + i; %>
-        <% if (!creation.get(n)) { %>
+        <% var n = "backgrounds_" + i + "_remaining"; %>
+        <% if (creation.get(n) > 0) { %>
         <li><a href="#charactercreate/simpletraits/backgrounds/<%= character.id %>/pick/<%= i %>">Pick a background at rating <%= i %></a></li>
         <% }}); %>
     </ul>

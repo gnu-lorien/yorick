@@ -112,11 +112,7 @@ define([
                     var creation = creations[0];
                     var stepName = category + "_" + freeValue + "_remaining";
                     var listName = category + "_" + freeValue + "_picks";
-                    if (category == "skills") {
-                        creation.increment(stepName, -1);
-                    } else {
-                        creation.set(stepName, true);
-                    }
+                    creation.increment(stepName, -1);
                     creation.addUnique(listName, modified_trait);
                     return creation.save();
                 }).then(function() {
@@ -147,11 +143,11 @@ define([
                 "skills_3_remaining": 2,
                 "skills_2_remaining": 3,
                 "skills_1_remaining": 4,
-                "backgrounds_3": false,
-                "backgrounds_2": false,
-                "backgrounds_1": false,
-                "disciplines_2": false,
-                "disciplines_1": false,
+                "backgrounds_3_remaining": 1,
+                "backgrounds_2_remaining": 1,
+                "backgrounds_1_remaining": 1,
+                "disciplines_2_remaining": 1,
+                "disciplines_1_remaining": 1,
                 "initial_xp": false
             });
             return creation.save().then(function (newCreation) {
