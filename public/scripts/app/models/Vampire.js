@@ -172,18 +172,31 @@ define([
         },
 
         get_cost_on_table: function(ct, value) {
-            return _(ct).take(value).sum().value();
+            return _.chain(ct).take(value).sum().value();
         },
 
         get_trait_cost_on_table: function(ct, trait) {
+            var self = this;
             var value = trait.get("value");
             var free_value = trait.get("free_value") || 0;
             var total_cost = self.get_cost_on_table(ct, value);
-            var free_cost = self.get_cost_on_table(ct, value);
+            var free_cost = self.get_cost_on_table(ct, free_value);
             return total_cost - free_cost;
         },
 
-        calculate_total_cost: function(trait) {
+        generation: function() {
+            var self = this;
+            var generation;
+            _.each(self.get("backgrounds"), function(b) {
+                if (b.get("name") == "Generation") {
+                    generation = b.get("value");
+                }
+            });
+
+            return generation;
+        },
+
+        calculate_trait_cost: function(trait) {
             var self = this;
             var category = trait.get("category");
             var value = trait.get("value");
@@ -211,12 +224,7 @@ define([
                 return mod_value * 2;
             }
 
-            var generation = 0;
-            _.each(self.get("backgrounds"), function(b) {
-                if (b.get("name") == "Generation") {
-                    generation = b.get("value");
-                }
-            });
+            var generation = self.generation() || 1;
 
             var background_ct, skill_ct, ooc_discipline_ct, technique_cost, ic_elder_cost, ooc_elder_cost;
 
@@ -273,6 +281,24 @@ define([
                 }
             }
 
+        },
+
+        calculate_total_cost: function() {
+            var self = this;
+            var current_categories = ["skills", "backgrounds", "disciplines"];
+            var response = {};
+            var objectIds = _.chain(current_categories).map(function(category) {
+                return self.get(category);
+            }).flatten().without(undefined).value();
+            return Parse.Object.fetchAllIfNeeded(objectIds).then(function (traits) {
+                _.each(traits, function(trait) {
+                    response[trait.get("category") + "-" + trait.get("name")] = {
+                        trait: trait,
+                        cost: self.calculate_trait_cost(trait)
+                    };
+                })
+                return Parse.Promise.as(response);
+            })
         }
 
     } );

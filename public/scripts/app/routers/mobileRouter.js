@@ -19,8 +19,9 @@ define([
     "../models/VampireCreation",
     "../views/CharacterCreateView",
     "../views/CharacterNewView",
-    "../views/CharacterPrintView"
-], function ($, Parse, CategoryModel, CategoriesCollection, CategoryView, CharactersListView, Vampire, Vampires, CharacterView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView, VampireCreation, CharacterCreateView, CharacterNewView, CharacterPrintView) {
+    "../views/CharacterPrintView",
+    "../views/CharacterCostsView"
+], function ($, Parse, CategoryModel, CategoriesCollection, CategoryView, CharactersListView, Vampire, Vampires, CharacterView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView, VampireCreation, CharacterCreateView, CharacterNewView, CharacterPrintView, CharacterCostsView) {
 
     // Extends Backbone.Router
     var CategoryRouter = Parse.Router.extend( {
@@ -53,6 +54,7 @@ define([
             this.characterNewView = new CharacterNewView({el: "#character-new"});
 
             this.characterPrintView = new CharacterPrintView({el: "#printable-sheet"});
+            this.characterCostsView = new CharacterCostsView({el: "#character-costs"});
 
             if (!Parse.User.current()) {
                 Parse.User.logIn("devuser", "thedumbness");
@@ -88,6 +90,7 @@ define([
             "characternew": "characternew",
 
             "character/:cid/print": "characterprint",
+            "character/:cid/costs": "charactercosts"
 
         },
 
@@ -97,6 +100,16 @@ define([
             // Programatically changes to the categories page
             $.mobile.changePage( "#categories" , { reverse: false, changeHash: false } );
 
+        },
+
+        charactercosts: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.get_character(cid, ["skills", "disciplines", "backgrounds"]).done(function (character) {
+                self.characterCostsView.model = character;
+                self.characterCostsView.render();
+                $.mobile.changePage("#character-costs", {reverse: false, changeHash: false});
+            });
         },
 
         characterprint: function(cid) {
