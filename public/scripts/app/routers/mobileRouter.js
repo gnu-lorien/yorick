@@ -82,7 +82,9 @@ define([
 
             "charactercreate/simpletraits/:category/:cid/pick/:i": "charactercreatepicksimpletrait",
 
-            "characternew": "characternew"
+            "characternew": "characternew",
+
+            "character/:cid/print": "characterprint",
 
         },
 
@@ -92,6 +94,10 @@ define([
             // Programatically changes to the categories page
             $.mobile.changePage( "#categories" , { reverse: false, changeHash: false } );
 
+        },
+
+        characterprint: function(cid) {
+            $.mobile.changePage("#printable-sheet", {reverse: false, changeHash: false});
         },
 
         characternew: function() {
