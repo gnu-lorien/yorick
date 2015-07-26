@@ -286,6 +286,29 @@
     </ul>
 </script>
 
+<div id="character-history" data-role="page" data-title="Character History">
+    <div data-role="header">
+        <h1>Character History</h1>
+    </div>
+
+    <div role="main" class="ui-content">
+    </div>
+</div>
+
+<script id="characterHistoryView" type="text/template">
+    <h1><%= character.get("name") %></h1>
+
+    <% if (!character.generation()) { %>
+    <p>Warning: Values are just a guess without a generation set</p>
+    <% } %>
+
+    <ul>
+        <% _.each(_.values(costs), function(cost) { %>
+        <li><%= cost.trait.get("name") %>: <%= cost.cost %></li>
+        <% }); %>
+    </ul>
+</script>
+
 <div id="printable-sheet" data-role="page" data-title="Printable Sheet">
     <div data-role="header">
         <h1>Printable Sheet</h1>

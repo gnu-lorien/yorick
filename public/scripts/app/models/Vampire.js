@@ -16,6 +16,7 @@ define([
             var self = this;
             var serverData = _.clone(trait._serverData);
             self.remove(trait.get("category"), trait);
+            self.increment("change_count");
             return self.save().then(function () {
                 // Injected server side beforeSave
                 var vc = new VampireChange;
@@ -24,7 +25,8 @@ define([
                     "category": trait.get("category"),
                     "owner": self,
                     "old_value": serverData.value,
-                    "type": "remove"
+                    "type": "remove",
+                    "change_count": self.get("change_count")
                 });
                 vc.save().then(function () {
                     console.log("Saved vc");
@@ -77,17 +79,24 @@ define([
                 return undefined;
             }).then(function (st) {
                 modified_trait = st;
-
+                self.increment("change_count");
+                self.addUnique(category, st);
+                return self.save();
+            }, function(error) {
+                console.log("Error saving new trait", error);
+            }).then(function () {
                 // Injected server side beforeSave
+                // Must be here to get the new atomic value of change_count
                 var vc = new VampireChange;
                 vc.set({
-                    "name": st.get("name"),
-                    "category": st.get("category"),
+                    "name": modified_trait.get("name"),
+                    "category": modified_trait.get("category"),
                     "owner": self,
                     "old_value": serverData.value,
-                    "value": st.get("value"),
+                    "value": modified_trait.get("value"),
                     "type": serverData.value === undefined ? "define" : "update",
-                    "free_value": st.get("free_value")
+                    "free_value": modified_trait.get("free_value"),
+                    "change_count": self.get("change_count")
                 });
                 vc.save().then(function () {
                     console.log("Saved vc");
@@ -96,11 +105,6 @@ define([
                 });
                 // End injected server side beforeSave
 
-                self.addUnique(category, st);
-                return self.save();
-            }, function(error) {
-                console.log("Error saving new trait", error);
-            }).then(function () {
                 if (!freeValue) {
                     return Parse.Promise.as(self);
                 }
