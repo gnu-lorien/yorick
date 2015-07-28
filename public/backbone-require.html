@@ -165,6 +165,19 @@
         <% }); %>
     </ul>
 
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li data-role="list-divider">Flaws<span class="ui-li-count"><%= creation.remaining_picks("flaws") %></span></li>
+        <% _.each(_.range(1, -1, -1), function(i) { %>
+        <% var n = "flaws_" + i + "_remaining"; %>
+        <% _.each(creation.get("flaws_" + i + "_picks"), function(st) { %>
+        <li data-icon="delete"><a href="#charactercreate/simpletraits/flaws/<%= character.id %>/unpick/<%= st.id %>/<%= i %>"><%= st.get("name") %> x<%= st.get("value") %></a></li>
+        <% }); %>
+        <% _.each(_.range(creation.get(n)), function() { %>
+        <li><a href="#charactercreate/simpletraits/flaws/<%= character.id %>/pick/<%= i %>">Pick flaw</a></li>
+        <% }); %>
+        <% }); %>
+    </ul>
+
 </script>
 
 <div id="characters-all" data-role="page" data-title="All Characters">

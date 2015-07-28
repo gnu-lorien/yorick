@@ -17,7 +17,8 @@ define([
                 disciplines: 2,
                 backgrounds: 3,
                 attributes: 7,
-                merits: 0};
+                merits: 0,
+                flaws: 0};
             var start = tops[category] || 1;
             _.each(_.range(start, -1, -1), function(i) {
                 var n = category + "_" + i + "_remaining";

@@ -66,13 +66,13 @@ define([
             }, function(error) {
                 console.log("Error saving new trait", error);
             }).then(function () {
-                if (!_.contains(["merits"], category)) {
+                if (!_.contains(["merits", "flaws"], category)) {
                     if (!freeValue) {
                         return Parse.Promise.as(self);
                     }
                 }
                 /* FIXME Move to the creation model */
-                if (!_.contains(["merits", "focus_mentals", "focus_physicals", "focus_socials", "attributes", "skills", "disciplines", "backgrounds"], category)) {
+                if (!_.contains(["flaws", "merits", "focus_mentals", "focus_physicals", "focus_socials", "attributes", "skills", "disciplines", "backgrounds"], category)) {
                     return Parse.Promise.as(self);
                 }
                 return Parse.Object.fetchAllIfNeeded([self.get("creation")]).then(function (creations) {
@@ -139,6 +139,7 @@ define([
                 "focus_socials_1_remaining": 1,
                 "focus_physicals_1_remaining": 1,
                 "merits_0_remaining": 7,
+                "flaws_0_remaining": 7,
 
                 "initial_xp": 30
             });
@@ -152,7 +153,7 @@ define([
             var self = this;
             return self.ensure_creation_rules_exist().then(function () {
                 var creation = self.get("creation");
-                var listCategories = ["merits", "focus_mentals", "focus_physicals", "focus_socials", "attributes", "skills", "backgrounds", "disciplines"];
+                var listCategories = ["flaws", "merits", "focus_mentals", "focus_physicals", "focus_socials", "attributes", "skills", "backgrounds", "disciplines"];
                 var objectIds = [];
                 _.each(listCategories, function(category) {
                     _.each(_.range(-1, 10), function(i) {
@@ -178,7 +179,7 @@ define([
                 var remaining_name = category + "_" + pick_index + "_remaining";
                 var creation = self.get("creation");
                 creation.remove(picks_name, picked_trait);
-                if (_.contains(["merits"], category)) {
+                if (_.contains(["merits", "flaws"], category)) {
                     creation.increment(remaining_name, picked_trait.get("value"));
                 } else {
                     creation.increment(remaining_name, 1);
