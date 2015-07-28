@@ -14,7 +14,6 @@ define([
     var Model = Parse.Object.extend( "Vampire", {
         remove_trait: function (trait) {
             var self = this;
-            var serverData = _.clone(trait._serverData);
             self.remove(trait.get("category"), trait);
             self.increment("change_count");
             return self.save().then(function () {
@@ -42,7 +41,6 @@ define([
                     if (!_.contains(list, trait)) {
                         throw "Provided trait not already in Vampire as expected";
                     }
-                    serverData = _.clone(trait._serverData);
                     return trait.save();
                 } else {
                     var b = new SimpleTrait;
@@ -57,7 +55,6 @@ define([
                         "owner": self,
                         "free_value": freeValue
                     });
-                    serverData = _.clone(b._serverData);
                     return b.save();
                 }
                 return undefined;
