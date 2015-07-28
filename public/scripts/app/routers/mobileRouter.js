@@ -20,8 +20,9 @@ define([
     "../views/CharacterCreateView",
     "../views/CharacterNewView",
     "../views/CharacterPrintView",
-    "../views/CharacterCostsView"
-], function ($, Parse, CategoryModel, CategoriesCollection, CategoryView, CharactersListView, Vampire, Vampires, CharacterView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView, VampireCreation, CharacterCreateView, CharacterNewView, CharacterPrintView, CharacterCostsView) {
+    "../views/CharacterCostsView",
+    "../views/SimpleTextNewView",
+], function ($, Parse, CategoryModel, CategoriesCollection, CategoryView, CharactersListView, Vampire, Vampires, CharacterView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView, VampireCreation, CharacterCreateView, CharacterNewView, CharacterPrintView, CharacterCostsView, SimpleTextNewView) {
 
     // Extends Backbone.Router
     var CategoryRouter = Parse.Router.extend( {
@@ -49,6 +50,7 @@ define([
             this.simpleTraitCategoryView = new SimpleTraitCategoryView({el: "#simpletraitcategory-all"});
             this.simpleTraitNewView = new SimpleTraitNewView({el: "#simpletrait-new"});
             this.simpleTraitChangeView = new SimpleTraitChangeView({el: "#simpletrait-change"});
+            this.simpleTextNewView = new SimpleTextNewView({el: "#simpletext-new"});
 
             this.characterCreateView = new CharacterCreateView({el: "#character-create"});
             this.characterNewView = new CharacterNewView({el: "#character-new"});
@@ -86,6 +88,7 @@ define([
             "charactercreate/:cid": "charactercreate",
 
             "charactercreate/simpletraits/:category/:cid/pick/:i": "charactercreatepicksimpletrait",
+            "charactercreate/simpletext/:category/:target/:cid/pick": "charactercreatepicksimpletext",
 
             "characternew": "characternew",
 
@@ -147,6 +150,15 @@ define([
             self.get_character(cid, [category]).done(function (c) {
                 self.simpleTraitNewView.register(c, category, i);
                 $.mobile.changePage("#simpletrait-new", {reverse: false, changeHash: false});
+            });
+        },
+
+        charactercreatepicksimpletext: function(category, target, cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.get_character(cid, [category]).done(function (c) {
+                self.simpleTextNewView.register(c, category, target, "#charactercreate/" + c.id);
+                $.mobile.changePage("#simpletext-new", {reverse: false, changeHash: false});
             });
         },
 

@@ -69,20 +69,32 @@
 
 <script id="characterCreateView" type="text/template">
     <% var creation = character.get("creation"); %>
+
+    <p>You have <%= creation.get("initial_xp") %> initial XP to spend</p>
+    <p>Remaining steps for <%= character.get("name") %></p>
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li data-role="list-divider">Skills<span class="ui-li-count">10</span></li>
-        <% _.each(_.range(5, 0, -1), function(i) { %>
+        <% if (creation.get("clan")) { %>
+        <li data-role="list-divider"><%= character.get("clan") %></li>
+        <% } else { %>
+        <li><a href="#charactercreate/simpletext/clans/clan/<%= character.id %>/pick">Pick clan</a></li>
+        <% } %>
+    </ul>
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li data-role="list-divider">Skills<span class="ui-li-count"><%= creation.remaining_picks("skills") %></span></li>
+        <% _.each(_.range(4, 0, -1), function(i) { %>
         <% var n = "skills_" + i + "_remaining"; %>
         <% if (creation.get(n) > 0) { %>
         <li><a href="#charactercreate/simpletraits/skills/<%= character.id %>/pick/<%= i %>"><%= creation.get(n) %> skill picks at rating <%= i %></a></li>
         <% }}); %>
-        <li data-role="list-divider">Disciplines<span class="ui-li-count">2</span></li>
+    </ul><ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li data-role="list-divider">Disciplines<span class="ui-li-count"><%= creation.remaining_picks("disciplines") %></span></li>
         <% _.each(_.range(2, 0, -1), function(i) { %>
         <% var n = "disciplines_" + i + "_remaining"; %>
         <% if (creation.get(n) > 0) { %>
         <li><a href="#charactercreate/simpletraits/disciplines/<%= character.id %>/pick/<%= i %>">Pick in clan discipline at rating <%= i %></a></li>
         <% }}); %>
-        <li data-role="list-divider">Backgrounds<span class="ui-li-count">3</span></li>
+    </ul><ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li data-role="list-divider">Backgrounds<span class="ui-li-count"><%= creation.remaining_picks("backgrounds") %></span></li>
         <% _.each(_.range(3, 0, -1), function(i) { %>
         <% var n = "backgrounds_" + i + "_remaining"; %>
         <% if (creation.get(n) > 0) { %>
@@ -200,15 +212,6 @@
 
 </div>
 
-<div id="simpletrait-new" data-role="page" data-title="New Simple Trait">
-    <div data-role="header">
-        <h1>New Simple Trait</h1>
-    </div>
-
-    <div role="main" class="ui-content">
-    </div>
-</div>
-
 <div id="character-new" data-role="page" data-title="New Character">
     <div data-role="header">
         <h1>New Character</h1>
@@ -237,6 +240,15 @@
     <% }); %>
 </script>
 
+<div id="simpletrait-new" data-role="page" data-title="New Simple Trait">
+    <div data-role="header">
+        <h1>New Simple Trait</h1>
+    </div>
+
+    <div role="main" class="ui-content">
+    </div>
+</div>
+
 <script id="simpletraitcategoryDescriptionItems" type="text/template">
     <% if (freeValue) { %>
         <p>Pick one for value <%= freeValue %></p>
@@ -247,6 +259,25 @@
             <a name="<%= e.get('name') %>"  href="#" class="ui-btn ui-btn-icon-right ui-icon-carat-r"><%= e.get("name") %></a>
         </li>
     <% }); %>
+    </ul>
+</script>
+
+<div id="simpletext-new" data-role="page" data-title="New Simple Text">
+    <div data-role="header">
+        <h1>New Simple Text</h1>
+    </div>
+
+    <div role="main" class="ui-content">
+    </div>
+</div>
+
+<script id="simpletextcategoryDescriptionItems" type="text/template">
+    <ul data-role="listview" data-inset="true">
+        <% collection.each(function(e) { %>
+        <li>
+            <a name="<%= e.get('name') %>"  href="#" class="ui-btn ui-btn-icon-right ui-icon-carat-r"><%= e.get("name") %></a>
+        </li>
+        <% }); %>
     </ul>
 </script>
 

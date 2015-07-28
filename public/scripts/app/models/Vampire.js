@@ -89,6 +89,23 @@ define([
             });
         },
 
+        update_text: function(target, value) {
+            var self = this;
+            self.set(target, value);
+            return self.save().then(function() {
+                return Parse.Object.fetchAllIfNeeded([self.get("creation")]).then(function (creations) {
+                    var creation = creations[0];
+                    if (creation.get(target)) {
+                        return Parse.Promise.as(self);
+                    }
+                    creation.set(target, true);
+                    return creation.save().then(function () {
+                        return Parse.Promise.as(self);
+                    });
+                });
+            })
+        },
+
         ensure_creation_rules_exist: function() {
             var self = this;
             if (self.has("creation")) {
