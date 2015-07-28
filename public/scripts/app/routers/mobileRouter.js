@@ -136,7 +136,9 @@ define([
         charactercreate: function(cid) {
             var self = this;
             $.mobile.loading("show");
-            self.get_character(cid, []).done(function (character) {
+            self.get_character(cid, []).then(function (character) {
+                return character.fetch_all_creation_elements();
+            }).done(function (character) {
                 self.characterCreateView.model = character;
                 self.characterCreateView.render();
                 $.mobile.changePage("#character-create", {reverse: false, changeHash: false});

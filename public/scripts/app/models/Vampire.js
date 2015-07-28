@@ -138,6 +138,25 @@ define([
             });
         },
 
+        fetch_all_creation_elements: function() {
+            var self = this;
+            return self.ensure_creation_rules_exist().then(function () {
+                var creation = self.get("creation");
+                var listCategories = ["skills", "backgrounds", "disciplines"];
+                var objectIds = [];
+                _.each(listCategories, function(category) {
+                    _.each(_.range(1, 5), function(i) {
+                        var gn = category + "_" + i + "_picks";
+                        objectIds = _.union(creation.get(gn), objectIds);
+                    });
+                });
+                objectIds = _.chain(objectIds).flatten().without(undefined).value();
+                return Parse.Object.fetchAllIfNeeded(objectIds).then(function() {
+                    return Parse.Promise.as(self);
+                });
+            });
+        },
+
         is_being_created: function() {
             return !this.get("creation").get("completed");
         },

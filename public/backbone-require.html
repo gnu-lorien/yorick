@@ -74,7 +74,8 @@
     <p>Remaining steps for <%= character.get("name") %></p>
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <% if (creation.get("clan")) { %>
-        <li data-role="list-divider"><%= character.get("clan") %></li>
+        <li data-role="list-divider">Clan<p><%= character.get("clan") %></p></li>
+        <li><a href="#charactercreate/simpletext/clans/clan/<%= character.id %>/pick">Repick clan</a></li>
         <% } else { %>
         <li><a href="#charactercreate/simpletext/clans/clan/<%= character.id %>/pick">Pick clan</a></li>
         <% } %>
@@ -82,10 +83,16 @@
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <li data-role="list-divider">Skills<span class="ui-li-count"><%= creation.remaining_picks("skills") %></span></li>
         <% _.each(_.range(4, 0, -1), function(i) { %>
-        <% var n = "skills_" + i + "_remaining"; %>
-        <% if (creation.get(n) > 0) { %>
-        <li><a href="#charactercreate/simpletraits/skills/<%= character.id %>/pick/<%= i %>"><%= creation.get(n) %> skill picks at rating <%= i %></a></li>
-        <% }}); %>
+            <% var n = "skills_" + i + "_remaining"; %>
+            <% var maxRange = creation.get(n); %>
+            <% var the_range = _.range(maxRange); %>
+            <% _.each(creation.get("skills_" + i + "_picks"), function(s) { %>
+                <li><a href="#charactercreate/simpletraits/skills/<%= character.id %>/repick/<%= s.id %>/<%= i %>"><%= s.get("name") %> x<%= s.get("value") %></a></li>
+            <% }); %>
+            <% _.each(the_range, function() { %>
+                <li><a href="#charactercreate/simpletraits/skills/<%= character.id %>/pick/<%= i %>">Pick skill at rating <%= i %></a></li>
+            <% }) %>
+        <% }); %>
     </ul><ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <li data-role="list-divider">Disciplines<span class="ui-li-count"><%= creation.remaining_picks("disciplines") %></span></li>
         <% _.each(_.range(2, 0, -1), function(i) { %>
