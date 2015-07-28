@@ -138,7 +138,7 @@
         <% }); %>
         <% }); %>
     </ul>
-    
+
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <li data-role="list-divider">Disciplines<span class="ui-li-count"><%= creation.remaining_picks("disciplines") %></span></li>
         <% _.each(_.range(2, 0, -1), function(i) { %>
@@ -149,6 +149,19 @@
             <% _.each(_.range(creation.get(n)), function() { %>
             <li><a href="#charactercreate/simpletraits/disciplines/<%= character.id %>/pick/<%= i %>">Pick in clan discipline at rating <%= i %></a></li>
             <% }); %>
+        <% }); %>
+    </ul>
+
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li data-role="list-divider">Merits<span class="ui-li-count"><%= creation.remaining_picks("merits") %></span></li>
+        <% _.each(_.range(1, -1, -1), function(i) { %>
+        <% var n = "merits_" + i + "_remaining"; %>
+        <% _.each(creation.get("merits_" + i + "_picks"), function(st) { %>
+        <li data-icon="delete"><a href="#charactercreate/simpletraits/merits/<%= character.id %>/unpick/<%= st.id %>/<%= i %>"><%= st.get("name") %> x<%= st.get("value") %></a></li>
+        <% }); %>
+        <% _.each(_.range(creation.get(n)), function() { %>
+        <li><a href="#charactercreate/simpletraits/merits/<%= character.id %>/pick/<%= i %>">Pick merit</a></li>
+        <% }); %>
         <% }); %>
     </ul>
 
@@ -307,7 +320,13 @@
     <ul data-role="listview" data-inset="true">
     <% collection.each(function(e) { %>
         <li>
-            <a name="<%= e.get('name') %>"  href="#" class="ui-btn ui-btn-icon-right ui-icon-carat-r"><%= e.get("name") %></a>
+            <a name="<%= e.get('name') %>" backendId="<%= e.id %>" href="#" class="ui-btn ui-btn-icon-right ui-icon-carat-r">
+                <% if (showValue) { %>
+                    <%= e.get("name") %> x<%= e.get("value") %>
+                <% } else { %>
+                    <%= e.get("name") %>
+                <% } %>
+            </a>
         </li>
     <% }); %>
     </ul>

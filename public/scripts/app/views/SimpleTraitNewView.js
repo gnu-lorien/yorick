@@ -21,9 +21,12 @@ define([
 
         },
 
-        register: function(character, category, freeValue) {
+        register: function(character, category, freeValue, redirect) {
             var self = this;
             var changed = false;
+            var redirect = redirect || "#simpletrait/<%= self.category %>/<%= self.character.id %>/<%= b.id %>";
+
+            self.redirect = _.template(redirect);
 
             if (freeValue !== self.freeValue) {
                 self.freeValue = freeValue;
@@ -68,12 +71,21 @@ define([
         // Renders all of the Category models on the UI
         render: function() {
 
+            var showValue = false;
+            var description = this.collection.first();
+            if (description) {
+                if (_.parseInt(description.get("value"))) {
+                    showValue = true;
+                }
+            }
+
             // Sets the view's template property
             this.template = _.template($("script#simpletraitcategoryDescriptionItems").html())({
                 "collection": this.collection,
                 "character": this.character,
                 "category": this.category,
-                "freeValue": this.freeValue
+                "freeValue": this.freeValue,
+                "showValue": showValue,
             });
 
             // Renders the view's template inside of the current listview element
@@ -90,12 +102,16 @@ define([
         clicked: function(e) {
             var self = this;
             $.mobile.loading("show");
-            self.character.update_trait($(e.target).attr("name"), 1, self.category, self.freeValue).done(function(b) {
-                if (self.freeValue) {
-                    window.location.hash = "#charactercreate/" + self.character.id;
-                } else {
-                    window.location.hash = "#simpletrait/" + self.category + "/" + self.character.id + "/" + b.id;
-                }
+            var pickedId = $(e.target).attr("backendId");
+            var description = self.collection.get(pickedId);
+            var valueField = _.parseInt(description.get("value"));
+            var cost = 1;
+            if (valueField) {
+                cost = valueField;
+            }
+
+            self.character.update_trait($(e.target).attr("name"), cost, self.category, self.freeValue).done(function(b) {
+                window.location.hash = self.redirect({self: self, b: b});
             })
 
             return false;

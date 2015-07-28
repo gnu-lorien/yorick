@@ -152,7 +152,7 @@ define([
             i = _.parseInt(i);
             $.mobile.loading("show");
             self.get_character(cid, [category]).done(function (c) {
-                self.simpleTraitNewView.register(c, category, i);
+                self.simpleTraitNewView.register(c, category, i, "#charactercreate/<%= self.character.id %>");
                 $.mobile.changePage("#simpletrait-new", {reverse: false, changeHash: false});
             });
         },

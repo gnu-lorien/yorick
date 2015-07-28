@@ -66,18 +66,20 @@ define([
             }, function(error) {
                 console.log("Error saving new trait", error);
             }).then(function () {
-                if (!freeValue) {
-                    return Parse.Promise.as(self);
+                if (!_.contains(["merits"], category)) {
+                    if (!freeValue) {
+                        return Parse.Promise.as(self);
+                    }
                 }
                 /* FIXME Move to the creation model */
-                if (!_.contains(["focus_mentals", "focus_physicals", "focus_socials", "attributes", "skills", "disciplines", "backgrounds"], category)) {
+                if (!_.contains(["merits", "focus_mentals", "focus_physicals", "focus_socials", "attributes", "skills", "disciplines", "backgrounds"], category)) {
                     return Parse.Promise.as(self);
                 }
                 return Parse.Object.fetchAllIfNeeded([self.get("creation")]).then(function (creations) {
                     var creation = creations[0];
                     var stepName = category + "_" + freeValue + "_remaining";
                     var listName = category + "_" + freeValue + "_picks";
-                    creation.increment(stepName, -1);
+                    creation.increment(stepName, -1 * modified_trait.get("value"));
                     creation.addUnique(listName, modified_trait);
                     return creation.save();
                 }).then(function() {
@@ -136,6 +138,8 @@ define([
                 "focus_mentals_1_remaining": 1,
                 "focus_socials_1_remaining": 1,
                 "focus_physicals_1_remaining": 1,
+                "merits_0_remaining": 7,
+
                 "initial_xp": 30
             });
             return creation.save().then(function (newCreation) {
@@ -148,10 +152,10 @@ define([
             var self = this;
             return self.ensure_creation_rules_exist().then(function () {
                 var creation = self.get("creation");
-                var listCategories = ["focus_mentals", "focus_physicals", "focus_socials", "attributes", "skills", "backgrounds", "disciplines"];
+                var listCategories = ["merits", "focus_mentals", "focus_physicals", "focus_socials", "attributes", "skills", "backgrounds", "disciplines"];
                 var objectIds = [];
                 _.each(listCategories, function(category) {
-                    _.each(_.range(1, 5), function(i) {
+                    _.each(_.range(-1, 10), function(i) {
                         var gn = category + "_" + i + "_picks";
                         objectIds = _.union(creation.get(gn), objectIds);
                     });
@@ -174,7 +178,11 @@ define([
                 var remaining_name = category + "_" + pick_index + "_remaining";
                 var creation = self.get("creation");
                 creation.remove(picks_name, picked_trait);
-                creation.increment(remaining_name, 1);
+                if (_.contains(["merits"], category)) {
+                    creation.increment(remaining_name, picked_trait.get("value"));
+                } else {
+                    creation.increment(remaining_name, 1);
+                }
                 return creation.save();
             }).then(function() {
                 return self.remove_trait(picked_trait);

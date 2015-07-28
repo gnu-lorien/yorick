@@ -16,9 +16,10 @@ define([
                 skills: 4,
                 disciplines: 2,
                 backgrounds: 3,
-                attributes: 7};
+                attributes: 7,
+                merits: 0};
             var start = tops[category] || 1;
-            _.each(_.range(start, 0, -1), function(i) {
+            _.each(_.range(start, -1, -1), function(i) {
                 var n = category + "_" + i + "_remaining";
                 var tv = self.get(n);
                 if (_.isNumber(tv)) {
