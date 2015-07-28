@@ -125,6 +125,20 @@
         <% }); %>
     </ul>
 
+
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li data-role="list-divider">Backgrounds<span class="ui-li-count"><%= creation.remaining_picks("backgrounds") %></span></li>
+        <% _.each(_.range(3, 0, -1), function(i) { %>
+        <% var n = "backgrounds_" + i + "_remaining"; %>
+        <% _.each(creation.get("backgrounds_" + i + "_picks"), function(st) { %>
+        <li data-icon="delete"><a href="#charactercreate/simpletraits/backgrounds/<%= character.id %>/unpick/<%= st.id %>/<%= i %>"><%= st.get("name") %> x<%= st.get("value") %></a></li>
+        <% }); %>
+        <% _.each(_.range(creation.get(n)), function() { %>
+        <li><a href="#charactercreate/simpletraits/backgrounds/<%= character.id %>/pick/<%= i %>">Pick a background at rating <%= i %></a></li>
+        <% }); %>
+        <% }); %>
+    </ul>
+    
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <li data-role="list-divider">Disciplines<span class="ui-li-count"><%= creation.remaining_picks("disciplines") %></span></li>
         <% _.each(_.range(2, 0, -1), function(i) { %>
@@ -138,18 +152,6 @@
         <% }); %>
     </ul>
 
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li data-role="list-divider">Backgrounds<span class="ui-li-count"><%= creation.remaining_picks("backgrounds") %></span></li>
-        <% _.each(_.range(3, 0, -1), function(i) { %>
-            <% var n = "backgrounds_" + i + "_remaining"; %>
-            <% _.each(creation.get("backgrounds_" + i + "_picks"), function(st) { %>
-            <li data-icon="delete"><a href="#charactercreate/simpletraits/backgrounds/<%= character.id %>/unpick/<%= st.id %>/<%= i %>"><%= st.get("name") %> x<%= st.get("value") %></a></li>
-            <% }); %>
-            <% _.each(_.range(creation.get(n)), function() { %>
-            <li><a href="#charactercreate/simpletraits/backgrounds/<%= character.id %>/pick/<%= i %>">Pick a background at rating <%= i %></a></li>
-            <% }); %>
-        <% }); %>
-    </ul>
 </script>
 
 <div id="characters-all" data-role="page" data-title="All Characters">
