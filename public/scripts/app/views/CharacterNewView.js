@@ -23,7 +23,8 @@ define([
         events: {
             "click .cancel": "cancel",
             "change": "update_value",
-            "click .save": "save_clicked"
+            "click .save": "save_clicked",
+            "submit": "save_clicked"
         },
 
         cancel: function(a, b, c) {
