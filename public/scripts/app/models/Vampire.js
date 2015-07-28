@@ -18,22 +18,6 @@ define([
             self.remove(trait.get("category"), trait);
             self.increment("change_count");
             return self.save().then(function () {
-                // Injected server side beforeSave
-                var vc = new VampireChange;
-                vc.set({
-                    "name": trait.get("name"),
-                    "category": trait.get("category"),
-                    "owner": self,
-                    "old_value": serverData.value,
-                    "type": "remove",
-                    "change_count": self.get("change_count")
-                });
-                vc.save().then(function () {
-                    console.log("Saved vc");
-                }, function (error) {
-                    console.log("Failed to save vc", error);
-                });
-                // End injected server side beforeSave
                 return trait.destroy({wait: true});
             });
         },
@@ -85,26 +69,6 @@ define([
             }, function(error) {
                 console.log("Error saving new trait", error);
             }).then(function () {
-                // Injected server side beforeSave
-                // Must be here to get the new atomic value of change_count
-                var vc = new VampireChange;
-                vc.set({
-                    "name": modified_trait.get("name"),
-                    "category": modified_trait.get("category"),
-                    "owner": self,
-                    "old_value": serverData.value,
-                    "value": modified_trait.get("value"),
-                    "type": serverData.value === undefined ? "define" : "update",
-                    "free_value": modified_trait.get("free_value"),
-                    "change_count": self.get("change_count")
-                });
-                vc.save().then(function () {
-                    console.log("Saved vc");
-                }, function(error) {
-                    console.log("Failed to save vc", error);
-                });
-                // End injected server side beforeSave
-
                 if (!freeValue) {
                     return Parse.Promise.as(self);
                 }
