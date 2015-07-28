@@ -15,11 +15,15 @@ define([
             var tops = {
                 skills: 4,
                 disciplines: 2,
-                backgrounds: 3};
-            _.each(_.range(tops[category], 0, -1), function(i) {
+                backgrounds: 3,
+                attributes: 7};
+            var start = tops[category] || 1;
+            _.each(_.range(start, 0, -1), function(i) {
                 var n = category + "_" + i + "_remaining";
                 var tv = self.get(n);
-                r += tv;
+                if (_.isNumber(tv)) {
+                    r += tv;
+                }
             });
             return r;
         }
