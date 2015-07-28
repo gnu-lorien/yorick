@@ -157,6 +157,26 @@ define([
             });
         },
 
+        unpick_from_creation: function(category, picked_trait_id, pick_index) {
+            var self = this;
+            var picked_trait;
+            return self.fetch_all_creation_elements().then(function() {
+                picked_trait = new SimpleTrait({id: picked_trait_id});
+                return picked_trait.fetch();
+            }).then(function () {
+                var picks_name = category + "_" + pick_index + "_picks";
+                var remaining_name = category + "_" + pick_index + "_remaining";
+                var creation = self.get("creation");
+                creation.remove(picks_name, picked_trait);
+                creation.increment(remaining_name, 1);
+                return creation.save();
+            }).then(function() {
+                return self.remove_trait(picked_trait);
+            }).then(function() {
+                return Parse.Promise.as(self);
+            })
+        },
+
         is_being_created: function() {
             return !this.get("creation").get("completed");
         },

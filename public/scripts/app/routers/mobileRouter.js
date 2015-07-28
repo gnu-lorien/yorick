@@ -88,6 +88,7 @@ define([
             "charactercreate/:cid": "charactercreate",
 
             "charactercreate/simpletraits/:category/:cid/pick/:i": "charactercreatepicksimpletrait",
+            "charactercreate/simpletraits/:category/:cid/unpick/:stid/:i": "charactercreateunpicksimpletrait",
             "charactercreate/simpletext/:category/:target/:cid/pick": "charactercreatepicksimpletext",
 
             "characternew": "characternew",
@@ -142,6 +143,7 @@ define([
                 self.characterCreateView.model = character;
                 self.characterCreateView.render();
                 $.mobile.changePage("#character-create", {reverse: false, changeHash: false});
+                $.mobile.loading("hide");
             })
         },
 
@@ -152,6 +154,17 @@ define([
             self.get_character(cid, [category]).done(function (c) {
                 self.simpleTraitNewView.register(c, category, i);
                 $.mobile.changePage("#simpletrait-new", {reverse: false, changeHash: false});
+            });
+        },
+
+        charactercreateunpicksimpletrait: function(category, cid, stid, i) {
+            var self = this;
+            i = _.parseInt(i);
+            $.mobile.loading("show");
+            self.get_character(cid, [category]).then(function (character) {
+                return character.unpick_from_creation(category, stid, i);
+            }).done(function (c) {
+                window.location.hash = "#charactercreate/" + c.id;
             });
         },
 

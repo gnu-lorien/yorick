@@ -86,8 +86,8 @@
             <% var n = "skills_" + i + "_remaining"; %>
             <% var maxRange = creation.get(n); %>
             <% var the_range = _.range(maxRange); %>
-            <% _.each(creation.get("skills_" + i + "_picks"), function(s) { %>
-                <li><a href="#charactercreate/simpletraits/skills/<%= character.id %>/repick/<%= s.id %>/<%= i %>"><%= s.get("name") %> x<%= s.get("value") %></a></li>
+            <% _.each(creation.get("skills_" + i + "_picks"), function(st) { %>
+                <li data-icon="delete"><a href="#charactercreate/simpletraits/skills/<%= character.id %>/unpick/<%= st.id %>/<%= i %>"><%= st.get("name") %> x<%= st.get("value") %></a></li>
             <% }); %>
             <% _.each(the_range, function() { %>
                 <li><a href="#charactercreate/simpletraits/skills/<%= character.id %>/pick/<%= i %>">Pick skill at rating <%= i %></a></li>
