@@ -70,7 +70,7 @@ define([
                     return Parse.Promise.as(self);
                 }
                 /* FIXME Move to the creation model */
-                if (!_.contains(["skills", "disciplines", "backgrounds"], category)) {
+                if (!_.contains(["focus_mentals", "focus_physicals", "focus_socials", "attributes", "skills", "disciplines", "backgrounds"], category)) {
                     return Parse.Promise.as(self);
                 }
                 return Parse.Object.fetchAllIfNeeded([self.get("creation")]).then(function (creations) {
@@ -130,6 +130,12 @@ define([
                 "backgrounds_1_remaining": 1,
                 "disciplines_2_remaining": 1,
                 "disciplines_1_remaining": 1,
+                "attributes_7_remaining": 1,
+                "attributes_5_remaining": 1,
+                "attributes_3_remaining": 1,
+                "focus_mentals_1_remaining": 1,
+                "focus_socials_1_remaining": 1,
+                "focus_physicals_1_remaining": 1,
                 "initial_xp": 30
             });
             return creation.save().then(function (newCreation) {
@@ -142,7 +148,7 @@ define([
             var self = this;
             return self.ensure_creation_rules_exist().then(function () {
                 var creation = self.get("creation");
-                var listCategories = ["skills", "backgrounds", "disciplines"];
+                var listCategories = ["focus_mentals", "focus_physicals", "focus_socials", "attributes", "skills", "backgrounds", "disciplines"];
                 var objectIds = [];
                 _.each(listCategories, function(category) {
                     _.each(_.range(1, 5), function(i) {

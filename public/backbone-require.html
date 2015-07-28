@@ -80,6 +80,38 @@
         <li><a href="#charactercreate/simpletext/clans/clan/<%= character.id %>/pick">Pick clan</a></li>
         <% } %>
     </ul>
+
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li data-role="list-divider">Attributes<span class="ui-li-count"><%= creation.remaining_picks("attributes") %></span></li>
+        <% _.each(_.range(8, 0, -1), function(i) { %>
+        <% var n = "attributes_" + i + "_remaining"; %>
+        <% _.each(creation.get("attributes_" + i + "_picks"), function(st) { %>
+        <li data-icon="delete"><a href="#charactercreate/simpletraits/attributes/<%= character.id %>/unpick/<%= st.id %>/<%= i %>"><%= st.get("name") %> x<%= st.get("value") %></a></li>
+        <% }); %>
+        <% _.each(_.range(creation.get(n)), function() { %>
+        <li><a href="#charactercreate/simpletraits/attributes/<%= character.id %>/pick/<%= i %>">Pick attribute at rating <%= i %></a></li>
+        <% }) %>
+        <% }); %>
+    </ul>
+
+    <% _.each(_.zip(["Physical", "Social", "Mental"], ["focus_physicals", "focus_socials", "focus_mentals"]), function(z) { %>
+    <% var prettyName = z[0]; %>
+    <% var category = z[1]; %>
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li data-role="list-divider"><%= prettyName %> Focus<span class="ui-li-count"><%= creation.remaining_picks(category) %></span></li>
+        <% _.each(_.range(2, 0, -1), function(i) { %>
+        <% var n = category + "_" + i + "_remaining"; %>
+        <% _.each(creation.get(category + "_" + i + "_picks"), function(st) { %>
+        <li data-icon="delete"><a href="#charactercreate/simpletraits/<%= category %>/<%= character.id %>/unpick/<%= st.id %>/<%= i %>"><%= st.get("name") %></a></li>
+        <% }); %>
+        <% _.each(_.range(creation.get(n)), function() { %>
+        <li><a href="#charactercreate/simpletraits/<%= category %>/<%= character.id %>/pick/<%= i %>">Pick <%= prettyName %> Focus</a></li>
+        <% }) %>
+        <% }); %>
+    </ul>
+    <% }); %>
+
+
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <li data-role="list-divider">Skills<span class="ui-li-count"><%= creation.remaining_picks("skills") %></span></li>
         <% _.each(_.range(4, 0, -1), function(i) { %>
@@ -92,7 +124,7 @@
             <% }) %>
         <% }); %>
     </ul>
-    
+
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <li data-role="list-divider">Disciplines<span class="ui-li-count"><%= creation.remaining_picks("disciplines") %></span></li>
         <% _.each(_.range(2, 0, -1), function(i) { %>
