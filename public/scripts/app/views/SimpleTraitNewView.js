@@ -71,21 +71,12 @@ define([
         // Renders all of the Category models on the UI
         render: function() {
 
-            var showValue = false;
-            var description = this.collection.first();
-            if (description) {
-                if (_.parseInt(description.get("value"))) {
-                    showValue = true;
-                }
-            }
-
             // Sets the view's template property
             this.template = _.template($("script#simpletraitcategoryDescriptionItems").html())({
                 "collection": this.collection,
                 "character": this.character,
                 "category": this.category,
-                "freeValue": this.freeValue,
-                "showValue": showValue,
+                "freeValue": this.freeValue
             });
 
             // Renders the view's template inside of the current listview element

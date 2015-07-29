@@ -334,7 +334,7 @@
     <% collection.each(function(e) { %>
         <li>
             <a name="<%= e.get('name') %>" backendId="<%= e.id %>" href="#" class="ui-btn ui-btn-icon-right ui-icon-carat-r">
-                <% if (showValue) { %>
+                <% if (e.has("value")) { %>
                     <%= e.get("name") %> x<%= e.get("value") %>
                 <% } else { %>
                     <%= e.get("name") %>
