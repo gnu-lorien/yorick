@@ -144,7 +144,9 @@ define([
                 self.characterCreateView.render();
                 $.mobile.changePage("#character-create", {reverse: false, changeHash: false});
                 $.mobile.loading("hide");
-            })
+            }).fail(function (error) {
+                console.log("Failed to get the character create page", error);
+            });
         },
 
         charactercreatepicksimpletrait: function(category, cid, i) {

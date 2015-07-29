@@ -24,9 +24,35 @@ define([
                 this.set(category, []);
             }
         },
-        update_trait: function(nameOrTrait, value, category, freeValue) {
+
+        _get_creation_update: function(category, modified_trait, freeValue) {
             var self = this;
-            var modified_trait, name, serverData;
+            if (!_.contains(["merits", "flaws"], category)) {
+                if (!freeValue) {
+                    return Parse.Promise.as(self);
+                }
+            }
+            /* FIXME Move to the creation model */
+            if (!_.contains(["flaws", "merits", "focus_mentals", "focus_physicals", "focus_socials", "attributes", "skills", "disciplines", "backgrounds"], category)) {
+                return Parse.Promise.as(self);
+            }
+            return Parse.Object.fetchAllIfNeeded([self.get("creation")]).then(function (creations) {
+                var creation = creations[0];
+                var stepName = category + "_" + freeValue + "_remaining";
+                var listName = category + "_" + freeValue + "_picks";
+                if (_.contains(["merits", "flaws"], category)) {
+                    creation.increment(stepName, -1 * modified_trait.get("value"));
+                } else {
+                    creation.increment(stepName, -1);
+                }
+                creation.addUnique(listName, modified_trait);
+                return creation.save();
+            })
+        },
+
+        update_trait: function(nameOrTrait, value, category, freeValue, wait) {
+            var self = this;
+            var modified_trait, name, serverData, toSave = [];
             if (!_.isString(nameOrTrait)) {
                 modified_trait = nameOrTrait;
                 category = modified_trait.get("category");
@@ -55,38 +81,17 @@ define([
                 }
                 self.increment("change_count");
                 self.addUnique(category, modified_trait);
-                return self.save();
-            }).then(function (st) {
-                return Parse.Promise.as(self);
-            }, function(error) {
-                console.log("Error saving new trait", error);
-            }).then(function () {
-                if (!_.contains(["merits", "flaws"], category)) {
-                    if (!freeValue) {
-                        return Parse.Promise.as(self);
-                    }
+                var everythingSavedPromise = Parse.Promise.when(self.save(), self._get_creation_update(category, modified_trait, freeValue));
+                var returnPromise;
+                if (wait) {
+                    returnPromise = everythingSavedPromise;
+                } else {
+                    returnPromise = Parse.Promise.as(self);
                 }
-                /* FIXME Move to the creation model */
-                if (!_.contains(["flaws", "merits", "focus_mentals", "focus_physicals", "focus_socials", "attributes", "skills", "disciplines", "backgrounds"], category)) {
-                    return Parse.Promise.as(self);
-                }
-                return Parse.Object.fetchAllIfNeeded([self.get("creation")]).then(function (creations) {
-                    var creation = creations[0];
-                    var stepName = category + "_" + freeValue + "_remaining";
-                    var listName = category + "_" + freeValue + "_picks";
-                    if (_.contains(["merits", "flaws"], category)) {
-                        creation.increment(stepName, -1 * modified_trait.get("value"));
-                    } else {
-                        creation.increment(stepName, -1);
-                    }
-                    creation.addUnique(listName, modified_trait);
-                    return creation.save();
-                }).then(function() {
-                    return Parse.Promise.as(self);
+                return returnPromise.then(function () {
+                    self.trigger("change:" + category);
+                    return Parse.Promise.as(modified_trait);
                 });
-            }).then(function () {
-                self.trigger("change:" + category);
-                return Parse.Promise.as(modified_trait);
             });
         },
 
@@ -120,6 +125,8 @@ define([
             if (self.has("creation")) {
                 return Parse.Object.fetchAllIfNeeded([self.get("creation")]).then(function() {
                     return Parse.Promise.as(self);
+                }, function (error) {
+                    console.log("ensure_creation_rules_exist", error);
                 })
             }
             var creation = new VampireCreation({
