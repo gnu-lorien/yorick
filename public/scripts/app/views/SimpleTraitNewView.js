@@ -37,7 +37,8 @@ define([
                 if (self.character)
                     self.stopListening(self.character);
                 self.character = character;
-                self.listenTo(self.character, "change:" + category, self.update_collection_query_and_fetch);
+                //self.listenTo(self.character, "change:" + category, self.update_collection_query_and_fetch);
+                self.listenTo(self.character, "change:" + category, self.render);
                 changed = true;
             }
 
@@ -62,18 +63,29 @@ define([
             var self = this;
             var q = new Parse.Query(Description);
             q.equalTo("category", self.category).addAscending(["order", "name"]);
+            /*
             var traitNames = _(self.character.get(self.category)).pluck("attributes").pluck("name").value();
             q.notContainedIn("name", traitNames);
+            */
             self.collection.query = q;
             self.collection.fetch({reset: true});
         },
 
         // Renders all of the Category models on the UI
         render: function() {
+            var self = this;
+
+            var traitNames = _(self.character.get(self.category)).pluck("attributes").pluck("name").value();
+            var descriptionItems = _.chain(self.collection.models).select(function (model) {
+                if (!_.contains(traitNames, model.get("name"))) {
+                    return true;
+                }
+                return false;
+            }).value();
 
             // Sets the view's template property
             this.template = _.template($("script#simpletraitcategoryDescriptionItems").html())({
-                "collection": this.collection,
+                "collection": descriptionItems,
                 "character": this.character,
                 "category": this.category,
                 "freeValue": this.freeValue

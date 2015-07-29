@@ -331,7 +331,7 @@
         <p>Pick one for value <%= freeValue %></p>
     <% } %>
     <ul data-role="listview" data-inset="true">
-    <% collection.each(function(e) { %>
+    <% _.each(collection, function(e) { %>
         <li>
             <a name="<%= e.get('name') %>" backendId="<%= e.id %>" href="#" class="ui-btn ui-btn-icon-right ui-icon-carat-r">
                 <% if (e.has("value")) { %>
