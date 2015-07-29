@@ -16,9 +16,8 @@ define([
             var self = this;
             self.remove(trait.get("category"), trait);
             self.increment("change_count");
-            return self.save().then(function () {
-                return trait.destroy({wait: true});
-            });
+            trait.destroy();
+            return self.save();
         },
         ensure_category: function(category) {
             if (!this.has(category)) {
@@ -112,6 +111,14 @@ define([
             })
         },
 
+        get_trait: function(category, id) {
+            var self = this;
+            var st = _.findWhere(self.get(category), {id: id});
+            return Parse.Object.fetchAllIfNeeded([st]).then(function (traits) {
+                return Parse.Promise.as(traits[0]);
+            });
+        },
+
         ensure_creation_rules_exist: function() {
             var self = this;
             if (self.has("creation")) {
@@ -174,11 +181,9 @@ define([
 
         unpick_from_creation: function(category, picked_trait_id, pick_index) {
             var self = this;
-            var picked_trait;
             return self.fetch_all_creation_elements().then(function() {
-                picked_trait = new SimpleTrait({id: picked_trait_id});
-                return picked_trait.fetch();
-            }).then(function () {
+                return self.get_trait(category, picked_trait_id);
+            }).then(function (picked_trait) {
                 var picks_name = category + "_" + pick_index + "_picks";
                 var remaining_name = category + "_" + pick_index + "_remaining";
                 var creation = self.get("creation");
@@ -188,9 +193,7 @@ define([
                 } else {
                     creation.increment(remaining_name, 1);
                 }
-                return creation.save();
-            }).then(function() {
-                return self.remove_trait(picked_trait);
+                return Parse.Promise.when(creation.save(), self.remove_trait(picked_trait));
             }).then(function() {
                 return Parse.Promise.as(self);
             })
