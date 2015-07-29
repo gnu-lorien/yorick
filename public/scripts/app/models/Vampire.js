@@ -26,42 +26,38 @@ define([
         },
         update_trait: function(nameOrTrait, value, category, freeValue) {
             var self = this;
-            var modified_trait, name, trait, serverData;
+            var modified_trait, name, serverData;
             if (!_.isString(nameOrTrait)) {
-                trait = nameOrTrait;
-                category = trait.get("category");
+                modified_trait = nameOrTrait;
+                category = modified_trait.get("category");
             } else {
                 name = nameOrTrait;
             };
             self.ensure_category(category);
             return Parse.Object.fetchAllIfNeeded(self.get(category)).then(function(list) {
                 if (!_.isString(nameOrTrait)) {
-                    var trait = nameOrTrait;
-                    if (!_.contains(list, trait)) {
+                    if (!_.contains(list, modified_trait)) {
                         throw "Provided trait not already in Vampire as expected";
                     }
-                    return trait.save();
                 } else {
-                    var b = new SimpleTrait;
+                    modified_trait = new SimpleTrait;
                     _.each(self.get(category), function (st) {
                         if (_.isEqual(st.get("name"), name)) {
-                            b = st;
+                            modified_trait = st;
                         }
                     });
-                    b.set({"name": name,
+                    modified_trait.set({"name": name,
                         "value": freeValue || value,
                         "category": category,
                         "owner": self,
                         "free_value": freeValue
                     });
-                    return b.save();
                 }
-                return undefined;
-            }).then(function (st) {
-                modified_trait = st;
                 self.increment("change_count");
-                self.addUnique(category, st);
+                self.addUnique(category, modified_trait);
                 return self.save();
+            }).then(function (st) {
+                return Parse.Promise.as(self);
             }, function(error) {
                 console.log("Error saving new trait", error);
             }).then(function () {
@@ -89,7 +85,7 @@ define([
                     return Parse.Promise.as(self);
                 });
             }).then(function () {
-                self.trigger("change:" + modified_trait.get(category));
+                self.trigger("change:" + category);
                 return Parse.Promise.as(modified_trait);
             });
         },
