@@ -79,7 +79,11 @@ define([
                     var creation = creations[0];
                     var stepName = category + "_" + freeValue + "_remaining";
                     var listName = category + "_" + freeValue + "_picks";
-                    creation.increment(stepName, -1 * modified_trait.get("value"));
+                    if (_.contains(["merits", "flaws"], category)) {
+                        creation.increment(stepName, -1 * modified_trait.get("value"));
+                    } else {
+                        creation.increment(stepName, -1);
+                    }
                     creation.addUnique(listName, modified_trait);
                     return creation.save();
                 }).then(function() {
