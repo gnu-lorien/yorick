@@ -117,7 +117,7 @@
         <% _.each(_.range(4, 0, -1), function(i) { %>
             <% var n = "skills_" + i + "_remaining"; %>
             <% _.each(creation.get("skills_" + i + "_picks"), function(st) { %>
-                <li data-icon="delete"><a href="#charactercreate/simpletraits/skills/<%= character.id %>/unpick/<%= st.id %>/<%= i %>"><%= st.get("name") %> x<%= st.get("value") %></a></li>
+                <li data-icon="delete"><a href="#charactercreate/simpletraits/skills/<%= character.id %>/unpick/<%= st.linkId() %>/<%= i %>"><%= st.get("name") %> x<%= st.get("value") %></a></li>
             <% }); %>
             <% _.each(_.range(creation.get(n)), function() { %>
                 <li><a href="#charactercreate/simpletraits/skills/<%= character.id %>/pick/<%= i %>">Pick skill at rating <%= i %></a></li>
@@ -131,7 +131,7 @@
         <% _.each(_.range(3, 0, -1), function(i) { %>
         <% var n = "backgrounds_" + i + "_remaining"; %>
         <% _.each(creation.get("backgrounds_" + i + "_picks"), function(st) { %>
-        <li data-icon="delete"><a href="#charactercreate/simpletraits/backgrounds/<%= character.id %>/unpick/<%= st.id %>/<%= i %>"><%= st.get("name") %> x<%= st.get("value") %></a></li>
+        <li data-icon="delete"><a href="#charactercreate/simpletraits/backgrounds/<%= character.id %>/unpick/<%= st.linkId() %>/<%= i %>"><%= st.get("name") %> x<%= st.get("value") %></a></li>
         <% }); %>
         <% _.each(_.range(creation.get(n)), function() { %>
         <li><a href="#charactercreate/simpletraits/backgrounds/<%= character.id %>/pick/<%= i %>">Pick a background at rating <%= i %></a></li>
@@ -144,7 +144,7 @@
         <% _.each(_.range(2, 0, -1), function(i) { %>
             <% var n = "disciplines_" + i + "_remaining"; %>
             <% _.each(creation.get("disciplines_" + i + "_picks"), function(st) { %>
-            <li data-icon="delete"><a href="#charactercreate/simpletraits/disciplines/<%= character.id %>/unpick/<%= st.id %>/<%= i %>"><%= st.get("name") %> x<%= st.get("value") %></a></li>
+            <li data-icon="delete"><a href="#charactercreate/simpletraits/disciplines/<%= character.id %>/unpick/<%= st.linkId() %>/<%= i %>"><%= st.get("name") %> x<%= st.get("value") %></a></li>
             <% }); %>
             <% _.each(_.range(creation.get(n)), function() { %>
             <li><a href="#charactercreate/simpletraits/disciplines/<%= character.id %>/pick/<%= i %>">Pick in clan discipline at rating <%= i %></a></li>
@@ -157,7 +157,7 @@
         <% _.each(_.range(1, -1, -1), function(i) { %>
         <% var n = "merits_" + i + "_remaining"; %>
         <% _.each(creation.get("merits_" + i + "_picks"), function(st) { %>
-        <li data-icon="delete"><a href="#charactercreate/simpletraits/merits/<%= character.id %>/unpick/<%= st.id %>/<%= i %>"><%= st.get("name") %> x<%= st.get("value") %></a></li>
+        <li data-icon="delete"><a href="#charactercreate/simpletraits/merits/<%= character.id %>/unpick/<%= st.linkId() %>/<%= i %>"><%= st.get("name") %> x<%= st.get("value") %></a></li>
         <% }); %>
         <% _.each(_.range(creation.get(n)), function() { %>
         <li><a href="#charactercreate/simpletraits/merits/<%= character.id %>/pick/<%= i %>">Pick merit</a></li>
@@ -170,7 +170,7 @@
         <% _.each(_.range(1, -1, -1), function(i) { %>
         <% var n = "flaws_" + i + "_remaining"; %>
         <% _.each(creation.get("flaws_" + i + "_picks"), function(st) { %>
-        <li data-icon="delete"><a href="#charactercreate/simpletraits/flaws/<%= character.id %>/unpick/<%= st.id %>/<%= i %>"><%= st.get("name") %> x<%= st.get("value") %></a></li>
+        <li data-icon="delete"><a href="#charactercreate/simpletraits/flaws/<%= character.id %>/unpick/<%= st.linkId() %>/<%= i %>"><%= st.get("name") %> x<%= st.get("value") %></a></li>
         <% }); %>
         <% _.each(_.range(creation.get(n)), function() { %>
         <li><a href="#charactercreate/simpletraits/flaws/<%= character.id %>/pick/<%= i %>">Pick flaw</a></li>
