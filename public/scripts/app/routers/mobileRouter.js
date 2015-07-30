@@ -6,6 +6,7 @@ define([
 	"jquery",
 	"parse",
     "pretty",
+    "jscookie",
 	"../models/CategoryModel",
 	"../collections/CategoriesCollection",
 	"../views/CategoryView",
@@ -23,7 +24,7 @@ define([
     "../views/CharacterPrintView",
     "../views/CharacterCostsView",
     "../views/SimpleTextNewView",
-], function ($, Parse, pretty, CategoryModel, CategoriesCollection, CategoryView, CharactersListView, Vampire, Vampires, CharacterView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView, VampireCreation, CharacterCreateView, CharacterNewView, CharacterPrintView, CharacterCostsView, SimpleTextNewView) {
+], function ($, Parse, pretty, Cookie, CategoryModel, CategoriesCollection, CategoryView, CharactersListView, Vampire, Vampires, CharacterView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView, VampireCreation, CharacterCreateView, CharacterNewView, CharacterPrintView, CharacterCostsView, SimpleTextNewView) {
 
     // Extends Backbone.Router
     var CategoryRouter = Parse.Router.extend( {
@@ -138,6 +139,7 @@ define([
         charactercreate: function(cid) {
             var self = this;
             $.mobile.loading("show");
+            console.log(Cookie.get("blah"));
             self.get_character(cid, []).then(function (character) {
                 return character.fetch_all_creation_elements();
             }).done(function (character) {
