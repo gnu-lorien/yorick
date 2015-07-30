@@ -5,6 +5,7 @@
 define([
 	"jquery",
 	"parse",
+    "pretty",
 	"../models/CategoryModel",
 	"../collections/CategoriesCollection",
 	"../views/CategoryView",
@@ -22,7 +23,7 @@ define([
     "../views/CharacterPrintView",
     "../views/CharacterCostsView",
     "../views/SimpleTextNewView",
-], function ($, Parse, CategoryModel, CategoriesCollection, CategoryView, CharactersListView, Vampire, Vampires, CharacterView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView, VampireCreation, CharacterCreateView, CharacterNewView, CharacterPrintView, CharacterCostsView, SimpleTextNewView) {
+], function ($, Parse, pretty, CategoryModel, CategoriesCollection, CategoryView, CharactersListView, Vampire, Vampires, CharacterView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView, VampireCreation, CharacterCreateView, CharacterNewView, CharacterPrintView, CharacterCostsView, SimpleTextNewView) {
 
     // Extends Backbone.Router
     var CategoryRouter = Parse.Router.extend( {
@@ -145,7 +146,7 @@ define([
                 $.mobile.changePage("#character-create", {reverse: false, changeHash: false});
                 $.mobile.loading("hide");
             }).fail(function (error) {
-                console.log("Failed to get the character create page", error);
+                console.log("Failed to get the character create page", pretty(error));
             });
         },
 
@@ -167,6 +168,8 @@ define([
                 return character.unpick_from_creation(category, stid, i);
             }).done(function (c) {
                 window.location.hash = "#charactercreate/" + c.id;
+            }).fail(function(error) {
+                console.log(error.message);
             });
         },
 
