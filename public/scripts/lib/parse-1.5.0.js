@@ -6034,6 +6034,9 @@
       list,
       omitObjectsWithData
     ).then(function(objectIds) {
+      if (0 === objectIds.length) {
+        return Parse.Promise.as([]);
+      }
       var className = list[0].className;
       var query = new Parse.Query(className);
       query.containedIn("objectId", objectIds);
