@@ -189,7 +189,7 @@ define([
             });
         },
 
-        unpick_from_creation: function(category, picked_trait_id, pick_index) {
+        unpick_from_creation: function(category, picked_trait_id, pick_index, wait) {
             var self = this;
             return self.fetch_all_creation_elements().then(function() {
                 return self.get_trait(category, picked_trait_id);
@@ -203,9 +203,13 @@ define([
                 } else {
                     creation.increment(remaining_name, 1);
                 }
-                return Parse.Promise.when(creation.save(), self.remove_trait(picked_trait));
-            }).then(function() {
-                return Parse.Promise.as(self);
+                var promises = Parse.Promise.when(creation.save(), self.remove_trait(picked_trait));
+                if (!wait) {
+                    return Parse.Promise.as(self);
+                }
+                return promises.then(function () {
+                    return Parse.Promise.as(self);
+                })
             })
         },
 
