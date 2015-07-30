@@ -152,7 +152,7 @@
         <% }); %>
     </ul>
 
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow" category="merits">
         <li data-role="list-divider">Merits<span class="ui-li-count"><%= creation.remaining_picks("merits") %></span></li>
         <% _.each(_.range(1, -1, -1), function(i) { %>
         <% var n = "merits_" + i + "_remaining"; %>

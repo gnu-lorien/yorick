@@ -139,13 +139,15 @@ define([
         charactercreate: function(cid) {
             var self = this;
             $.mobile.loading("show");
-            console.log(Cookie.get("blah"));
             self.get_character(cid, []).then(function (character) {
                 return character.fetch_all_creation_elements();
             }).done(function (character) {
                 self.characterCreateView.model = character;
                 self.characterCreateView.render();
                 $.mobile.changePage("#character-create", {reverse: false, changeHash: false});
+                var lastCategoryPropertyFind = "ul[category='" + Cookie.get("lastcategory") + "']";
+                var top = $(lastCategoryPropertyFind).offset().top;
+                $.mobile.silentScroll(top);
                 $.mobile.loading("hide");
             }).fail(function (error) {
                 console.log("Failed to get the character create page", pretty(error));
@@ -158,6 +160,7 @@ define([
             $.mobile.loading("show");
             self.get_character(cid, [category]).done(function (c) {
                 self.simpleTraitNewView.register(c, category, i, "#charactercreate/<%= self.character.id %>");
+                Cookie.set("lastcategory", category);
                 $.mobile.changePage("#simpletrait-new", {reverse: false, changeHash: false});
             });
         },
@@ -167,6 +170,7 @@ define([
             i = _.parseInt(i);
             $.mobile.loading("show");
             self.get_character(cid, [category]).then(function (character) {
+                Cookie.set("lastcategory", category);
                 return character.unpick_from_creation(category, stid, i);
             }).done(function (c) {
                 window.location.hash = "#charactercreate/" + c.id;
@@ -179,6 +183,7 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.get_character(cid, [category]).done(function (c) {
+                Cookie.set("lastcategory", category);
                 self.simpleTextNewView.register(c, category, target, "#charactercreate/" + c.id);
                 $.mobile.changePage("#simpletext-new", {reverse: false, changeHash: false});
             });
