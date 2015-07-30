@@ -12,6 +12,7 @@ requirejs.config( {
 		backbone: "//cdnjs.cloudflare.com/ajax/libs/backbone.js/1.1.2/backbone-min",
 		//parse: "//www.parsecdn.com/js/parse-1.5.0.min",
 		parse: "parse-1.5.0",
+		pretty: "prettyprint",
 
 		app: "../app"
 	},
@@ -27,7 +28,7 @@ requirejs.config( {
         "parse": {
             "deps": [ "underscore", "jquery" ],
             "exports": "Parse"
-        }
+        },
 
 	}
 
