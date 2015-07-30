@@ -86,7 +86,7 @@
         <% _.each(_.range(8, 0, -1), function(i) { %>
         <% var n = "attributes_" + i + "_remaining"; %>
         <% _.each(creation.get("attributes_" + i + "_picks"), function(st) { %>
-        <li data-icon="delete"><a href="#charactercreate/simpletraits/attributes/<%= character.id %>/unpick/<%= st.id %>/<%= i %>"><%= st.get("name") %> x<%= st.get("value") %></a></li>
+        <li data-icon="delete"><a href="#charactercreate/simpletraits/attributes/<%= character.id %>/unpick/<%= st.linkId() %>/<%= i %>"><%= st.get("name") %> x<%= st.get("value") %></a></li>
         <% }); %>
         <% _.each(_.range(creation.get(n)), function() { %>
         <li><a href="#charactercreate/simpletraits/attributes/<%= character.id %>/pick/<%= i %>">Pick attribute at rating <%= i %></a></li>
@@ -102,7 +102,7 @@
         <% _.each(_.range(2, 0, -1), function(i) { %>
         <% var n = category + "_" + i + "_remaining"; %>
         <% _.each(creation.get(category + "_" + i + "_picks"), function(st) { %>
-        <li data-icon="delete"><a href="#charactercreate/simpletraits/<%= category %>/<%= character.id %>/unpick/<%= st.id %>/<%= i %>"><%= st.get("name") %></a></li>
+        <li data-icon="delete"><a href="#charactercreate/simpletraits/<%= category %>/<%= character.id %>/unpick/<%= st.linkId() %>/<%= i %>"><%= st.get("name") %></a></li>
         <% }); %>
         <% _.each(_.range(creation.get(n)), function() { %>
         <li><a href="#charactercreate/simpletraits/<%= category %>/<%= character.id %>/pick/<%= i %>">Pick <%= prettyName %> Focus</a></li>

@@ -114,7 +114,12 @@ define([
 
         get_trait: function(category, id) {
             var self = this;
-            var st = _.findWhere(self.get(category), {id: id});
+            var models = self.get(category);
+            var st = _.findWhere(models, {cid: id});
+            if (st) {
+                return Parse.Promise.as(st);
+            }
+            st = _.findWhere(models, {id: id});
             return Parse.Object.fetchAllIfNeeded([st]).then(function (traits) {
                 return Parse.Promise.as(traits[0]);
             });
@@ -175,7 +180,9 @@ define([
                         objectIds = _.union(creation.get(gn), objectIds);
                     });
                 });
-                objectIds = _.chain(objectIds).flatten().without(undefined).value();
+                objectIds = _.chain(objectIds).flatten().without(undefined).filter(function(id) {
+                    return id.id;
+                }).value();
                 return Parse.Object.fetchAllIfNeeded(objectIds).then(function() {
                     return Parse.Promise.as(self);
                 });
