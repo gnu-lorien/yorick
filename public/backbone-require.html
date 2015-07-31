@@ -10,12 +10,13 @@
 </head>
 <body>
 
-<div id="categories" data-role="page" data-title="Categories">
-  
-	<div data-role="header">
-		<h1>Categories</h1>
-	</div><!-- /header -->
 
+<div data-role="header" data-position="fixed" data-theme="a">
+    <a href="javascript:window.history.back()" data-icon="arrow-l" data-iconpos="left" data-rel="back" data-transition="slide" data-direction="reverse">Back</a>
+    <h1>Default Title</h1>
+</div><!-- /header -->
+
+<div id="categories" data-role="page" data-title="Categories">
 	<div role="main" class="ui-content">
         <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
             <li><a href="#characters?all">Characters</a></li>
@@ -23,12 +24,18 @@
 	</div><!-- /content -->
 </div>
 
+<div data-role="footer" data-position="fixed" data-theme="a">
+    <div data-role="navbar">
+        <ul>
+            <li><a href="#characters?all" data-transition="fade">Characters</a></li>
+            <li><a href="page-b.html" data-transition="flip">Friends</a></li>
+            <li><a href="page-c.html" data-transition="turn">Albums</a></li>
+            <li><a href="page-d.html" data-transition="slide">Emails</a></li>
+        </ul>
+    </div><!-- /navbar -->
+</div><!-- /footer -->
+
 <div id="character" data-role="page" data-title="Character">
-
-    <div data-role="header">
-        <h1>Character</h1>
-    </div><!-- /header -->
-
     <div role="main" class="ui-content">
     </div>
 </div>

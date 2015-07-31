@@ -29,8 +29,9 @@ define([
             var changed = false;
             var redirect = redirect || "#simpletrait/<%= self.category %>/<%= self.character.id %>/<%= b.linkId() %>";
 
-            if (redirect != _) {
+            if (redirect != _ && redirect != self.redirect) {
                 self.redirect = _.template(redirect);
+                changed = true;
             }
 
             if (self.filterRule !== filterRule) {
@@ -115,6 +116,16 @@ define([
 
             // Renders the view's template inside of the current listview element
             this.$el.find("div[role='main']").html(this.template);
+
+            /*
+            this.headerTemplate = _.template($("script#headerTemplate").html())({
+                "character": this.character,
+                "title": this.category,
+            });
+
+            this.$el.find("div[data-role='header']").html(this.headerTemplate);
+            */
+
             this.$el.enhanceWithin();
 
             // Maintains chainability

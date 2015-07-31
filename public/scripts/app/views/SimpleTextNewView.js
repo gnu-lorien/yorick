@@ -24,7 +24,10 @@ define([
             var self = this;
             var changed = false;
 
-            self.redirect = redirect;
+            if (self.redirect !== redirect) {
+                self.redirect = redirect;
+                changed = true;
+            }
 
             if (targetValue !== self.targetValue) {
                 self.targetValue = targetValue;
