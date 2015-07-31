@@ -219,8 +219,12 @@ define([
         },
 
         discipline_is_in_clan: function(trait) {
-            // TODO real implementation
-            return _.sample([true, false]);
+            var self = this;
+            var icd = BNSMETV1_ClanRules.get_in_clan_disciplines(self);
+            if ([] == icd) {
+                return false;
+            }
+            return _.contains(icd, trait.get("name"));
         },
 
         get_cost_table: function(cost_per_entry) {
