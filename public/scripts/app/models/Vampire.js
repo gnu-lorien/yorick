@@ -159,8 +159,9 @@ define([
                 "focus_physicals_1_remaining": 1,
                 "merits_0_remaining": 7,
                 "flaws_0_remaining": 7,
-
-                "initial_xp": 30
+                "phase_1_finished": false,
+                "initial_xp": 30,
+                "phase_2_finished": false,
             });
             return creation.save().then(function (newCreation) {
                 self.set("creation", newCreation);
