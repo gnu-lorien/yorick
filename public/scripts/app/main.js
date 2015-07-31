@@ -2,8 +2,9 @@
 require([
     "jquery",
     "parse",
-    "app/routers/mobileRouter"
-], function ( $, Parse, Mobile ) {
+    "app/routers/mobileRouter",
+    "app/collections/BNSMETV1_ClanRules"
+], function ( $, Parse, Mobile, ClanRules ) {
 
     $( document ).on( "mobileinit",
 
@@ -26,5 +27,9 @@ require([
 
         // Instantiates a new Backbone.js Mobile Router
         this.router = new Mobile();
+
+        // Instantiates global rule access
+        this.BNSMETV1_ClanRules = new ClanRules;
+        this.BNSMETV1_ClanRules.fetch();
     });
 });
