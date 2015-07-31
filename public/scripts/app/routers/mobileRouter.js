@@ -144,10 +144,8 @@ define([
             }).done(function (character) {
                 self.characterCreateView.model = character;
                 self.characterCreateView.render();
+                self.characterCreateView.scroll_back_after_page_change();
                 $.mobile.changePage("#character-create", {reverse: false, changeHash: false});
-                var lastCategoryPropertyFind = "ul[category='" + Cookie.get("lastcategory") + "']";
-                var top = $(lastCategoryPropertyFind).offset().top;
-                $.mobile.silentScroll(top);
                 $.mobile.loading("hide");
             }).fail(function (error) {
                 console.log("Failed to get the character create page", pretty(error));
@@ -160,7 +158,7 @@ define([
             $.mobile.loading("show");
             self.get_character(cid, [category]).done(function (c) {
                 self.simpleTraitNewView.register(c, category, i, "#charactercreate/<%= self.character.id %>");
-                Cookie.set("lastcategory", category);
+                self.characterCreateView.backToTop = document.body.scrollTop;
                 $.mobile.changePage("#simpletrait-new", {reverse: false, changeHash: false});
             });
         },
@@ -170,7 +168,7 @@ define([
             i = _.parseInt(i);
             $.mobile.loading("show");
             self.get_character(cid, [category]).then(function (character) {
-                Cookie.set("lastcategory", category);
+                self.characterCreateView.backToTop = document.body.scrollTop;
                 return character.unpick_from_creation(category, stid, i);
             }).done(function (c) {
                 window.location.hash = "#charactercreate/" + c.id;
@@ -183,8 +181,8 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.get_character(cid, [category]).done(function (c) {
-                Cookie.set("lastcategory", category);
                 self.simpleTextNewView.register(c, category, target, "#charactercreate/" + c.id);
+                self.characterCreateView.backToTop = document.body.scrollTop;
                 $.mobile.changePage("#simpletext-new", {reverse: false, changeHash: false});
             });
         },
