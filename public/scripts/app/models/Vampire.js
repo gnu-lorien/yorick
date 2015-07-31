@@ -357,7 +357,6 @@ define([
                 return Parse.Promise.as(response);
             })
         }
-
     } );
 
     // Returns the Model class

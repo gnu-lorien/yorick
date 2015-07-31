@@ -157,7 +157,16 @@ define([
             i = _.parseInt(i);
             $.mobile.loading("show");
             self.get_character(cid, [category]).done(function (c) {
-                self.simpleTraitNewView.register(c, category, i, "#charactercreate/<%= self.character.id %>");
+                var specialCategory;
+                if ("disciplines" == category) {
+                    specialCategory = "in clan disciplines";
+                }
+                self.simpleTraitNewView.register(
+                    c,
+                    category,
+                    i,
+                    "#charactercreate/<%= self.character.id %>",
+                    specialCategory);
                 self.characterCreateView.backToTop = document.body.scrollTop;
                 $.mobile.changePage("#simpletrait-new", {reverse: false, changeHash: false});
             });

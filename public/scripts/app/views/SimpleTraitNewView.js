@@ -8,8 +8,9 @@ define([
     "parse",
     "../models/SimpleTrait",
     "../collections/DescriptionCollection",
-    "../models/Description"
-], function( $, Backbone, Parse, SimpleTrait, DescriptionCollection, Description ) {
+    "../models/Description",
+    "../collections/BNSMETV1_ClanRules"
+], function( $, Backbone, Parse, SimpleTrait, DescriptionCollection, Description, ClanRules ) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
@@ -19,16 +20,25 @@ define([
 
             _.bindAll(this, "register", "update_collection_query_and_fetch");
 
+            this.clanRules = new ClanRules;
+            this.clanRules.fetch();
         },
 
-        register: function(character, category, freeValue, redirect) {
+        register: function(character, category, freeValue, redirect, filterRule) {
             var self = this;
             var changed = false;
             var redirect = redirect || "#simpletrait/<%= self.category %>/<%= self.character.id %>/<%= b.id %>";
 
-            self.redirect = _.template(redirect);
+            if (redirect != _) {
+                self.redirect = _.template(redirect);
+            }
 
-            if (freeValue !== self.freeValue) {
+            if (self.filterRule !== filterRule) {
+                self.filterRule = filterRule;
+                change = true;
+            }
+
+            if (freeValue !== self.freeValue && freeValue != _) {
                 self.freeValue = freeValue;
                 changed = true;
             }
@@ -75,13 +85,25 @@ define([
         render: function() {
             var self = this;
 
-            var traitNames = _(self.character.get(self.category)).pluck("attributes").pluck("name").value();
-            var descriptionItems = _.chain(self.collection.models).select(function (model) {
-                if (!_.contains(traitNames, model.get("name"))) {
-                    return true;
-                }
-                return false;
-            }).value();
+            var descriptionItems;
+
+            if ("in clan disciplines" == self.filterRule) {
+                var icd = self.clanRules.get_in_clan_disciplines(self.character);
+                descriptionItems = _.chain(self.collection.models).select(function (model) {
+                    if (_.contains(icd, model.get("name"))) {
+                        return true;
+                    }
+                    return false;
+                }).value();
+            } else {
+                var traitNames = _(self.character.get(self.category)).pluck("attributes").pluck("name").value();
+                descriptionItems = _.chain(self.collection.models).select(function (model) {
+                    if (!_.contains(traitNames, model.get("name"))) {
+                        return true;
+                    }
+                    return false;
+                }).value();
+            }
 
             // Sets the view's template property
             this.template = _.template($("script#simpletraitcategoryDescriptionItems").html())({
