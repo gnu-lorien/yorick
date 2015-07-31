@@ -330,10 +330,13 @@
     <% if (freeValue) { %>
         <p>Pick one for value <%= freeValue %></p>
     <% } %>
-    <ul data-role="listview" data-inset="true">
+    <form class="ui-filterable">
+            <input id="filterBasic-input" data-type="search">
+    </form>
+    <ul data-role="listview" data-filter="true" data-input="#filterBasic-input">
     <% _.each(collection, function(e) { %>
         <li>
-            <a name="<%= e.get('name') %>" backendId="<%= e.id %>" href="#" class="ui-btn ui-btn-icon-right ui-icon-carat-r">
+            <a name="<%= e.get('name') %>" backendId="<%= e.id %>" href="#" class="ui-btn ui-btn-icon-right ui-icon-carat-r simpletrait">
                 <% if (e.has("value")) { %>
                     <%= e.get("name") %> x<%= e.get("value") %>
                 <% } else { %>
@@ -355,7 +358,7 @@
 </div>
 
 <script id="simpletextcategoryDescriptionItems" type="text/template">
-    <ul data-role="listview" data-inset="true">
+    <ul data-role="listview" data-inset="true" data-filter="true">
         <% collection.each(function(e) { %>
         <li>
             <a name="<%= e.get('name') %>"  href="#" class="ui-btn ui-btn-icon-right ui-icon-carat-r"><%= e.get("name") %></a>
