@@ -27,7 +27,7 @@ define([
         register: function(character, category, freeValue, redirect, filterRule) {
             var self = this;
             var changed = false;
-            var redirect = redirect || "#simpletrait/<%= self.category %>/<%= self.character.id %>/<%= b.id %>";
+            var redirect = redirect || "#simpletrait/<%= self.category %>/<%= self.character.id %>/<%= b.linkId() %>";
 
             if (redirect != _) {
                 self.redirect = _.template(redirect);

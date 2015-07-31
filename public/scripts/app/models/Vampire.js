@@ -117,11 +117,11 @@ define([
             var models = self.get(category);
             var st = _.findWhere(models, {cid: id});
             if (st) {
-                return Parse.Promise.as(st);
+                return Parse.Promise.as(st, self);
             }
             st = _.findWhere(models, {id: id});
             return Parse.Object.fetchAllIfNeeded([st]).then(function (traits) {
-                return Parse.Promise.as(traits[0]);
+                return Parse.Promise.as(traits[0], self);
             });
         },
 

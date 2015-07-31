@@ -245,7 +245,9 @@ define([
 
                 var objectIds = _.chain(categories).map(function(category) {
                     return self._character.get(category);
-                }).flatten().without(undefined).value();
+                }).flatten().without(undefined).filter(function(id) {
+                    return id.id;
+                }).value();
 
                 return Parse.Object.fetchAllIfNeeded(objectIds).done(function () {
                     return self.get_character(id, []);
@@ -258,9 +260,13 @@ define([
         simpletrait: function(category, cid, bid) {
             var self = this;
             self.get_character(cid, [category]).done(function(c) {
-                var b = _.findWhere(c.get(category), {id: bid});
-                self.simpleTraitChangeView.register(c, b, category);
+                character = c;
+                return character.get_trait(category, bid);
+            }).then(function (trait, character) {
+                self.simpleTraitChangeView.register(character, trait, category);
                 $.mobile.changePage("#simpletrait-change", {reverse: false, changeHash: false});
+            }).fail(function(error) {
+                console.log(error.message);
             });
         },
 
@@ -271,6 +277,8 @@ define([
                 self.get_character(cid, [category]).done(function (c) {
                     self.simpleTraitCategoryView.register(c, category);
                     $.mobile.changePage("#simpletraitcategory-all", {reverse: false, changeHash: false});
+                }).fail(function(error) {
+                    console.log(error.message);
                 });
             }
 
@@ -279,6 +287,8 @@ define([
                 self.get_character(cid, [category]).done(function (c) {
                     self.simpleTraitNewView.register(c, category);
                     $.mobile.changePage("#simpletrait-new", {reverse: false, changeHash: false});
+                }).fail(function(error) {
+                    console.log(error.message);
                 });
             }
         },
