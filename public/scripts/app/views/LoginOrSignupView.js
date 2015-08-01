@@ -26,9 +26,8 @@ define([
 
             Parse.User.logIn(username, password, {
                 success: function(user) {
-                    new ManageTodosView();
+                    location.reload();
                     self.undelegateEvents();
-                    delete self;
                 },
 
                 error: function(user, error) {

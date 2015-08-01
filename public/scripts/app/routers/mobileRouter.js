@@ -24,7 +24,8 @@ define([
     "../views/CharacterPrintView",
     "../views/CharacterCostsView",
     "../views/SimpleTextNewView",
-], function ($, Parse, pretty, Cookie, CategoryModel, CategoriesCollection, CategoryView, CharactersListView, Vampire, Vampires, CharacterView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView, VampireCreation, CharacterCreateView, CharacterNewView, CharacterPrintView, CharacterCostsView, SimpleTextNewView) {
+    "../views/LoginOrSignupView"
+], function ($, Parse, pretty, Cookie, CategoryModel, CategoriesCollection, CategoryView, CharactersListView, Vampire, Vampires, CharacterView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView, VampireCreation, CharacterCreateView, CharacterNewView, CharacterPrintView, CharacterCostsView, SimpleTextNewView, LoginOrSignupView) {
 
     // Extends Backbone.Router
     var CategoryRouter = Parse.Router.extend( {
@@ -59,6 +60,8 @@ define([
 
             this.characterPrintView = new CharacterPrintView({el: "#printable-sheet"});
             this.characterCostsView = new CharacterCostsView({el: "#character-costs"});
+
+            this.loginView = new LoginOrSignupView();
 
             /*
             if (!Parse.User.current()) {
@@ -210,25 +213,46 @@ define([
         },
 
         characters: function(type) {
+            var self = this;
             if ("all" == type) {
                 $.mobile.loading("show");
-                var c = this.characters.collection;
-                var f = function() {
-                    $.mobile.changePage("#characters-all", {reverse: false, changeHash: false});
-                };
-                if (!c.length) {
-                    var q = new Parse.Query(Vampire);
-                    q.equalTo("owner", Parse.User.current());
-                    c.query = q;
-                    c.fetch({add: true, merge: true}).done(f)
-                } else {
-                    f();
-                }
+                self.enforce_logged_in().then(function () {
+                    var c = self.characters.collection;
+                    var f = function () {
+                        $.mobile.changePage("#characters-all", {reverse: false, changeHash: false});
+                    };
+                    if (!c.length) {
+                        var q = new Parse.Query(Vampire);
+                        q.equalTo("owner", Parse.User.current());
+                        c.query = q;
+                        c.fetch({add: true, merge: true}).done(f)
+                    } else {
+                        f();
+                    }
+                });
             }
+        },
+
+        enforce_logged_in: function() {
+            if (!Parse.User.current()) {
+                $.mobile.changePage("#login-or-signup", {reverse: false, changeHash: false});
+                $.mobile.loading("hide");
+                var e = new Parse.Error(Parse.Error.USERNAME_MISSING, "Not logged in");
+                return Parse.Promise.error(e);
+            }
+            console.log(Parse.User.current().get("username"));
+            return Parse.Promise.as([]);
         },
 
         get_character: function(id, categories) {
             var self = this;
+            if (!Parse.User.current()) {
+                //Parse.User.logIn("devuser", "thedumbness");
+                $.mobile.changePage("#login-or-signup", {reverse: false, changeHash: false});
+                var e = new Parse.Error(Pares.Error.USERNAME_MISSING, "Not logged in");
+                var p = new Parse.Promise;
+                return p.reject(e);
+            }
             categories = categories || [];
             if (self._character === null) {
                 var q = new Parse.Query(Vampire);
