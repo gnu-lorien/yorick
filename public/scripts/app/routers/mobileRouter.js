@@ -240,19 +240,19 @@ define([
                 var e = new Parse.Error(Parse.Error.USERNAME_MISSING, "Not logged in");
                 return Parse.Promise.error(e);
             }
-            console.log(Parse.User.current().get("username"));
+            console.log("Logged in as", Parse.User.current().get("username"));
             return Parse.Promise.as([]);
         },
 
         get_character: function(id, categories) {
             var self = this;
-            if (!Parse.User.current()) {
-                //Parse.User.logIn("devuser", "thedumbness");
-                $.mobile.changePage("#login-or-signup", {reverse: false, changeHash: false});
-                var e = new Parse.Error(Pares.Error.USERNAME_MISSING, "Not logged in");
-                var p = new Parse.Promise;
-                return p.reject(e);
-            }
+            return self.enforce_logged_in().then(function () {
+                return self._get_character(id, categories);
+            })
+        },
+
+        _get_character: function(id, categories) {
+            var self = this;
             categories = categories || [];
             if (self._character === null) {
                 var q = new Parse.Query(Vampire);
