@@ -1,5 +1,6 @@
 var pretty = require('cloud/prettyprint.js').pretty;
 var _ = require('underscore');
+var Vampire = Parse.Object.extend("Vampire");
 
 // Use Parse.Cloud.define to define as many cloud functions as you want.
 // For example:
@@ -10,7 +11,7 @@ Parse.Cloud.define("hello", function(request, response) {
 Parse.Cloud.beforeSave("Vampire", function(request, response) {
     var tracked_texts = ["clan", "state", "archetype"];
     var v = request.object;
-    var serverData = v._serverData;
+    var serverData = _.clone(v._serverData);
     var desired_changes = _.intersection(tracked_texts, v.dirtyKeys());
     if (0 === desired_changes.length) {
         response.success();
@@ -21,7 +22,8 @@ Parse.Cloud.beforeSave("Vampire", function(request, response) {
     _.each(v.dirtyKeys(), function(k) {
         new_values[k] = v.get(k);
     })
-    v.fetch().then(function(vampire) {
+    var vToFetch = new Vampire({id: v.id});
+    vToFetch.fetch().then(function(vampire) {
         return Parse.Object.saveAll(_.map(_.pairs(new_values), function(a) {
             var attribute = a[0], val = a[1];
             var vc = new Parse.Object("VampireChange");
@@ -44,11 +46,12 @@ Parse.Cloud.beforeSave("Vampire", function(request, response) {
 });
 
 Parse.Cloud.afterSave("VampireChange", function(request) {
+    /*
     var vc = request.object;
     if ("experience_points" == vc.get("experience_points")) {
         return;
     }
-    var cost_mod = _.parseInt(vc.get("cost")) - _.parseInt(vc.get("old_cost"));
+    var cost_mod = parseInt(vc.get("cost")) - parseInt(vc.get("old_cost"));
     var vampire;
     vc.get("owner").fetch().then(function (v) {
         vampire = v;
@@ -57,6 +60,7 @@ Parse.Cloud.afterSave("VampireChange", function(request) {
         // Get spent XP
         // Add the cost_mod to it
     });
+    */
 });
 
 Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {

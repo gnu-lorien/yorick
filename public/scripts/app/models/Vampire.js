@@ -122,6 +122,8 @@ define([
                         return Parse.Promise.as(self);
                     });
                 });
+            }).fail(function (error) {
+                console.log("Error received when updating text" + error.message);
             })
         },
 
