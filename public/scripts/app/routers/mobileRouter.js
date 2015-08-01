@@ -60,9 +60,11 @@ define([
             this.characterPrintView = new CharacterPrintView({el: "#printable-sheet"});
             this.characterCostsView = new CharacterCostsView({el: "#character-costs"});
 
+            /*
             if (!Parse.User.current()) {
                 Parse.User.logIn("devuser", "thedumbness");
             }
+            */
 
             // Tells Backbone to start watching for hashchange events
             Parse.history.start();
@@ -73,6 +75,7 @@ define([
 
             // When there is no hash bang on the url, the home method is called
             "": "home",
+            "start": "home",
 
             // When #category? is on the url, the category method is called
             "category?:type": "category",
