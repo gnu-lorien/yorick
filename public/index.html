@@ -12,7 +12,7 @@
 
 
 <div data-role="header" data-position="fixed" data-theme="a">
-    <a href="javascript:window.history.back()" data-icon="arrow-l" data-iconpos="left" data-rel="back" data-transition="slide" data-direction="reverse">Back</a>
+    <a href="javascript:window.history.back()" data-icon="arrow-l" data-iconpos="left" data-rel="back" data-transition="slide" data-direction="reverse" id="header-back-button">Back</a>
     <a href="javascript:Parse.User.logOut(); window.location.hash = 'start';" data-icon="minus" data-iconpos="right" data-transition="slide" data-direction="reverse">Log Out</a>
     <h1>Default Title</h1>
 </div><!-- /header -->
@@ -485,8 +485,17 @@
 
 <script id="characterPrintView" type="text/template">
     <h1><%= character.get("name") %></h1>
-
+    <h2><%= character.get("archetype") %> <%= character.get("clan") %></h2>
     <hr/>
+    <% _.each(character.get("attributes"), function (attribute) { %>
+    <h1><%= attribute.get("name") %></h1>
+    <%= attribute.get("value") %><br/>
+    <% var focusName = "focus_" + attribute.get("name").toLowerCase() + "s"; %>
+    <% _.each(character.get(focusName), function (focus) { %>
+    <%= focus.get("name") %>&nbsp;
+    <% }); %>
+    <% }); %>
+
     <h1>Skills</h1>
     <% var cols = []; %>
     <% cols.push(["Academics", "Animal Ken", "Athletics", "Awareness", "Brawl", "Computer", "Crafts", "Dodge", "Drive"]); %>
@@ -500,6 +509,12 @@
             <td><%= skill %></td><td>x</td><td><%= _.result(skillsLookup, skill + '[0].attributes.value', 0) %></td>
             <% }); %>
         </tr>
+        <% }); %>
+        <% cols = _.flatten(cols); %>
+        <% _.each(character.get("skills"), function (skill) { %>
+        <% if (!_.contains(cols, skill.get("name"))) { %>
+        <tr><td><%= skill.get("name") %> x<%= skill.get("value") %></td></tr>
+        <% } %>
         <% }); %>
     </table>
     <hr/>
@@ -516,6 +531,14 @@
         <tr><td><%= d.get("name") %>: <%= d.get("value") %></td></tr>
         <% }); %>
     </table>
+    <% _.each(["techniques", "elder_disciplines", "rituals", "haven_specializations", "lore_specializations"], function (category) { %>
+    <h1><%= category %></h1>
+    <table>
+        <% _.each(character.get(category), function(d) { %>
+        <tr><td><%= d.get("name") %>: <%= d.get("value") %></td></tr>
+        <% }); %>
+    </table>
+    <% }); %>
 </script>
 
 <script type="text/template" id="login-template">
