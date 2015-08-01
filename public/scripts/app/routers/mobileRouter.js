@@ -137,7 +137,7 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
-            self.get_character(cid, ["skills", "disciplines", "backgrounds"]).done(function (character) {
+            self.get_character(cid, "all").done(function (character) {
                 self.characterPrintView.model = character;
                 self.characterPrintView.render();
                 $.mobile.changePage("#printable-sheet", {reverse: false, changeHash: false});
@@ -306,8 +306,10 @@ define([
                     return self.get_character(id, categories);
                 })
             }
+            if (categories == "all") {
+                categories = _.result(self._character, "all_fetched_categories", []);
+            }
             if (0 !== categories.length) {
-
                 var objectIds = _.chain(categories).map(function(category) {
                     return self._character.get(category);
                 }).flatten().without(undefined).filter(function(id) {

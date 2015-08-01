@@ -205,6 +205,25 @@ define([
             });
         },
 
+        all_fetched_categories: function () {
+            return [
+                "flaws",
+                "merits",
+                "focus_mentals",
+                "focus_physicals",
+                "focus_socials",
+                "attributes",
+                "skills",
+                "backgrounds",
+                "disciplines",
+                "techniques",
+                "elder_disciplines",
+                "haven_specializations",
+                "lore_specializations",
+                "rituals",
+                "experience_points"];
+        },
+
         unpick_from_creation: function(category, picked_trait_id, pick_index, wait) {
             var self = this;
             return self.fetch_all_creation_elements().then(function() {
