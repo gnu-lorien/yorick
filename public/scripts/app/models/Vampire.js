@@ -165,7 +165,7 @@ define([
                 "backgrounds_2_remaining": 1,
                 "backgrounds_1_remaining": 1,
                 "disciplines_2_remaining": 1,
-                "disciplines_1_remaining": 1,
+                "disciplines_1_remaining": 2,
                 "attributes_7_remaining": 1,
                 "attributes_5_remaining": 1,
                 "attributes_3_remaining": 1,
