@@ -11,7 +11,7 @@ Parse.Cloud.beforeSave("Vampire", function(request, response) {
     var tracked_texts = ["clan", "state"];
     var v = request.object;
     var serverData = v._serverData;
-    var desired_changes = _.union(tracked_texts, v.dirtyKeys());
+    var desired_changes = _.intersection(tracked_texts, v.dirtyKeys());
     if (0 === desired_changes.length) {
         response.success();
         return;
