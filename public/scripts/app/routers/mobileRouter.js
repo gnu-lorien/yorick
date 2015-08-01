@@ -118,9 +118,14 @@ define([
 
         },
 
+        set_back_button: function(url) {
+            $("#header-back-button").attr("href", url);
+        },
+
         charactercosts: function(cid) {
             var self = this;
             $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
             self.get_character(cid, ["skills", "disciplines", "backgrounds"]).done(function (character) {
                 self.characterCostsView.model = character;
                 self.characterCostsView.render();
@@ -131,6 +136,7 @@ define([
         characterprint: function(cid) {
             var self = this;
             $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
             self.get_character(cid, ["skills", "disciplines", "backgrounds"]).done(function (character) {
                 self.characterPrintView.model = character;
                 self.characterPrintView.render();
@@ -141,6 +147,7 @@ define([
         characternew: function() {
             var self = this;
             $.mobile.loading("show");
+            self.set_back_button("#characters?all");
             self.characterNewView.model = new Vampire;
             self.characterNewView.render();
             $.mobile.changePage("#character-new", {reverse: false, changeHash: false});
@@ -149,6 +156,7 @@ define([
         charactercreate: function(cid) {
             var self = this;
             $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
             self.get_character(cid, []).then(function (character) {
                 return character.fetch_all_creation_elements();
             }).done(function (character) {
@@ -166,6 +174,7 @@ define([
             var self = this;
             i = _.parseInt(i);
             $.mobile.loading("show");
+            self.set_back_button("#charactercreate/" + cid);
             self.get_character(cid, [category]).done(function (c) {
                 var specialCategory;
                 if ("disciplines" == category) {
@@ -188,7 +197,7 @@ define([
             var self = this;
             i = _.parseInt(i);
             $.mobile.loading("show");
-
+            self.set_back_button("#charactercreate/" + cid);
             self.get_character(cid, [category]).then(function (character) {
                 return character.get_trait(category, stid);
             }).then(function (trait, character) {
@@ -209,6 +218,7 @@ define([
             var self = this;
             i = _.parseInt(i);
             $.mobile.loading("show");
+            self.set_back_button("#charactercreate/" + cid);
             self.get_character(cid, [category]).then(function (character) {
                 self.characterCreateView.backToTop = document.body.scrollTop;
                 return character.unpick_from_creation(category, stid, i);
@@ -222,6 +232,7 @@ define([
         charactercreatepicksimpletext: function(category, target, cid) {
             var self = this;
             $.mobile.loading("show");
+            self.set_back_button("#charactercreate/" + cid);
             self.get_character(cid, [category]).done(function (c) {
                 self.simpleTextNewView.register(c, category, target, "#charactercreate/" + c.id);
                 self.characterCreateView.backToTop = document.body.scrollTop;
@@ -231,6 +242,7 @@ define([
 
         character: function(id) {
             $.mobile.loading("show");
+            this.set_back_button("#characters?all");
             var c = this.character;
             this.get_character(id).done(function (m) {
                 c.model = m;
@@ -312,6 +324,7 @@ define([
 
         simpletrait: function(category, cid, bid) {
             var self = this;
+            self.set_back_button("#simpletraits/" + category + "/" + cid + "/all");
             self.get_character(cid, [category]).done(function(c) {
                 character = c;
                 return character.get_trait(category, bid);
@@ -325,6 +338,7 @@ define([
 
         simpletraitspecialize: function(category, cid, bid) {
             var self = this;
+            self.set_back_button("#simpletraits/" + category + "/" + cid + "/all");
             self.get_character(cid, [category]).done(function(c) {
                 character = c;
                 return character.get_trait(category, bid);
@@ -340,6 +354,7 @@ define([
             var self = this;
             if ("all" == type) {
                 $.mobile.loading("show");
+                self.set_back_button("#character?" + cid);
                 self.get_character(cid, [category]).done(function (c) {
                     self.simpleTraitCategoryView.register(c, category);
                     $.mobile.changePage("#simpletraitcategory-all", {reverse: false, changeHash: false});
@@ -350,6 +365,7 @@ define([
 
             if ("new" == type) {
                 $.mobile.loading("show");
+                self.set_back_button("#simpletraits/" + category + "/" + cid + "/all");
                 self.get_character(cid, [category]).done(function (c) {
                     self.simpleTraitNewView.register(c, category);
                     $.mobile.changePage("#simpletrait-new", {reverse: false, changeHash: false});
