@@ -92,6 +92,12 @@ define([
             var self = this;
 
             var descriptionItems;
+            self.requireSpecializations = _.chain(self.collection.models).select(function (model) {
+                if (model.get("requirement") == "requires_specialization") {
+                    return true;
+                }
+                return false;
+            }).pluck("attributes").pluck("name").value();
 
             if ("in clan disciplines" == self.filterRule) {
                 var icd = self.clanRules.get_in_clan_disciplines(self.character);
@@ -105,7 +111,7 @@ define([
                 var traitNames = _(self.character.get(self.category))
                     .pluck("attributes")
                     .pluck("name")
-                    .without("Crafts", "Performance", "Science")
+                    .without(self.requireSpecializations)
                     .value();
                 descriptionItems = _.chain(self.collection.models).select(function (model) {
                     if (!_.contains(traitNames, model.get("name"))) {
@@ -157,8 +163,7 @@ define([
             }
 
             self.character.update_trait($(e.target).attr("name"), cost, self.category, self.freeValue).done(function(trait) {
-                var requireSpecializations = ["Crafts", "Performance", "Science"];
-                if (_.contains(requireSpecializations, trait.get("name"))) {
+                if (_.contains(self.requireSpecializations, trait.get("name"))) {
                     window.location.hash = self.specializationRedirect({self: self, b: trait});
                 } else {
                     window.location.hash = self.redirect({self: self, b: trait});
