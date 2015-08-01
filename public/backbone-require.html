@@ -115,6 +115,15 @@
     </ul>
 
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <% if (creation.get("archetype")) { %>
+        <li data-role="list-divider">Archetype<p><%= character.get("archetype") %></p></li>
+        <li><a href="#charactercreate/simpletext/archetypes/archetype/<%= character.id %>/pick">Repick Archetype</a></li>
+        <% } else { %>
+        <li><a href="#charactercreate/simpletext/archetypes/archetype/<%= character.id %>/pick">Pick archetype</a></li>
+        <% } %>
+    </ul>
+
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <li data-role="list-divider">Attributes<span class="ui-li-count"><%= creation.remaining_picks("attributes") %></span></li>
         <% _.each(_.range(8, 0, -1), function(i) { %>
         <% var n = "attributes_" + i + "_remaining"; %>

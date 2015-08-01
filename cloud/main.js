@@ -8,7 +8,7 @@ Parse.Cloud.define("hello", function(request, response) {
 });
 
 Parse.Cloud.beforeSave("Vampire", function(request, response) {
-    var tracked_texts = ["clan", "state"];
+    var tracked_texts = ["clan", "state", "archetype"];
     var v = request.object;
     var serverData = v._serverData;
     var desired_changes = _.intersection(tracked_texts, v.dirtyKeys());
