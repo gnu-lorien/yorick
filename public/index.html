@@ -19,7 +19,7 @@
 
 <div id="splashscreen" data-role="page" data-title="Twisted Vines Splash Screen">
     <div role="main" class="ui-content">
-        <img src="http://www.featurepics.com/FI/Thumb300/20090207/Twisted-Vines-1069627.jpg"/>
+        <img src="VinesLogo.png"/>
     </div>
 </div>
 <div id="login-or-signup" data-role="page" data-title="Login or Sign Up">
@@ -67,7 +67,22 @@
         <li><a href="#simpletraits/disciplines/<%= character.id %>/all">Disciplines</a></li>
     </ul>
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li><a href="#simpletraits/techniques/<%= character.id %>/all">Techniques</a></li>
+    </ul>
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li><a href="#simpletraits/elder_disciplines/<%= character.id %>/all">Elder Disciplines</a></li>
+    </ul>
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li><a href="#simpletraits/rituals/<%= character.id %>/all">Rituals</a></li>
+    </ul>
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <li><a href="#simpletraits/backgrounds/<%= character.id %>/all">Backgrounds</a></li>
+    </ul>
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li><a href="#simpletraits/haven_specializations/<%= character.id %>/all">Haven Specializations</a></li>
+    </ul>
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li><a href="#simpletraits/lore_specializations/<%= character.id %>/all">Lore Specializations</a></li>
     </ul>
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <li><a href="#character/<%= character.id %>/print">Print</a></li>
@@ -102,6 +117,15 @@
         <li><a href="#charactercreate/simpletext/clans/clan/<%= character.id %>/pick">Repick clan</a></li>
         <% } else { %>
         <li><a href="#charactercreate/simpletext/clans/clan/<%= character.id %>/pick">Pick clan</a></li>
+        <% } %>
+    </ul>
+
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <% if (creation.get("archetype")) { %>
+        <li data-role="list-divider">Archetype<p><%= character.get("archetype") %></p></li>
+        <li><a href="#charactercreate/simpletext/archetypes/archetype/<%= character.id %>/pick">Repick Archetype</a></li>
+        <% } else { %>
+        <li><a href="#charactercreate/simpletext/archetypes/archetype/<%= character.id %>/pick">Pick archetype</a></li>
         <% } %>
     </ul>
 
@@ -512,6 +536,22 @@
             <button>Sign Up</button>
         </form>
     </div>
+</script>
+
+<div id="simpletrait-specialization" data-role="page" data-title="Simple Trait Specialization">
+    <div role="main" class="ui-content">
+    </div>
+</div>
+
+<script id="simpleTraitSpecialization" type="text/template">
+    <form>
+             <label for="specialization">Specialization for <%= name %>:</label>
+             <input type="text" name="specialization" id="specialization" value="<%= specialization %>">
+    </form>
+    <p>
+        <button class="cancel ui-btn">Cancel</button>
+        <button class="save ui-btn">Save Changes</button>
+    </p>
 </script>
 
 </body>
