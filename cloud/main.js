@@ -55,7 +55,9 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
         "old_value": serverData.value,
         "value": modified_trait.get("value"),
         "type": serverData.value === undefined ? "define" : "update",
-        "free_value": modified_trait.get("free_value")
+        "free_value": modified_trait.get("free_value"),
+        "old_cost": serverData.cost,
+        "cost": modified_trait.get("cost")
     });
     vc.save().then(function () {
         response.success();
@@ -77,7 +79,8 @@ Parse.Cloud.afterDelete("SimpleTrait", function(request) {
         "old_value": serverData.value,
         "value": trait.get("value"),
         "free_value": trait.get("free_value"),
-        "type": "remove"
+        "type": "remove",
+        "old_cost": serverData.cost
     });
     vc.save().then(function () {
     }, function (error) {

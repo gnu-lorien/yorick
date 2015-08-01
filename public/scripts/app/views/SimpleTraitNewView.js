@@ -149,6 +149,8 @@ define([
 
             self.character.update_trait($(e.target).attr("name"), cost, self.category, self.freeValue).done(function(b) {
                 window.location.hash = self.redirect({self: self, b: b});
+            }).fail(function (error) {
+                console.log(error.message);
             })
 
             return false;

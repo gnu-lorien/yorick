@@ -89,6 +89,8 @@ define([
                         "free_value": freeValue
                     });
                 }
+                var cost = self.calculate_trait_cost(modified_trait);
+                modified_trait.set("cost", cost);
                 self.increment("change_count");
                 self.addUnique(category, modified_trait);
 

@@ -73,8 +73,8 @@ define([
             self.character.update_trait(self.simpletrait).then(function (a, b, c) {
                 console.log("asaved", self.category, self.simpletrait);
                 window.location.hash = "#simpletraits/" + self.category + "/" + self.character.id + "/all";
-            }, function(a, b, c) {
-                console.log('error', a);
+            }, function(error) {
+                console.log(error.message);
             });
             return false;
         },
