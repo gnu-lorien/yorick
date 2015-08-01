@@ -77,7 +77,8 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
         "type": serverData.value === undefined ? "define" : "update",
         "free_value": modified_trait.get("free_value"),
         "old_cost": serverData.cost,
-        "cost": modified_trait.get("cost")
+        "cost": modified_trait.get("cost"),
+        "old_text": serverData.name,
     });
     vc.save().then(function () {
         response.success();
