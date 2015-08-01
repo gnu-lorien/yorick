@@ -50,6 +50,15 @@ define([
             })
         },
 
+        get_me_acl: function () {
+            var acl = new Parse.ACL;
+            acl.setPublicReadAccess(false);
+            acl.setPublicWriteAccess(false);
+            acl.setWriteAccess(Parse.User.current(), true);
+            acl.setReadAccess(Parse.User.current(), true);
+            return acl;
+        },
+
         update_trait: function(nameOrTrait, value, category, freeValue, wait) {
             var self = this;
             var modified_trait, name, serverData, toSave = [];
@@ -72,6 +81,7 @@ define([
                             modified_trait = st;
                         }
                     });
+                    modified_trait.setACL(self.get_me_acl());
                     modified_trait.set({"name": name,
                         "value": freeValue || value,
                         "category": category,
@@ -81,29 +91,6 @@ define([
                 }
                 self.increment("change_count");
                 self.addUnique(category, modified_trait);
-
-                var v = request.object;
-                var serverData = v._serverData;
-                _.each(["state", "clan"], function (attribute) {
-                    if (!v.dirty(attribute)) {
-                        return;
-                    }
-                    var vc = new Parse.Object("VampireChange");
-                    vc.set({
-                        "name": attribute,
-                        "category": "core",
-                        "owner": v.get("owner"),
-                        "old_text": serverData[attribute],
-                        "new_text": v.get("attribute"),
-                        "type": serverData[attribute] === undefined ? "core_define" : "core_update",
-                    });
-                    vc.save().then(function () {
-                        response.success();
-                    }, function(error) {
-                        console.log("Failed to save change for", request.object.id, "because of", pretty(error));
-                        response.error();
-                    });
-                });
 
                 var everythingSavedPromise = Parse.Promise.when(self.save(), self._get_creation_update(category, modified_trait, freeValue));
                 var returnPromise;
@@ -122,31 +109,6 @@ define([
         update_text: function(target, value) {
             var self = this;
             self.set(target, value);
-            /*
-            var v = self;
-            var serverData = v._serverData;
-            _.each(["state", "clan"], function (attribute) {
-                if (!v.dirty(attribute)) {
-                    return;
-                }
-                var vc = new Parse.Object("VampireChange");
-                vc.set({
-                    "name": attribute,
-                    "category": "core",
-                    "owner": v,
-                    "old_text": serverData[attribute],
-                    "new_text": v.get(attribute),
-                    "type": serverData[attribute] === undefined ? "core_define" : "core_update",
-                });
-                vc.save().then(function () {
-                    response.success();
-                }, function(error) {
-                    console.log(error.message);
-                    console.log("Failed to save change for", request.object.id, "because of", pretty(error));
-                    response.error();
-                });
-            });
-            */
             return self.save().then(function() {
                 return Parse.Object.fetchAllIfNeeded([self.get("creation")]).then(function (creations) {
                     var creation = creations[0];
