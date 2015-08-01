@@ -16,6 +16,7 @@ Parse.Cloud.beforeSave("Vampire", function(request, response) {
         response.success();
         return;
     }
+    Parse.Cloud.useMasterKey();
     var new_values = {};
     _.each(v.dirtyKeys(), function(k) {
         new_values[k] = v.get(k);
@@ -43,6 +44,7 @@ Parse.Cloud.beforeSave("Vampire", function(request, response) {
 });
 
 Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
+    Parse.Cloud.useMasterKey();
     var vc = new Parse.Object("VampireChange");
     var modified_trait = request.object;
     var serverData = modified_trait._serverData;
@@ -64,6 +66,7 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
 });
 
 Parse.Cloud.afterDelete("SimpleTrait", function(request) {
+    Parse.Cloud.useMasterKey();
     var vc = new Parse.Object("VampireChange");
     var trait = request.object;
     var serverData = trait._serverData;
