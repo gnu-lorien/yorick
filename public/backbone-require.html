@@ -85,6 +85,9 @@
         <li><a href="#simpletraits/lore_specializations/<%= character.id %>/all">Lore Specializations</a></li>
     </ul>
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li><a href="#simpletraits/linguistics_specializations/<%= character.id %>/all">Linguistics Specializations</a></li>
+    </ul>
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <li><a href="#character/<%= character.id %>/print">Print</a></li>
     </ul>
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
@@ -366,10 +369,6 @@
 </script>
 
 <div id="simpletrait-new" data-role="page" data-title="New Simple Trait">
-    <div data-role="header">
-        <h1>New Simple Trait</h1>
-    </div>
-
     <div role="main" class="ui-content">
     </div>
 </div>
@@ -531,7 +530,7 @@
         <tr><td><%= d.get("name") %>: <%= d.get("value") %></td></tr>
         <% }); %>
     </table>
-    <% _.each(["techniques", "elder_disciplines", "rituals", "haven_specializations", "lore_specializations"], function (category) { %>
+    <% _.each(["techniques", "elder_disciplines", "rituals", "haven_specializations", "lore_specializations", "linguistics_specializations"], function (category) { %>
     <h1><%= category %></h1>
     <table>
         <% _.each(character.get(category), function(d) { %>
