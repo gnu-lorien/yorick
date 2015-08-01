@@ -97,7 +97,11 @@ define([
                     return false;
                 }).value();
             } else {
-                var traitNames = _(self.character.get(self.category)).pluck("attributes").pluck("name").value();
+                var traitNames = _(self.character.get(self.category))
+                    .pluck("attributes")
+                    .pluck("name")
+                    .without("Crafts", "Performance", "Science")
+                    .value();
                 descriptionItems = _.chain(self.collection.models).select(function (model) {
                     if (!_.contains(traitNames, model.get("name"))) {
                         return true;
