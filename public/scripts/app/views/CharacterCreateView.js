@@ -17,7 +17,7 @@ define([
 
         scroll_back_after_page_change: function() {
             var self = this;
-            $(document).one("pageshow", function() {
+            $(document).one("pagechange", function() {
                 var top = _.parseInt(self.backToTop);
                 $.mobile.silentScroll(top);
             });

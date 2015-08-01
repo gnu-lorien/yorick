@@ -24,8 +24,9 @@ define([
     "../views/CharacterPrintView",
     "../views/CharacterCostsView",
     "../views/SimpleTextNewView",
-    "../views/LoginOrSignupView"
-], function ($, Parse, pretty, Cookie, CategoryModel, CategoriesCollection, CategoryView, CharactersListView, Vampire, Vampires, CharacterView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView, VampireCreation, CharacterCreateView, CharacterNewView, CharacterPrintView, CharacterCostsView, SimpleTextNewView, LoginOrSignupView) {
+    "../views/LoginOrSignupView",
+    "../views/SimpleTraitSpecializationView"
+], function ($, Parse, pretty, Cookie, CategoryModel, CategoriesCollection, CategoryView, CharactersListView, Vampire, Vampires, CharacterView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView, VampireCreation, CharacterCreateView, CharacterNewView, CharacterPrintView, CharacterCostsView, SimpleTextNewView, LoginOrSignupView, SimpleTraitSpecializationView) {
 
     // Extends Backbone.Router
     var CategoryRouter = Parse.Router.extend( {
@@ -54,6 +55,7 @@ define([
             this.simpleTraitNewView = new SimpleTraitNewView({el: "#simpletrait-new"});
             this.simpleTraitChangeView = new SimpleTraitChangeView({el: "#simpletrait-change"});
             this.simpleTextNewView = new SimpleTextNewView({el: "#simpletext-new"});
+            this.simpleTraitSpecializationView = new SimpleTraitSpecializationView({el: "#simpletrait-specialization"});
 
             this.characterCreateView = new CharacterCreateView({el: "#character-create"});
             this.characterNewView = new CharacterNewView({el: "#character-new"});
@@ -92,11 +94,13 @@ define([
             "simpletraits/:category/:cid/:type": "simpletraits",
 
             "simpletrait/:category/:cid/:bid": "simpletrait",
+            "simpletrait/specialize/:category/:cid/:bid": "simpletraitspecialize",
 
             "charactercreate/:cid": "charactercreate",
 
             "charactercreate/simpletraits/:category/:cid/pick/:i": "charactercreatepicksimpletrait",
             "charactercreate/simpletraits/:category/:cid/unpick/:stid/:i": "charactercreateunpicksimpletrait",
+            "charactercreate/simpletraits/:category/:cid/specialize/:stid/:i": "charactercreatespecializesimpletrait",
             "charactercreate/simpletext/:category/:target/:cid/pick": "charactercreatepicksimpletext",
 
             "characternew": "characternew",
@@ -172,9 +176,32 @@ define([
                     category,
                     i,
                     "#charactercreate/<%= self.character.id %>",
-                    specialCategory);
+                    specialCategory,
+                    "#charactercreate/simpletraits/<%= self.category %>/<%= self.character.id %>/specialize/<%= b.linkId() %>/" + i);
                 self.characterCreateView.backToTop = document.body.scrollTop;
                 $.mobile.changePage("#simpletrait-new", {reverse: false, changeHash: false});
+            });
+        },
+
+
+        charactercreatespecializesimpletrait: function(category, cid, stid, i) {
+            var self = this;
+            i = _.parseInt(i);
+            $.mobile.loading("show");
+
+            self.get_character(cid, [category]).then(function (character) {
+                return character.get_trait(category, stid);
+            }).then(function (trait, character) {
+                self.simpleTraitSpecializationView.register(
+                    character,
+                    trait,
+                    category,
+                    window.location.hash,
+                    "#charactercreate/" + character.id
+                );
+                $.mobile.changePage("#simpletrait-specialization", {reverse: false, changeHash: false});
+            }).fail(function(error) {
+                console.log(error.message);
             });
         },
 
@@ -291,6 +318,19 @@ define([
             }).then(function (trait, character) {
                 self.simpleTraitChangeView.register(character, trait, category);
                 $.mobile.changePage("#simpletrait-change", {reverse: false, changeHash: false});
+            }).fail(function(error) {
+                console.log(error.message);
+            });
+        },
+
+        simpletraitspecialize: function(category, cid, bid) {
+            var self = this;
+            self.get_character(cid, [category]).done(function(c) {
+                character = c;
+                return character.get_trait(category, bid);
+            }).then(function (trait, character) {
+                self.simpleTraitSpecializationView.register(character, trait, category);
+                $.mobile.changePage("#simpletrait-specialization", {reverse: false, changeHash: false});
             }).fail(function(error) {
                 console.log(error.message);
             });

@@ -24,14 +24,19 @@ define([
             this.clanRules.fetch();
         },
 
-        register: function(character, category, freeValue, redirect, filterRule) {
+        register: function(character, category, freeValue, redirect, filterRule, specializationRedirect) {
             var self = this;
             var changed = false;
             var redirect = redirect || "#simpletrait/<%= self.category %>/<%= self.character.id %>/<%= b.linkId() %>";
+            var specializationRedirect = specializationRedirect || "#simpletrait/specialize/<%= self.category %>/<%= self.character.id %>/<%= b.linkId() %>";
 
             if (redirect != _ && redirect != self.redirect) {
                 self.redirect = _.template(redirect);
                 changed = true;
+            }
+
+            if (specializationRedirect != _ && specializationRedirect != self.specializationRedirect) {
+                self.specializationRedirect = _.template(specializationRedirect);
             }
 
             if (self.filterRule !== filterRule) {
@@ -151,8 +156,13 @@ define([
                 cost = valueField;
             }
 
-            self.character.update_trait($(e.target).attr("name"), cost, self.category, self.freeValue).done(function(b) {
-                window.location.hash = self.redirect({self: self, b: b});
+            self.character.update_trait($(e.target).attr("name"), cost, self.category, self.freeValue).done(function(trait) {
+                var requireSpecializations = ["Crafts", "Performance", "Science"];
+                if (_.contains(requireSpecializations, trait.get("name"))) {
+                    window.location.hash = self.specializationRedirect({self: self, b: trait});
+                } else {
+                    window.location.hash = self.redirect({self: self, b: trait});
+                }
             }).fail(function (error) {
                 console.log(error.message);
             })
