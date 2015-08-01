@@ -13,10 +13,15 @@
 
 <div data-role="header" data-position="fixed" data-theme="a">
     <a href="javascript:window.history.back()" data-icon="arrow-l" data-iconpos="left" data-rel="back" data-transition="slide" data-direction="reverse">Back</a>
-    <a href="javascript:Parse.User.logOut(); window.location.hash = 'start';" data-icon="arrow-l" data-iconpos="right" data-transition="slide" data-direction="reverse">Log Out</a>
+    <a href="javascript:Parse.User.logOut(); window.location.hash = 'start';" data-icon="minus" data-iconpos="right" data-transition="slide" data-direction="reverse">Log Out</a>
     <h1>Default Title</h1>
 </div><!-- /header -->
 
+<div id="splashscreen" data-role="page" data-title="Twisted Vines Splash Screen">
+    <div role="main" class="ui-content">
+        <img src="http://www.featurepics.com/FI/Thumb300/20090207/Twisted-Vines-1069627.jpg"/>
+    </div>
+</div>
 <div id="login-or-signup" data-role="page" data-title="Login or Sign Up">
     <div role="main" class="ui-content">
         <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
