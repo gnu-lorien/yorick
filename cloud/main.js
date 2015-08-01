@@ -1,10 +1,43 @@
 var pretty = require('cloud/prettyprint.js').pretty;
+var _ = require('underscore');
 
 // Use Parse.Cloud.define to define as many cloud functions as you want.
 // For example:
 Parse.Cloud.define("hello", function(request, response) {
   response.success("Hello world!");
 });
+
+/*
+Parse.Cloud.beforeSave("Vampire", function(request, response) {
+    var v = request.object;
+    console.log("force", pretty(request));
+    console.log(request);
+
+    console.log("wtf mate");
+    response.success();
+    var serverData = v._serverData;
+    _.each(["state", "clan"], function (attribute) {
+        if (!v.dirty(attribute)) {
+            return;
+        }
+        var vc = new Parse.Object("VampireChange");
+        vc.set({
+            "name": attribute,
+            "category": "core",
+            "owner": v,
+             "old_text": serverData[attribute],
+             "new_text": v.get(attribute),
+             "type": serverData[attribute] === undefined ? "core_define" : "core_update",
+        });
+        vc.save().then(function () {
+            response.success();
+        }, function (error) {
+            console.log("Failed to save change for", request.object.id, "because of", pretty(error));
+            response.error();
+        });
+    });
+});
+*/
 
 Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
     var vc = new Parse.Object("VampireChange");

@@ -240,7 +240,6 @@ define([
                 var e = new Parse.Error(Parse.Error.USERNAME_MISSING, "Not logged in");
                 return Parse.Promise.error(e);
             }
-            console.log("Logged in as", Parse.User.current().get("username"));
             return Parse.Promise.as([]);
         },
 
