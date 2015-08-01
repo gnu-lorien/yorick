@@ -43,6 +43,22 @@ Parse.Cloud.beforeSave("Vampire", function(request, response) {
     })
 });
 
+Parse.Cloud.afterSave("VampireChange", function(request) {
+    var vc = request.object;
+    if ("experience_points" == vc.get("experience_points")) {
+        return;
+    }
+    var cost_mod = _.parseInt(vc.get("cost")) - _.parseInt(vc.get("old_cost"));
+    var vampire;
+    vc.get("owner").fetch().then(function (v) {
+        vampire = v;
+        return Parse.Object.fetchAll(vampire.get("experience_points"));
+    }).then(function (traits) {
+        // Get spent XP
+        // Add the cost_mod to it
+    });
+});
+
 Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
     Parse.Cloud.useMasterKey();
     var vc = new Parse.Object("VampireChange");
