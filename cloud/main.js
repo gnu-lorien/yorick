@@ -7,37 +7,40 @@ Parse.Cloud.define("hello", function(request, response) {
   response.success("Hello world!");
 });
 
-/*
 Parse.Cloud.beforeSave("Vampire", function(request, response) {
+    var tracked_texts = ["clan", "state"];
     var v = request.object;
-    console.log("force", pretty(request));
-    console.log(request);
-
-    console.log("wtf mate");
-    response.success();
     var serverData = v._serverData;
-    _.each(["state", "clan"], function (attribute) {
-        if (!v.dirty(attribute)) {
-            return;
-        }
-        var vc = new Parse.Object("VampireChange");
-        vc.set({
-            "name": attribute,
-            "category": "core",
-            "owner": v,
-             "old_text": serverData[attribute],
-             "new_text": v.get(attribute),
-             "type": serverData[attribute] === undefined ? "core_define" : "core_update",
-        });
-        vc.save().then(function () {
-            response.success();
-        }, function (error) {
-            console.log("Failed to save change for", request.object.id, "because of", pretty(error));
-            response.error();
-        });
-    });
+    var desired_changes = _.union(tracked_texts, v.dirtyKeys());
+    if (0 === desired_changes.length) {
+        response.success();
+        return;
+    }
+    var new_values = {};
+    _.each(v.dirtyKeys(), function(k) {
+        new_values[k] = v.get(k);
+    })
+    v.fetch().then(function(vampire) {
+        return Parse.Object.saveAll(_.map(_.pairs(new_values), function(a) {
+            var attribute = a[0], val = a[1];
+            var vc = new Parse.Object("VampireChange");
+            vc.set({
+                "name": attribute,
+                "category": "core",
+                "old_text": serverData[attribute],
+                "new_text": val,
+                "owner": vampire,
+                "type": serverData[attribute] === undefined ? "core_define" : "core_update",
+            });
+            return vc;
+        }));
+    }).then(function () {
+        return response.success();
+    }).fail(function (error) {
+        console.log(error.message);
+        response.error();
+    })
 });
-*/
 
 Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
     var vc = new Parse.Object("VampireChange");
