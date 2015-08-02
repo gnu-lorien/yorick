@@ -576,5 +576,37 @@
     </p>
 </script>
 
+<div id="character-log" data-role="page" data-title="Character Log">
+    <div data-role="header">
+        <h1>Character Log</h1>
+    </div>
+
+    <div role="main" class="ui-content">
+    </div>
+</div>
+
+<script id="characterLogView" type="text/template">
+    <h1><%= character.get("name") %></h1>
+    <% var headers = ["category", "name", "type", "old_value", "value", "free_value", "old_cost", "cost", "old_text", "new_text"]; %>
+    <table data-role="table" id="table-column-toggle" data-mode="columntoggle" class="ui-responsive table-stroke">
+        <thead>
+        <tr>
+            <% _.each(headers, function (h, i) { %>
+            <th data-priority="<%= i + 1 %>"><%= h %></th>
+            <% }); %>
+        </tr>
+        </thead>
+        <tbody>
+            <% _.each(logs, function (log, i) { %>
+                <tr>
+                    <% _.each(headers, function (h) { %>
+                    <td><%= log.get(h) %></td>
+                    <% }); %>
+                </tr>
+            <% }); %>
+        </tbody>
+    </table>
+</script>
+
 </body>
 </html>

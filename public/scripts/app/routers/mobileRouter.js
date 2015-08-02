@@ -25,8 +25,9 @@ define([
     "../views/CharacterCostsView",
     "../views/SimpleTextNewView",
     "../views/LoginOrSignupView",
-    "../views/SimpleTraitSpecializationView"
-], function ($, Parse, pretty, Cookie, CategoryModel, CategoriesCollection, CategoryView, CharactersListView, Vampire, Vampires, CharacterView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView, VampireCreation, CharacterCreateView, CharacterNewView, CharacterPrintView, CharacterCostsView, SimpleTextNewView, LoginOrSignupView, SimpleTraitSpecializationView) {
+    "../views/SimpleTraitSpecializationView",
+    "../views/CharacterLogView"
+], function ($, Parse, pretty, Cookie, CategoryModel, CategoriesCollection, CategoryView, CharactersListView, Vampire, Vampires, CharacterView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView, VampireCreation, CharacterCreateView, CharacterNewView, CharacterPrintView, CharacterCostsView, SimpleTextNewView, LoginOrSignupView, SimpleTraitSpecializationView, CharacterLogView) {
 
     // Extends Backbone.Router
     var CategoryRouter = Parse.Router.extend( {
@@ -62,6 +63,7 @@ define([
 
             this.characterPrintView = new CharacterPrintView({el: "#printable-sheet"});
             this.characterCostsView = new CharacterCostsView({el: "#character-costs"});
+            this.characterLogView = new CharacterLogView({el: "#character-log"});
 
             this.loginView = new LoginOrSignupView();
 
@@ -106,7 +108,8 @@ define([
             "characternew": "characternew",
 
             "character/:cid/print": "characterprint",
-            "character/:cid/costs": "charactercosts"
+            "character/:cid/costs": "charactercosts",
+            "character/:cid/log": "characterlog",
 
         },
 
@@ -130,6 +133,17 @@ define([
                 self.characterCostsView.model = character;
                 self.characterCostsView.render();
                 $.mobile.changePage("#character-costs", {reverse: false, changeHash: false});
+            });
+        },
+
+
+        characterlog: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid, "all").done(function (character) {
+                self.characterLogView.register(character);
+                $.mobile.changePage("#character-log", {reverse: false, changeHash: false});
             });
         },
 
