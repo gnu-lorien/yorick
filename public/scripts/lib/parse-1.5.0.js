@@ -5608,7 +5608,7 @@
         return Parse.Object._deepSaveAsync(this.attributes, {
           useMasterKey: options.useMasterKey,
           sessionToken: options.sessionToken
-        }).then(function() {
+        }, unsavedChildren, unsavedFiles).then(function() {
           return model.save(null, options);
         }, function(error) {
           return Parse.Promise.error(error)._thenRunCallbacks(options, model);
@@ -6213,10 +6213,12 @@
    * @param {Object} object The root object.
    * @param {Object} options: The only valid option is useMasterKey.
    */
-  Parse.Object._deepSaveAsync = function(object, options) {
-    var unsavedChildren = [];
-    var unsavedFiles = [];
-    Parse.Object._findUnsavedChildren(object, unsavedChildren, unsavedFiles);
+  Parse.Object._deepSaveAsync = function(object, options, unsavedChildren, unsavedFiles) {
+    var unsavedChildren = unsavedChildren || [];
+    var unsavedFiles = unsavedFiles || [];
+    if (unsavedChildren.length + unsavedFiles.length <= 0) {
+      Parse.Object._findUnsavedChildren(object, unsavedChildren, unsavedFiles);
+    }
     console.log("Deep save async found " + unsavedChildren.length + " unsaved children");
 
     var promise = Parse.Promise.as();
