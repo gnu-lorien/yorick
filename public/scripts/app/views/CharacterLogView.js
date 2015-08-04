@@ -28,15 +28,20 @@ define([
                     self.stopListening(self.character);
                 self.character = character;
                 self.listenTo(self.character, "change:change_count", self.update_collection_query_and_fetch);
-                self.update_collection_query_and_fetch({reset: true});
+                self.update_collection_query_and_fetch();
             }
 
             return self;
         },
 
-        update_collection_query_and_fetch: function (options) {
+        update_collection_query_and_fetch: function (character) {
             var self = this;
-            options = options || {add: true};
+            var options = {reset: true};
+            if (character) {
+                options = {add: true};
+
+                // change this to be something that only queries the latest ones
+            }
             var q = new Parse.Query(VampireChange);
             q.equalTo("owner", self.character).addDescending("createdAt");
             self.collection.query = q;
