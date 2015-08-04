@@ -30,6 +30,16 @@ define([
             self.set("name", self.get_base_name() + ": " + specialization);
 
             return self;
+        },
+
+        save: function() {
+            return Parse.Object.prototype.save.apply(this, arguments);
+        },
+
+        dirty: function() {
+            var ret = Parse.Object.prototype.dirty.apply(this, arguments);
+            //console.log("SimpleTrait " + this.get("name") + "is dirty " + ret);
+            return ret;
         }
     } );
 

@@ -25,7 +25,7 @@ define([
             }
         },
 
-        _get_creation_update: function(category, modified_trait, freeValue) {
+        _update_creation: function(category, modified_trait, freeValue) {
             var self = this;
             if (!_.contains(["merits", "flaws"], category)) {
                 if (!freeValue) {
@@ -46,7 +46,7 @@ define([
                     creation.increment(stepName, -1);
                 }
                 creation.addUnique(listName, modified_trait);
-                return creation.save();
+                return Parse.Promise.as(self);
             })
         },
 
@@ -94,16 +94,23 @@ define([
                 self.increment("change_count");
                 self.addUnique(category, modified_trait);
 
-                var everythingSavedPromise = Parse.Promise.when(self.save(), self._get_creation_update(category, modified_trait, freeValue));
+                var minimumPromise = self._update_creation(category, modified_trait, freeValue).then(function() {
+                    return self.save();
+                }).then(function() {
+                    console.log("Finished saving vampire");
+                    return Parse.Promise.as(self);
+                }).fail(function (error) {
+                    console.log("Failed to save vampire because of " + error.message);
+                })
                 var returnPromise;
                 if (wait) {
-                    returnPromise = everythingSavedPromise;
+                    returnPromise = minimumPromise;
                 } else {
                     returnPromise = Parse.Promise.as(self);
                 }
                 return returnPromise.then(function () {
                     self.trigger("change:" + category);
-                    return Parse.Promise.as(modified_trait);
+                    return Parse.Promise.as(modified_trait, self);
                 });
             });
         },
