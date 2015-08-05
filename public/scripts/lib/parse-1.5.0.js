@@ -5066,7 +5066,7 @@
         }
       });
       this._saving = this._saving - 1;
-      console.log("Cancelled save" + this.className + " " + this._saving);
+      //console.log("Cancelled save" + this.className + " " + this._saving);
     },
 
     /**
@@ -5107,7 +5107,7 @@
       });
       this._rebuildAllEstimatedData();
       this._saving = this._saving - 1;
-      console.log("Finished save" + this.className + " " + this._saving);
+      //console.log("Finished save" + this.className + " " + this._saving);
     },
 
     /**
@@ -5603,7 +5603,7 @@
       Parse.Object._findUnsavedChildren(model.attributes,
                                         unsavedChildren,
                                         unsavedFiles);
-      console.log("Save found " + unsavedChildren.length + " unsaved children");
+      //console.log("Save found " + unsavedChildren.length + " unsaved children");
       if (unsavedChildren.length + unsavedFiles.length > 0) {
         return Parse.Object._deepSaveAsync(this.attributes, {
           useMasterKey: options.useMasterKey,
@@ -5616,13 +5616,13 @@
       }
 
       this._startSave();
-      console.log(this.className + this._saving);
+      //console.log(this.className + this._saving);
       this._saving = (this._saving || 0) + 1;
 
       this._allPreviousSaves = this._allPreviousSaves || Parse.Promise.as();
       this._allPreviousSaves = this._allPreviousSaves._continueWith(function() {
         var method = model.id ? 'PUT' : 'POST';
-        console.log("A new save attempt internally");
+        //console.log("A new save attempt internally");
 
         var json = model._getSaveJSON();
 
@@ -6219,7 +6219,7 @@
     if (unsavedChildren.length + unsavedFiles.length <= 0) {
       Parse.Object._findUnsavedChildren(object, unsavedChildren, unsavedFiles);
     }
-    console.log("Deep save async found " + unsavedChildren.length + " unsaved children");
+    //console.log("Deep save async found " + unsavedChildren.length + " unsaved children");
 
     var promise = Parse.Promise.as();
     _.each(unsavedFiles, function(file) {
@@ -6231,10 +6231,12 @@
     var objects = _.uniq(unsavedChildren);
     var remaining = _.uniq(objects);
 
-    console.log("Deep save async found " + remaining.length + " unique unsaved children");
+    //console.log("Deep save async found " + remaining.length + " unique unsaved children");
+    /*
     _.each(remaining, function(uc) {
       console.log("Name of unsaved:" + uc.get("name") + _.result(uc, "className", "No className"));
     })
+    */
 
     return promise.then(function() {
       return Parse.Promise._continueWhile(function() {
