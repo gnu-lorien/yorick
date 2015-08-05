@@ -21,6 +21,7 @@ define([
             self.listenTo(self.collection, "reset", self.render);
 
             self.sheetTemplate = _.template($( "script#characterPrintView" ).html());
+            self.selectedTemplate = _.template($("script#characterHistorySelectedView").html());
         },
 
         register: function(character, changeId) {
@@ -49,35 +50,15 @@ define([
 
         events: {
             "click .previous": "previous",
-            "click .next": "next"
-        },
-
-        previous: function() {
-            var self = this;
-            var incr = this.start - this.changeBy;
-            this.start = _.max([0, incr]);
-            window.location.hash = "#character/" + self.character.id + "/log/" + this.start + "/10";
-            $.mobile.loading("show");
-            this.update_collection_query_and_fetch().then(function() {
-                $.mobile.loading("hide");
-            })
-        },
-
-        next: function() {
-            var self = this;
-            this.start += self.changeBy;
-            window.location.hash = "#character/" + self.character.id + "/log/" + this.start + "/10";
-            $.mobile.loading("show");
-            this.update_collection_query_and_fetch().then(function() {
-                $.mobile.loading("hide");
-            })
+            "click .next": "next",
+            "change": "update_selected",
         },
 
         update_collection_query_and_fetch: function () {
             var self = this;
             var options = {reset: true};
             var q = new Parse.Query(VampireChange);
-            q.equalTo("owner", self.character).addDescending("createdAt");
+            q.equalTo("owner", self.character).addAscending("createdAt");
             self.collection.query = q;
             return self.collection.fetch(options);
         },
@@ -91,6 +72,28 @@ define([
                 return moment(attr).format('lll');
             }
             return attr;
+        },
+
+        update_selected: function (e) {
+            var self = this;
+            var selectedIndex = _.parseInt(this.$(e.target).val());
+            var selectedId = this.$("#history-changes-" + selectedIndex).val();
+            self.idForPickedIndex = selectedIndex;
+            self._render_viewing(true);
+
+        },
+
+        _render_viewing: function(enhance) {
+            var self = this;
+            this.$el.find("#history-viewing").html(this.selectedTemplate({
+                "character": this.character,
+                "logs": this.collection.models,
+                "format_entry": this.format_entry,
+                idForPickedIndex: self.idForPickedIndex || this.collection.models.length - 1,
+            }));
+            if (enhance) {
+                this.$el.find("#history-viewing").enhanceWithin();
+            }
         },
 
         // Renders all of the Category models on the UI
@@ -114,11 +117,13 @@ define([
                     "character": this.character,
                     "logs": this.collection.models,
                     "format_entry": this.format_entry,
-                    idForPickedIndex: this.collection.models.length,
+                    idForPickedIndex: self.idForPickedIndex || this.collection.models.length - 1,
                  });
 
             // Renders the view's template inside of the current listview element
             this.$el.find("#history-main").html(this.template);
+
+            this._render_viewing();
 
             this.$el.find("#history-sheet").html(this.sheetTemplate({
                 "character": this.character,

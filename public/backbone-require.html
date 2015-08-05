@@ -594,6 +594,7 @@
 <div id="character-history" data-role="page" data-title="Character History">
     <div role="main" class="ui-content">
         <div id="history-main"></div>
+        <div id="history-viewing"></div>
         <div id="history-sheet"></div>
     </div>
 </div>
@@ -602,9 +603,34 @@
     <h1><%= character.get("name") %></h1>
     <p>
         <label for="slider">Point it time:</label>
-        <input type="range" name="simpleTraitValue" id="slider" value="<%= idForPickedIndex %>" min="0" max="<%= logs.length %>">
+        <input type="range" name="historyChangePicker" id="slider" value="<%= idForPickedIndex %>" min="0" max="<%= logs.length - 1 %>">
+        <% _.each(logs, function (log, i) { %>
+        <input type="hidden" value="<%= log.id %>" id="history-changes-<%= i %>" />
+        <% }); %>
     </p>
-    <%= _.chain(logs).pluck("id") %>
+</script>
+
+<script id="characterHistorySelectedView" type="text/template">
+    <span>Showing with changes from</span>
+    <% var headers = ["createdAt", "category", "name", "type", "old_value", "value", "free_value", "old_cost", "cost", "old_text", "new_text"]; %>
+    <table data-role="table" id="table-column-toggle" class="ui-responsive table-stroke">
+        <thead>
+        <tr>
+            <% _.each(headers, function (h, i) { %>
+            <th data-priority="<%= i + 1 %>"><%= h %></th>
+            <% }); %>
+        </tr>
+        </thead>
+        <tbody>
+        <% _.each([logs[idForPickedIndex]], function (log, i) { %>
+        <tr>
+            <% _.each(headers, function (h) { %>
+            <td><%= format_entry(log, h) %></td>
+            <% }); %>
+        </tr>
+        <% }); %>
+        </tbody>
+    </table>
 </script>
 
 </body>
