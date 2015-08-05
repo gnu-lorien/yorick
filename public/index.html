@@ -85,13 +85,19 @@
         <li><a href="#simpletraits/lore_specializations/<%= character.id %>/all">Lore Specializations</a></li>
     </ul>
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li><a href="#simpletraits/linguistics_specializations/<%= character.id %>/all">Linguistics Specializations</a></li>
+    </ul>
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li><a href="#character/<%= character.id %>/history/0">History</a></li>
+    </ul>
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <li><a href="#character/<%= character.id %>/print">Print</a></li>
     </ul>
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <li><a href="#character/<%= character.id %>/costs">Costs</a></li>
     </ul>
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#character/<%= character.id %>/log">Log</a></li>
+        <li><a href="#character/<%= character.id %>/log/0/10">Log</a></li>
     </ul>
 </script>
 
@@ -366,10 +372,6 @@
 </script>
 
 <div id="simpletrait-new" data-role="page" data-title="New Simple Trait">
-    <div data-role="header">
-        <h1>New Simple Trait</h1>
-    </div>
-
     <div role="main" class="ui-content">
     </div>
 </div>
@@ -451,29 +453,6 @@
     </ul>
 </script>
 
-<div id="character-history" data-role="page" data-title="Character History">
-    <div data-role="header">
-        <h1>Character History</h1>
-    </div>
-
-    <div role="main" class="ui-content">
-    </div>
-</div>
-
-<script id="characterHistoryView" type="text/template">
-    <h1><%= character.get("name") %></h1>
-
-    <% if (!character.generation()) { %>
-    <p>Warning: Values are just a guess without a generation set</p>
-    <% } %>
-
-    <ul>
-        <% _.each(_.values(costs), function(cost) { %>
-        <li><%= cost.trait.get("name") %>: <%= cost.cost %></li>
-        <% }); %>
-    </ul>
-</script>
-
 <div id="printable-sheet" data-role="page" data-title="Printable Sheet">
     <div data-role="header">
         <h1>Printable Sheet</h1>
@@ -487,16 +466,21 @@
     <h1><%= character.get("name") %></h1>
     <h2><%= character.get("archetype") %> <%= character.get("clan") %></h2>
     <hr/>
+    <table>
     <% _.each(character.get("attributes"), function (attribute) { %>
-    <h1><%= attribute.get("name") %></h1>
-    <%= attribute.get("value") %><br/>
+        <tr>
+    <td><%= attribute.get("name") %></td>
+    <td><%= attribute.get("value") %></td>
+            <td>
     <% var focusName = "focus_" + attribute.get("name").toLowerCase() + "s"; %>
     <% _.each(character.get(focusName), function (focus) { %>
     <%= focus.get("name") %>&nbsp;
     <% }); %>
+                </td></tr>
     <% }); %>
+    </table>
 
-    <h1>Skills</h1>
+    <h3>Skills</h3>
     <% var cols = []; %>
     <% cols.push(["Academics", "Animal Ken", "Athletics", "Awareness", "Brawl", "Computer", "Crafts", "Dodge", "Drive"]); %>
     <% cols.push(["Empathy", "Firearms", "Intimidation", "Investigation", "Leadership", "Linguistics", "Lore", "Medicine", "Melee", "Occult"]); %>
@@ -531,7 +515,7 @@
         <tr><td><%= d.get("name") %>: <%= d.get("value") %></td></tr>
         <% }); %>
     </table>
-    <% _.each(["techniques", "elder_disciplines", "rituals", "haven_specializations", "lore_specializations"], function (category) { %>
+    <% _.each(["techniques", "elder_disciplines", "rituals", "haven_specializations", "lore_specializations", "linguistics_specializations"], function (category) { %>
     <h1><%= category %></h1>
     <table>
         <% _.each(character.get(category), function(d) { %>
@@ -575,6 +559,102 @@
         <button class="cancel ui-btn">Cancel</button>
         <button class="save ui-btn">Save Changes</button>
     </p>
+</script>
+
+<div id="character-log" data-role="page" data-title="Character Log">
+    <div role="main" class="ui-content">
+    </div>
+</div>
+
+<script id="characterLogView" type="text/template">
+    <h1><%= character.get("name") %></h1>
+    <button class="previous ui-btn ui-btn-icon-left">Previous</button>
+    <button class="next ui-btn ui-btn-icon-left">Next</button>
+    <% var headers = ["createdAt", "category", "name", "type", "old_value", "value", "free_value", "old_cost", "cost", "old_text", "new_text"]; %>
+    <table data-role="table" id="table-column-toggle" class="ui-responsive table-stroke">
+        <thead>
+        <tr>
+            <% _.each(headers, function (h, i) { %>
+            <th data-priority="<%= i + 1 %>"><%= h %></th>
+            <% }); %>
+        </tr>
+        </thead>
+        <tbody>
+            <% _.each(logs, function (log, i) { %>
+                <tr>
+                    <% _.each(headers, function (h) { %>
+                    <td><%= format_entry(log, h) %></td>
+                    <% }); %>
+                </tr>
+            <% }); %>
+        </tbody>
+    </table>
+</script>
+
+<div id="character-history" data-role="page" data-title="Character History">
+    <div role="main" class="ui-content">
+        <div id="history-main"></div>
+        <div id="history-viewing"></div>
+        <div id="history-sheet"></div>
+    </div>
+</div>
+
+<script id="characterHistoryView" type="text/template">
+    <h1><%= character.get("name") %></h1>
+    <p>
+        <label for="slider">Point it time:</label>
+        <input type="range" name="historyChangePicker" id="slider" value="<%= idForPickedIndex %>" min="0" max="<%= logs.length - 1 %>">
+        <% _.each(logs, function (log, i) { %>
+        <input type="hidden" value="<%= log.id %>" id="history-changes-<%= i %>" />
+        <% }); %>
+    </p>
+</script>
+
+<script id="characterHistorySelectedView" type="text/template">
+    <span>Showing changes including</span>
+    <% var headers = ["createdAt", "category", "name", "type", "old_value", "value", "free_value", "old_cost", "cost", "old_text", "new_text"]; %>
+    <table data-role="table" id="table-column-toggle" class="ui-responsive table-stroke">
+        <thead>
+        <tr>
+            <% _.each(headers, function (h, i) { %>
+            <th data-priority="<%= i + 1 %>"><%= h %></th>
+            <% }); %>
+        </tr>
+        </thead>
+        <tbody>
+        <% _.each([logs[idForPickedIndex]], function (log, i) { %>
+        <tr>
+            <% _.each(headers, function (h) { %>
+            <td><%= format_entry(log, h) %></td>
+            <% }); %>
+        </tr>
+        <% }); %>
+        </tbody>
+    </table>
+    <%= idForPickedIndex %>
+    <%= logs.length - 1 %>
+    <% if (idForPickedIndex != logs.length - 1) { %>
+        <span>Just undid</span>
+        <% var undoneLog = _.min([idForPickedIndex + 1, logs.length - 1]); %>
+        <table data-role="table" id="table-column-toggle" class="ui-responsive table-stroke">
+            <thead>
+            <tr>
+                <% _.each(headers, function (h, i) { %>
+                <th data-priority="<%= i + 1 %>"><%= h %></th>
+                <% }); %>
+            </tr>
+            </thead>
+            <tbody>
+            <% _.each([logs[undoneLog]], function (log, i) { %>
+            <tr>
+                <% _.each(headers, function (h) { %>
+                <td><%= format_entry(log, h) %></td>
+                <% }); %>
+            </tr>
+            <% }); %>
+            </tbody>
+        </table>
+    <% }; %>
 </script>
 
 </body>
