@@ -77,10 +77,15 @@ define([
         update_selected: function (e) {
             var self = this;
             var selectedIndex = _.parseInt(this.$(e.target).val());
-            var selectedId = this.$("#history-changes-" + selectedIndex).val();
             self.idForPickedIndex = selectedIndex;
             self._render_viewing(true);
 
+            var selectedId = this.$("#history-changes-" + selectedIndex).val();
+            var changesToApply = _.chain(self.collection.models).takeRightWhile(function (model) {
+                return model.id != selectedId;
+            }).reverse().value();
+            var c = self.character.get_transformed(changesToApply);
+            self._render_sheet(c, true);
         },
 
         _render_viewing: function(enhance) {
@@ -100,8 +105,19 @@ define([
             }
         },
 
-        // Renders all of the Category models on the UI
-        render: function() {
+        _render_sheet: function(characterOverride, enhance) {
+            var self = this;
+            var c = characterOverride || self.character;
+            var skillsLookup = self.get_skills_lookup();
+            this.$el.find("#history-sheet").html(this.sheetTemplate({
+                "character": c,
+                "skillsLookup": skillsLookup} ));
+            if (enhance) {
+                this.$el.find("#history-viewing").enhanceWithin();
+            }
+        },
+
+        get_skills_lookup: function() {
             var self = this;
             var cols = [];
             cols.push(["Academics", "Animal Ken", "Athletics", "Awareness", "Brawl", "Computer", "Crafts", "Dodge", "Drive"]);
@@ -111,9 +127,15 @@ define([
             var s = self.character.get("skills");
             var f = _.find(s, {name: "Athletics"});
             var r = _.result(f, 'name', 0);
-            skillsLookup = _.groupBy(s, function(skill) {
+            var skillsLookup = _.groupBy(s, function(skill) {
                 return skill.get("name");
             });
+            return skillsLookup;
+        },
+
+        // Renders all of the Category models on the UI
+        render: function() {
+            var self = this;
 
             var sendId = self.idForPickedIndex;
             if (_.isUndefined(sendId)) {
@@ -134,9 +156,7 @@ define([
 
             this._render_viewing();
 
-            this.$el.find("#history-sheet").html(this.sheetTemplate({
-                "character": this.character,
-                "skills": skillsLookup} ));
+            this._render_sheet();
 
             this.$el.enhanceWithin();
 

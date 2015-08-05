@@ -403,6 +403,26 @@ define([
                 })
                 return Parse.Promise.as(response);
             })
+        },
+
+        get_transformed: function(changes) {
+            var self = this;
+            if (0 == changes.length) {
+                return null;
+            }
+            var c = self.clone();
+            _.each(changes, function(change) {
+                if (change.get("type") == "update") {
+                    if (change.get("category") == "skills") {
+                        // Create fake skill
+
+                        // Remove the real skill
+                        // Add the fake skill
+                    }
+                }
+            })
+            c.set("name", "Proven overriden");
+            return c;
         }
     } );
 
