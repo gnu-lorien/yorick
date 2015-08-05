@@ -443,7 +443,6 @@ define([
                     }
                 }
             })
-            c.set("name", "Proven overriden " + changes[0].id);
             return c;
         }
     } );
