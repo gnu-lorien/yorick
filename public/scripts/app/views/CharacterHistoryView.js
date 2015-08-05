@@ -85,11 +85,15 @@ define([
 
         _render_viewing: function(enhance) {
             var self = this;
+            var sendId = self.idForPickedIndex;
+            if (_.isUndefined(sendId)) {
+                var sendId = this.collection.models.length - 1;
+            }
             this.$el.find("#history-viewing").html(this.selectedTemplate({
                 "character": this.character,
                 "logs": this.collection.models,
                 "format_entry": this.format_entry,
-                idForPickedIndex: self.idForPickedIndex || this.collection.models.length - 1,
+                idForPickedIndex: sendId,
             }));
             if (enhance) {
                 this.$el.find("#history-viewing").enhanceWithin();
@@ -111,13 +115,18 @@ define([
                 return skill.get("name");
             });
 
+            var sendId = self.idForPickedIndex;
+            if (_.isUndefined(sendId)) {
+                var sendId = this.collection.models.length - 1;
+            }
+
             // Sets the view's template property
             this.template = _.template(
                 $( "script#characterHistoryView" ).html())({
                     "character": this.character,
                     "logs": this.collection.models,
                     "format_entry": this.format_entry,
-                    idForPickedIndex: self.idForPickedIndex || this.collection.models.length - 1,
+                    idForPickedIndex: sendId,
                  });
 
             // Renders the view's template inside of the current listview element
