@@ -98,21 +98,24 @@ define([
                 }
                 return false;
             }).pluck("attributes").pluck("name").value();
+            var traitNames = _(self.character.get(self.category))
+                .pluck("attributes")
+                .pluck("name")
+                .without(self.requireSpecializations)
+                .value();
 
             if ("in clan disciplines" == self.filterRule) {
                 var icd = self.clanRules.get_in_clan_disciplines(self.character);
                 descriptionItems = _.chain(self.collection.models).select(function (model) {
+                    if (_.contains(traitNames, model.get("name"))) {
+                        return false;
+                    }
                     if (_.contains(icd, model.get("name"))) {
                         return true;
                     }
                     return false;
                 }).value();
             } else {
-                var traitNames = _(self.character.get(self.category))
-                    .pluck("attributes")
-                    .pluck("name")
-                    .without(self.requireSpecializations)
-                    .value();
                 descriptionItems = _.chain(self.collection.models).select(function (model) {
                     if (!_.contains(traitNames, model.get("name"))) {
                         return true;
