@@ -27,8 +27,9 @@ define([
     "../views/SimpleTextNewView",
     "../views/LoginOrSignupView",
     "../views/SimpleTraitSpecializationView",
-    "../views/CharacterLogView"
-], function ($, Parse, pretty, Cookie, moment, CategoryModel, CategoriesCollection, CategoryView, CharactersListView, Vampire, Vampires, CharacterView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView, VampireCreation, CharacterCreateView, CharacterNewView, CharacterPrintView, CharacterCostsView, SimpleTextNewView, LoginOrSignupView, SimpleTraitSpecializationView, CharacterLogView) {
+    "../views/CharacterLogView",
+    "../views/CharacterHistoryView"
+], function ($, Parse, pretty, Cookie, moment, CategoryModel, CategoriesCollection, CategoryView, CharactersListView, Vampire, Vampires, CharacterView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView, VampireCreation, CharacterCreateView, CharacterNewView, CharacterPrintView, CharacterCostsView, SimpleTextNewView, LoginOrSignupView, SimpleTraitSpecializationView, CharacterLogView, CharacterHistoryView) {
 
     // Extends Backbone.Router
     var CategoryRouter = Parse.Router.extend( {
@@ -65,6 +66,7 @@ define([
             this.characterPrintView = new CharacterPrintView({el: "#printable-sheet"});
             this.characterCostsView = new CharacterCostsView({el: "#character-costs"});
             this.characterLogView = new CharacterLogView({el: "#character-log"});
+            this.characterHistoryView = new CharacterHistoryView({el: "#character-history"});
 
             this.loginView = new LoginOrSignupView();
 
@@ -111,6 +113,7 @@ define([
             "character/:cid/print": "characterprint",
             "character/:cid/costs": "charactercosts",
             "character/:cid/log/:start/:changeBy": "characterlog",
+            "character/:cid/history/:id": "characterhistory",
 
         },
 
@@ -137,7 +140,6 @@ define([
             });
         },
 
-
         characterlog: function(cid, start, changeBy) {
             var self = this;
             $.mobile.loading("show");
@@ -146,6 +148,18 @@ define([
                 self.characterLogView.register(character, start, changeBy);
                 var activePage = $(".ui-page-active").attr("id");
                 var r = $.mobile.changePage("#character-log", {reverse: false, changeHash: false});
+                $.mobile.loading("hide");
+            });
+        },
+
+        characterhistory: function(cid, id) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid, "all").done(function (character) {
+                self.characterHistoryView.register(character, id);
+                var activePage = $(".ui-page-active").attr("id");
+                var r = $.mobile.changePage("#character-history", {reverse: false, changeHash: false});
                 $.mobile.loading("hide");
             });
         },

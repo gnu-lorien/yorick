@@ -88,6 +88,9 @@
         <li><a href="#simpletraits/linguistics_specializations/<%= character.id %>/all">Linguistics Specializations</a></li>
     </ul>
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li><a href="#character/<%= character.id %>/history/0">History</a></li>
+    </ul>
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <li><a href="#character/<%= character.id %>/print">Print</a></li>
     </ul>
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
@@ -450,29 +453,6 @@
     </ul>
 </script>
 
-<div id="character-history" data-role="page" data-title="Character History">
-    <div data-role="header">
-        <h1>Character History</h1>
-    </div>
-
-    <div role="main" class="ui-content">
-    </div>
-</div>
-
-<script id="characterHistoryView" type="text/template">
-    <h1><%= character.get("name") %></h1>
-
-    <% if (!character.generation()) { %>
-    <p>Warning: Values are just a guess without a generation set</p>
-    <% } %>
-
-    <ul>
-        <% _.each(_.values(costs), function(cost) { %>
-        <li><%= cost.trait.get("name") %>: <%= cost.cost %></li>
-        <% }); %>
-    </ul>
-</script>
-
 <div id="printable-sheet" data-role="page" data-title="Printable Sheet">
     <div data-role="header">
         <h1>Printable Sheet</h1>
@@ -486,16 +466,21 @@
     <h1><%= character.get("name") %></h1>
     <h2><%= character.get("archetype") %> <%= character.get("clan") %></h2>
     <hr/>
+    <table>
     <% _.each(character.get("attributes"), function (attribute) { %>
-    <h1><%= attribute.get("name") %></h1>
-    <%= attribute.get("value") %><br/>
+        <tr>
+    <td><%= attribute.get("name") %></td>
+    <td><%= attribute.get("value") %></td>
+            <td>
     <% var focusName = "focus_" + attribute.get("name").toLowerCase() + "s"; %>
     <% _.each(character.get(focusName), function (focus) { %>
     <%= focus.get("name") %>&nbsp;
     <% }); %>
+                </td></tr>
     <% }); %>
+    </table>
 
-    <h1>Skills</h1>
+    <h3>Skills</h3>
     <% var cols = []; %>
     <% cols.push(["Academics", "Animal Ken", "Athletics", "Awareness", "Brawl", "Computer", "Crafts", "Dodge", "Drive"]); %>
     <% cols.push(["Empathy", "Firearms", "Intimidation", "Investigation", "Leadership", "Linguistics", "Lore", "Medicine", "Melee", "Occult"]); %>
@@ -604,6 +589,22 @@
             <% }); %>
         </tbody>
     </table>
+</script>
+
+<div id="character-history" data-role="page" data-title="Character History">
+    <div role="main" class="ui-content">
+        <div id="history-main"></div>
+        <div id="history-sheet"></div>
+    </div>
+</div>
+
+<script id="characterHistoryView" type="text/template">
+    <h1><%= character.get("name") %></h1>
+    <p>
+        <label for="slider">Point it time:</label>
+        <input type="range" name="simpleTraitValue" id="slider" value="<%= idForPickedIndex %>" min="0" max="<%= logs.length %>">
+    </p>
+    <%= _.chain(logs).pluck("id") %>
 </script>
 
 </body>
