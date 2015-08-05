@@ -413,11 +413,20 @@ define([
             var c = self.clone();
             _.each(changes, function(change) {
                 if (change.get("type") == "update") {
-                    if (change.get("category") == "skills") {
-                        // Create fake skill
-
-                        // Remove the real skill
-                        // Add the fake skill
+                    if (change.get("category") != "core") {
+                        // Find current
+                        var category = change.get("category");
+                        var current = _.find(self.get(category), function (st) {
+                            return _.isEqual(st.get("name"), change.get("name"));
+                        });
+                        // Create fake
+                        var trait = new SimpleTrait({
+                            "name": change.get("old_text") || change.get("name"),
+                            "free_value": change.get("free_value"),
+                            "value": change.get("old_value") || change.get("value"),
+                            "cost": change.get("old_cost") || change.get("cost"),
+                        });
+                        self.set(category, _.xor(self.get(category), [current, trait]));
                     }
                 }
             })
