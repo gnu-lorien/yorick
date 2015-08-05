@@ -3,8 +3,9 @@ require([
     "jquery",
     "parse",
     "app/routers/mobileRouter",
-    "app/collections/BNSMETV1_ClanRules"
-], function ( $, Parse, Mobile, ClanRules ) {
+    "app/collections/BNSMETV1_ClanRules",
+    "moment"
+], function ( $, Parse, Mobile, ClanRules, moment ) {
 
     $( document ).on( "mobileinit",
 

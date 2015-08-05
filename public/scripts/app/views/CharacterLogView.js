@@ -5,9 +5,10 @@
 define([
 	"jquery",
 	"backbone",
+    "moment",
     "../models/VampireChange",
     "../collections/VampireChangeCollection"
-], function( $, Backbone, VampireChange, VampireChangeCollection) {
+], function( $, Backbone, moment, VampireChange, VampireChangeCollection) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
@@ -91,13 +92,25 @@ define([
             return self.collection.fetch(options);
         },
 
+        format_entry: function(log, entry) {
+            if (log.get(entry)) {
+                return log.get(entry);
+            }
+            var attr = log[entry];
+            if (_.isDate(attr)) {
+                return moment(attr).format('lll');
+            }
+            return attr;
+        },
+
         // Renders all of the Category models on the UI
         render: function() {
             // Sets the view's template property
             this.template = _.template(
                 $( "script#characterLogView" ).html())(
                 { "character": this.character,
-                  "logs": this.collection.models} );
+                  "logs": this.collection.models,
+                  "format_entry": this.format_entry} );
 
             // Renders the view's template inside of the current listview element
             this.$el.find("div[role='main']").html(this.template);

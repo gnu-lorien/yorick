@@ -7,6 +7,7 @@ define([
 	"parse",
     "pretty",
     "jscookie",
+    "moment",
 	"../models/CategoryModel",
 	"../collections/CategoriesCollection",
 	"../views/CategoryView",
@@ -27,7 +28,7 @@ define([
     "../views/LoginOrSignupView",
     "../views/SimpleTraitSpecializationView",
     "../views/CharacterLogView"
-], function ($, Parse, pretty, Cookie, CategoryModel, CategoriesCollection, CategoryView, CharactersListView, Vampire, Vampires, CharacterView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView, VampireCreation, CharacterCreateView, CharacterNewView, CharacterPrintView, CharacterCostsView, SimpleTextNewView, LoginOrSignupView, SimpleTraitSpecializationView, CharacterLogView) {
+], function ($, Parse, pretty, Cookie, moment, CategoryModel, CategoriesCollection, CategoryView, CharactersListView, Vampire, Vampires, CharacterView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView, VampireCreation, CharacterCreateView, CharacterNewView, CharacterPrintView, CharacterCostsView, SimpleTextNewView, LoginOrSignupView, SimpleTraitSpecializationView, CharacterLogView) {
 
     // Extends Backbone.Router
     var CategoryRouter = Parse.Router.extend( {

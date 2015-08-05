@@ -14,6 +14,7 @@ requirejs.config( {
 		//parse: "//www.parsecdn.com/js/parse-1.5.0.min",
 		parse: "parse-1.5.0",
 		pretty: "prettyprint",
+		moment: "moment",
 
 		app: "../app"
 	},
