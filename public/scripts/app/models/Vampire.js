@@ -421,17 +421,25 @@ define([
                         }
                         return _.isEqual(st.get("name"), change.get("name"));
                     });
+                    // Create fake
+                    var trait = new SimpleTrait({
+                        "name": change.get("old_text") || change.get("name"),
+                        "free_value": change.get("free_value"),
+                        "value": change.get("old_value") || change.get("value"),
+                        "cost": change.get("old_cost") || change.get("cost"),
+                    });
                     if (change.get("type") == "update") {
-                        // Create fake
-                        var trait = new SimpleTrait({
-                            "name": change.get("old_text") || change.get("name"),
-                            "free_value": change.get("free_value"),
-                            "value": change.get("old_value") || change.get("value"),
-                            "cost": change.get("old_cost") || change.get("cost"),
-                        });
                         c.set(category, _.xor(c.get(category), [current, trait]));
                     } else if (change.get("type") == "define") {
                         c.set(category, _.without(c.get(category), current));
+                    } else if (change.get("type") == "remove") {
+                        c.set(category, _.union(c.get(category), [trait]));
+                    }
+                } else {
+                    if (change.get("type") == "core_define") {
+                        c.set(change.get("name"), undefined);
+                    } else if (change.get("type") == "core_update") {
+                        c.set(change.get("name"), change.get("old_text"));
                     }
                 }
             })
