@@ -109,7 +109,7 @@ define([
 
             "character/:cid/print": "characterprint",
             "character/:cid/costs": "charactercosts",
-            "character/:cid/log": "characterlog",
+            "character/:cid/log/:start/:changeBy": "characterlog",
 
         },
 
@@ -137,13 +137,15 @@ define([
         },
 
 
-        characterlog: function(cid) {
+        characterlog: function(cid, start, changeBy) {
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
             self.get_character(cid, "all").done(function (character) {
-                self.characterLogView.register(character);
-                $.mobile.changePage("#character-log", {reverse: false, changeHash: false});
+                self.characterLogView.register(character, start, changeBy);
+                var activePage = $(".ui-page-active").attr("id");
+                var r = $.mobile.changePage("#character-log", {reverse: false, changeHash: false});
+                $.mobile.loading("hide");
             });
         },
 
