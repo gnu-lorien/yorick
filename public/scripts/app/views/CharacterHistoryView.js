@@ -108,23 +108,24 @@ define([
         _render_sheet: function(characterOverride, enhance) {
             var self = this;
             var c = characterOverride || self.character;
-            var skillsLookup = self.get_skills_lookup();
+            var skillsLookup = self.get_skills_lookup(c);
             this.$el.find("#history-sheet").html(this.sheetTemplate({
                 "character": c,
                 "skillsLookup": skillsLookup} ));
             if (enhance) {
-                this.$el.find("#history-viewing").enhanceWithin();
+                this.$el.find("#history-sheet").enhanceWithin();
             }
         },
 
-        get_skills_lookup: function() {
+        get_skills_lookup: function(characterOverride) {
             var self = this;
+            var c = characterOverride || self.character;
             var cols = [];
             cols.push(["Academics", "Animal Ken", "Athletics", "Awareness", "Brawl", "Computer", "Crafts", "Dodge", "Drive"]);
             cols.push(["Empathy", "Firearms", "Intimidation", "Investigation", "Leadership", "Linguistics", "Lore", "Medicine", "Melee", "Occult"]);
             cols.push(["Performance", "Science", "Security", "Stealth", "Streetwise", "Subterfuge", "Survival"]);
             var a = _.zip.apply(_, cols)
-            var s = self.character.get("skills");
+            var s = c.get("skills");
             var f = _.find(s, {name: "Athletics"});
             var r = _.result(f, 'name', 0);
             var skillsLookup = _.groupBy(s, function(skill) {

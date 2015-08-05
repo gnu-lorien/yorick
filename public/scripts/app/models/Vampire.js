@@ -406,19 +406,22 @@ define([
         },
 
         get_transformed: function(changes) {
-            var self = this;
+            // do not define self to prevent self-modification
             if (0 == changes.length) {
                 return null;
             }
-            var c = self.clone();
+            var c = this.clone();
             _.each(changes, function(change) {
-                if (change.get("type") == "update") {
-                    if (change.get("category") != "core") {
-                        // Find current
-                        var category = change.get("category");
-                        var current = _.find(self.get(category), function (st) {
-                            return _.isEqual(st.get("name"), change.get("name"));
-                        });
+                if (change.get("category") != "core") {
+                    // Find current
+                    var category = change.get("category");
+                    var current = _.find(c.get(category), function (st) {
+                        if (_.isUndefined(st)) {
+                            console.log("breakpoint");
+                        }
+                        return _.isEqual(st.get("name"), change.get("name"));
+                    });
+                    if (change.get("type") == "update") {
                         // Create fake
                         var trait = new SimpleTrait({
                             "name": change.get("old_text") || change.get("name"),
@@ -426,11 +429,13 @@ define([
                             "value": change.get("old_value") || change.get("value"),
                             "cost": change.get("old_cost") || change.get("cost"),
                         });
-                        self.set(category, _.xor(self.get(category), [current, trait]));
+                        c.set(category, _.xor(c.get(category), [current, trait]));
+                    } else if (change.get("type") == "define") {
+                        c.set(category, _.without(c.get(category), current));
                     }
                 }
             })
-            c.set("name", "Proven overriden");
+            c.set("name", "Proven overriden " + changes[0].id);
             return c;
         }
     } );
