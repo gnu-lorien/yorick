@@ -25,7 +25,6 @@ define([
 
             Parse.User.logIn(username, password, {
                 success: function(user) {
-                    window.location.hash = "";
                     location.reload();
                     self.undelegateEvents();
                 },

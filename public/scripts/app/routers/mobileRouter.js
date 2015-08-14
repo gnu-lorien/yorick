@@ -161,10 +161,12 @@ define([
         },
 
         signup: function() {
-
-            // Programatically changes to the categories page
-            $.mobile.changePage( "#signup" , { reverse: false, changeHash: false } );
-
+            if (!Parse.User.current()) {
+                // Programatically changes to the categories page
+                $.mobile.changePage("#signup", {reverse: false, changeHash: false});
+            } else {
+                window.location.hash = "";
+            }
         },
 
         set_back_button: function(url) {

@@ -25,7 +25,6 @@ define([
 
             Parse.User.signUp(username, password, { ACL: new Parse.ACL() }, {
                 success: function(user) {
-                    window.location.hash = "";
                     location.reload();
                     self.undelegateEvents();
                 },
