@@ -7,7 +7,7 @@ define([
 	"parse",
     "../models/SimpleTrait",
     "../models/VampireChange",
-    "../models/VampireCreation"
+    "../models/VampireCreation",
 ], function( $, Parse, SimpleTrait, VampireChange, VampireCreation ) {
 
     // The Model constructor
@@ -82,10 +82,11 @@ define([
                         }
                     });
                     modified_trait.setACL(self.get_me_acl());
+                    var TempVampire = Parse.Object.extend("Vampire");
                     modified_trait.set({"name": name,
                         "value": freeValue || value,
                         "category": category,
-                        "owner": self,
+                        "owner": new TempVampire({id: self.id}),
                         "free_value": freeValue
                     });
                 }
