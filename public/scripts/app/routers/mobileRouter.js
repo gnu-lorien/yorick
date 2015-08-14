@@ -87,6 +87,8 @@ define([
             "": "home",
             "start": "home",
 
+            "logout": "logout",
+
             // When #category? is on the url, the category method is called
             "category?:type": "category",
 
@@ -123,6 +125,11 @@ define([
             // Programatically changes to the categories page
             $.mobile.changePage( "#categories" , { reverse: false, changeHash: false } );
 
+        },
+
+        logout: function() {
+            Parse.User.logOut();
+            this.home();
         },
 
         set_back_button: function(url) {
@@ -310,6 +317,7 @@ define([
                 var e = new Parse.Error(Parse.Error.USERNAME_MISSING, "Not logged in");
                 return Parse.Promise.error(e);
             }
+            $("#header-logout-button").attr("href", "#logout");
             return Parse.Promise.as([]);
         },
 
