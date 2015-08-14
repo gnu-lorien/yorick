@@ -6,39 +6,16 @@ define([
 ], function( $, Backbone, Parse ) {
 
     // Extends Backbone.View
-    var LoginOrSignupView = Backbone.View.extend( {
+    var SignupView = Backbone.View.extend( {
         events: {
-            "submit form.login-form": "logIn",
             "submit form.signup-form": "signUp"
         },
 
-        el: "#login-or-signup",
+        el: "#signup",
 
         initialize: function() {
-            _.bindAll(this, "logIn", "signUp");
+            _.bindAll(this, "signUp");
             this.render();
-        },
-
-        logIn: function(e) {
-            var self = this;
-            var username = this.$("#login-username").val();
-            var password = this.$("#login-password").val();
-
-            Parse.User.logIn(username, password, {
-                success: function(user) {
-                    location.reload();
-                    self.undelegateEvents();
-                },
-
-                error: function(user, error) {
-                    self.$(".login-form .error").html("Invalid username or password. Please try again.").show();
-                    self.$(".login-form button").removeAttr("disabled");
-                }
-            });
-
-            this.$(".login-form button").attr("disabled", "disabled");
-
-            return false;
         },
 
         signUp: function(e) {
@@ -48,9 +25,9 @@ define([
 
             Parse.User.signUp(username, password, { ACL: new Parse.ACL() }, {
                 success: function(user) {
-                    new ManageTodosView();
+                    window.location.hash = "";
+                    location.reload();
                     self.undelegateEvents();
-                    delete self;
                 },
 
                 error: function(user, error) {
@@ -65,7 +42,7 @@ define([
         },
 
         render: function() {
-            this.template = _.template($("#login-template").html())();
+            this.template = _.template($("#signup-template").html())();
             this.$el.find("div[role='main']").html(this.template);
             this.$el.enhanceWithin();
             this.delegateEvents();
@@ -73,6 +50,6 @@ define([
     });
 
     // Returns the View class
-    return LoginOrSignupView;
+    return SignupView;
 
 } );

@@ -25,11 +25,38 @@ define([
     "../views/CharacterPrintView",
     "../views/CharacterCostsView",
     "../views/SimpleTextNewView",
-    "../views/LoginOrSignupView",
     "../views/SimpleTraitSpecializationView",
     "../views/CharacterLogView",
-    "../views/CharacterHistoryView"
-], function ($, Parse, pretty, Cookie, moment, CategoryModel, CategoriesCollection, CategoryView, CharactersListView, Vampire, Vampires, CharacterView, SimpleTraitCategoryView, SimpleTraitNewView, SimpleTrait, SimpleTraitChangeView, VampireCreation, CharacterCreateView, CharacterNewView, CharacterPrintView, CharacterCostsView, SimpleTextNewView, LoginOrSignupView, SimpleTraitSpecializationView, CharacterLogView, CharacterHistoryView) {
+    "../views/CharacterHistoryView",
+    "../views/SignupView",
+    "../views/LoginView",
+], function ($,
+             Parse,
+             pretty,
+             Cookie,
+             moment,
+             CategoryModel,
+             CategoriesCollection,
+             CategoryView,
+             CharactersListView,
+             Vampire,
+             Vampires,
+             CharacterView,
+             SimpleTraitCategoryView,
+             SimpleTraitNewView,
+             SimpleTrait,
+             SimpleTraitChangeView,
+             VampireCreation,
+             CharacterCreateView,
+             CharacterNewView,
+             CharacterPrintView,
+             CharacterCostsView,
+             SimpleTextNewView,
+             SimpleTraitSpecializationView,
+             CharacterLogView,
+             CharacterHistoryView,
+             LoginView,
+             SignupView) {
 
     // Extends Backbone.Router
     var CategoryRouter = Parse.Router.extend( {
@@ -68,7 +95,8 @@ define([
             this.characterLogView = new CharacterLogView({el: "#character-log"});
             this.characterHistoryView = new CharacterHistoryView({el: "#character-history"});
 
-            this.loginView = new LoginOrSignupView();
+            this.loginView = new LoginView();
+            this.signupView = new SignupView();
 
             /*
             if (!Parse.User.current()) {
@@ -88,6 +116,7 @@ define([
             "start": "home",
 
             "logout": "logout",
+            "signup": "signup",
 
             // When #category? is on the url, the category method is called
             "category?:type": "category",
@@ -121,15 +150,21 @@ define([
 
         // Home method
         home: function() {
-
-            // Programatically changes to the categories page
-            $.mobile.changePage( "#categories" , { reverse: false, changeHash: false } );
-
+            this.enforce_logged_in().then(function () {
+                $.mobile.changePage("#player-options", {reverse: false, changeHash: false});
+            });
         },
 
         logout: function() {
             Parse.User.logOut();
             this.home();
+        },
+
+        signup: function() {
+
+            // Programatically changes to the categories page
+            $.mobile.changePage( "#signup" , { reverse: false, changeHash: false } );
+
         },
 
         set_back_button: function(url) {
@@ -312,7 +347,7 @@ define([
 
         enforce_logged_in: function() {
             if (!Parse.User.current()) {
-                $.mobile.changePage("#login-or-signup", {reverse: false, changeHash: false});
+                $.mobile.changePage("#login", {reverse: false, changeHash: false});
                 $.mobile.loading("hide");
                 var e = new Parse.Error(Parse.Error.USERNAME_MISSING, "Not logged in");
                 return Parse.Promise.error(e);
