@@ -59,6 +59,14 @@ define([
             return acl;
         },
 
+        get_category_for_fetch: function(category) {
+            var self = this;
+            var cat = self.get(category);
+            return _.filter(cat, function(e) {
+                return !_.isUndefined(e.id);
+            });
+        },
+
         update_trait: function(nameOrTrait, value, category, freeValue, wait) {
             var self = this;
             var modified_trait, name, serverData, toSave = [];
@@ -69,9 +77,9 @@ define([
                 name = nameOrTrait;
             };
             self.ensure_category(category);
-            return Parse.Object.fetchAllIfNeeded(self.get(category)).then(function(list) {
+            return Parse.Object.fetchAllIfNeeded(self.get_category_for_fetch(category)).then(function() {
                 if (!_.isString(nameOrTrait)) {
-                    if (!_.contains(list, modified_trait)) {
+                    if (!_.contains(self.get(category), modified_trait)) {
                         throw "Provided trait not already in Vampire as expected";
                     }
                 } else {
