@@ -105,16 +105,20 @@ define([
                 .value();
 
             if ("in clan disciplines" == self.filterRule) {
-                var icd = self.clanRules.get_in_clan_disciplines(self.character);
-                descriptionItems = _.chain(self.collection.models).select(function (model) {
-                    if (_.contains(traitNames, model.get("name"))) {
+                var icd = _.without(self.clanRules.get_in_clan_disciplines(self.character), undefined);
+                descriptionItems = _.chain(self.collection.models);
+                if (0 != icd.length) {
+                    descriptionItems = descriptionItems.select(function (model) {
+                        if (_.contains(traitNames, model.get("name"))) {
+                            return false;
+                        }
+                        if (_.contains(icd, model.get("name"))) {
+                            return true;
+                        }
                         return false;
-                    }
-                    if (_.contains(icd, model.get("name"))) {
-                        return true;
-                    }
-                    return false;
-                }).value();
+                    })
+                }
+                descriptionItems = descriptionItems.value();
             } else {
                 descriptionItems = _.chain(self.collection.models).select(function (model) {
                     if (!_.contains(traitNames, model.get("name"))) {
