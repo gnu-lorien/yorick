@@ -30,6 +30,8 @@ define([
 
             if (category != self.category) {
                 self.category = category;
+                self.stopListening(self.character);
+                self.listenTo(self.character, "change:" + category, self.render);
                 changed = true;
             }
 

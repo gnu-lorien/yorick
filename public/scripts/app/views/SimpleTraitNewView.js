@@ -24,6 +24,15 @@ define([
             this.clanRules.fetch();
         },
 
+        switch_character_category_listening: function() {
+            var self = this;
+            if (!self.character) {
+                return;
+            }
+            self.stopListening(self.character);
+            self.listenTo(self.character, "change:" + self.category, self.render);
+        },
+
         register: function(character, category, freeValue, redirect, filterRule, specializationRedirect) {
             var self = this;
             var changed = false;
@@ -60,6 +69,7 @@ define([
 
             if (category != self.category) {
                 self.category = category;
+                self.switch_character_category_listening();
                 if (self.collection)
                     self.stopListening(self.collection);
                 self.collection = new DescriptionCollection;

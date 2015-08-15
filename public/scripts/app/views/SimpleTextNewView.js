@@ -44,6 +44,8 @@ define([
 
             if (category != self.category) {
                 self.category = category;
+                self.stopListening(self.character);
+                self.listenTo(self.character, "change:" + category, self.update_collection_query_and_fetch);
                 if (self.collection)
                     self.stopListening(self.collection);
                 self.collection = new DescriptionCollection;
