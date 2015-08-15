@@ -1,0 +1,15 @@
+name,category,requirement,order
+Custom,linguistics_specializations,requires_specialization,0
+Mandarin,linguistics_specializations,,1
+Spanish,linguistics_specializations,,1
+English,linguistics_specializations,,1
+Hindi,linguistics_specializations,,1
+Urdu,linguistics_specializations,,1
+Arabic,linguistics_specializations,,1
+Portugese,linguistics_specializations,,1
+Bengali,linguistics_specializations,,1
+Russian,linguistics_specializations,,1
+Japanese,linguistics_specializations,,1
+Punjabi,linguistics_specializations,,1
+Enochian,linguistics_specializations,,1
+Latin,linguistics_specializations,,1

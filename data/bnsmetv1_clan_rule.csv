@@ -1,0 +1,43 @@
+clan,parent_clan,merit,default_cost,discipline_1,discipline_2,discipline_3,weakness_1,weakness_2,derangement,thaumaturgy_paths,necromancy_paths,camarilla_category,camarilla_cost,sabbat_category,sabbat_cost
+Assamite,Assamite,,0,Celerity,Obfuscate,Quietus,"Drink Vamp blood = 2 Beast traits for 10 mins. If frenzy, try to diablerize last vampire whose blood was tasted.",,,,,"Uncommon Clan, Bloodline",4,Uncommon Clan,2
+Assamite: Sorcerer,Assamite,Bloodline: Sorcerer,4,Obfuscate,Quietus,Thaumaturgy: Lure of Flames,Attempts to penetrate your Obfuscate gain +1 wild card bonus,,,2,,"Uncommon Clan, Bloodline",6,"Uncommon Clan, Bloodline",6
+Assamite: Vizier,Assamite,Bloodline: Vizier,2,Auspex,Celerity,Quietus,"Derangement: Obsessive, trigger 'Unknown Knowledge'",,Obsessive [Unknown Knowledge],,,Uncommon Clan,2,"Uncommon Clan, Bloodline",4
+Baali,Baali,,0,Daimoinon,Obfuscate,Presence,"Cannot look at and suffers 1 unsoakable agg, damage from touching faith objects. True Faith effects double.",,,,,Restricted Clan,6,Restricted Clan,6
+Baali: Angelis Ater,Baali,Bloodline: Angelis Ater,3,Daimoinon,Dominate,,"Cannot look at and suffers 1 unsoakable agg, damage from touching faith objects. True Faith effects double.",Cast no reflection.,,,,Restricted Clan,6,Restricted Clan,6
+Brujah,Brujah,,0,Celerity,Potence,Presence,Difficulty to resist frenzy is +2,,,,,Common Clan,0,Common Clan,0
+Brujah: True Brujah,Brujah,Bloodline: True Brujah,4,Potence,Presence,Temporis,Lose emotional capacity. Cannot purchase Empathy. Morality costs doubled.,,,,,"Common Clan, Bloodline",4,"Common Clan, Bloodline",5
+Caitiff,Caitiff,,0,,,,Cannot have more than 2 in Generation Background or teach their in-clan Disciplines.,,,,,Common Clan,0,Common Clan,0
+Cappadocians,Cappadocians,,0,Auspex,Fortitude,Necromancy: Mortis Path,Ghastly pallor.,,,,1,Restricted Clan,6,Uncommon Clan,2
+Cappadocians: Lamia,Cappadocians,Bloodline: Lamia,4,Fortitude,Potence,Necromancy: Mortis Path,Mortals fed from must make a test (Phys+Survival vs 8) to avoid dying in a week.,,,,1,Restricted Clan,6,Restricted Clan,6
+Cappadocians: Samedi,Cappadocians,Bloodline: Samedi,2,Fortitude,Obfuscate,Thanatosis,"Rotting skin, exposed bone, and hideous smell of decomposition.",,,,,Rare Clan,4,"Uncommon Clan, Bloodline",4
+Daughters of Cacophony,Daughters of Cacophony,,0,Fortitude,Melpominee,Presence,Distracted by the constant sound of music = -2 on all Investigation pools.,,,,,Rare Clan,4,Rare Clan,5
+Followers of Set,Followers of Set,,0,Obfuscate,Presence,Serpentis,Additional 1 point of damage from sunlight. All test pools reduced by 2 when in bright light of any kind.,,,,,Uncommon Clan,2,Common Clan,0
+Followers of Set: Tlacique,Followers of Set,Bloodline: Tlacique,2,Presence,Obfuscate,Protean,Additional 1 point of damage from sunlight. All test pools reduced by 2 when in bright light of any kind.,,,,,"Uncommon Clan, Bloodline",4,"Common Clan, Bloodline",2
+Followers of Set: Vipers,Followers of Set,Bloodline: Vipers,2,Potence,Presence,Serpentis,Additional 1 point of damage from sunlight. All test pools reduced by 2 when in bright light of any kind.,,,,,"Uncommon Clan, Bloodline",4,"Common Clan, Bloodline",2
+Gangrel,Gangrel,,0,Animalism,Fortitude,Protean,Gain 1 animalistic feature. Every frenzy = +1 temporary animalistic feature that fades over the next day.,,,,,Common Clan,0,"Common Clan, Bloodline",2
+Gangrel: Ahrimanes,Gangrel,Bloodline: Ahrimanes,4,Animalism,Presence,Thaumaturgy: Path of Elemental Mastery,Gain 1 animalistic feature. Every frenzy = +1 temporary animalistic feature that fades over the next day.,Female Characters only.,,1,,"Common Clan, Bloodline",4,"Common Clan, Bloodline",4
+Gangrel: Coyote,Gangrel,Bloodline: Coyote,2,Celerity,Obfuscate,Protean,Gain 1 animalistic feature. Every frenzy = +1 temporary animalistic feature that fades over the next day.,,,,,"Common Clan, Bloodline",2,Common Clan,0
+Gangrel: Noiad,Gangrel,Bloodline: Noiad,2,Animalism,Auspex,Protean,Gain 1 animalistic feature. Every frenzy = +1 temporary animalistic feature that fades over the next day.,,,,,"Common Clan, Bloodline",2,"Common Clan, Bloodline",2
+Gargoyles,Gargoyles,,0,Fortitude,Potence,Visceratika,Monstrous appearance and -2 on Mental pools to Dominate powers and techniques.,,,,,Rare Clan,4,Rare Clan,5
+Giovanni,Giovanni,,0,Dominate,Potence,Necromancy: Sepulchre Path,"Feeding inflicts 3 levels of damage of every blood trait drained, instead of the normal 2.",,,,1,Uncommon Clan,2,Restricted Clan,6
+Giovanni: Premascine,Giovanni,Bloodline: Premascine,4,Dominate,Potence,Necromancy: Sepulchre Path,"Feeding inflicts 3 levels of damage of every blood trait drained, instead of the normal 2.",Ghastly pallor.,,,1,"Uncommon Clan, Bloodline",6,Restricted Clan,6
+Lasombra,Lasombra,,0,Dominate,Potence,Obtenebration,Cast no reflection.,,,,,Rare Clan,4,Common Clan,0
+Lasombra: Kiasyd,Lasombra,Bloodline: Kiasyd,4,Dominate,Mytherceria,Obtenebration,Cast no reflection.,Inhuman appearance,,,,"Rare Clan, Bloodline",6,"Common Clan, Bloodline",4
+Malkavian,Malkavian,,0,Auspex,Dementation,Obfuscate,One permanent and incurable Derangement.,,,,,Common Clan,0,Common Clan,0
+Malkavian: Ananke,Malkavian,Bloodline: Ananke,2,Auspex,Dementation,Presence,One permanent and incurable Derangement.,Compelled to take grisly trophies,,,,"Common Clan, Bloodline",2,"Common Clan, Bloodline",2
+Malkavian: Knights of the Moon,Malkavian,Bloodline: Knights of the Moon,2,Auspex,Dominate,Obfuscate,One permanent and incurable Derangement.,,,,,"Common Clan, Bloodline",2,"Common Clan, Bloodline",2
+Nosferatu,Nosferatu,,0,Animalism,Obfuscate,Potence,Inhumanly ugly and cannot have the Appearance focus.,,,,,Common Clan,0,Common Clan,0
+Ravnos,Ravnos,,0,Animalism,Fortitude,Chimerstry,Derangement: Compulsion (vice of choice),,Compulsion (vice of choice),,,Uncommon Clan,2,Uncommon Clan,2
+Ravnos: Brahman,Ravnos,Bloodline: Brahman,2,Animalism,Auspex,Chimerstry,Derangement: Compulsion (vice of choice),,Compulsion (vice of choice),,,"Uncommon Clan, Bloodline",4,"Uncommon Clan, Bloodline",5
+Salubri,Salubri,,0,Auspex,Fortitude,Valeran,Can only feed during acts of violence. Cannot purchase Herd background or use another character's Herd.,,,,,Rare Clan,4,Uncommon Clan,2
+Salubri: Healer,Salubri,Bloodline: Healer,3,Auspex,Fortitude,Obeah,Cannot feed on unwilling victims. Feeding w/o Herd = +1 downtime action to feed.,,,,,"Rare Clan, Bloodline",6,Restricted Clan,6
+Toreador,Toreador,,0,Auspex,Celerity,Presence,"Must spend Willpower to avoid entrancement by beautiful or new art, performance, or other for a scene.",,,,,Common Clan,0,Common Clan,0
+Toreador: Ishtarri,Toreador,Bloodline: Ishtarri,2,Celerity,Fortitude,Presence,"Suffer -2 to resist emotion controlling powers, like Presence.",,,,,"Common Clan, Bloodline",2,"Common Clan, Bloodline",2
+Toreador: Volgirre,Toreador,Bloodline: Volgirre,2,Auspex,Celerity,Presence,"Must spend Willpower to avoid entrancement by beautiful or new art, performance, or other for a scene.",,,,,"Common Clan, Bloodline",2,"Common Clan, Bloodline",3
+Tremere,Tremere,,0,Auspex,Dominate,Thaumaturgy: Path of Blood,Takes 2 drinks instead of 3 to bloodbond. First drink counts as 2.,,,1,,Common Clan,0,Rare Clan,5
+Tremere: Telyav,Tremere,Bloodline: Telyav,2,Auspex,Presence,Thaumaturgy: Path of Blood,Takes 2 drinks instead of 3 to bloodbond. First drink counts as 2.,Hiding from the Pyramid.,,1,,"Common Clan, Bloodline",2,Uncommon Clan,2
+Tzimisce,Tzimisce,,0,Animalism,Auspex,Vicissitude,Each day spent w/o contact with 2 handfulls of home soil = -1 to all attack test pools (max -5),,,,,"Rare Clan, Bloodline",6,Common Clan,0
+Tzimisce: Carpathian,Tzimisce,Bloodline: Carpathian,3,Animalism,Auspex,Dominate,Each day spent w/o contact with 2 handfulls of home soil = -1 to all attack test pools (max -5),,,,,Rare Clan,4,"Common Clan, Bloodline",4
+Tzimisce: Koldun,Tzimisce,Bloodline: Koldun,4,Animalism,Auspex,Thaumaturgy: Path of Elemental Mastery,Each day spent w/o contact with 2 handfulls of home soil = -1 to all attack test pools (max -5),,,2,,"Rare Clan, Bloodline",6,"Common Clan, Bloodline",4
+Ventrue,Ventrue,,0,Dominate,Fortitude,Presence,Can only feed from specific kind of mortal (1 in 10 mortals). Feeding = +1 downtime in unfamiliar territory.,,,,,Common Clan,0,"Common Clan, Bloodline",2
+Ventrue: Crusader,Ventrue,Bloodline: Crusader,2,Auspex,Dominate,Fortitude,Can only feed from specific kind of mortal (1 in 10 mortals). Feeding = +1 downtime in unfamiliar territory.,,,,,"Common Clan, Bloodline",2,Common Clan,0

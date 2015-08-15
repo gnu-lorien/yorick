@@ -1,0 +1,116 @@
+name,value,category,type,requirement,note
+Absent Sway,3,merits,Clan,Toreador,Allows character to create art or performance that invokes a specific emotion. Viewers who wish to ignore or run counter to the emotion may spend 1 Willpower to ignore for an hour.
+Acute Sense,1,merits,General,,One sense acts as if it were Heightened Senses. Do not have to spend Blood to use Heightened Senses with that sense.
+Addictive Blood,3,merits,Clan,Followers of Set,One taste of character's blood is addictive. Creature must spend 1 Willpower to resist drinking a second time for 10 minutes. Must resist in this way 4 times to break the addiction.
+Additional Common Discipline,4,merits,General,,Opens up List 1 for an additional Discipline slot.
+Additional Uncommon Discipline,5,merits,General,,Opens up List 2 for an additional Discipline slot.
+Ambidextrous,2,merits,General,,"Once per turn, you can use one the qualities from your main weapon and one from your off hand weapon to augment attack. Cannot be the same quality from both."
+Angelic Visage,1,merits,Clan,Lasombra,Gain Social attribute focus Charisma in addition to normal attribute focus. Gain alien beauty rather than a monstrous visage w/ low Humanity or Path.
+Antiquities,1,merits,Camarilla,,Expend a downtime to add Antique quality to an item of non-combat equipment. Does not count against the item's quality limit.
+Arcane,1,merits,General,,"People forget character, paper trails disappear and computer files are randomly lost."
+Artist's Blessing,1,merits,Clan,Toreador,Increases max level of all Craft and Performance skills by 2. Gain first 3 levels of 1 Craft or Performance skill for free.
+Aura of Command,1,merits,Clan,Ventrue,Mortals and Ghouls cannot resist character's Dominate and Presence powers or techniques based off those powers.
+Architect of the Tower,2,merits,Camarilla,,innate status trait Architect
+Auspicious,1,merits,Clan,Caitiff,Duplicate any General merit worth up to 3 points.
+Awakening the Steel,3,merits,Clan,Assamite,Spend 1 blood to summon your blade or reform it when broken.
+Black Hand Membership,2,merits,Sabbat,,Gain the innate status Branded and +3 to resist Telepathy and other powers to directly pull information from your mind.
+Blase,3,merits,General,,"Gain free retest against Dementation, Melpominee, and Presence. Can be used before or after the normal Willpower retest. Exception to rules limiting retests."
+Blood of Tzimisce,1,merits,Clan,Tzimisce,"Gain +3 to attack pools (Physical, Social and Mental) when defending haven. Gain +2 dots of Lore skill and max increases by 2."
+Born in Shadow,2,merits,Clan,Lasombra,"Once per turn, activate 1 of the first 2 levels of Obtenebration or increase the radius of Shroud of Night w/o spending Blood, all other requirements must be met."
+Brotherhood,1,merits,Clan,Brujah,"Gain +2 to Brawl, Melee and Ranged attacks when attacking someone targeted by another Brujah."
+Burning Wrath,2,merits,Clan,Brujah,Simple action to gain +2 wild card bonus to attack and if successful do aggravated damage with fists.
+Calm Heart,1,merits,General,,Considered as having -2 Beast Traits when resisting frenzy. Gain +3 to test pool to resist frenzy. Brujah cannot take this merit. Restriction does not apply to True Brujah.
+Clear Sighted,3,merits,General,,"Gain free defensive retest against Chimeristry, Mytherceria, and Obfuscate. Can be used before or after the normal Willpower retest. Exception to rules limiting retests."
+Code of Honor,2,merits,General,,"Once per hour, gain a +2 wild card bonus to resist Social or Mental power use with the intent to force character to violate Personal Code of Ethics."
+Countermagic,4,merits,Clan,Tremere,Gain +3 to test pools resisting Thaumaturgy. Use standard action and 1 blood to dispel magic on a person (Mental+Occult vs. target's Mental+Willpower). If successful all Thaum powers on the target end and items go defunct for an hour. Same action and Blood for an area (Mental+Occult vs. 12) to dispel all ritual within 5 steps.
+Dancer's Grace,4,merits,Clan,Toreador,"Once per turn, gain free retest on Physical + Dodge pools. Can be used before or after the normal Willpower retest. Exception to rules limiting retests. Can be used in Celerity rounds, but only once per turn."
+Daredevil,2,merits,General,,Gain +3 to pools for extremely dangerous Physical tests. Gain +2 to defensive Physical pools when facing multiple opponents alone.
+Dark Statue,3,merits,Clan,Gargoyles,"Turns user into solid stone. Can perceive surroundings and heal. Immobile and cannot use Disciplines. Immune to sun and fire damage, and automatically resist sun triggered fear frenzy. Gain 3 health levels."
+Dauntless,2,merits,Anarch,,"If you win a test to resist a mind control power (such as Dominate), you are immune to that user's mind control for the rest of the evening."
+Dhampir,4,merits,Anarch,No Generation,"Build character as a Ghoul, except they gain 7 dots for their choice of Disciplines, cannot have more than 3 dots in any Discipline, aren't bound and cannot be Embraced."
+Ear to the Ground,1,merits,Anarch,,"Can spend 1 downtime to get word of hunter activity, and if wished feed those hunter false leads."
+Eclipsed Blood,2,merits,Clan,Caitiff,"Stay awake and regain Willpower even if active in the day. Take unsoakable normal, rather than aggravated, damage from sunlight."
+Efficient Digestion,1,merits,General,,Animal Blood is not reduced by half. Mortal Blood is doubled. Herd effectiveness is doubled. Cannot exceed normal Blood pool maximum.
+Efficient Learner,2,merits,General,,Instructor for a Discipline is not required to spend a Willpower to teach. Downtimes are not required to learn.
+Elder of the Revolution,2,merits,Anarch,Master or Luminary Elder,Must purchase this merit to be able to purchase the 7th or 6th Generation.
+Emissary to the Camarilla,1,merits,Camarilla,,Allows non-sect character to hold 1 fleeting Camarilla status.
+Escape Artist,3,merits,Clan,Ravnos,Study surrounding for 3 turns to Fair Escape any physical restraints other than grapples. Cannot escape impossible situations with this.
+Executioner,1,merits,Sabbat,,Gain +1 to pools involving Intimidation and Streetwise.
+Expanded Consciousness,1,merits,Clan,Malkavian,Gain second Mental attribute focus.
+Fanatic,2,merits,Sabbat,,"When Injured, gain a +3 to Initiative. When Incapacitated, gain +3 more (cumulative +6) to Initiative."
+Flight,1,merits,Clan,Gargoyles,Gain true flight at normal movement rates.
+Ghostly Retainer,3,merits,Clan,Giovanni,"Gain a level 5 Retainer wraith. If character possesses Necromancy: Sepulchre Path, can instantly summon the retainer for 1 Blood."
+Golconda Seeker,5,merits,General,,Choose one item from List 10. Must be Humanity 5+ and have Lore 4+ w/ the Golconda Lore specialty.
+Hidden Advantage,2,merits,Clan,Nosferatu,Auspex does not automatically notify users of Unseen Presence. Unseen Presence also works on the character in daysleep.
+Infernal Heritage,1,merits,Clan,Baali,Duplicates both Infernal Power and Path of Evil Revelations merits.
+Infernal Power,3,merits,General,,Choose one item from List 6.
+Inquisition Membership,2,merits,Sabbat,,"Gain the innate status Purified, +3 to  resist all infernal powers and infernal merits, and +3 to Dodge based defensive pools against demons and character who possess infernal powers or merits."
+Intense Vitality,2,merits,General,Neonate or Ancilla,Can spend 1 more Blood per turn than Generation allows.
+Intense Vitality (Elder),3,merits,General,,Can spend 1 more Blood per turn than Generation allows.
+Iron Will,3,merits,General,,"Gain free retest against Auspex, Animalism, and Dominate. Can be used before or after the normal Willpower retest. Exception to rules limiting retests."
+Keeper of a Sacred Text,1,merits,Sabbat,,"Free Lore specialization above what you are normally allowed in one of; Sabbat Doctrine, Quotes of Caine, or Cainite Heresy. Receive a +5 bonus on pools involving your bonus Lore specialization."
+Labyrinthine Mind,3,merits,Clan,Malkavian,"Gain +3 to test pools resisting Dementation, Dominate, and Thaumaturgy: Path of Corruption. Anyone attempting to pull information from your mind gains 1 of your derangements for an hour."
+Light Sleeper,1,merits,General,,Stay awake 1 hour after sunrise and up 1 hour before sunset. Awaken instantly at signs of trouble or danger. Ignore penalties for acting in daytime.
+Lion of the Cause,3,merits,Anarch,,All Anarchs within 10 steps of you in a Call to Arms gain a +2 wild card bonus to either their Brawl or Melees skill.
+Loremaster,1,merits,General,,Assign 2 Lore specializations per dot of the Lore skill.
+Lucky,2,merits,General,,"Once per combat, downgrade an opponent's exceptional success to a normal one."
+Machiavellian Prodigy,1,merits,Camarilla,Neonate or Ancilla,Treated as one social class higher.
+Magic Resistance,3,merits,General,,"Gain free retest against Necromancy, Thaumaturgy, Sabbat ritae and the powers of mages. Can be used before or after the normal Willpower retest. Exception to rules limiting retests. Can never learn Necromancy, Thaumaturgy or any other form of blood magic."
+Master of Puppets,2,merits,Camarilla,,"Once a week, regain 1 spent influence action in an influence of character's choice."
+Medium,1,merits,General,,"Gain a natural ability to see and hear ghosts, and occasionally glimpse the surrounding Shadowlands."
+Moniker,1,merits,Anarch,,"Gain the innate status of your gang, functions the same as the innate Moniker status."
+Monopoly,1,merits,Camarilla,,Assign 2 Influence specializations per dot of Influence background.
+Mook,2,merits,Clan,Giovanni,Can learn Celerity and Fortitude w/o a teacher. Must still pay out of Clan costs.
+Moral Compass,1,merits,Anarch,,"Once per game per target, counsel a vampire who lost a degeneration test for 10 minutes and they can reattempt that lost test."
+Natural Linguist,1,merits,General,,Assign 2 Language specializations per dot of Linguistics skill.
+Necromantic Expertise,1,merits,Clan,Giovanni,Opens up List 5 as an additional in Clan Discipline learnable w/o a teacher. Purchasable multiple times.
+Necromantic Insight,1,merits,Clan,Cappadocians,Opens up List 5 as an additional in Clan Discipline learnable w/o a teacher. Purchasable multiple times.
+Necromantic Training,5,merits,General,,"Opens up List 5 as an out of Clan Discipline, can never have Necromancy without this merit."
+Old Dog,1,merits,Anarch,,You were Embraced prior to 1800
+Oracular Ability,2,merits,General,,"Once per game, can ask the ST for a clue about relevant plot. Once an hour, can sacrifice a standard action to perform a simple one even out of Initiative order."
+Paragon,3,merits,Clan,Ventrue,"Resources money x 2, +1 action per Influence controlled (Elite or Underworld), gain Retainer 6 (NPC Neonate Ventrue - choose 3 items from Haven, Herd, Influence (Elite or Underworld) or Resources; 3 dots in 1, 2 dots in other, 1 dot in last)"
+Personal Cult,1,merits,Clan,Followers of Set,"Gain 5 free dots in Haven, Herd or Resources. Gain a temple that is considered holy ground. If the character spends 3 Blood and rests the day in the temple, heal 2 aggravated instead of 1."
+Personal Masquerade,1,merits,General,,Appear alive and healthy. Can consume food and drink. Cannot be on a Path of Enlightenment.
+Pierced Shroud,3,merits,Clan,Cappadocians,Gain 3 Blood any time a sentient being dies within character's line of sight. Cannot exceed normal Blood pool limits.
+Pliable Blood,3,merits,Clan,Nosferatu,Opens up List 7 as an additional in Clan Discipline.
+Prestigious Sire,1,merits,Camarilla,,Bonus Status Trait Loyal.
+Protean Blood,1,merits,Clan,Gangrel,Once per hour can activate a Protean power w/o the costs (blood or time). Cannot be used on Elder powers or Techniques. Can be used with Shape of the Beast's Wrath.
+Regal Bearing,4,merits,Clan,Ventrue,"Once per game session, use any 1 Presence power without using an action and before character's Initiative. Normal costs and tests still apply."
+Reputation,2,merits,General,,Can carry 1 more fleeting status than normal limit allows.
+Revelator,3,merits,Sabbat,,"Once per hour, use simple action to increase max Blood expenditure rate by 5 for 1 turn. Must loudly proclaim faith in Caine and his Dark Church."
+Righteous Fury,1,merits,Clan,Salubri,"Gain +3 to Brawl and Melee pools when targeting characters who possesses demonic powers, infernal merits or investments, or Daimoinon. Gain +1 to Brawl and Melee pools when targeting diablerists or Tremere."
+Rugged,3,merits,General,,An additional level in each wound rank.
+Sanctified,1,merits,Sabbat,,Gain +2 to all ritae test pools as leader. Grant +2 on a lend as a participant.
+Scholar of the Sword,1,merits,Sabbat,,Assign 1 additional ritae per dot of the Rituals background.
+Scourge of Alecto,3,merits,Clan,Brujah,"When target spends Willpower to resist your Awe or Majesty, they suffer 1 unsoakable Aggravated."
+Setite Sorcery,4,merits,Clan,Followers of Set,"Gain access to Thaumaturgy: Path of Corruption and one item from List 4 without a teacher, must still pay out of Clan costs."
+Shape of the Beast's Wrath,3,merits,Clan,Gangrel,"Can opt to turn into half-wolf/half-man monster in Fight Form. Gain +5 to Brawl test pool and do aggravated damage with Brawl attacks. All defensive pools (Physical, Social and Mental) suffer -2 penalty."
+Skill Aptitude,2,merits,General,,Maximum in one skill is increased by 1. Purchasable multiple times.
+Slippery Customer,2,merits,General,,Gain +3 to Dodge based test pools.
+Soaring Octaves,3,merits,Clan,Daughters of Cacophony,Can use Entrancement by direct sound of voice alone.
+Social Nobility,3,merits,Camarilla,,"When someone satisfactorily repays the character a boon, can grant fleeting status of Gallant."
+Sophistry,4,merits,Clan,Malkavian,"Once per game session, spend 1 Blood to auto-win or completely avoid a Physical, Social or Mental test that could result in injury."
+Sorcerous Dabbler,2,merits,Anarch,,"Grants 3 level 1 or 2 level 2 Thaumaturgical Rituals, even if the character has no Thaumaturgy. Character must still spend normal XP for them, this just grants access."
+Spiritual Armor,2,merits,Clan,Salubri,"Spend 1 Blood (if character has no Beast traits) to automatically resist demonic powers, infernal merits or investments, or Daimoinon. Can be used at any time, even before Initiative. Cannot learn demonic powers, purchase infernal merits, utilize infernal investments, or learn Daimoinon."
+Supernatural Aria,1,merits,Clan,Daughters of Cacophony,Increase maximum level of Performance by 3.
+Surprise Attack,1,merits,Clan,Assamite,Gain +3 to Physical test pools when attacking from surprise.
+Szlachta,2,merits,Clan,Tzimisce,Must have at least 3 dots of Vicissitude to use this merit. Cannot be purchased by Bloodline: Carpathian. Must choose either hellhound (animal) or szlachta (human) for each purchased Retainer. Add one item from List 9 to the Retainer.
+Talisman,3,merits,Clan,Tremere,"Rigid item between 5 inches and 6 feet long. Gain +2 to Thaumaturgy pools when touching it. Telyavic Tremere can build an Athame which has Concealable and Fast, Silver or Cold Iron weapon properties."
+Tech Junkie,2,merits,Anarch,,Gain +2 bonus on Computers and Science test pools.
+Thaumaturgic Training,4,merits,General,,"Opens up List 4 as an out of Clan Discipline, can never have Thaumaturgy without this merit."
+Thaumaturgical Expertise,1,merits,Clan,Tremere,Opens up List 4 as an additional in Clan Discipline learnable w/o a teacher. Purchasable multiple times.
+Unbondable,4,merits,General,,Immune to blood bonds and Vinculum. Cannot be taken by Tremere or any Tremere Bloodline.
+Unnatural Adaptation,4,merits,Clan,Nosferatu,Choose two special abilities from List 8.
+Unseeing Eye,1,merits,Clan,Nosferatu,"Cannot be targeted by powers that track at range (Clairvoyance, Illuminate the Trail of Prey, etc.). Line of sight powers still work."
+Unyielding,4,merits,General,,Increases maximum permanent Willpower to 7.
+Versatile,3,merits,General,,"Choose 1 attribute category (Physical, Social, Mental) and select an additional focus for that attribute."
+Vestiges of Greatness,3,merits,Clan,Caitiff,Opens up List 2 for last Discipline slot
+Volatile,1,merits,Sabbat,,"Once per combat, gain a Willpower when entering frenzy."
+Waking Dream,1,merits,Clan,Ravnos,"Once per game session, utilize a simple chimerical illusion as if were real (stairs, knife, lever, etc.) for one full turn. Cannot be used to help or harm another character."
+Walk the Abyss,3,merits,Clan,Lasombra,"Abyssal Mysticism, allows access to items that require it. Walk through the Abyss w/ up to 3 willing people. Test with ST to determine time to destination (no pool); win = 1hr, tie = 3 hours, loss = 6 hours. Suffer 1 agg per hour in the Abyss."
+Whisper of Life,1,merits,General,,"Register as mortal on all attempts to determine creature type, have unnaturally bright aura and animals can't sense Beast. Must have a Morality of at least 3 and cannot be on a Path of Enlightenment."
+Wild One,1,merits,Anarch,,Gain a +1 bonus to Brawl and Drive test pools and a +2 to defense test pools against formal title holders of the Camarilla and Sabbat.
+Zealot,1,merits,Sabbat,,"When in ritae that fails, can make a static challenge (Mental+Occult vs. 6) to determine the number of participants who lacked faith."
+Uncommon Clan,2,merits,General,,
+Rare Clan,4,merits,General,,
+Restricted Clan,6,merits,General,,

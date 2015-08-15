@@ -1,0 +1,81 @@
+name,value,category,type,requirement,note
+Accused of Heresy,2,flaws,Camarilla,,Treated as one social class lower. Neonates gain the Greater Status Ban applied to Caitiff. (Max Fleeting 1)
+Addiction (Amphetamine),2,flaws,General,,Suffer -1 to Mental tests involving coordination or mental dexterity for the first hour of game and for an hour after feeding.
+Addiction (Hallucinogen),2,flaws,General,,Agitated and cannot regain Willpower for the first hour of game and for an hour after feeding.
+Addiction (Sedatives),2,flaws,General,,Suffer -5 to Investigation & Awareness tests for the first hour of game and for an hour after feeding.
+Amnesia,1,flaws,General,,"No knowledge of character's past paramours, enemies or allies."
+Archaic,2,flaws,General,,"Cannot purchase the Computer, Drive, Science, or Security skills."
+Awkward Mobility,2,flaws,General,,Take 2 steps per movement instead of 3.
+Bad Sight,2,flaws,General,,"Suffer -2 to all Physical ranged attacks, including guns and thrown."
+Bastard Childe,2,flaws,Anarch,,"If gain negative Anarch status, lose access to backgrounds."
+Beacon of the Unholy,3,flaws,General,,"Radiate conspicuous evil. Devout mortals and hunters with True Faith recognize as a vampire. Any time character uses the 4th dot or higher of a Discipline, aura shows infernal taint. Cannot enter sacred sites. Powers of Faith (True Faith, Salubri) deal +1 point of damage."
+Beast in the Mirror,2,flaws,General,,"Everyone sees character's Beast in mirrors. Character gains a Beast trait each time they look in a mirror. Does not count towards Morality loss, but does count towards frenzy."
+Bestial Instinct,2,flaws,General,,"Every time character gains 1 or more Beast traits, character takes 1 unsoakable aggravated damage."
+Black Sheep,2,flaws,Anarch,,Lose 1 downtime a month.
+Blood Rot,5,flaws,General,,"Every time character spends Blood, character takes 1 unsoakable normal damage."
+Blunted Fangs,2,flaws,General,,Bite does not do aggravated damage and does not invoke the Kiss.
+Bound to the Earth,2,flaws,General,,Each day spent w/o contact with 2 handfuls of home soil = -1 to all attack test pools (max -5). Cannot be taken by Tzimisce or any Tzimisce Bloodline.
+Cannot Cross Running Water,2,flaws,General,,Cannot cross a moving body of water 3 feet or larger across w/o spending 1 Willpower. Willpower is not regained w/o rest for a full day.
+Careless,1,flaws,General,,"Character's attacks don't count against another's ability to declare fair escape, unless they are in a grapple. Anyone the character attacks prior to their initiative in the round may still declare fair escape in that round. If someone declares the intention of fair escape, character cannot declare a Physical action to prevent fair escape."
+Childlike,4,flaws,General,,Starting Physical Attribute max of 5 instead of 10.
+Conspicuous Consumption,3,flaws,General,,Start the evening with a Beast trait and gain an additional Beast trait each time the character feeds. Can eat flesh as if had Personal Masquerade.
+Crisis of Faith,2,flaws,Sabbat,,"When bad things happen, make a static test with ST. On lose or tie, count as unfaithful in ritae for 2 games or 1 month."
+Curiosity,2,flaws,General,,"If character fails to explore something new or unknown, maximum Willpower is reduced by 1 for the evening. This is cumulative, each such failure in the evening adds up."
+Cursed,1,flaws,General,,Minor curse that effects a Skill chosen when the flaw is taken. When triggered subtracts 1 from the chosen Skill.
+Dark Fate,5,flaws,General,,"If the character falls into torpor or is staked, they instead meet Final Death."
+Dark Secret,1,flaws,General,,A secret from character's past that would cause great embarrassment if uncovered.
+Death Sight,2,flaws,General,,"All Investigation pools suffer a -2 penalty, cannot use Aura Perception to determine creature type, and cannot visually differentiate between mortal and vampire."
+Deep Sleeper,2,flaws,General,,Morality counts as -2 for purpose of staying awake in the day and determining daytime penalties.
+Disease Carrier,4,flaws,General,,"Mortals fed from die, unless Stamina focused. Costs +1 downtime to feed safely. If the extra downtime isn't spent, gain a Beast trait. Feeding during game takes twice as long to do it safely. If the extra time isn't taken, gain a Beast trait. Cannot be taken by Bloodline: Lamia."
+Dubious Loyalties,2,flaws,Anarch,,Max fleeting Status is 1 less than normal.
+Dull,2,flaws,General,,Character is boring and doesn't receive their Archetype retest.
+Eerie Presence,1,flaws,General,,"Radiate an otherworldly air, making people nervous. Can be taken up to 3 times for different aspects of character's strange nature, but each must be distinctive and unconnected from the rest."
+Escaped Shovelhead,2,flaws,Anarch,,Reduce mental test pools by 2 (including defensive) when in a challenge against a known Sabbat member.
+Flesh of the Corpse,5,flaws,General,,"Skin retains signs of damage even after it is healed. Each time the character suffers a Physical attack that does 2+ damage, suffers -1 penalty to Physical. Penalty cannot be healed, only goes away after full day of rest."
+Forgiven Diablerie,1,flaws,Camarilla,,Made enemies and many Elders want to see downfall.
+Fragile Bones,4,flaws,General,,"If suffer 2+ damage from a single blow, 1 limb (chosen by attacker) is broken until the damage is healed. Leg/s= 1 step per movement. 1 arm w/ ambidexterity= -3 to Brawl and Melee pools. 1 arm w/o ambidexterity= -5 to Brawl and Melee pools. Both arms= cannot make Brawl or Melee attacks w/o bite or other power."
+Gehenna Prophet,2,flaws,General,,"Every time the character's Willpower decreases, they fall more into the waking visions. If all Willpower is lost the character falls into torpor."
+Grip of the Damned,2,flaws,General,,"Do not invoke the Kiss, must grapple prey, cannot seal feeding wound, and feeding from mortals is a level 1 Morality sin."
+Hard of Hearing,2,flaws,General,,Suffer -2 to Awareness and Investigation pools based on hearing.
+Haunted,1,flaws,General,,Vengeful ghost out to make character's eternity as uncomfortable as possible. Character can hear and see the ghost.
+Hunted,4,flaws,General,,"Must spend 2 downtime actions a month just to avoid the individuals who want character's Final Death. If character doesn't spend the actions, enters game w/ Healthy wound track full of aggravated damage."
+Illiterate,1,flaws,General,,"Cannot purchase the Academics, Computer, or Science skills. ST may limit levels in Lore or Occult."
+Impatient,2,flaws,General,,"When delayed in action, must spend 1 Willpower to wait w/o acting for 5 minutes. If the spend isn't made the character will lash out at the source of the delay."
+Inept,3,flaws,General,,"Choose one in-clan Discipline, no free dot in it and it costs out of clan XP. This Flaw cannot be removed."
+Infamous Brood,3,flaws,General,,"Any officer of character's sect can spend any status trait (abiding, innate, fleeting) to give character the Warned status trait."
+Intolerant,1,flaws,General,,"Unreasonable dislike of a Clan, Bloodline or type of person. Suffer -2 penalty to all non-combat pools if forced to work with such a person."
+Known to be Dead,1,flaws,General,,"If real name, photo or other identifier gets out too often hunters may take an interest."
+Lesser Generation 1,1,flaws,General,,"Neonate is of the 12th Generation, Ancilla is of the 10th Generation. Flaw cannot be taken by any Elders."
+Lesser Generation 2,2,flaws,General,,Neonate is of the 13th Generation. Flaw cannot be taken by Elders.
+Low Pain Threshold,3,flaws,General,,Lose one level in both the Injured and Incapacitated wound ranks.
+Magic Susceptibility,2,flaws,General,,"Cannot spend Willpower to retest Thaumaturgy, Necromancy or other forms of magic."
+Methuselah's Thirst,4,flaws,General,,"Enters game with half Blood pool, no amount of downtimes can increase this. May feed to full only on other Vampires and cannot benefit from Herd."
+Mistrusted,1,flaws,Sabbat,,Max fleeting Status is 1 less than normal.
+Necrophile,1,flaws,General,,"Must spend at least 10 minutes in the company of true corpses each night. If not, suffer a -1 penalty to all test pools until this is done. Penalty is not cumulative."
+Nightmares,1,flaws,General,,Recover from Beast traits at 1 per day of rest rather than all in 1 day of rest.
+Notoriety,2,flaws,General,,Do not receive passive bonuses from fleeting status.
+Obvious Predator,2,flaws,General,,"Suffer -2 to all interactions with mortals unaware of the supernatural. Cannot purchase the Contacts, Allies, or Influence backgrounds."
+Once Enslaved,2,flaws,Anarch,,Effectively Phobia Derangement against individuals trying to blood bond or vaulderie you.
+One Eye,3,flaws,General,,"Suffer -5 to all Physical ranged attacks, including guns and thrown."
+Overconfident,2,flaws,General,,"Cannot benefit from the assist attacker or assist defender tactics, unless the other person is following the character's direct orders."
+Permanent Wound,3,flaws,General,,"Unhealable wound, lose two Healthy wound levels."
+Pied Piper,1,flaws,General,,"Animals (specific type chosen when flaw is taken) flock to character, seeing through supernatural concealment."
+Poseidon's Call,3,flaws,General,,"If character doesn't sleep on or under natural water, cannot spend Willpower the next night."
+Prey Exclusion,1,flaws,General,,"Cannot feed from (or gain sustenance from) a specific type of mortal. If other vampires are seen feeding from this group, character must attempt to stop them. Gains Beat trait if fails to stop them. Cannot be taken by Ventrue or Ventrue Bloodlines."
+Repelled by Religion,3,flaws,General,,"Cannot directly harm or effect with powers a mortal who formally presents a symbol of their faith, take 1 normal damage per turn in physical contact with a holy symbol, and if forced onto holy ground suffer 3 unsoakable agg per turn. Cannot be taken by Baali or Baali Bloodlines."
+Sectarian,2,flaws,Camarilla,,Cannot posses Lore skill above 2 and cannot possess Loremaster merit.
+Short Attention Span,4,flaws,General,,"Must concentrate to continue using a power, w/o concentration the power ends in 1 turn. Permanent Willpower is reduced by 1."
+Short Fuse,2,flaws,General,,Considered as having +1 Beast trait when determining frenzy. Cannot be taken by Brujah.
+Slow Healing,3,flaws,General,,"Must spend an extra Blood point any time the character wishes to heal a point of damage. Only applies when character uses Blood to heal themselves, not to powers like Blood Rage."
+Slow Reactions,3,flaws,General,,Initiative is reduced by 5.
+Soul Shard,3,flaws,Sabbat,,Cannot spend Willpower while Incapacitated.
+Stolen Potential,3,flaws,General,,Do not receive a focus in one chosen Attribute. Must be purchased at creation.
+Tainted Embrace,2,flaws,Camarilla,,Max fleeting Status is 1 less than normal.
+Tenuous Loyalty,3,flaws,Sabbat,,Cannot use standard Archetype retest unless has 3 point vinculum to at least 3 Sabbat. Must spend 2 Willpower on the first retest of each session.
+Thin Blooded,3,flaws,General,Neonate,Neonate is of the 14th or 15th Generation and always Caitiff.
+Thirst for Innocence,1,flaws,General,,"Seek to corrupt, destroy or tarnish anything pure."
+Trouble Magnet,1,flaws,General,,"Whenever ST determines random negative result (falling rock, police patrol, etc.) no test is made. Character always suffers the bad luck."
+Untrained Combatant,3,flaws,Camarilla,,Cannot perform combat maneuvers or gain benefit from combat maneuvers.
+Vulnerable to Silver,2,flaws,General,,Silver does aggravated damage to the character rather than normal.
+Weak Stomach,3,flaws,General,Neonate,Calculate Blood pool as if has -1 Generation. Neonates reduce Blood pool by 2 Blood.
+Weak-Willed,3,flaws,General,,Cannot spend Willpower to retest resisting Dominate and Dementation.

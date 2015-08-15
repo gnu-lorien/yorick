@@ -1,0 +1,9 @@
+name,category,order
+Guards,haven_specializations,0
+Library,haven_specializations,1
+Location,haven_specializations,2
+Luxury,haven_specializations,3
+Security,haven_specializations,4
+Size,haven_specializations,5
+Staff,haven_specializations,6
+Occult,haven_specializations,7
