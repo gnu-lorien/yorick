@@ -13,7 +13,7 @@
 
 <div data-role="header" data-position="fixed" data-theme="a">
     <a href="javascript:window.history.back()" data-icon="arrow-l" data-iconpos="left" data-rel="back" data-transition="slide" data-direction="reverse" id="header-back-button">Back</a>
-    <a href="javascript:Parse.User.logOut(); window.location.hash = 'start';" data-icon="minus" data-iconpos="right" data-transition="slide" data-direction="reverse">Log Out</a>
+    <a href="#logout" data-icon="minus" data-iconpos="right" data-transition="slide" data-direction="reverse" id="header-logout-button">Log Out</a>
     <h1>Default Title</h1>
 </div><!-- /header -->
 
@@ -22,15 +22,20 @@
         <img src="VinesLogo.png"/>
     </div>
 </div>
-<div id="login-or-signup" data-role="page" data-title="Login or Sign Up">
+
+<div id="login" data-role="page" data-title="Log In">
     <div role="main" class="ui-content">
-        <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-            <li><a href="#characters?all">Characters</a></li>
-        </ul>
+        <img src="VinesLogo.png"/>
     </div><!-- /content -->
 </div>
 
-<div id="categories" data-role="page" data-title="Categories">
+<div id="signup" data-role="page" data-title="Sign Up">
+    <div role="main" class="ui-content">
+        <img src="VinesLogo.png"/>
+    </div><!-- /content -->
+</div>
+
+<div id="player-options" data-role="page" data-title="Player Options">
 	<div role="main" class="ui-content">
         <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
             <li><a href="#characters?all">Characters</a></li>
@@ -527,6 +532,8 @@
 
 <script type="text/template" id="login-template">
     <div class="login">
+        <img src="VinesLogo.png"/>
+        Welcome to Twisted Vines!
         <form class="login-form">
             <h2>Log In</h2>
             <div class="error" style="display:none"></div>
@@ -534,7 +541,14 @@
             <input type="password" id="login-password" placeholder="Password" />
             <button>Log In</button>
         </form>
+        <a href="#signup">Need an account? Sign up!</a>
+    </div>
+</script>
 
+<script type="text/template" id="signup-template">
+    <div class="signup">
+        <img src="VinesLogo.png"/>
+        Sign up for Twisted Vines
         <form class="signup-form">
             <h2>Sign Up</h2>
             <div class="error" style="display:none"></div>
@@ -656,6 +670,5 @@
         </table>
     <% }; %>
 </script>
-
 </body>
 </html>
