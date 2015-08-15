@@ -29,7 +29,7 @@ Deep Sleeper,2,flaws,General,,Morality counts as -2 for purpose of staying awake
 Disease Carrier,4,flaws,General,,"Mortals fed from die, unless Stamina focused. Costs +1 downtime to feed safely. If the extra downtime isn't spent, gain a Beast trait. Feeding during game takes twice as long to do it safely. If the extra time isn't taken, gain a Beast trait. Cannot be taken by Bloodline: Lamia."
 Dubious Loyalties,2,flaws,Anarch,,Max fleeting Status is 1 less than normal.
 Dull,2,flaws,General,,Character is boring and doesn't receive their Archetype retest.
-Eerie Presence,1,flaws,General,,"Radiate an otherworldly air, making people nervous. Can be taken up to 3 times for different aspects of character's strange nature, but each must be distinctive and unconnected from the rest."
+Eerie Presence,1,flaws,General,requires_specialization,"Radiate an otherworldly air, making people nervous. Can be taken up to 3 times for different aspects of character's strange nature, but each must be distinctive and unconnected from the rest."
 Escaped Shovelhead,2,flaws,Anarch,,Reduce mental test pools by 2 (including defensive) when in a challenge against a known Sabbat member.
 Flesh of the Corpse,5,flaws,General,,"Skin retains signs of damage even after it is healed. Each time the character suffers a Physical attack that does 2+ damage, suffers -1 penalty to Physical. Penalty cannot be healed, only goes away after full day of rest."
 Forgiven Diablerie,1,flaws,Camarilla,,Made enemies and many Elders want to see downfall.
