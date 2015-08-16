@@ -443,7 +443,6 @@
 </script>
 
 <div id="printable-sheet" data-role="page" data-title="Printable Sheet">
-
     <div role="main" class="ui-content">
     </div>
 </div>
@@ -472,11 +471,19 @@
     <% cols.push(["Empathy", "Firearms", "Intimidation", "Investigation", "Leadership", "Linguistics", "Lore", "Medicine", "Melee", "Occult"]); %>
     <% cols.push(["Performance", "Science", "Security", "Stealth", "Streetwise", "Subterfuge", "Survival"]); %>
     <% var groupedSkills = _.zip.apply(_, cols) %>
-    <table>
+    <table data-role="table" class="ui-responsive" data-mode="reflow" id="cecererec">
+        <thead>
+            <tr>
+                <th data-priority="1">1</th>
+                <th data-priority="persist">2</th>
+                <th data-priority="2">3</th>
+            </tr>
+        </thead>
+        <tbody>
         <% _.each(groupedSkills, function(three_group) { %>
         <tr>
             <% _.each(three_group, function(skill) { %>
-            <td><%= skill %></td><td>x</td><td><%= _.result(skillsLookup, skill + '[0].attributes.value', 0) %></td>
+            <td><%= skill %> x<%= _.result(skillsLookup, skill + '[0].attributes.value', 0) %></td>
             <% }); %>
         </tr>
         <% }); %>
@@ -486,6 +493,7 @@
         <tr><td><%= skill.get("name") %> x<%= skill.get("value") %></td></tr>
         <% } %>
         <% }); %>
+        </tbody>
     </table>
     <hr/>
     <h1>Backgrounds</h1>
