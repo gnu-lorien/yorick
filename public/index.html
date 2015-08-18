@@ -458,12 +458,11 @@
     <h1 class="ui-bar ui-bar-a"><%= character.get("name") %></h1>
     <h2 class="ui-bar ui-bar-a"><%= character.get("archetype") %> <%= character.get("clan") %></h2>
     <% var cl = {0: "a", 1: "b", 2: "c" }; %>
-    <h3 class="ui-bar ui-bar-a">Attributes</h3>
     <div class="ui-grid-b ui-responsive">
     <% _.each(character.get("attributes"), function (attribute, i) { %>
         <div class="ui-block-<%= cl[i] %>">
+            <h4 class="ui-bar ui-bar-a ui-corner-all"><%= attribute.get("name") %></h4>
             <div class="ui-body">
-                <%= attribute.get("name") %>
                 <%= attribute.get("value") %>
                 <br/>
                 <% var focusName = "focus_" + attribute.get("name").toLowerCase() + "s"; %>
@@ -474,7 +473,45 @@
         </div>
     <% }); %>
     </div>
-    <h3 class="ui-bar ui-bar-a">Skills</h3>
+        <% var bptLookup = {1: 10, 2: 12, 3: 15, 4: 20, 5: 30 } %>
+    <div class="ui-grid-b ui-responsive">
+        <div class="ui-block-a">
+            <h4 class="ui-bar ui-bar-a ui-corner-all">Blood</h4>
+            <% _.each(_.range(1, 31), function(i) { %>
+                <i class="fa fa-square-o"></i>
+                <% if (0 == i % 5) { %>
+                &nbsp;
+                <% } %>
+                <% if (0 == i % 10) { %>
+                <br/>
+                <% } %>
+            <% }); %>
+            <% _.each(_.range(character.generation() || 1), function(i) { %>
+                <i class="fa fa-circle"></i>
+            <% }); %>
+            <%= bptLookup[character.generation() || 1] %>
+        </div>
+        <div class="ui-block-b">
+            <h4 class="ui-bar ui-bar-a ui-corner-all">Willpower</h4>
+            <% _.each(_.range(1, 8), function (i) { %>
+                <i class="fa fa-square-o"></i>
+                <% if (0 == i % 5) { %>
+                &nbsp;
+                <% } %>
+            <% }); %>
+        </div>
+        <div class="ui-block-c">
+            <h4 class="ui-bar ui-bar-a ui-corner-all">Morality</h4>
+            <%= character.morality() %><br/>
+             <% _.each(_.range(1, 7), function(i) { %>
+                <i class="fa fa-square-o"></i>
+                <% if (0 == i % 5) { %>
+                &nbsp;
+                <% } %>
+             <% }); %>
+        </div>
+    </div>
+    <h4 class="ui-bar ui-bar-a">Skills</h4>
     <% var cols = [];
     cols.push(["Academics", "Animal Ken", "Athletics", "Awareness", "Brawl", "Computer", "Crafts", "Dodge", "Drive"]);
     cols.push(["Empathy", "Firearms", "Intimidation", "Investigation", "Leadership", "Linguistics", "Lore", "Medicine", "Melee", "Occult"]);
@@ -499,22 +536,35 @@
         <% } %>
         <% }); %>
     </div>
-    <h3 class="ui-bar ui-bar-a">&nbsp;</h3>
     <div class="ui-grid-b ui-responsive">
         <div class="ui-block-a">
-            <h3>Backgrounds</h3>
+            <h4 class="ui-bar ui-bar-a ui-corner-all">Backgrounds</h4>
             <% _.each(character.get("backgrounds"), function(background) { %>
-                <%= background.get("name") %>: <%= background.get("value") %><br/>
+                <%= background.get("name") %>: <%= background.get("value") %>
+                <% if (background.get("name") == "Haven") { %>
+                    <%= _.pluck(character.get("haven_specializations"), "attributes.name").join(", ") %>
+                <% } else if (background.get("name") == "Influences: The Elite") { %>
+                    <%= _.pluck(character.get("influence_elite_specializations"), "attributes.name").join(", ") %>
+                <% } else if (background.get("name") == "Influences: The Underworld") { %>
+                    <%= _.pluck(character.get("influence_underworld_specializations"), "attributes.name").join(", ") %>
+                <% } %>
+                <br/>
             <% }); %>
         </div>
         <div class="ui-block-b">
-            <h3>Disciplines</h3>
+            <h4 class="ui-bar ui-bar-a ui-corner-all">Disciplines</h4>
             <% _.each(character.get("disciplines"), function(d) { %>
                 <%= d.get("name") %>: <%= d.get("value") %><br/>
             <% }); %>
+            <% _.each(character.get("techniques"), function(d) { %>
+                Technique: <%= d.get("name") %><br/>
+            <% }); %>
+            <% _.each(character.get("elder_disciplines"), function(d) { %>
+                <%= d.get("name") %><br/>
+            <% }); %>
         </div>
         <div class="ui-block-c">
-            <h3>Merits and Flaws</h3>
+            <h4 class="ui-bar ui-bar-a ui-corner-all">Merits and Flaws</h4>
             <% _.each(character.get("merits"), function(d) { %>
                 <%= d.get("name") %>: <%= d.get("value") %><br/>
             <% }); %>
@@ -523,52 +573,26 @@
             <% }); %>
         </div>
     </div>
-    <% var bptLookup = {1: 10, 2: 12, 3: 15, 4: 20, 5: 30 } %>
     <div class="ui-grid-b ui-responsive">
         <div class="ui-block-a">
-            <h3>Blood</h3>
-            <% _.each(_.range(1, 31), function(i) { %>
-                <i class="fa fa-square-o"></i>
-                <% if (0 == i % 5) { %>
-                &nbsp;
-                <% } %>
-                <% if (0 == i % 10) { %>
-                <br/>
-                <% } %>
+            <h4 class="ui-bar ui-bar-a ui-corner-all">Lores</h4>
+            <% _.each(character.get("lore_specializations"), function(background) { %>
+                <%= background.get("name") %><br/>
             <% }); %>
-            <% _.each(_.range(character.generation() || 1), function(i) { %>
-                <i class="fa fa-circle"></i>
-            <% }); %>
-            <%= bptLookup[character.generation() || 1] %>
         </div>
         <div class="ui-block-b">
-            <h3>Willpower</h3>
-            <% _.each(_.range(1, 8), function (i) { %>
-                <i class="fa fa-square-o"></i>
-                <% if (0 == i % 5) { %>
-                &nbsp;
-                <% } %>
+            <h4 class="ui-bar ui-bar-a ui-corner-all">Rituals</h4>
+            <% _.each(character.get("rituals"), function(d) { %>
+                <%= d.get("name") %><br/>
             <% }); %>
         </div>
         <div class="ui-block-c">
-            <h3>Morality</h3>
-            <%= character.morality() %><br/>
-             <% _.each(_.range(1, 7), function(i) { %>
-                <i class="fa fa-square-o"></i>
-                <% if (0 == i % 5) { %>
-                &nbsp;
-                <% } %>
-             <% }); %>
+            <h4 class="ui-bar ui-bar-a ui-corner-all">Languages</h4>
+            <% _.each(character.get("linguistics_specializations"), function(d) { %>
+                <%= d.get("name") %><br/>
+            <% }); %>
         </div>
     </div>
-    <% _.each(["influence_elite_specializations", "influence_underworld_specializations", "techniques", "elder_disciplines", "rituals", "haven_specializations", "lore_specializations", "linguistics_specializations"], function (category) { %>
-    <h1><%= category %></h1>
-    <table>
-        <% _.each(character.get(category), function(d) { %>
-        <tr><td><%= d.get("name") %>: <%= d.get("value") %></td></tr>
-        <% }); %>
-    </table>
-    <% }); %>
 </script>
 
 <script type="text/template" id="login-template">
