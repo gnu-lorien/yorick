@@ -238,7 +238,9 @@ define([
                 "lore_specializations",
                 "rituals",
                 "experience_points",
-                "linguistic_specializations"];
+                "linguistics_specializations",
+                "influence_elite_specializations",
+                "influence_underworld_specializations"];
         },
 
         unpick_from_creation: function(category, picked_trait_id, pick_index, wait) {

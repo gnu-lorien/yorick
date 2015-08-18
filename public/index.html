@@ -97,6 +97,12 @@
         <li><a href="#simpletraits/lore_specializations/<%= character.id %>/all">Lore Specializations</a></li>
     </ul>
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li><a href="#simpletraits/influence_underworld_specializations/<%= character.id %>/all">Influence: Underworld Specializations</a></li>
+    </ul>
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li><a href="#simpletraits/influence_elite_specializations/<%= character.id %>/all">Influence: Elite Specializations</a></li>
+    </ul>
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <li><a href="#simpletraits/linguistics_specializations/<%= character.id %>/all">Linguistics Specializations</a></li>
     </ul>
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
@@ -555,7 +561,7 @@
              <% }); %>
         </div>
     </div>
-    <% _.each(["techniques", "elder_disciplines", "rituals", "haven_specializations", "lore_specializations", "linguistics_specializations"], function (category) { %>
+    <% _.each(["influence_elite_specializations", "influence_underworld_specializations", "techniques", "elder_disciplines", "rituals", "haven_specializations", "lore_specializations", "linguistics_specializations"], function (category) { %>
     <h1><%= category %></h1>
     <table>
         <% _.each(character.get(category), function(d) { %>
