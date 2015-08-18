@@ -1,11 +1,12 @@
 <!doctype html>
 <html class="no-js ui-mobile-rendering" lang="en">
 <head>
-	<title>Backbone.js, Require.js, and jQuery Mobile</title>
-	<meta name="description" content="">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<link rel="stylesheet" href="css/themes/default/jquery.mobile.css">
+    <title>Backbone.js, Require.js, and jQuery Mobile</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="css/themes/default/jquery.mobile.css">
     <link rel="stylesheet" href="css/printable_sheet.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
     <script data-main="scripts/app" src="scripts/lib/require.js"></script>
 </head>
 <body>
@@ -448,67 +449,112 @@
 </div>
 
 <script id="characterPrintView" type="text/template">
-    <h1><%= character.get("name") %></h1>
-    <h2><%= character.get("archetype") %> <%= character.get("clan") %></h2>
-    <hr/>
-    <table>
-    <% _.each(character.get("attributes"), function (attribute) { %>
-        <tr>
-    <td><%= attribute.get("name") %></td>
-    <td><%= attribute.get("value") %></td>
-            <td>
-    <% var focusName = "focus_" + attribute.get("name").toLowerCase() + "s"; %>
-    <% _.each(character.get(focusName), function (focus) { %>
-    <%= focus.get("name") %>&nbsp;
+    <h1 class="ui-bar ui-bar-a"><%= character.get("name") %></h1>
+    <h2 class="ui-bar ui-bar-a"><%= character.get("archetype") %> <%= character.get("clan") %></h2>
+    <% var cl = {0: "a", 1: "b", 2: "c" }; %>
+    <h3 class="ui-bar ui-bar-a">Attributes</h3>
+    <div class="ui-grid-b ui-responsive">
+    <% _.each(character.get("attributes"), function (attribute, i) { %>
+        <div class="ui-block-<%= cl[i] %>">
+            <div class="ui-body">
+                <%= attribute.get("name") %>
+                <%= attribute.get("value") %>
+                <br/>
+                <% var focusName = "focus_" + attribute.get("name").toLowerCase() + "s"; %>
+                <% _.each(character.get(focusName), function (focus) { %>
+                <%= focus.get("name") %>
+                <% }); %>
+            </div>
+        </div>
     <% }); %>
-                </td></tr>
-    <% }); %>
-    </table>
-
-    <h3>Skills</h3>
-    <% var cols = []; %>
-    <% cols.push(["Academics", "Animal Ken", "Athletics", "Awareness", "Brawl", "Computer", "Crafts", "Dodge", "Drive"]); %>
-    <% cols.push(["Empathy", "Firearms", "Intimidation", "Investigation", "Leadership", "Linguistics", "Lore", "Medicine", "Melee", "Occult"]); %>
-    <% cols.push(["Performance", "Science", "Security", "Stealth", "Streetwise", "Subterfuge", "Survival"]); %>
-    <% var groupedSkills = _.zip.apply(_, cols) %>
-    <table data-role="table" class="ui-responsive" data-mode="reflow" id="cecererec">
-        <thead>
-            <tr>
-                <th data-priority="1">1</th>
-                <th data-priority="persist">2</th>
-                <th data-priority="2">3</th>
-            </tr>
-        </thead>
-        <tbody>
+    </div>
+    <h3 class="ui-bar ui-bar-a">Skills</h3>
+    <% var cols = [];
+    cols.push(["Academics", "Animal Ken", "Athletics", "Awareness", "Brawl", "Computer", "Crafts", "Dodge", "Drive"]);
+    cols.push(["Empathy", "Firearms", "Intimidation", "Investigation", "Leadership", "Linguistics", "Lore", "Medicine", "Melee", "Occult"]);
+    cols.push(["Performance", "Science", "Security", "Stealth", "Streetwise", "Subterfuge", "Survival"]);
+    var groupedSkills = _.zip.apply(_, cols) %>
+    <div class="ui-grid-b ui-responsive">
         <% _.each(groupedSkills, function(three_group) { %>
-        <tr>
-            <% _.each(three_group, function(skill) { %>
-            <td><%= skill %> x<%= _.result(skillsLookup, skill + '[0].attributes.value', 0) %></td>
+            <% _.each(three_group, function(skill, i) { %>
+            <div class="ui-block-<%= cl[i % 3] %>">
+                <div class="ui-body">
+                    <%= skill %> x<%= _.result(skillsLookup, skill + '[0].attributes.value', 0) %>
+                </div>
+            </div>
             <% }); %>
-        </tr>
         <% }); %>
+    </div>
+    <div class="ui-body">
         <% cols = _.flatten(cols); %>
         <% _.each(character.get("skills"), function (skill) { %>
         <% if (!_.contains(cols, skill.get("name"))) { %>
-        <tr><td><%= skill.get("name") %> x<%= skill.get("value") %></td></tr>
+        <%= skill.get("name") %> x<%= skill.get("value") %><br/>
         <% } %>
         <% }); %>
-        </tbody>
-    </table>
-    <hr/>
-    <h1>Backgrounds</h1>
-    <table>
-        <% _.each(character.get("backgrounds"), function(background) { %>
-        <tr><td><%= background.get("name") %>: <%= background.get("value") %></td></tr>
-        <% }); %>
-    </table>
-    <hr/>
-    <h1>Disciplines</h1>
-    <table>
-        <% _.each(character.get("disciplines"), function(d) { %>
-        <tr><td><%= d.get("name") %>: <%= d.get("value") %></td></tr>
-        <% }); %>
-    </table>
+    </div>
+    <h3 class="ui-bar ui-bar-a">&nbsp;</h3>
+    <div class="ui-grid-b ui-responsive">
+        <div class="ui-block-a">
+            <h3>Backgrounds</h3>
+            <% _.each(character.get("backgrounds"), function(background) { %>
+                <%= background.get("name") %>: <%= background.get("value") %><br/>
+            <% }); %>
+        </div>
+        <div class="ui-block-b">
+            <h3>Disciplines</h3>
+            <% _.each(character.get("disciplines"), function(d) { %>
+                <%= d.get("name") %>: <%= d.get("value") %><br/>
+            <% }); %>
+        </div>
+        <div class="ui-block-c">
+            <h3>Merits and Flaws</h3>
+            <% _.each(character.get("merits"), function(d) { %>
+                <%= d.get("name") %>: <%= d.get("value") %><br/>
+            <% }); %>
+            <% _.each(character.get("flaws"), function(d) { %>
+                <%= d.get("name") %>: <%= d.get("value") %><br/>
+            <% }); %>
+        </div>
+    </div>
+    <% var bptLookup = {1: 10, 2: 12, 3: 15, 4: 20, 5: 30 } %>
+    <div class="ui-grid-b ui-responsive">
+        <div class="ui-block-a">
+            <h3>Blood</h3>
+            <% _.each(_.range(1, 31), function(i) { %>
+                <i class="fa fa-square-o"></i>
+                <% if (0 == i % 5) { %>
+                &nbsp;
+                <% } %>
+                <% if (0 == i % 10) { %>
+                <br/>
+                <% } %>
+            <% }); %>
+            <% _.each(_.range(character.generation() || 1), function(i) { %>
+                <i class="fa fa-circle"></i>
+            <% }); %>
+            <%= bptLookup[character.generation() || 1] %>
+        </div>
+        <div class="ui-block-b">
+            <h3>Willpower</h3>
+            <% _.each(_.range(1, 8), function (i) { %>
+                <i class="fa fa-square-o"></i>
+                <% if (0 == i % 5) { %>
+                &nbsp;
+                <% } %>
+            <% }); %>
+        </div>
+        <div class="ui-block-c">
+            <h3>Morality</h3>
+            <%= character.morality() %><br/>
+             <% _.each(_.range(1, 7), function(i) { %>
+                <i class="fa fa-square-o"></i>
+                <% if (0 == i % 5) { %>
+                &nbsp;
+                <% } %>
+             <% }); %>
+        </div>
+    </div>
     <% _.each(["techniques", "elder_disciplines", "rituals", "haven_specializations", "lore_specializations", "linguistics_specializations"], function (category) { %>
     <h1><%= category %></h1>
     <table>

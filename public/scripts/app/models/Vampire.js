@@ -309,6 +309,19 @@ define([
             return generation;
         },
 
+        morality: function() {
+            var self = this;
+            var morality = "Humanity";
+            _.each(self.get("merits"), function (m) {
+                if (_.startsWith(m.get("name"), "Path of")) {
+                    var words = _.words(m.get("name"));
+                    morality = _.slice(words, 2);
+                    morality = morality.join(" ");
+                }
+            });
+            return morality;
+        },
+
         calculate_trait_cost: function(trait) {
             var self = this;
             var category = trait.get("category");
