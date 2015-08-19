@@ -299,7 +299,7 @@ define([
             return total_cost - free_cost;
         },
 
-        generation: function() {
+        _raw_generation: function() {
             var self = this;
             var generation;
             _.each(self.get("backgrounds"), function(b) {
@@ -309,6 +309,14 @@ define([
             });
 
             return generation;
+        },
+
+        generation: function() {
+            return this._raw_generation() || 1;
+        },
+
+        has_generation: function() {
+            return !_.isUndefined(this._raw_generation());
         },
 
         morality: function() {
@@ -352,7 +360,7 @@ define([
                 return mod_value * 2;
             }
 
-            var generation = self.generation() || 1;
+            var generation = self.generation();
 
             var background_ct, skill_ct, ooc_discipline_ct, technique_cost, ic_elder_cost, ooc_elder_cost;
 

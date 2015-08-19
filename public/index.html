@@ -438,7 +438,7 @@
 <script id="characterCostsView" type="text/template">
     <h1><%= character.get("name") %></h1>
 
-    <% if (!character.generation()) { %>
+    <% if (!character.has_generation()) { %>
     <p>Warning: Values are just a guess without a generation set</p>
     <% } %>
 
@@ -486,10 +486,10 @@
                 <br/>
                 <% } %>
             <% }); %>
-            <% _.each(_.range(character.generation() || 1), function(i) { %>
+            <% _.each(_.range(character.generation()), function(i) { %>
                 <i class="fa fa-circle"></i>
             <% }); %>
-            <%= bptLookup[character.generation() || 1] %>
+            <%= bptLookup[character.generation()] %> / <%= character.generation() %>
         </div>
         <div class="ui-block-b">
             <h4 class="ui-bar ui-bar-a ui-corner-all">Willpower</h4>
