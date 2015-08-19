@@ -506,8 +506,6 @@
                 &nbsp;
                 <% } %>
             <% }); %>
-        </div>
-        <div class="ui-block-c">
             <h4 class="ui-bar ui-bar-a ui-corner-all">Morality</h4>
             <%= character.morality() %><br/>
              <% _.each(_.range(1, 7), function(i) { %>
@@ -516,6 +514,16 @@
                 &nbsp;
                 <% } %>
              <% }); %>
+        </div>
+        <div class="ui-block-c">
+            <h4 class="ui-bar ui-bar-a ui-corner-all">Health Levels</h4>
+            <% _.forIn(character.health_levels(), function (level, name, i, j) { %>
+                <% _.each(_.range(_.parseInt(level)), function(i) { %>
+                    <i class="fa fa-square-o"></i>
+                <% }); %>
+                <%= name %>
+                <br/>
+            <% }); %>
         </div>
     </div>
     <h4 class="ui-bar ui-bar-a">Skills</h4>
@@ -552,38 +560,52 @@
             <% _.each(_.chain(character.get("disciplines")).sortBy("attributes.name").value(), function(d) { %>
                 <%= d.get("name") %>: <%= d.get("value") %><br/>
             <% }); %>
+            <% if (character.has("techniques")) { %>
             <h4 class="ui-bar ui-bar-a ui-corner-all">Techniques</h4>
             <% _.each(_.chain(character.get("techniques")).sortBy("attributes.name").value(), function(d) { %>
                 <%= d.get("name") %><br/>
             <% }); %>
+            <% } %>
+            <% if (character.has("elder_disciplines")) { %>
             <h4 class="ui-bar ui-bar-a ui-corner-all">Elder Disciplines</h4>
             <% _.each(_.chain(character.get("elder_disciplines")).sortBy("attributes.name").value(), function(d) { %>
                 <%= d.get("name") %><br/>
             <% }); %>
+            <% } %>
         </div>
         <div class="ui-block-c">
+            <% if (character.has("merits")) { %>
             <h4 class="ui-bar ui-bar-a ui-corner-all">Merits</h4>
             <% _.each(character.get("merits"), function(d) { %>
                 <%= d.get("name") %>: <%= d.get("value") %><br/>
             <% }); %>
+            <% } %>
+            <% if (character.has("flaws")) { %>
             <h4 class="ui-bar ui-bar-a ui-corner-all">Flaws</h4>
             <% _.each(character.get("flaws"), function(d) { %>
                 <%= d.get("name") %>: <%= d.get("value") %><br/>
             <% }); %>
+            <% } %>
         </div>
     </div>
     <div class="ui-grid-b ui-responsive">
         <div class="ui-block-a">
+            <% if (character.has("lore_specializations")) { %>
             <h4 class="ui-bar ui-bar-a ui-corner-all">Lores</h4>
             <%= _.pluck(character.get("lore_specializations"), "attributes.name").join("<br/>") %>
+            <% } %>
         </div>
         <div class="ui-block-b">
+            <% if (character.has("rituals")) { %>
             <h4 class="ui-bar ui-bar-a ui-corner-all">Rituals</h4>
             <%= _.pluck(character.get("rituals"), "attributes.name").join("<br/>") %>
+            <% } %>
         </div>
         <div class="ui-block-c">
+            <% if (character.has("linguistics_specializations")) { %>
             <h4 class="ui-bar ui-bar-a ui-corner-all">Languages</h4>
             <%= _.pluck(character.get("linguistics_specializations"), "attributes.name").join("<br/>") %>
+            <% } %>
         </div>
     </div>
 </script>

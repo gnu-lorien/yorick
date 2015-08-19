@@ -332,6 +332,26 @@ define([
             return morality;
         },
 
+        has: function(category) {
+            var c = this.get(category);
+            if (_.isUndefined(c)) {
+                return false;
+            }
+            if (c.length == 0) {
+                return false;
+            }
+            return true;
+        },
+
+        health_levels: function() {
+            var health_levels = {
+                "Healthy": 3,
+                "Injured": 3,
+                "Incapacitated": 3
+            };
+            return health_levels;
+        },
+
         calculate_trait_cost: function(trait) {
             var self = this;
             var category = trait.get("category");
