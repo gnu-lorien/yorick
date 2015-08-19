@@ -538,24 +538,26 @@
             <% _.each(character.get("backgrounds"), function(background) { %>
                 <%= background.get("name") %>: <%= background.get("value") %>
                 <% if (background.get("name") == "Haven") { %>
-                    <%= _.pluck(character.get("haven_specializations"), "attributes.name").join(", ") %>
+                    <br/>&nbsp;&nbsp;<%= _.pluck(character.get("haven_specializations"), "attributes.name").join("<br/>&nbsp;&nbsp;") %>
                 <% } else if (background.get("name") == "Influences: The Elite") { %>
-                    <%= _.pluck(character.get("influence_elite_specializations"), "attributes.name").join(", ") %>
+                    <br/>&nbsp;&nbsp;<%= _.pluck(character.get("influence_elite_specializations"), "attributes.name").join("<br/>&nbsp;&nbsp;") %>
                 <% } else if (background.get("name") == "Influences: The Underworld") { %>
-                    <%= _.pluck(character.get("influence_underworld_specializations"), "attributes.name").join(", ") %>
+                    <br/>&nbsp;&nbsp;<%= _.pluck(character.get("influence_underworld_specializations"), "attributes.name").join("<br/>&nbsp;&nbsp;") %>
                 <% } %>
                 <br/>
             <% }); %>
         </div>
         <div class="ui-block-b">
             <h4 class="ui-bar ui-bar-a ui-corner-all">Disciplines</h4>
-            <% _.each(character.get("disciplines"), function(d) { %>
+            <% _.each(_.chain(character.get("disciplines")).sortBy("attributes.name").value(), function(d) { %>
                 <%= d.get("name") %>: <%= d.get("value") %><br/>
             <% }); %>
-            <% _.each(character.get("techniques"), function(d) { %>
-                Technique: <%= d.get("name") %><br/>
+            <h4 class="ui-bar ui-bar-a ui-corner-all">Techniques</h4>
+            <% _.each(_.chain(character.get("techniques")).sortBy("attributes.name").value(), function(d) { %>
+                <%= d.get("name") %><br/>
             <% }); %>
-            <% _.each(character.get("elder_disciplines"), function(d) { %>
+            <h4 class="ui-bar ui-bar-a ui-corner-all">Elder Disciplines</h4>
+            <% _.each(_.chain(character.get("elder_disciplines")).sortBy("attributes.name").value(), function(d) { %>
                 <%= d.get("name") %><br/>
             <% }); %>
         </div>
@@ -572,15 +574,15 @@
     <div class="ui-grid-b ui-responsive">
         <div class="ui-block-a">
             <h4 class="ui-bar ui-bar-a ui-corner-all">Lores</h4>
-            <%= _.pluck(character.get("lore_specializations"), "attributes.name").join(", ") %>
+            <%= _.pluck(character.get("lore_specializations"), "attributes.name").join("<br/>") %>
         </div>
         <div class="ui-block-b">
             <h4 class="ui-bar ui-bar-a ui-corner-all">Rituals</h4>
-            <%= _.pluck(character.get("rituals"), "attributes.name").join(", ") %>
+            <%= _.pluck(character.get("rituals"), "attributes.name").join("<br/>") %>
         </div>
         <div class="ui-block-c">
             <h4 class="ui-bar ui-bar-a ui-corner-all">Languages</h4>
-            <%= _.pluck(character.get("linguistics_specializations"), "attributes.name").join(", ") %>
+            <%= _.pluck(character.get("linguistics_specializations"), "attributes.name").join("<br/>") %>
         </div>
     </div>
 </script>
