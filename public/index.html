@@ -562,10 +562,11 @@
             <% }); %>
         </div>
         <div class="ui-block-c">
-            <h4 class="ui-bar ui-bar-a ui-corner-all">Merits and Flaws</h4>
+            <h4 class="ui-bar ui-bar-a ui-corner-all">Merits</h4>
             <% _.each(character.get("merits"), function(d) { %>
                 <%= d.get("name") %>: <%= d.get("value") %><br/>
             <% }); %>
+            <h4 class="ui-bar ui-bar-a ui-corner-all">Flaws</h4>
             <% _.each(character.get("flaws"), function(d) { %>
                 <%= d.get("name") %>: <%= d.get("value") %><br/>
             <% }); %>
