@@ -456,7 +456,14 @@
 
 <script id="characterPrintView" type="text/template">
     <h1 class="ui-bar ui-bar-a"><%= character.get("name") %></h1>
-    <h2 class="ui-bar ui-bar-a"><%= character.get("archetype") %> <%= character.get("clan") %></h2>
+        <div class="ui-grid-b ui-responsive">
+        <div class="ui-block-a">
+        <h2 class="ui-bar ui-bar-a">Clan: <%= character.get("clan") %></h2>
+            </div>
+        <div class="ui-block-b">
+            <h2 class="ui-bar ui-bar-a">Archetype: <%= character.get("archetype") %></h2>
+            </div>
+    </div>
     <% var cl = {0: "a", 1: "b", 2: "c" }; %>
     <div class="ui-grid-b ui-responsive">
     <% _.each(character.get("attributes"), function (attribute, i) { %>
@@ -512,28 +519,17 @@
         </div>
     </div>
     <h4 class="ui-bar ui-bar-a">Skills</h4>
-    <% var cols = [];
-    cols.push(["Academics", "Animal Ken", "Athletics", "Awareness", "Brawl", "Computer", "Crafts", "Dodge", "Drive"]);
-    cols.push(["Empathy", "Firearms", "Intimidation", "Investigation", "Leadership", "Linguistics", "Lore", "Medicine", "Melee", "Occult"]);
-    cols.push(["Performance", "Science", "Security", "Stealth", "Streetwise", "Subterfuge", "Survival"]);
-    var groupedSkills = _.zip.apply(_, cols) %>
     <div class="ui-grid-b ui-responsive">
         <% _.each(groupedSkills, function(three_group) { %>
             <% _.each(three_group, function(skill, i) { %>
+            <% if (skill) { %>
             <div class="ui-block-<%= cl[i % 3] %>">
-                <div class="ui-body">
-                    <%= skill %> x<%= _.result(skillsLookup, skill + '[0].attributes.value', 0) %>
+                <div class="ui-body" style="overflow: hidden; white-space:nowrap">
+                    <%= skill %>
                 </div>
             </div>
+            <% } %>
             <% }); %>
-        <% }); %>
-    </div>
-    <div class="ui-body">
-        <% cols = _.flatten(cols); %>
-        <% _.each(character.get("skills"), function (skill) { %>
-        <% if (!_.contains(cols, skill.get("name"))) { %>
-        <%= skill.get("name") %> x<%= skill.get("value") %><br/>
-        <% } %>
         <% }); %>
     </div>
     <div class="ui-grid-b ui-responsive">
@@ -576,21 +572,15 @@
     <div class="ui-grid-b ui-responsive">
         <div class="ui-block-a">
             <h4 class="ui-bar ui-bar-a ui-corner-all">Lores</h4>
-            <% _.each(character.get("lore_specializations"), function(background) { %>
-                <%= background.get("name") %><br/>
-            <% }); %>
+            <%= _.pluck(character.get("lore_specializations"), "attributes.name").join(", ") %>
         </div>
         <div class="ui-block-b">
             <h4 class="ui-bar ui-bar-a ui-corner-all">Rituals</h4>
-            <% _.each(character.get("rituals"), function(d) { %>
-                <%= d.get("name") %><br/>
-            <% }); %>
+            <%= _.pluck(character.get("rituals"), "attributes.name").join(", ") %>
         </div>
         <div class="ui-block-c">
             <h4 class="ui-bar ui-bar-a ui-corner-all">Languages</h4>
-            <% _.each(character.get("linguistics_specializations"), function(d) { %>
-                <%= d.get("name") %><br/>
-            <% }); %>
+            <%= _.pluck(character.get("linguistics_specializations"), "attributes.name").join(", ") %>
         </div>
     </div>
 </script>
