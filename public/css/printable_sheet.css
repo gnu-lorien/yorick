@@ -1,1 +1,45 @@
-thead { display: none}
+@media print {
+    * {
+        transition: none !important
+    }
+
+    thead {
+        display: none
+    }
+
+    body {
+        margin: 0px !important;
+    }
+
+    .slidedown {
+        display: none !important;
+    }
+
+    .ui-page-active {
+        padding-top: 0px !important;
+    }
+
+    .ui-bar {
+        margin: 1px !important;
+        padding: 1px !important;
+    }
+
+    .ui-content {
+        padding: 0px !important;
+    }
+
+    .ui-body {
+        padding: 0px !important;
+    }
+
+    .ui-navbar {
+        display: none !important;
+    }
+
+    @page {
+        margin-left: .25in;
+        margin-right: .25in;
+        margin-top: .25in;
+        margin-bottom: .25in;
+    }
+}

@@ -5,7 +5,7 @@
     <meta name="description" content="">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="css/themes/default/jquery.mobile.css">
-    <link rel="stylesheet" href="css/printable_sheet.css">
+    <link rel="stylesheet" href="css/printable_sheet.css" media="print">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
     <script data-main="scripts/app" src="scripts/lib/require.js"></script>
 </head>
@@ -356,8 +356,8 @@
 
 <script id="characterNewView" type="text/template">
     <form>
-         <label for="characterName">Name:</label>
-         <input type="text" name="characterName" id="characterName" value="New Character Name">
+    ï¿½ï¿½ï¿½ï¿½ï¿½<label for="characterName">Name:</label>
+    ï¿½ï¿½ï¿½ï¿½ï¿½<input type="text" name="characterName" id="characterName" value="New Character Name">
     </form>
     <p>
         <button class="cancel ui-btn">Cancel</button>
@@ -383,7 +383,7 @@
         <p>Pick one for value <%= freeValue %></p>
     <% } %>
     <form class="ui-filterable">
-            <input id="filterBasic-input" data-type="search">
+        ï¿½ï¿½ï¿½ï¿½<input id="filterBasic-input" data-type="search">
     </form>
     <ul data-role="listview" data-filter="true" data-input="#filterBasic-input">
     <% _.each(collection, function(e) { %>
@@ -631,8 +631,8 @@
 
 <script id="simpleTraitSpecialization" type="text/template">
     <form>
-             <label for="specialization">Specialization for <%= name %>:</label>
-             <input type="text" name="specialization" id="specialization" value="<%= specialization %>">
+        ï¿½ï¿½ï¿½ï¿½ï¿½<label for="specialization">Specialization for <%= name %>:</label>
+        ï¿½ï¿½ï¿½ï¿½ï¿½<input type="text" name="specialization" id="specialization" value="<%= specialization %>">
     </form>
     <p>
         <button class="cancel ui-btn">Cancel</button>

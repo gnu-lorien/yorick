@@ -25,7 +25,7 @@ require([
 
     $( document ).on( "pagecontainerchange", function() {
         if (Parse.applicationId && Parse.User.current()) {
-            $( "[data-role='navbar']" ).show();
+            $( "[data-role='navbar']" ).hide();
             $( "[data-role='header'], [data-role='footer']" ).show();
             // Each of the four pages in this demo has a data-title attribute
             // which value is equal to the text of the nav button
