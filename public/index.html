@@ -67,6 +67,9 @@
     </ul>
     <% } %>
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li><a href="#simpletraits/health_levels/<%= character.id %>/all">Health Levels</a></li>
+    </ul>
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <li><a href="#simpletraits/skills/<%= character.id %>/all">Skills</a></li>
     </ul>
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
@@ -517,11 +520,11 @@
         </div>
         <div class="ui-block-c">
             <h4 class="ui-bar ui-bar-a ui-corner-all">Health Levels</h4>
-            <% _.forIn(character.health_levels(), function (level, name, i, j) { %>
-                <% _.each(_.range(_.parseInt(level)), function(i) { %>
+            <% _.forIn(character.health_levels(), function (args) { %>
+                <% _.each(_.range(_.parseInt(args[1])), function(i) { %>
                     <i class="fa fa-square-o"></i>
                 <% }); %>
-                <%= name %>
+                <%= args[0] %>
                 <br/>
             <% }); %>
         </div>

@@ -241,7 +241,8 @@ define([
                 "experience_points",
                 "linguistics_specializations",
                 "influence_elite_specializations",
-                "influence_underworld_specializations"];
+                "influence_underworld_specializations",
+                "health_levels"];
         },
 
         unpick_from_creation: function(category, picked_trait_id, pick_index, wait) {
@@ -334,12 +335,17 @@ define([
         },
 
         health_levels: function() {
-            var health_levels = {
-                "Healthy": 3,
-                "Injured": 3,
-                "Incapacitated": 3
-            };
-            return health_levels;
+            var self = this;
+            var health_levels_order = ["Healthy", "Injured", "Incapacitated"];
+            var health_levels = {};
+            var ret = [];
+            _.each(self.get("health_levels"), function (hl) {
+                health_levels[hl.get("name")] = hl.get("value");
+            });
+            _.each(health_levels_order, function (n) {
+                ret.push([n, health_levels[n]]);
+            })
+            return ret;
         },
 
         calculate_trait_cost: function(trait) {
