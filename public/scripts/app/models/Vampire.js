@@ -19,6 +19,7 @@ define([
             trait.destroy();
             return self.save();
         },
+
         ensure_category: function(category) {
             if (!this.has(category)) {
                 this.set(category, []);
@@ -330,17 +331,6 @@ define([
                 }
             });
             return morality;
-        },
-
-        has: function(category) {
-            var c = this.get(category);
-            if (_.isUndefined(c)) {
-                return false;
-            }
-            if (c.length == 0) {
-                return false;
-            }
-            return true;
         },
 
         health_levels: function() {
