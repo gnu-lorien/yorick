@@ -67,6 +67,9 @@
     </ul>
     <% } %>
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li><a href="#simpletraits/paths/<%= character.id %>/all">Path</a></li>
+    </ul>
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <li><a href="#simpletraits/health_levels/<%= character.id %>/all">Health Levels</a></li>
     </ul>
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
@@ -294,7 +297,7 @@
     <p><%= c.get("name") %> <%= b.get("name") %> <%= b.get("value") %></p>
     <p>
         <label for="slider">Slider:</label>
-        <input type="range" name="simpleTraitValue" id="slider" value="<%= b.get('value') %>" min="1" max="5">
+        <input type="range" name="simpleTraitValue" id="slider" value="<%= b.get('value') %>" min="1" max="6">
     </p>
     <p>
         <button class="remove ui-btn">Remove</button>
@@ -510,13 +513,13 @@
                 <% } %>
             <% }); %>
             <h4 class="ui-bar ui-bar-a ui-corner-all">Morality</h4>
-            <%= character.morality() %><br/>
-             <% _.each(_.range(1, 7), function(i) { %>
+            <%= character.morality().get("name") %><br/>
+            <% _.each(_.range(1, _.parseInt(character.morality().get("value")) + 1), function(i) { %>
                 <i class="fa fa-square-o"></i>
                 <% if (0 == i % 5) { %>
                 &nbsp;
                 <% } %>
-             <% }); %>
+            <% }); %>
         </div>
         <div class="ui-block-c">
             <h4 class="ui-bar ui-bar-a ui-corner-all">Health Levels</h4>

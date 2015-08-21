@@ -242,7 +242,8 @@ define([
                 "linguistics_specializations",
                 "influence_elite_specializations",
                 "influence_underworld_specializations",
-                "health_levels"];
+                "health_levels",
+                "paths"];
         },
 
         unpick_from_creation: function(category, picked_trait_id, pick_index, wait) {
@@ -321,7 +322,7 @@ define([
             return !_.isUndefined(this._raw_generation());
         },
 
-        morality: function() {
+        morality_merit: function() {
             var self = this;
             var morality = "Humanity";
             _.each(self.get("merits"), function (m) {
@@ -332,6 +333,14 @@ define([
                 }
             });
             return morality;
+        },
+
+        morality: function() {
+            var self = this;
+            if (!self.has("paths")) {
+                return new SimpleTrait;
+            }
+            return self.get("paths")[0];
         },
 
         health_levels: function() {
