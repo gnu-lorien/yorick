@@ -58,7 +58,7 @@ define([
             var self = this;
             var options = {reset: true};
             var q = new Parse.Query(VampireChange);
-            q.equalTo("owner", self.character).addAscending("createdAt");
+            q.equalTo("owner", self.character).addAscending("createdAt").limit(1000);
             self.collection.query = q;
             return self.collection.fetch(options);
         },
