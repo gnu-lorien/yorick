@@ -340,7 +340,11 @@ define([
             if (!self.has("paths")) {
                 return new SimpleTrait;
             }
-            return self.get("paths")[0];
+            var p = self.get("paths")[0];
+            if (!p) {
+                return new SimpleTrait({'name': "Humanity", "value": 1});
+            }
+            return p;
         },
 
         health_levels: function() {
