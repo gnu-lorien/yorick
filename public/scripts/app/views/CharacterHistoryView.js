@@ -108,30 +108,45 @@ define([
         _render_sheet: function(characterOverride, enhance) {
             var self = this;
             var c = characterOverride || self.character;
-            var skillsLookup = self.get_skills_lookup(c);
+            var sortedSkills = self.get_sorted_skills(c);
+            var groupedSkills = self.get_grouped_skills(sortedSkills);
             this.$el.find("#history-sheet").html(this.sheetTemplate({
                 "character": c,
-                "skillsLookup": skillsLookup} ));
+                "skills": sortedSkills,
+                "groupedSkills": groupedSkills} ));
             if (enhance) {
                 this.$el.find("#history-sheet").enhanceWithin();
             }
         },
 
-        get_skills_lookup: function(characterOverride) {
+        get_sorted_skills: function(characterOverride) {
             var self = this;
-            var c = characterOverride || self.character;
-            var cols = [];
-            cols.push(["Academics", "Animal Ken", "Athletics", "Awareness", "Brawl", "Computer", "Crafts", "Dodge", "Drive"]);
-            cols.push(["Empathy", "Firearms", "Intimidation", "Investigation", "Leadership", "Linguistics", "Lore", "Medicine", "Melee", "Occult"]);
-            cols.push(["Performance", "Science", "Security", "Stealth", "Streetwise", "Subterfuge", "Survival"]);
-            var a = _.zip.apply(_, cols)
-            var s = c.get("skills");
-            var f = _.find(s, {name: "Athletics"});
-            var r = _.result(f, 'name', 0);
-            var skillsLookup = _.groupBy(s, function(skill) {
-                return skill.get("name");
+            var character = characterOverride || self.character;
+            var sortedSkills = character.get("skills");
+            sortedSkills = _.sortBy(sortedSkills, "attributes.name");
+            sortedSkills = _.map(sortedSkills, function (skill) {
+                var name = skill.get("name");
+                if (-1 == name.indexOf(":")) {
+                    return name + " x" + skill.get("value");
+                } else {
+                    var rootName = name.slice(0, name.indexOf(':'));
+                    var rightName = name.slice(name.indexOf(':'));
+                    return rootName + " x" + skill.get("value") + rightName;
+                }
+            })
+            return sortedSkills;
+        },
+
+        get_grouped_skills: function(sortedSkills) {
+            var self = this;
+            var columnCount = 3;
+            var groupedSkills = {0: [], 1: [], 2: []};
+            var shiftAmount = _.ceil(sortedSkills.length / columnCount);
+            _.each(_.range(columnCount), function (i) {
+                groupedSkills[i] = _.take(sortedSkills, shiftAmount);
+                sortedSkills = _.drop(sortedSkills, shiftAmount);
             });
-            return skillsLookup;
+            groupedSkills = _.zip(groupedSkills[0], groupedSkills[1], groupedSkills[2]);
         },
 
         // Renders all of the Category models on the UI
