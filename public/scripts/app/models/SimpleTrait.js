@@ -48,7 +48,7 @@ define([
             console.log("Before " + this.get("name") + ": " + children.length);
             Parse.Object._findUnsavedChildren.apply(this, object, children, files);
             console.log("After " + this.get("name") + ": " + children.length);
-        }
+        },
     } );
 
     // Returns the Model class

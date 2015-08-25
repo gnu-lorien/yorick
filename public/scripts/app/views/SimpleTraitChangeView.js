@@ -83,7 +83,12 @@ define([
         render: function() {
 
             // Sets the view's template property
-            this.template = _.template( $( "script#simpleTraitChangeView" ).html())({ "c": this.character, "b": this.simpletrait, "category": this.category } );
+            this.template = _.template($("script#simpleTraitChangeView").html())({
+                "c": this.character,
+                "b": this.simpletrait,
+                "category": this.category,
+                "traitmax": this.character.max_trait_value(this.simpletrait),
+            });
 
             // Renders the view's template inside of the current listview element
             this.$el.find("div[role='main']").html(this.template);

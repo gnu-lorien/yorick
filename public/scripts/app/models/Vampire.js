@@ -501,6 +501,15 @@ define([
                 }
             })
             return c;
+        },
+
+        max_trait_value: function(trait) {
+            var self = this;
+            if (trait.get("category") == "skills") {
+                return 6;
+            };
+
+            return 20;
         }
     } );
 
