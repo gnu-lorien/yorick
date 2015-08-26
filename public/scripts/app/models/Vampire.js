@@ -222,29 +222,30 @@ define([
             });
         },
 
-        all_fetched_categories: function () {
+        all_simpletrait_categories: function () {
             return [
-                "flaws",
-                "merits",
-                "focus_mentals",
-                "focus_physicals",
-                "focus_socials",
-                "attributes",
-                "skills",
-                "backgrounds",
-                "disciplines",
-                "techniques",
-                "elder_disciplines",
-                "haven_specializations",
-                "lore_specializations",
-                "rituals",
-                "experience_points",
-                "linguistics_specializations",
-                "influence_elite_specializations",
-                "influence_underworld_specializations",
-                "health_levels",
-                "paths",
-                "status_traits"];
+                ["attributes", "Attributes"],
+                ["paths", "Path of Enlightenment/Humanity"],
+                ["health_levels", "Health Levels"],
+                ["experience_points", "Experience Points"],
+                ["skills", "Skills"],
+                ["focus_mentals", "Mental Focus"],
+                ["focus_physicals", "Physical Focus"],
+                ["focus_socials", "Social Focus"],
+                ["backgrounds", "Backgrounds"],
+                ["disciplines", "Disciplines"],
+                ["techniques", "Techniques"],
+                ["elder_disciplines", "Elder Disciplines"],
+                ["flaws", "Flaws"],
+                ["merits", "Merits"],
+                ["haven_specializations", "Haven Specializations"],
+                ["lore_specializations", "Lore Specializations"],
+                ["rituals", "Rituals"],
+                ["sabbat_rituals", "Sabbat Ritae"],
+                ["linguistics_specializations", "Languages"],
+                ["influence_elite_specializations", "Influence: Elite"],
+                ["influence_underworld_specializations", "Influence: Underworld"],
+                ["status_traits", "Sect Status"]];
         },
 
         unpick_from_creation: function(category, picked_trait_id, pick_index, wait) {

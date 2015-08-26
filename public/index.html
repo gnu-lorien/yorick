@@ -66,60 +66,14 @@
         <li><a href="#charactercreate/<%= character.id %>">Character Creation</a></li>
     </ul>
     <% } %>
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#simpletraits/attributes/<%= character.id %>/all">Attributes</a></li>
-    </ul>
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#simpletraits/paths/<%= character.id %>/all">Path</a></li>
-    </ul>
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#simpletraits/health_levels/<%= character.id %>/all">Health Levels</a></li>
-    </ul>
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#simpletraits/skills/<%= character.id %>/all">Skills</a></li>
-    </ul>
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#simpletraits/disciplines/<%= character.id %>/all">Disciplines</a></li>
-    </ul>
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#simpletraits/techniques/<%= character.id %>/all">Techniques</a></li>
-    </ul>
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#simpletraits/elder_disciplines/<%= character.id %>/all">Elder Disciplines</a></li>
-    </ul>
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#simpletraits/rituals/<%= character.id %>/all">Rituals</a></li>
-    </ul>
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#simpletraits/backgrounds/<%= character.id %>/all">Backgrounds</a></li>
-    </ul>
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#simpletraits/merits/<%= character.id %>/all">Merits</a></li>
-    </ul>
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#simpletraits/flaws/<%= character.id %>/all">Flaws</a></li>
-    </ul>
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#simpletraits/haven_specializations/<%= character.id %>/all">Haven Specializations</a></li>
-    </ul>
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#simpletraits/lore_specializations/<%= character.id %>/all">Lore Specializations</a></li>
-    </ul>
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#simpletraits/influence_underworld_specializations/<%= character.id %>/all">Influence: Underworld Specializations</a></li>
-    </ul>
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#simpletraits/influence_elite_specializations/<%= character.id %>/all">Influence: Elite Specializations</a></li>
-    </ul>
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#simpletraits/linguistics_specializations/<%= character.id %>/all">Linguistics Specializations</a></li>
-    </ul>
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#simpletraits/status_traits/<%= character.id %>/all">Status</a></li>
-    </ul>
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#simpletraits/sabbat_rituals/<%= character.id %>/all">Sabbat Rituals</a></li>
-    </ul>
+    <% _.each(character.all_simpletrait_categories(), function(grouping) { %>
+        <% var description = grouping[1]; %>
+        <% var category = grouping[0]; %>
+        <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+            <li><a href="#simpletraits/<%= category %>/<%= character.id %>/all"><%= description %></a></li>
+        </ul>
+    <% }) %>
+
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <li><a href="#character/<%= character.id %>/history/0">History</a></li>
     </ul>

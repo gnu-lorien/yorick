@@ -383,7 +383,10 @@ define([
                 })
             }
             if (categories == "all") {
-                categories = _.result(self._character, "all_fetched_categories", []);
+                categories = _.result(self._character, "all_simpletrait_categories", []);
+                categories = _.map(categories, function (e) {
+                    return e[0];
+                })
             }
             if (0 !== categories.length) {
                 var objectIds = _.chain(categories).map(function(category) {
