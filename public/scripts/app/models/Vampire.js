@@ -243,7 +243,8 @@ define([
                 "influence_elite_specializations",
                 "influence_underworld_specializations",
                 "health_levels",
-                "paths"];
+                "paths",
+                "status_traits"];
         },
 
         unpick_from_creation: function(category, picked_trait_id, pick_index, wait) {
