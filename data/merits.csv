@@ -48,7 +48,7 @@ Inquisition Membership,2,merits,Sabbat,,"Gain the innate status Purified, +3 to 
 Intense Vitality,2,merits,General,Neonate or Ancilla,Can spend 1 more Blood per turn than Generation allows.
 Intense Vitality (Elder),3,merits,General,,Can spend 1 more Blood per turn than Generation allows.
 Iron Will,3,merits,General,,"Gain free retest against Auspex, Animalism, and Dominate. Can be used before or after the normal Willpower retest. Exception to rules limiting retests."
-Keeper of a Sacred Text,1,merits,Sabbat,,"Free Lore specialization above what you are normally allowed in one of; Sabbat Doctrine, Quotes of Caine, or Cainite Heresy. Receive a +5 bonus on pools involving your bonus Lore specialization."
+Keeper of a Sacred Text,1,merits,Sabbat,requires_specialization,"Free Lore specialization above what you are normally allowed in one of; Sabbat Doctrine, Quotes of Caine, or Cainite Heresy. Receive a +5 bonus on pools involving your bonus Lore specialization."
 Labyrinthine Mind,3,merits,Clan,Malkavian,"Gain +3 to test pools resisting Dementation, Dominate, and Thaumaturgy: Path of Corruption. Anyone attempting to pull information from your mind gains 1 of your derangements for an hour."
 Light Sleeper,1,merits,General,,Stay awake 1 hour after sunrise and up 1 hour before sunset. Awaken instantly at signs of trouble or danger. Ignore penalties for acting in daytime.
 Lion of the Cause,3,merits,Anarch,,All Anarchs within 10 steps of you in a Call to Arms gain a +2 wild card bonus to either their Brawl or Melees skill.

@@ -242,6 +242,7 @@ define([
                 ["lore_specializations", "Lore Specializations"],
                 ["rituals", "Rituals"],
                 ["sabbat_rituals", "Sabbat Ritae"],
+                ["vampiric_texts", "Vampiric Texts"],
                 ["linguistics_specializations", "Languages"],
                 ["influence_elite_specializations", "Influence: Elite"],
                 ["influence_underworld_specializations", "Influence: Underworld"],

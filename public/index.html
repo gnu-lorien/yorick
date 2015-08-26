@@ -316,8 +316,8 @@
 
 <script id="characterNewView" type="text/template">
     <form>
-    �����<label for="characterName">Name:</label>
-    �����<input type="text" name="characterName" id="characterName" value="New Character Name">
+        <label for="characterName">Name:</label>
+        <input type="text" name="characterName" id="characterName" value="New Character Name">
     </form>
     <p>
         <button class="cancel ui-btn">Cancel</button>
@@ -343,7 +343,7 @@
         <p>Pick one for value <%= freeValue %></p>
     <% } %>
     <form class="ui-filterable">
-        ����<input id="filterBasic-input" data-type="search">
+        <input id="filterBasic-input" data-type="search">
     </form>
     <ul data-role="listview" data-filter="true" data-input="#filterBasic-input">
     <% _.each(collection, function(e) { %>
@@ -606,8 +606,8 @@
 
 <script id="simpleTraitSpecialization" type="text/template">
     <form>
-        �����<label for="specialization">Specialization for <%= name %>:</label>
-        �����<input type="text" name="specialization" id="specialization" value="<%= specialization %>">
+        <label for="specialization">Specialization for <%= name %>:</label>
+        <input type="text" name="specialization" id="specialization" value="<%= specialization %>">
     </form>
     <p>
         <button class="cancel ui-btn">Cancel</button>
