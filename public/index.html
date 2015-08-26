@@ -143,23 +143,17 @@
 
     <p>You have <%= creation.get("initial_xp") %> initial XP to spend</p>
     <p>Remaining steps for <%= character.get("name") %></p>
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <% if (creation.get("clan")) { %>
-        <li data-role="list-divider">Clan<p><%= character.get("clan") %></p></li>
-        <li><a href="#charactercreate/simpletext/clans/clan/<%= character.id %>/pick">Repick clan</a></li>
-        <% } else { %>
-        <li><a href="#charactercreate/simpletext/clans/clan/<%= character.id %>/pick">Pick clan</a></li>
-        <% } %>
-    </ul>
-
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <% if (creation.get("archetype")) { %>
-        <li data-role="list-divider">Archetype<p><%= character.get("archetype") %></p></li>
-        <li><a href="#charactercreate/simpletext/archetypes/archetype/<%= character.id %>/pick">Repick Archetype</a></li>
-        <% } else { %>
-        <li><a href="#charactercreate/simpletext/archetypes/archetype/<%= character.id %>/pick">Pick archetype</a></li>
-        <% } %>
-    </ul>
+    <% _.each(["clan", "archetype", "sect", "faction", "title"], function (st) { %>
+        <% var ust = st[0].toUpperCase() + st.substr(1); %>
+        <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+            <% if (creation.get(st)) { %>
+            <li data-role="list-divider"><%= ust %><p><%= character.get(st) %></p></li>
+            <li><a href="#charactercreate/simpletext/<%= st %>s/<%= st %>/<%= character.id %>/pick">Repick <%= ust %></a></li>
+            <% } else { %>
+            <li><a href="#charactercreate/simpletext/<%= st %>s/<%= st %>/<%= character.id %>/pick">Pick <%= ust %></a></li>
+            <% } %>
+        </ul>
+    <% }) %>
 
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <li data-role="list-divider">Attributes<span class="ui-li-count"><%= creation.remaining_picks("attributes") %></span></li>
