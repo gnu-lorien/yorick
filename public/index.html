@@ -270,6 +270,38 @@
     </div>
 </div>
 
+<div id="experience-notations-all" data-role="page" data-role="Experience Notations">
+    <div role="main" class="ui-content">
+    </div>
+</div>
+
+<script id="experienceNotationsAllView" type="text/template">
+    <p>Available: 0</p>
+    <p>Earned: 0</p>
+    <button class="add ui-btn ui-btn-icon-plus">Add New Notation</button>
+    <button class="previous ui-btn ui-btn-icon-left">View Previous</button>
+    <button class="next ui-btn ui-btn-icon-left">View Next</button>
+    <% var headers = ["entered", "change", "reason", "available", "earned"]; %>
+    <table data-role="table" id="table-column-toggle" class="ui-responsive table-stroke">
+        <thead>
+        <tr>
+            <% _.each(headers, function (h, i) { %>
+            <th data-priority="<%= i + 1 %>"><%= h %></th>
+            <% }); %>
+        </tr>
+        </thead>
+        <tbody>
+            <% _.each(logs, function (log, i) { %>
+                <tr>
+                    <% _.each(headers, function (h) { %>
+                    <td><%= format_entry(log, h) %></td>
+                    <% }); %>
+                </tr>
+            <% }); %>
+        </tbody>
+    </table>
+</script>
+
 <div id="animals" data-role="page" data-title="Animals">
 
       <div data-role="header">

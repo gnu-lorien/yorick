@@ -30,6 +30,7 @@ define([
     "../views/CharacterHistoryView",
     "../views/SignupView",
     "../views/LoginView",
+    "../views/CharacterExperienceView",
 ], function ($,
              Parse,
              pretty,
@@ -55,8 +56,9 @@ define([
              SimpleTraitSpecializationView,
              CharacterLogView,
              CharacterHistoryView,
+             SignupView,
              LoginView,
-             SignupView) {
+             CharacterExperienceView) {
 
     // Extends Backbone.Router
     var CategoryRouter = Parse.Router.extend( {
@@ -94,6 +96,7 @@ define([
             this.characterCostsView = new CharacterCostsView({el: "#character-costs"});
             this.characterLogView = new CharacterLogView({el: "#character-log"});
             this.characterHistoryView = new CharacterHistoryView({el: "#character-history"});
+            this.characterExperienceView = new CharacterExperienceView({el: "#experience-notations-all"})
 
             this.loginView = new LoginView();
             this.signupView = new SignupView();
@@ -145,6 +148,7 @@ define([
             "character/:cid/costs": "charactercosts",
             "character/:cid/log/:start/:changeBy": "characterlog",
             "character/:cid/history/:id": "characterhistory",
+            "character/:cid/experience/:start/:changeBy": "characterexperience",
 
         },
 
@@ -193,6 +197,18 @@ define([
                 self.characterLogView.register(character, start, changeBy);
                 var activePage = $(".ui-page-active").attr("id");
                 var r = $.mobile.changePage("#character-log", {reverse: false, changeHash: false});
+                $.mobile.loading("hide");
+            });
+        },
+
+        characterexperience: function(cid, start, changeBy) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid, "all").done(function (character) {
+                self.characterExperienceView.register(character, start, changeBy);
+                var activePage = $(".ui-page-active").attr("id");
+                var r = $.mobile.changePage("#experience-notation-all", {reverse: false, changeHash: false});
                 $.mobile.loading("hide");
             });
         },
