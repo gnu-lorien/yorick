@@ -157,6 +157,7 @@ define([
 
         logout: function() {
             Parse.User.logOut();
+            window.location.hash = "";
             this.home();
         },
 
