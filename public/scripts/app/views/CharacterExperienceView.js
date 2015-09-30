@@ -59,6 +59,15 @@ define([
             "click .previous": "previous",
             "click .next": "next",
             "click .add": "add",
+            "click .experience-notation-edit": "edit_experience_notation",
+        },
+
+        edit_experience_notation: function(event, b, c, d) {
+            console.log("I'm here");
+            var t = self.$(event.target);
+            var clickedNotationId = t.attr("notation-id");
+            var headerName = t.attr("header");
+            event.preventDefault();
         },
 
         previous: function() {
@@ -83,14 +92,25 @@ define([
         },
 
         add: function() {
-            console.log("Unimplemented add");
+            var self = this;
+            var en = new ExperienceNotation({
+                entered: new Date,
+                reason: "Unspecified reason",
+                earned: 0,
+                available: 0,
+                alteration: 0,
+                owner: self.character,
+            });
+            en.setACL(self.character.get_me_acl());
+            self.collection.add(en);
+            en.save();
         },
 
         update_collection_query_and_fetch: function () {
             var self = this;
             var options = {reset: true};
             var q = new Parse.Query(ExperienceNotation);
-            q.equalTo("owner", self.character).addDescending("createdAt");
+            q.equalTo("owner", self.character).addDescending("entered").addDescending("createdAt");
             q.skip(self.start);
             q.limit(self.changeBy);
             self.collection.query = q;
@@ -98,7 +118,11 @@ define([
         },
 
         format_entry: function(log, entry) {
-            if (log.get(entry)) {
+            if (log.has(entry)) {
+                var v = log.get(entry);
+                if (_.isDate(v)) {
+                    return moment(v).format('lll');
+                }
                 return log.get(entry);
             }
             var attr = log[entry];

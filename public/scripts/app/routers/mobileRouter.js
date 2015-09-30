@@ -148,6 +148,7 @@ define([
             "character/:cid/costs": "charactercosts",
             "character/:cid/log/:start/:changeBy": "characterlog",
             "character/:cid/history/:id": "characterhistory",
+
             "character/:cid/experience/:start/:changeBy": "characterexperience",
 
         },
@@ -208,7 +209,7 @@ define([
             self.get_character(cid, "all").done(function (character) {
                 self.characterExperienceView.register(character, start, changeBy);
                 var activePage = $(".ui-page-active").attr("id");
-                var r = $.mobile.changePage("#experience-notation-all", {reverse: false, changeHash: false});
+                var r = $.mobile.changePage("#experience-notations-all", {reverse: false, changeHash: false});
                 $.mobile.loading("hide");
             });
         },

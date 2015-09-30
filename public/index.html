@@ -281,7 +281,8 @@
     <button class="add ui-btn ui-btn-icon-plus">Add New Notation</button>
     <button class="previous ui-btn ui-btn-icon-left">View Previous</button>
     <button class="next ui-btn ui-btn-icon-left">View Next</button>
-    <% var headers = ["entered", "change", "reason", "available", "earned"]; %>
+    <% var headers = ["entered", "reason", "alteration", "available", "earned"]; %>
+    <% var editable = ["entered", "reason", "alteration"]; %>
     <table data-role="table" id="table-column-toggle" class="ui-responsive table-stroke">
         <thead>
         <tr>
@@ -294,12 +295,23 @@
             <% _.each(logs, function (log, i) { %>
                 <tr>
                     <% _.each(headers, function (h) { %>
-                    <td><%= format_entry(log, h) %></td>
+                    <td>
+                        <a href="#" class="experience-notation-edit ui-btn ui-icon-edit ui-btn-icon-notext ui-corner-all ui-btn-inline" header="<%= h %>" notation-id="<%= log.id %>">Edit</a>
+                        <%= format_entry(log, h) %>
+                    </td>
                     <% }); %>
                 </tr>
             <% }); %>
         </tbody>
     </table>
+</script>
+
+<div id="experience-notation-change" data-role="page" data-role="Change Experience Notation">
+    <div role="main" class="ui-content">
+    </div>
+</div>
+
+<script>
 </script>
 
 <div id="animals" data-role="page" data-title="Animals">
