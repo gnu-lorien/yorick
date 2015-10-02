@@ -290,6 +290,7 @@
             <% _.each(headers, function (h, i) { %>
             <th data-priority="<%= i + 1 %>"><%= h %></th>
             <% }); %>
+            <th></th>
         </tr>
         </thead>
         <tbody>
@@ -297,10 +298,13 @@
                 <tr>
                     <% _.each(headers, function (h) { %>
                     <td>
-                        <a href="#" class="experience-notation-edit ui-btn ui-icon-edit ui-btn-icon-notext ui-corner-all ui-btn-inline" header="<%= h %>" notation-id="<%= log.id %>">Edit</a>
+                        <% if (_.contains(editable, h)) { %>
+                        <a href="#" class="experience-notation-edit ui-btn ui-icon-edit ui-btn-icon-notext ui-corner-all ui-btn-inline" header="<%= h %>" notation-id="<%= log.cid %>">Edit</a>
+                        <% } %>
                         <%= format_entry(log, h) %>
                     </td>
                     <% }); %>
+                    <td><a href="#" class="experience-notation-delete ui-btn ui-icon-delete ui-btn-icon-notext ui-corner-all ui-btn-inline" notation-id="<%= log.cid %>">Delete</a></td>
                 </tr>
             <% }); %>
         </tbody>

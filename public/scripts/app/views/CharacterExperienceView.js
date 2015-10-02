@@ -21,6 +21,7 @@ define([
             var sortCollection = _.bind(this.collection.sort, this.collection);
             self.listenTo(self.collection, "add", self.render);
             self.listenTo(self.collection, "reset", self.render);
+            self.listenTo(self.collection, "remove", self.render);
             self.listenTo(self.collection, "change:entered", sortCollection);
             self.listenTo(self.collection, "change", self.render);
 
@@ -66,7 +67,8 @@ define([
             "click .experience-notation-edit": "edit_experience_notation",
             "submit #edit-entered-popup-form": "submit_experience_notation_entered",
             "submit #edit-reason-popup-form": "submit_experience_notation_reason",
-            "submit #edit-alteration-popup-form": "submit_experience_notation_alteration"
+            "submit #edit-alteration-popup-form": "submit_experience_notation_alteration",
+            "click .experience-notation-delete": "delete_experience_notation"
         },
 
         submit_experience_notation_entered: function(event, a, b, c, d) {
@@ -74,7 +76,7 @@ define([
             event.preventDefault();
             var id = self.$("#popupEditEntered #date-id").val();
             var d = self.$("#popupEditEntered #date-input").val();
-            var en = self.collection.get(id);
+            var en = self.collection.getByCid(id);
             var updatedEntered = moment(d);
             if (updatedEntered.isValid()) {
                 en.set("entered", updatedEntered.toDate());
@@ -92,7 +94,7 @@ define([
             event.preventDefault();
             var id = self.$("#popupEditReason #reason-id").val();
             var txt = self.$("#popupEditReason #reason-input").val();
-            var en = self.collection.get(id);
+            var en = self.collection.getByCid(id);
             en.set("reason", txt);
             en.save();
             $("#popupEditReason").popup("close");
@@ -103,7 +105,7 @@ define([
             event.preventDefault();
             var id = self.$("#alterationpopupEdit #alteration-id").val();
             var n = _.parseInt(self.$("#alterationpopupEdit #alteration-input").val());
-            var en = self.collection.get(id);
+            var en = self.collection.getByCid(id);
             en.set("alteration", n);
             en.save();
             $("#alterationpopupEdit").popup("close");
@@ -115,7 +117,7 @@ define([
             var t = self.$(event.target);
             var clickedNotationId = t.attr("notation-id");
             var headerName = t.attr("header");
-            var en = self.collection.get(clickedNotationId);
+            var en = self.collection.getByCid(clickedNotationId);
             event.preventDefault();
             if ("entered" === headerName) {
                 var popup = $("#popupEditEntered");
@@ -134,6 +136,21 @@ define([
                 $("#alterationpopupEdit #alteration-id").val(clickedNotationId);
                 popup.enhanceWithin().popup("open");
             }
+        },
+
+        delete_experience_notation: function(event) {
+            event.preventDefault();
+            var self = this;
+            var t = self.$(event.target);
+            var clickedNotationId = t.attr("notation-id");
+            var cidgot = self.collection.getByCid(clickedNotationId);
+            var idgot = self.collection.get(clickedNotationId);
+            var en = self.collection.getByCid(clickedNotationId) || self.collection.get(clickedNotationId);
+            if (!en) {
+                return self;
+            }
+            self.collection.remove(en);
+            en.destroy();
         },
 
         previous: function() {
