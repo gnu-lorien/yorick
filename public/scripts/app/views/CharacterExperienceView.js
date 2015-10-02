@@ -64,7 +64,8 @@ define([
             "click .next": "next",
             "click .add": "add",
             "click .experience-notation-edit": "edit_experience_notation",
-            "submit #edit-entered-popup-form": "submit_experience_notation_entered"
+            "submit #edit-entered-popup-form": "submit_experience_notation_entered",
+            "submit #edit-reason-popup-form": "submit_experience_notation_reason"
         },
 
         submit_experience_notation_entered: function(event, a, b, c, d) {
@@ -85,6 +86,16 @@ define([
             }
         },
 
+        submit_experience_notation_reason: function(event) {
+            var self = this;
+            event.preventDefault();
+            var id = self.$("#popupEditReason #reason-id").val();
+            var txt = self.$("#popupEditReason #reason-input").val();
+            var en = self.collection.get(id);
+            en.set("reason", txt);
+            en.save();
+            $("#popupEditReason").popup("close");
+        },
         edit_experience_notation: function(event) {
             var self = this;
             console.log("I'm here");
@@ -99,6 +110,13 @@ define([
                 //self.$("#popupEditEntered #date-input")[0].setCustomValidity("");
                 $("#popupEditEntered #date-id").val(clickedNotationId);
                 popup.enhanceWithin().popup("open");
+            } else if ("reason" === headerName) {
+                var popup = $("#popupEditReason");
+                $("#popupEditReason #reason-input").val(en.get("reason"));
+                $("#popupEditReason #reason-id").val(clickedNotationId);
+                popup.enhanceWithin().popup("open");
+            } else if ("alteration" === headerName) {
+
             }
         },
 
