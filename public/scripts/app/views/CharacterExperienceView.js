@@ -7,8 +7,9 @@ define([
 	"backbone",
     "moment",
     "../models/ExperienceNotation",
-    "../collections/ExperienceNotationCollection"
-], function( $, Backbone, moment, ExperienceNotation, ExperienceNotationCollection) {
+    "../collections/ExperienceNotationCollection",
+    "mobiledatepicker"
+], function( $, Backbone, moment, ExperienceNotation, ExperienceNotationCollection, mobiledatepicker) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
@@ -17,8 +18,11 @@ define([
         initialize: function() {
             var self = this;
             this.collection = new ExperienceNotationCollection;
+            var sortCollection = _.bind(this.collection.sort, this.collection);
             self.listenTo(self.collection, "add", self.render);
             self.listenTo(self.collection, "reset", self.render);
+            self.listenTo(self.collection, "change:entered", sortCollection);
+            self.listenTo(self.collection, "change", self.render);
 
             self.start = 0;
             self.changeBy = 10;
@@ -60,14 +64,42 @@ define([
             "click .next": "next",
             "click .add": "add",
             "click .experience-notation-edit": "edit_experience_notation",
+            "submit #edit-entered-popup-form": "submit_experience_notation_entered"
         },
 
-        edit_experience_notation: function(event, b, c, d) {
+        submit_experience_notation_entered: function(event, a, b, c, d) {
+            var self = this;
+            event.preventDefault();
+            var id = self.$("#popupEditEntered #date-id").val();
+            var d = self.$("#popupEditEntered #date-input").val();
+            var en = self.collection.get(id);
+            var updatedEntered = moment(d);
+            if (updatedEntered.isValid()) {
+                en.set("entered", updatedEntered.toDate());
+                en.save();
+                $("#popupEditEntered").popup("close");
+            } else {
+                // Can't do validation this way because then we would have to watch for
+                // change to update the state ourselves
+                //self.$("#popupEditEntered #date-input")[0].setCustomValidity("Can't parse date and/or time input");
+            }
+        },
+
+        edit_experience_notation: function(event) {
+            var self = this;
             console.log("I'm here");
             var t = self.$(event.target);
             var clickedNotationId = t.attr("notation-id");
             var headerName = t.attr("header");
+            var en = self.collection.get(clickedNotationId);
             event.preventDefault();
+            if ("entered" === headerName) {
+                var popup = $("#popupEditEntered");
+                $("#popupEditEntered #date-input").val(moment(en.get("entered")).format());
+                //self.$("#popupEditEntered #date-input")[0].setCustomValidity("");
+                $("#popupEditEntered #date-id").val(clickedNotationId);
+                popup.enhanceWithin().popup("open");
+            }
         },
 
         previous: function() {

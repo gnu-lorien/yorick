@@ -5,6 +5,7 @@
     <meta name="description" content="">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="css/themes/default/jquery.mobile.css">
+    <link rel="stylesheet" href="css/jquery.mobile.datepicker.css">
     <link rel="stylesheet" href="css/printable_sheet.css" media="print">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
     <script data-main="scripts/app" src="scripts/lib/require.js"></script>
@@ -304,6 +305,31 @@
             <% }); %>
         </tbody>
     </table>
+    <div data-role="popup" id="popupEditEntered" data-theme="a" class="ui-corner-all">
+        <form id="edit-entered-popup-form">
+            <div style="padding:10px 20px;">
+                <input type="text" id="date-input" data-inline="true" data-role="date">
+                <button type="submit" class="ui-btn ui-corner-all ui-shadow ui-btn-b ui-btn-icon-left ui-icon-check">
+                    Update Date Entered
+                </button>
+                <input type="hidden" id="date-id"/>
+            </div>
+        </form>
+    </div>
+    <div data-role="popup" id="popupEditLogin" data-theme="a" class="ui-corner-all">
+        <form>
+            <div style="padding:10px 20px;">
+                <h3>Please sign in</h3>
+                <label for="un" class="ui-hidden-accessible">Username:</label>
+                <input type="text" name="user" id="un" value="" placeholder="username" data-theme="a">
+                <label for="pw" class="ui-hidden-accessible">Password:</label>
+                <input type="password" name="pass" id="pw" value="" placeholder="password" data-theme="a">
+                <button type="submit" class="ui-btn ui-corner-all ui-shadow ui-btn-b ui-btn-icon-left ui-icon-check">
+                    Sign in
+                </button>
+            </div>
+        </form>
+    </div>
 </script>
 
 <div id="experience-notation-change" data-role="page" data-role="Change Experience Notation">

@@ -1,13 +1,18 @@
 // Sets the require.js configuration for your application.
 requirejs.config( {
 	baseUrl: "scripts/lib",
+	bundles: {
+		"jquery-ui": ["jquery-ui/datepicker"]
+	},
 
 	// 3rd party script alias names
 	paths: {
 
 		// Core Libraries
 		jquery: "//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery",
+		"jquery-ui": "//ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min",
 		jquerymobile: "//code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5",
+		"mobiledatepicker": "jquery.mobile.datepicker",
 		jscookie: "js.cookie",
 		underscore: "//cdn.jsdelivr.net/lodash/3.10.0/lodash",
 		backbone: "//cdnjs.cloudflare.com/ajax/libs/backbone.js/1.1.2/backbone",
