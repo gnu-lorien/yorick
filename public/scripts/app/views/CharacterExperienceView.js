@@ -62,6 +62,7 @@ define([
             var self = this;
             var propagate = false;
             var propagate_slice;
+            var return_promise = Parse.Promise.as([]);
             options = options || {};
             var c = changes.changes;
             if (c.entered) {
@@ -101,10 +102,26 @@ define([
                 _.eachRight(propagate_slice, function (elem, i) {
                     self.update_en_with_future_propagation(elem, trigger_c, {norender: true});
                 });
-                Parse.Object.saveAll(propagate_slice);
+                return_promise = Parse.Object.saveAll(propagate_slice).then(function () {
+                    var first = _.first(self.collection.models);
+                    var changed;
+                    _.each(["earned", "spent"], function (t) {
+                        if (first.get(t) != self.character.get("experience_" + t)) {
+                            self.character.set("experience_" + t, first.get(t));
+                            changed = true;
+                        }
+                    });
+                    if (changed) {
+                        return self.character.save();
+                    } else {
+                        return Parse.Promise.as(self.character);
+                    }
+                });
             }
             if (!options.norender) {
-                return self.render();
+                return return_promise.then(function () {
+                    self.render();
+                });
             } else {
                 return self;
             }

@@ -364,6 +364,11 @@ define([
             return ret;
         },
 
+        experience_available: function() {
+            var self = this;
+            return self.get("experience_earned") - self.get("experience_spent");
+        },
+
         calculate_trait_cost: function(trait) {
             var self = this;
             var category = trait.get("category");
