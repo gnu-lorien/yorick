@@ -18,12 +18,9 @@ define([
         initialize: function() {
             var self = this;
             this.collection = new ExperienceNotationCollection;
-            //var sortCollection = _.bind(this.collection.sort, this.collection);
             self.listenTo(self.collection, "add", self.render);
             self.listenTo(self.collection, "reset", self.render);
             self.listenTo(self.collection, "remove", self.render);
-            //self.listenTo(self.collection, "change:entered", sortCollection);
-            self.listenTo(self.collection, "change", self.render);
             self.listenTo(self.collection, "change", self.update_en_with_future_propagation);
 
             self.start = 0;
@@ -98,14 +95,6 @@ define([
             if (propagate) {
                 var changed_index = self.collection.indexOf(en);
                 propagate_slice = propagate_slice || self.collection.models.slice(0, changed_index + 1);
-                /*
-                var right_index = changed_index + 1;
-                var right = self.collection.at(right_index);
-
-                if (!_.isUndefined(right)) {
-                    left_slice = _(left_slice).concat(right).value();
-                }
-                */
 
                 console.log("Propagating changes requires " + propagate_slice.length + " changes");
                 var trigger_c = {changes: {earned: true, spent: true}};
@@ -113,11 +102,6 @@ define([
                     self.update_en_with_future_propagation(elem, trigger_c, {norender: true});
                 });
                 Parse.Object.saveAll(propagate_slice);
-
-                // Get the values I should propagate from my "right"
-                // Then walk to the left updating the values of everybody
-                // Gather up changed into a separate array
-                // Save dat shit woop save dat shit woop
             }
             if (!options.norender) {
                 return self.render();
