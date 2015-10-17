@@ -94,6 +94,7 @@ define([
                 en.set("spent", right_spent + en.get("alteration_spent"), {silent: true});
             }
             if (propagate) {
+                $.mobile.loading("show");
                 var changed_index = self.collection.indexOf(en);
                 propagate_slice = propagate_slice || self.collection.models.slice(0, changed_index + 1);
 
@@ -121,6 +122,7 @@ define([
             if (!options.norender) {
                 return return_promise.then(function () {
                     self.render();
+                    $.mobile.loading("hide");
                 });
             } else {
                 return self;
