@@ -227,7 +227,6 @@ define([
                 ["attributes", "Attributes"],
                 ["paths", "Path of Enlightenment/Humanity"],
                 ["health_levels", "Health Levels"],
-                ["experience_points", "Experience Points"],
                 ["skills", "Skills"],
                 ["focus_mentals", "Mental Focus"],
                 ["focus_physicals", "Physical Focus"],
