@@ -60,6 +60,14 @@ define([
             return self;
         },
 
+        update_en_with_future_propagation: function(en) {
+            // Loading window
+            // Save everything in the current viewing collection
+            // Search forward in time from wherever this one ended up in the list
+            // Build list of the models I changed
+            // close loading window
+        },
+
         events: {
             "click .previous": "previous",
             "click .next": "next",
@@ -106,7 +114,8 @@ define([
             var id = self.$("#alterationpopupEdit #alteration-id").val();
             var n = _.parseInt(self.$("#alterationpopupEdit #alteration-input").val());
             var en = self.collection.getByCid(id);
-            en.set("alteration", n);
+            var type = self.$("#alterationpopupEdit #alteration-type").val();
+            en.set("alteration_" + type, n);
             en.save();
             $("#alterationpopupEdit").popup("close");
         },
@@ -130,10 +139,17 @@ define([
                 $("#popupEditReason #reason-input").val(en.get("reason"));
                 $("#popupEditReason #reason-id").val(clickedNotationId);
                 popup.enhanceWithin().popup("open");
-            } else if ("alteration" === headerName) {
+            } else if ("alteration_spent" === headerName) {
                 var popup = $("#alterationpopupEdit");
-                $("#alterationpopupEdit #alteration-input").val(en.get("alteration"));
+                $("#alterationpopupEdit #alteration-input").val(en.get("alteration_spent"));
                 $("#alterationpopupEdit #alteration-id").val(clickedNotationId);
+                $("#alterationpopupEdit #alteration-type").val("spent");
+                popup.enhanceWithin().popup("open");
+            } else if ("alteration_earned" === headerName) {
+                var popup = $("#alterationpopupEdit");
+                $("#alterationpopupEdit #alteration-input").val(en.get("alteration_earned"));
+                $("#alterationpopupEdit #alteration-id").val(clickedNotationId);
+                $("#alterationpopupEdit #alteration-type").val("earned");
                 popup.enhanceWithin().popup("open");
             }
         },
@@ -180,8 +196,9 @@ define([
                 entered: new Date,
                 reason: "Unspecified reason",
                 earned: 0,
-                available: 0,
-                alteration: 0,
+                spent: 0,
+                alteration_earned: 0,
+                alteration_spent: 0,
                 owner: self.character,
             });
             en.setACL(self.character.get_me_acl());
@@ -194,8 +211,10 @@ define([
             var options = {reset: true};
             var q = new Parse.Query(ExperienceNotation);
             q.equalTo("owner", self.character).addDescending("entered").addDescending("createdAt");
+            /*
             q.skip(self.start);
             q.limit(self.changeBy);
+            */
             self.collection.query = q;
             return self.collection.fetch(options);
         },
