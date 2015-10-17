@@ -281,8 +281,10 @@
     <p>Spent: <%= character.get("experience_spent") %></p>
     <p>Available: <%= character.experience_available() %></p>
     <button class="add ui-btn ui-btn-icon-plus">Add New Notation</button>
+    <!--
     <button class="previous ui-btn ui-btn-icon-left">View Previous</button>
     <button class="next ui-btn ui-btn-icon-left">View Next</button>
+    -->
     <% var headers = ["entered", "reason", "alteration_earned", "alteration_spent", "earned", "spent"]; %>
     <% var editable = ["entered", "reason", "alteration_earned", "alteration_spent"]; %>
     <table data-role="table" id="table-column-toggle" class="ui-responsive table-stroke">
