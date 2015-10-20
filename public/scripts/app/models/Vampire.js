@@ -457,7 +457,16 @@ define([
 
         calculate_total_cost: function() {
             var self = this;
-            var current_categories = ["skills", "backgrounds", "disciplines"];
+            var current_categories = [
+                "skills",
+                "backgrounds",
+                "disciplines",
+                "attributes",
+                "merits",
+                "rituals",
+                "techniques",
+                "elder_disciplines",
+                ];
             var response = {};
             var objectIds = _.chain(current_categories).map(function(category) {
                 return self.get(category);
