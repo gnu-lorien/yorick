@@ -13,7 +13,7 @@ define([
 
         // The View Constructor
         initialize: function () {
-            _.bindAll(this, "remove", "update_value", "save_clicked");
+            _.bindAll(this, "remove", "update_value", "save_clicked", "render_view");
         },
 
         register: function (character, simpletrait, category) {
@@ -23,6 +23,7 @@ define([
                 if (self.character)
                     self.stopListening(self.character);
                 self.character = character;
+                self.listenTo(self.character, "change", self.render_view);
                 changed = true;
             }
 
@@ -65,6 +66,7 @@ define([
             var v = this.$(a.target).val();
             console.log("update value", self.category, self.simpletrait, this.$(a.target).val());
             this.simpletrait.set("value", _.parseInt(this.$(a.target).val()));
+            self.render_view();
         },
 
         save_clicked: function(a, b, c) {
@@ -79,11 +81,22 @@ define([
             return false;
         },
 
+        render_view: function() {
+            this.view_template = _.template($("script#simpleTraitChangeView").html())({
+                "c": this.character,
+                "character": this.character,
+                "b": this.simpletrait,
+                "trait": this.simpletrait,
+            });
+
+            this.$el.find("#simpletrait-viewing").html(this.view_template);
+        },
+
         // Renders all of the Category models on the UI
         render: function() {
 
             // Sets the view's template property
-            this.template = _.template($("script#simpleTraitChangeView").html())({
+            this.template = _.template($("script#simpleTraitChangeChange").html())({
                 "c": this.character,
                 "b": this.simpletrait,
                 "category": this.category,
@@ -91,9 +104,10 @@ define([
             });
 
             // Renders the view's template inside of the current listview element
-            this.$el.find("div[role='main']").html(this.template);
+            this.render_view();
+            this.$el.find("#simpletrait-changing").html(this.template);
+            this.$el.find("#simpletrait-changing").enhanceWithin();
 
-            this.$el.enhanceWithin();
 
             // Maintains chainability
             return this;

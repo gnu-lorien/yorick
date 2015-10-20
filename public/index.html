@@ -248,11 +248,21 @@
 <div id="simpletrait-change" data-role="page" data-title="SimpleTraitChange">
 
     <div role="main" class="ui-content">
+        <!-- <div id="simpletrait-main"></div> -->
+        <div id="simpletrait-viewing"></div>
+        <div id="simpletrait-changing"></div>
     </div>
 </div>
 
 <script id="simpleTraitChangeView" type="text/template">
     <p><%= c.get("name") %> <%= b.get("name") %> <%= b.get("value") %></p>
+    <% var cost = character.calculate_trait_cost(trait); %>
+    <p>Cost: <%= cost %></p>
+    <p>Available XP: <%= character.experience_available() %></p>
+    <p>Final: <%= character.experience_available() - cost %></p>
+</script>
+
+<script id="simpleTraitChangeChange" type="text/template">
     <p>
         <label for="slider">Slider:</label>
         <input type="range" name="simpleTraitValue" id="slider" value="<%= b.get('value') %>" min="1" max="<%= traitmax %>">
