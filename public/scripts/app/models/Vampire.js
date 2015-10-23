@@ -530,6 +530,36 @@ define([
             };
 
             return 20;
+        },
+
+        get_sorted_skills: function() {
+            var self = this;
+            var sortedSkills = self.get("skills");
+            sortedSkills = _.sortBy(sortedSkills, "attributes.name");
+            sortedSkills = _.map(sortedSkills, function (skill) {
+                var name = skill.get("name");
+                if (-1 == name.indexOf(":")) {
+                    return name + " x" + skill.get("value");
+                } else {
+                    var rootName = name.slice(0, name.indexOf(':'));
+                    var rightName = name.slice(name.indexOf(':'));
+                    return rootName + " x" + skill.get("value") + rightName;
+                }
+            });
+            return sortedSkills;
+        },
+
+        get_grouped_skills: function(sortedSkills, columnCount) {
+            var self = this;
+            var sortedSkills = sortedSkills || self.get_sorted_skills();
+            var groupedSkills = {0: [], 1: [], 2: []};
+            var shiftAmount = _.ceil(sortedSkills.length / columnCount);
+            _.each(_.range(columnCount), function (i) {
+                groupedSkills[i] = _.take(sortedSkills, shiftAmount);
+                sortedSkills = _.drop(sortedSkills, shiftAmount);
+            });
+            groupedSkills = _.zip(groupedSkills[0], groupedSkills[1], groupedSkills[2]);
+            return groupedSkills;
         }
     } );
 

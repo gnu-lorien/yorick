@@ -24,26 +24,8 @@ define([
         render: function() {
 
             var character = this.model;
-            var columnCount = 3;
-            var sortedSkills = character.get("skills");
-            sortedSkills = _.sortBy(sortedSkills, "attributes.name");
-            sortedSkills = _.map(sortedSkills, function (skill) {
-                var name = skill.get("name");
-                if (-1 == name.indexOf(":")) {
-                    return name + " x" + skill.get("value");
-                } else {
-                    var rootName = name.slice(0, name.indexOf(':'));
-                    var rightName = name.slice(name.indexOf(':'));
-                    return rootName + " x" + skill.get("value") + rightName;
-                }
-            })
-            var groupedSkills = {0: [], 1: [], 2: []};
-            var shiftAmount = _.ceil(sortedSkills.length / columnCount);
-            _.each(_.range(columnCount), function (i) {
-                groupedSkills[i] = _.take(sortedSkills, shiftAmount);
-                sortedSkills = _.drop(sortedSkills, shiftAmount);
-            });
-            groupedSkills = _.zip(groupedSkills[0], groupedSkills[1], groupedSkills[2]);
+            var sortedSkills = character.get_sorted_skills();
+            var groupedSkills = character.get_grouped_skills(sortedSkills, 3);
 
             // Sets the view's template property
             this.template = _.template(
