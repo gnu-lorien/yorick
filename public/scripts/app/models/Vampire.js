@@ -552,6 +552,7 @@ define([
         get_grouped_skills: function(sortedSkills, columnCount) {
             var self = this;
             var sortedSkills = sortedSkills || self.get_sorted_skills();
+            var columnCount = columnCount || 3;
             var groupedSkills = {0: [], 1: [], 2: []};
             var shiftAmount = _.ceil(sortedSkills.length / columnCount);
             _.each(_.range(columnCount), function (i) {
