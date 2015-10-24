@@ -16,9 +16,6 @@ define([
         // The View Constructor
         initialize: function() {
             var self = this;
-            this.collection = new VampireChangeCollection;
-            self.listenTo(self.collection, "add", self.render);
-            self.listenTo(self.collection, "reset", self.render);
 
             self.sheetTemplate = _.template($( "script#characterPrintView" ).html());
             self.selectedTemplate = _.template($("script#characterHistorySelectedView").html());
@@ -26,28 +23,22 @@ define([
 
         register: function(character, changeId) {
             var self = this;
-            var changed = false;
-
-            if (changeId != self.changeId) {
-                self.changeId = changeId;
-                change = true;
-            }
+            var p = Parse.Promise.as([]);
 
             if (character !== self.character) {
-                if (self.character)
+                if (self.character) {
                     self.stopListening(self.character);
+                    if (self.character.recorded_changes) {
+                        self.stopListening(self.character.recorded_changes);
+                    }
+                }
                 self.character = character;
-                self.listenTo(self.character, "change:change_count", self.update_collection_query_and_fetch);
-                changed = true;
+                p = self.character.get_recorded_changes(self);
             }
 
-            if (changed) {
-                return self.update_collection_query_and_fetch().then(function () {
-                    return Parse.Promise.as(self);
-                });
-            }
-
-            return Parse.Promise.as(self);
+            return p.then(function () {
+                Parse.Promise.as(self);
+            });
         },
 
         events: {
@@ -83,7 +74,7 @@ define([
             self._render_viewing(true);
 
             var selectedId = this.$("#history-changes-" + selectedIndex).val();
-            var changesToApply = _.chain(self.collection.models).takeRightWhile(function (model) {
+            var changesToApply = _.chain(self.character.recorded_changes.models).takeRightWhile(function (model) {
                 return model.id != selectedId;
             }).reverse().value();
             var c = self.character.get_transformed(changesToApply);
@@ -94,11 +85,11 @@ define([
             var self = this;
             var sendId = self.idForPickedIndex;
             if (_.isUndefined(sendId)) {
-                var sendId = this.collection.models.length - 1;
+                sendId = self.character.recorded_changes.models.length - 1;
             }
             this.$el.find("#history-viewing").html(this.selectedTemplate({
                 "character": this.character,
-                "logs": this.collection.models,
+                "logs": self.character.recorded_changes.models,
                 "format_entry": this.format_entry,
                 idForPickedIndex: sendId,
             }));
@@ -127,14 +118,14 @@ define([
 
             var sendId = self.idForPickedIndex;
             if (_.isUndefined(sendId)) {
-                var sendId = this.collection.models.length - 1;
+                sendId = self.character.recorded_changes.models.length - 1;
             }
 
             // Sets the view's template property
             this.template = _.template(
                 $( "script#characterHistoryView" ).html())({
                     "character": this.character,
-                    "logs": this.collection.models,
+                    "logs": this.character.recorded_changes.models,
                     "format_entry": this.format_entry,
                     idForPickedIndex: sendId,
                  });

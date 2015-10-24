@@ -8,7 +8,8 @@ define([
     "../models/SimpleTrait",
     "../models/VampireChange",
     "../models/VampireCreation",
-], function( $, Parse, SimpleTrait, VampireChange, VampireCreation ) {
+    "../collections/VampireChangeCollection",
+], function( $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection ) {
 
     // The Model constructor
     var Model = Parse.Object.extend( "Vampire", {
@@ -368,6 +369,41 @@ define([
             return self.get("experience_earned") - self.get("experience_spent");
         },
 
+        get_experience_notations: function() {
+            var self = this;
+
+            if (!_.isUndefined(self.experience_notations)) {
+                return Parse.Promise.as(self.experience_notations);
+            }
+
+
+        },
+
+        get_recorded_changes: function(changeListener) {
+            var self = this;
+
+            if (!_.isUndefined(self.recorded_changes)) {
+                return Parse.Promise.as(self.recorded_changes);
+            }
+
+            self.recorded_changes = new VampireChangeCollection;
+            self.on("change:change_count", self.fetch_recorded_changes, self);
+            if (changeListener) {
+                changeListener.listenTo(self.recorded_changes, "add", changeListener.render);
+                changeListener.listenTo(self.recorded_changes, "reset", changeListener.render);
+            }
+            return self.fetch_recorded_changes();
+        },
+
+        fetch_recorded_changes: function() {
+            var self = this;
+            var q = new Parse.Query(VampireChange);
+            q.equalTo("owner", self).addAscending("createdAt").limit(1000);
+            self.recorded_changes.query = q;
+            console.log("Resetting recorded changes");
+            return self.recorded_changes.fetch({reset: true});
+        },
+
         calculate_trait_cost: function(trait) {
             var self = this;
             var category = trait.get("category");
@@ -494,7 +530,7 @@ define([
                     var category = change.get("category");
                     var current = _.find(c.get(category), function (st) {
                         if (_.isUndefined(st)) {
-                            console.log("breakpoint");
+                            console.log("Something went wrong fetching the full character object and now a name is undefined");
                         }
                         return _.isEqual(st.get("name"), change.get("name"));
                     });
