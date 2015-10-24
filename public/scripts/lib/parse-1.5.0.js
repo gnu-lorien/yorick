@@ -6045,7 +6045,7 @@
       var className = list[0].className;
       var query = new Parse.Query(className);
       query.containedIn("objectId", objectIds);
-      query.limit = objectIds.length;
+      query.limit(objectIds.length);
       return query.find();
     }).then(function(results) {
       return Parse.Object._updateWithFetchedResults(
