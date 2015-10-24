@@ -219,10 +219,11 @@ define([
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
             self.get_character(cid, "all").done(function (character) {
-                self.characterHistoryView.register(character, id);
-                var activePage = $(".ui-page-active").attr("id");
-                var r = $.mobile.changePage("#character-history", {reverse: false, changeHash: false});
-                $.mobile.loading("hide");
+                self.characterHistoryView.register(character, id).then(function() {
+                    var activePage = $(".ui-page-active").attr("id");
+                    var r = $.mobile.changePage("#character-history", {reverse: false, changeHash: false});
+                    $.mobile.loading("hide");
+                });
             });
         },
 

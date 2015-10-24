@@ -42,10 +42,12 @@ define([
             }
 
             if (changed) {
-                self.update_collection_query_and_fetch();
+                return self.update_collection_query_and_fetch().then(function () {
+                    return Parse.Promise.as(self);
+                });
             }
 
-            return self;
+            return Parse.Promise.as(self);
         },
 
         events: {
