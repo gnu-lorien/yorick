@@ -387,7 +387,7 @@ define([
             }
 
             self.recorded_changes = new VampireChangeCollection;
-            self.on("change:change_count", self.fetch_recorded_changes, self);
+            self.on("saved", self.fetch_recorded_changes, self);
             if (changeListener) {
                 changeListener.listenTo(self.recorded_changes, "add", changeListener.render);
                 changeListener.listenTo(self.recorded_changes, "reset", changeListener.render);

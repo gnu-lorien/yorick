@@ -5107,6 +5107,7 @@
       });
       this._rebuildAllEstimatedData();
       this._saving = this._saving - 1;
+      self.trigger('saved', self);
       //console.log("Finished save" + this.className + " " + this._saving);
     },
 
