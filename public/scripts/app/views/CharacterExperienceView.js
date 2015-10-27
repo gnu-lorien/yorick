@@ -8,8 +8,9 @@ define([
     "moment",
     "../models/ExperienceNotation",
     "../collections/ExperienceNotationCollection",
-    "mobiledatepicker"
-], function( $, Backbone, moment, ExperienceNotation, ExperienceNotationCollection, mobiledatepicker) {
+    "mobiledatepicker",
+    "../collections/VampireChangeCollection"
+], function( $, Backbone, moment, ExperienceNotation, ExperienceNotationCollection, mobiledatepicker, VampireChangeCollection) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
@@ -17,11 +18,10 @@ define([
         // The View Constructor
         initialize: function() {
             var self = this;
-            this.collection = new ExperienceNotationCollection;
-            self.listenTo(self.collection, "add", self.render);
-            self.listenTo(self.collection, "reset", self.render);
-            self.listenTo(self.collection, "remove", self.render);
-            self.listenTo(self.collection, "change", self.update_en_with_future_propagation);
+
+            self.changes = new VampireChangeCollection;
+            self.listenTo(self.changes, "add", self.render);
+            self.listenTo(self.changes, "reset", self.render);
 
             self.start = 0;
             self.changeBy = 10;
@@ -29,104 +29,32 @@ define([
 
         register: function(character, start, changeBy) {
             var self = this;
-            var changed = false;
-            start = _.parseInt(start);
-            changeBy = _.parseInt(changeBy);
-
-            if (start != self.start) {
-                self.start = start;
-                changed = true;
-            }
-
-            if (changeBy != self.changeBy) {
-                self.changeBy = changeBy;
-                changed = true;
-            }
+            var p = Parse.Promise.as([]);
 
             if (character !== self.character) {
-                if (self.character)
+                if (self.character) {
                     self.stopListening(self.character);
+                    self.stopListening(self.collection);
+                }
                 self.character = character;
-                self.listenTo(self.character, "change:change_count", self.update_collection_query_and_fetch);
-                changed = true;
-            }
-
-            if (changed) {
-                self.update_collection_query_and_fetch();
-            }
-
-            return self;
-        },
-
-        update_en_with_future_propagation: function(en, changes, options) {
-            var self = this;
-            var propagate = false;
-            var propagate_slice;
-            var return_promise = Parse.Promise.as([]);
-            options = options || {};
-            var c = changes.changes;
-            if (c.entered) {
-                var current_index = self.collection.indexOf(en);
-                self.collection.sort();
-                var new_index = self.collection.indexOf(en);
-                // Force the change logic to update these values for the new right
-                c.alteration_earned = true;
-                c.alteration_spent = true;
-                propagate = true;
-                // TODO: Find a smarter way to know how many entries moved as a result of the sort
-                propagate_slice = self.collection.models.slice(0, _.max([current_index, new_index]) + 2);
-            }
-            if (c.alteration_earned || c.alteration_spent) {
-                propagate = true;
-            }
-            if (c.alteration_earned || c.earned) {
-                var changed_index = self.collection.indexOf(en);
-                var right_index = changed_index + 1;
-                var right = self.collection.at(right_index);
-                var right_earned = right ? right.get("earned") : 0;
-                en.set("earned", right_earned + en.get("alteration_earned"), {silent: true});
-            }
-            if (c.alteration_spent || c.spent) {
-                var changed_index = self.collection.indexOf(en);
-                var right_index = changed_index + 1;
-                var right = self.collection.at(right_index);
-                var right_spent = right ? right.get("spent") : 0;
-                en.set("spent", right_spent + en.get("alteration_spent"), {silent: true});
-            }
-            if (propagate) {
-                $.mobile.loading("show");
-                var changed_index = self.collection.indexOf(en);
-                propagate_slice = propagate_slice || self.collection.models.slice(0, changed_index + 1);
-
-                console.log("Propagating changes requires " + propagate_slice.length + " changes");
-                var trigger_c = {changes: {earned: true, spent: true}};
-                _.eachRight(propagate_slice, function (elem, i) {
-                    self.update_en_with_future_propagation(elem, trigger_c, {norender: true});
-                });
-                return_promise = Parse.Object.saveAll(propagate_slice).then(function () {
-                    var first = _.first(self.collection.models);
-                    var changed;
-                    _.each(["earned", "spent"], function (t) {
-                        if (first.get(t) != self.character.get("experience_" + t)) {
-                            self.character.set("experience_" + t, first.get(t));
-                            changed = true;
-                        }
+                p = self.character.get_experience_notations(function (rc) {
+                    self.listenTo(rc, "add", self.render);
+                    self.listenTo(rc, "reset", self.render);
+                    self.listenTo(rc, "remove", self.render);
+                    self.listenTo(self.character, "begin_experience_notation_propagation", function() {
+                        $.mobile.loading("show");
                     });
-                    if (changed) {
-                        return self.character.save();
-                    } else {
-                        return Parse.Promise.as(self.character);
-                    }
+                    self.listenTo(self.character, "finish_experience_notation_propagation", function() {
+                        self.render();
+                        $.mobile.loading("hide");
+                    })
+                    self.collection = rc;
                 });
             }
-            if (!options.norender) {
-                return return_promise.then(function () {
-                    self.render();
-                    $.mobile.loading("hide");
-                });
-            } else {
-                return self;
-            }
+
+            return p.then(function () {
+                Parse.Promise.as(self);
+            });
         },
 
         events: {
@@ -276,7 +204,12 @@ define([
             q.limit(self.changeBy);
             */
             self.collection.query = q;
-            return self.collection.fetch(options);
+            return self.collection.fetch(options).then(function () {
+                var q = new Parse.Query(VampireChange);
+                q.equalTo("owner", self.character).addAscending("createdAt").limit(1000);
+                self.changes.query = q;
+                return self.changes.fetch(options);
+            });
         },
 
         format_entry: function(log, entry) {

@@ -33,7 +33,11 @@ define([
                     }
                 }
                 self.character = character;
-                p = self.character.get_recorded_changes(self);
+
+                p = self.character.get_recorded_changes(function (rc) {
+                    self.listenTo(rc, "add", self.render);
+                    self.listenTo(rc, "reset", self.render);
+                });
             }
 
             return p.then(function () {

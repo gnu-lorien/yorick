@@ -9,7 +9,9 @@ define([
     "../models/VampireChange",
     "../models/VampireCreation",
     "../collections/VampireChangeCollection",
-], function( $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection ) {
+    "../collections/ExperienceNotationCollection",
+    "../models/ExperienceNotation",
+], function( $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation ) {
 
     // The Model constructor
     var Model = Parse.Object.extend( "Vampire", {
@@ -369,17 +371,100 @@ define([
             return self.get("experience_earned") - self.get("experience_spent");
         },
 
-        get_experience_notations: function() {
+        get_experience_notations: function(register) {
             var self = this;
 
             if (!_.isUndefined(self.experience_notations)) {
                 return Parse.Promise.as(self.experience_notations);
             }
 
-
+            self.experience_notations = new ExperienceNotationCollection;
+            self.experience_notations.on("change", self.update_experience_notation, self);
+            if (register) {
+                register(self.experience_notations);
+            }
+            return self.fetch_experience_notations();
         },
 
-        get_recorded_changes: function(changeListener) {
+        fetch_experience_notations: function () {
+            var self = this;
+            var q = new Parse.Query(ExperienceNotation);
+            q.equalTo("owner", self).addDescending("entered").addDescending("createdAt");
+            self.experience_notations.query = q;
+            return self.experience_notations.fetch({reset: true});
+        },
+
+        update_experience_notation: function(en, changes, options) {
+            var self = this;
+            var propagate = false;
+            var propagate_slice;
+            var return_promise = Parse.Promise.as([]);
+            options = options || {};
+            var c = changes.changes;
+            if (c.entered) {
+                var current_index = self.experience_notations.indexOf(en);
+                self.experience_notations.sort();
+                var new_index = self.experience_notations.indexOf(en);
+                // Force the change logic to update these values for the new right
+                c.alteration_earned = true;
+                c.alteration_spent = true;
+                propagate = true;
+                // TODO: Find a smarter way to know how many entries moved as a result of the sort
+                propagate_slice = self.experience_notations.models.slice(0, _.max([current_index, new_index]) + 2);
+            }
+            if (c.alteration_earned || c.alteration_spent) {
+                propagate = true;
+            }
+            if (c.alteration_earned || c.earned) {
+                var changed_index = self.experience_notations.indexOf(en);
+                var right_index = changed_index + 1;
+                var right = self.experience_notations.at(right_index);
+                var right_earned = right ? right.get("earned") : 0;
+                en.set("earned", right_earned + en.get("alteration_earned"), {silent: true});
+            }
+            if (c.alteration_spent || c.spent) {
+                var changed_index = self.experience_notations.indexOf(en);
+                var right_index = changed_index + 1;
+                var right = self.experience_notations.at(right_index);
+                var right_spent = right ? right.get("spent") : 0;
+                en.set("spent", right_spent + en.get("alteration_spent"), {silent: true});
+            }
+            if (propagate) {
+                self.trigger("begin_experience_notation_propagation");
+                var changed_index = self.experience_notations.indexOf(en);
+                propagate_slice = propagate_slice || self.experience_notations.models.slice(0, changed_index + 1);
+
+                console.log("Propagating changes requires " + propagate_slice.length + " changes");
+                var trigger_c = {changes: {earned: true, spent: true}};
+                _.eachRight(propagate_slice, function (elem, i) {
+                    self.update_experience_notation(elem, trigger_c, {norender: true});
+                });
+                return_promise = Parse.Object.saveAll(propagate_slice).then(function () {
+                    var first = _.first(self.experience_notations.models);
+                    var changed;
+                    _.each(["earned", "spent"], function (t) {
+                        if (first.get(t) != self.get("experience_" + t)) {
+                            self.set("experience_" + t, first.get(t));
+                            changed = true;
+                        }
+                    });
+                    if (changed) {
+                        return self.save();
+                    } else {
+                        return Parse.Promise.as(self);
+                    }
+                });
+            }
+            if (!options.norender) {
+                return return_promise.then(function () {
+                    self.trigger("finish_experience_notation_propagation");
+                });
+            } else {
+                return self;
+            }
+        },
+
+        get_recorded_changes: function(register) {
             var self = this;
 
             if (!_.isUndefined(self.recorded_changes)) {
@@ -388,9 +473,8 @@ define([
 
             self.recorded_changes = new VampireChangeCollection;
             self.on("saved", self.fetch_recorded_changes, self);
-            if (changeListener) {
-                changeListener.listenTo(self.recorded_changes, "add", changeListener.render);
-                changeListener.listenTo(self.recorded_changes, "reset", changeListener.render);
+            if (register) {
+                register(self.recorded_changes);
             }
             return self.fetch_recorded_changes();
         },
