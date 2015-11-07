@@ -45,23 +45,23 @@ Parse.Cloud.beforeSave("Vampire", function(request, response) {
     })
 });
 
-Parse.Cloud.afterSave("VampireChange", function(request) {
-    /*
-    var vc = request.object;
-    if ("experience_points" == vc.get("experience_points")) {
-        return;
+var isMeaningfulChange = function (vc) {
+    var changed = true;
+    if ("update" == vc.get("type")) {
+        changed = false;
+        if (vc.get("old_value") != vc.get("value")) {
+            changed = true;
+        }
+        if (vc.get("old_cost") != vc.get("cost")) {
+            changed = true;
+        }
+        if (vc.get("old_text") != vc.get("name")) {
+            changed = true;
+        }
     }
-    var cost_mod = parseInt(vc.get("cost")) - parseInt(vc.get("old_cost"));
-    var vampire;
-    vc.get("owner").fetch().then(function (v) {
-        vampire = v;
-        return Parse.Object.fetchAll(vampire.get("experience_points"));
-    }).then(function (traits) {
-        // Get spent XP
-        // Add the cost_mod to it
-    });
-    */
-});
+
+    return changed;
+}
 
 Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
     Parse.Cloud.useMasterKey();
@@ -81,23 +81,12 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
         "old_text": serverData.name,
     });
 
-    /* Try to cancel updates without any actual changes */
-    if ("update" == vc.get("type")) {
-        var changed = false;
-        if (vc.get("old_value") != vc.get("value")) {
-            changed = true;
-        }
-        if (vc.get("old_cost") != vc.get("cost")) {
-            changed = true;
-        }
-        if (vc.get("old_text") != vc.get("name")) {
-            changed = true;
-        }
-        if (!changed) {
-            console.log("Update does not actually encode a change " + pretty(vc.attributes));
-            return;
-        }
+    if (!isMeaningfulChange(vc)) {
+        console.log("Update does not actually encode a change " + pretty(vc.attributes));
+        response.success();
+        return;
     }
+
     vc.save().then(function () {
         response.success();
     }, function(error) {
@@ -132,21 +121,9 @@ Parse.Cloud.define("removeRedundantHistory", function(request, response) {
     var allHistory = new Parse.Query("VampireChange");
     var redundant = [];
     allHistory.each(function (vc) {
-        if ("update" == vc.get("type")) {
-            var changed = false;
-            if (vc.get("old_value") != vc.get("value")) {
-                changed = true;
-            }
-            if (vc.get("old_cost") != vc.get("cost")) {
-                changed = true;
-            }
-            if (vc.get("old_text") != vc.get("name")) {
-                changed = true;
-            }
-            if (!changed) {
-                vc.set("marked_redundant", true);
-                redundant.push(vc);
-            }
+        if (!isMeaningfulChange(vc)) {
+            vc.set("marked_redundant", true);
+            redundant.push(vc);
         }
     }).then(function() {
         return Parse.Object.destroyAll(redundant);
