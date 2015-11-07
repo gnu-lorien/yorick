@@ -80,6 +80,24 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
         "cost": modified_trait.get("cost"),
         "old_text": serverData.name,
     });
+
+    /* Try to cancel updates without any actual changes */
+    if ("update" == vc.get("type")) {
+        var changed = false;
+        if (vc.get("old_value") != vc.get("value")) {
+            changed = true;
+        }
+        if (vc.get("old_cost") != vc.get("cost")) {
+            changed = true;
+        }
+        if (vc.get("old_text") != vc.get("name")) {
+            changed = true;
+        }
+        if (!changed) {
+            console.log("Update does not actually encode a change " + pretty(vc.attributes));
+            return;
+        }
+    }
     vc.save().then(function () {
         response.success();
     }, function(error) {
@@ -108,3 +126,33 @@ Parse.Cloud.afterDelete("SimpleTrait", function(request) {
         console.log("Failed to save delete for", request.object.id, "because of", pretty(error));
     });
 });
+
+Parse.Cloud.define("removeRedundantHistory", function(request, response) {
+    Parse.Cloud.useMasterKey();
+    var allHistory = new Parse.Query("VampireChange");
+    var redundant = [];
+    allHistory.each(function (vc) {
+        if ("update" == vc.get("type")) {
+            var changed = false;
+            if (vc.get("old_value") != vc.get("value")) {
+                changed = true;
+            }
+            if (vc.get("old_cost") != vc.get("cost")) {
+                changed = true;
+            }
+            if (vc.get("old_text") != vc.get("name")) {
+                changed = true;
+            }
+            if (!changed) {
+                vc.set("marked_redundant", true);
+                redundant.push(vc);
+            }
+        }
+    }).then(function() {
+        return Parse.Object.destroyAll(redundant);
+    }).then(function () {
+        response.success();
+    }, function(error) {
+        response.error(error);
+    });
+})
