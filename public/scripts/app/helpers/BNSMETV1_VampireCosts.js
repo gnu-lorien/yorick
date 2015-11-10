@@ -1,11 +1,9 @@
 // Includes file dependencies
 define([
     "underscore",
-    "jquery",
     "parse",
-    "../models/SimpleTrait",
     "../collections/BNSMETV1_ClanRules",
-], function( _, $, Parse, SimpleTrait, BNSMETV1_ClanRules ) {
+], function( _, Parse, BNSMETV1_ClanRules ) {
 
     var VampireCosts = Parse.Object.extend("VampireCosts", {
         initialize: function() {

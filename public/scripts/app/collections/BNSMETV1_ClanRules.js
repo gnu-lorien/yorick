@@ -3,9 +3,9 @@
 
 // Includes file dependencies
 define([
-	"jquery",
+    "underscore",
 	"parse",
-	"../models/BNSMETV1_ClanRule" ], function( $, Parse, ClanRule ) {
+	"../models/BNSMETV1_ClanRule" ], function( _, Parse, ClanRule ) {
 
     var Collection = Parse.Collection.extend( {
         model: ClanRule,
