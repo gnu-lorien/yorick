@@ -386,40 +386,7 @@ define([
 
         _get_character: function(id, categories) {
             var self = this;
-            categories = categories || [];
-            if (self._character === null) {
-                var q = new Parse.Query(Vampire);
-                q.equalTo("owner", Parse.User.current());
-                return q.get(id).then(function(m) {
-                    self._character = m;
-                    return self.get_character(id, categories);
-                });
-            }
-            if (self._character.id != id) {
-                return self._character.save().then(function() {
-                    self._character = null;
-                    return self.get_character(id, categories);
-                })
-            }
-            if (categories == "all") {
-                categories = _.result(self._character, "all_simpletrait_categories", []);
-                categories = _.map(categories, function (e) {
-                    return e[0];
-                })
-            }
-            if (0 !== categories.length) {
-                var objectIds = _.chain(categories).map(function(category) {
-                    return self._character.get(category);
-                }).flatten().without(undefined).filter(function(id) {
-                    return id.id;
-                }).value();
-
-                return Parse.Object.fetchAllIfNeeded(objectIds).done(function () {
-                    return self.get_character(id, []);
-                });
-            }
-            /* FIXME: Hack to inject something that should be created with the character */
-            return self._character.ensure_creation_rules_exist();
+            return Vampire.get_character(id, categories, self);
         },
 
         simpletrait: function(category, cid, bid) {
