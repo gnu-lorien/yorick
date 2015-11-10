@@ -100,5 +100,96 @@ define(["jquery", "parse", "../models/Vampire"], function ($, Parse, Vampire) {
                 done.fail(error);
             })
         });
+
+        it("can calculate costs for in and out of clan disciplines", function(done) {
+            Vampire.get_character("aH7bi2ctQU", "all").then(function(c) {
+                expect(c.get("name")).toBe("Dis 15");
+                var expected = {
+                    Presence: 56,
+                    Potence: 56,
+                    Celerity: 48,
+                    Obtenebration: 60
+                };
+                _.each(c.get("disciplines"), function(e) {
+                    var cost = c.calculate_trait_cost(e);
+                    expect(cost).toBe(expected[e.get("name")]);
+                })
+                done();
+            }, function(error) {
+                done.fail(error);
+            })
+        });
+
+        it("Dis 15 costs didn't change", function(done) {
+            Vampire.get_character("aH7bi2ctQU", "all").then(function(c) {
+                expect(c.get("name")).toBe("Dis 15");
+                var expected = {
+                    Academics: 0,
+                    "Animal Ken": 0,
+                    "Crafts: This crafts is on fire": 30,
+                    "Performance: Slapping": 12,
+                    "Brawl": 6,
+                    "Computer": 20,
+                    "Intimidation": 6,
+                    "Athletics": 2,
+                    "Awareness": 6,
+                    "Dodge": 12,
+                    "Linguistics": 30,
+                    "Melee": 12,
+                    "Security": 12,
+                    "Streetwise": 20,
+                    "Survival": 20,
+                    "Performance: Did it do it done it good": 6,
+                    "Science: ": 6,
+                    "Medicine": 30,
+                    "Subterfuge": 20,
+                    "Stealth": 2,
+                    "Investigation": 6,
+                    "Crafts: Deez Nuts": 0,
+                    "Lore": 30,
+                    "Allies": 12,
+                    "Haven": 30,
+                    "Rituals": 30,
+                    "Generation": 12,
+                    "Influences: The Elite": 30,
+                    "Influences: The Underworld": 30,
+                    "Presence": 56,
+                    "Celerity": 48,
+                    "Potence": 56,
+                    "Obtenebration": 60,
+                    "Physical": 3,
+                    "Social": 0,
+                    "Mental": 0,
+                    "Additional Uncommon Discipline": 5,
+                    "Path of Death and the Soul": 3,
+                    "Necromancy: Call of the Hungry Dead": 2,
+                    "Necromancy: Bastone Diabolico": 8,
+                    "Necromancy: Black Blood": 4,
+                    "Necromancy: Chill of Oblivion": 10,
+                    "Necromancy: Circle of Cerberus": 2,
+                    "Necromancy: Dark Assistant": 2,
+                    "Necromancy: Din of the Damned": 4,
+                    "Necromancy: Eyes of the Grave": 2,
+                    "Necromancy: Sepulchral Beacon": 4,
+                    "Necromancy: Strength of Rotten Flesh": 8,
+                    "Instinctive Command": 20,
+                    "Denial of Aphrodite's Favor": 20,
+                    "Reflection of Endurance": 20,
+                    "Control the Savage Beast": 20,
+                    "Retain the Quick Blood": 20,
+                    "Presence: Love": 30,
+                    "Celerity: Quickness": 30,
+                    "Potence: Force": 30,
+                    "Obtenebration: Shadowstep": 30,
+                };
+                _.each(c.get("disciplines"), function(e) {
+                    var cost = c.calculate_trait_cost(e);
+                    expect(cost).toBe(expected[e.get("name")]);
+                })
+                done();
+            }, function(error) {
+                done.fail(error);
+            })
+        });
     });
 });
