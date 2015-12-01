@@ -3,6 +3,7 @@
 
 // Includes file dependencies
 define([
+    "underscore",
 	"jquery",
 	"parse",
     "../models/SimpleTrait",
@@ -11,7 +12,7 @@ define([
     "../collections/VampireChangeCollection",
     "../collections/ExperienceNotationCollection",
     "../models/ExperienceNotation",
-], function( $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation ) {
+], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation ) {
 
     // The Model constructor
     var Model = Parse.Object.extend( "Vampire", {
@@ -684,6 +685,48 @@ define([
         }
     } );
 
+    Model.get_character = function(id, categories, character_cache) {
+        if (_.isUndefined(character_cache)) {
+            character_cache = {_character: null};
+        }
+        categories = categories || [];
+        if (_.isString(categories)) {
+            categories = [categories];
+        }
+        if (character_cache._character === null) {
+            var q = new Parse.Query(Model);
+            q.equalTo("owner", Parse.User.current());
+            return q.get(id).then(function(m) {
+                character_cache._character = m;
+                return Model.get_character(id, categories, character_cache);
+            });
+        }
+        if (character_cache._character.id != id) {
+            return character_cache._character.save().then(function() {
+                character_cache._character = null;
+                return Model.get_character(id, categories, character_cache);
+            })
+        }
+        if (categories == "all") {
+            categories = _.result(character_cache._character, "all_simpletrait_categories", []);
+            categories = _.map(categories, function (e) {
+                return e[0];
+            })
+        }
+        if (0 !== categories.length) {
+            var objectIds = _.chain(categories).map(function(category) {
+                return character_cache._character.get(category);
+            }).flatten().without(undefined).filter(function(id) {
+                return id.id;
+            }).value();
+
+            return Parse.Object.fetchAllIfNeeded(objectIds).done(function () {
+                return Model.get_character(id, [], character_cache);
+            });
+        }
+        /* FIXME: Hack to inject something that should be created with the character */
+        return character_cache._character.ensure_creation_rules_exist();
+    }
     // Returns the Model class
     return Model;
 
