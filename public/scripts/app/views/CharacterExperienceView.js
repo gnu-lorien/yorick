@@ -180,18 +180,7 @@ define([
 
         add: function() {
             var self = this;
-            var en = new ExperienceNotation({
-                entered: new Date,
-                reason: "Unspecified reason",
-                earned: 0,
-                spent: 0,
-                alteration_earned: 0,
-                alteration_spent: 0,
-                owner: self.character,
-            });
-            en.setACL(self.character.get_me_acl());
-            self.collection.add(en);
-            en.save();
+            self.character.add_experience_notation("Unspecified reason");
         },
 
         update_collection_query_and_fetch: function () {
