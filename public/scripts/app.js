@@ -1,6 +1,7 @@
 // Sets the require.js configuration for your application.
 requirejs.config( {
 	baseUrl: "scripts/lib",
+	urlArgs: "bust=" + (new Date()).getTime(),
 	bundles: {
 		"jquery-ui": ["jquery-ui/datepicker"]
 	},
