@@ -438,6 +438,24 @@ define([
             }
         },
 
+        add_experience_notation: function(reason) {
+            var self = this;
+            return self.get_experience_notations().then(function (ens) {
+                var en = new ExperienceNotation({
+                    entered: new Date,
+                    reason: reason || "Unspecified reason",
+                    earned: 0,
+                    spent: 0,
+                    alteration_earned: 0,
+                    alteration_spent: 0,
+                    owner: self,
+                });
+                en.setACL(self.get_me_acl());
+                ens.add(en);
+                return en.save();
+            })
+        },
+
         get_recorded_changes: function(register) {
             var self = this;
 
@@ -632,7 +650,19 @@ define([
             return character_cache._character.initialize_vampire_costs();
         });
         return retp;
-    }
+    };
+
+    Model.create = function(name) {
+        var v = new Model;
+        return v.save({name: name, owner: Parse.User.current(), change_count: 0});
+    };
+
+    Model.create_test_character = function() {
+        var v = new Model;
+        var name = "karmacharactertest" + Math.random().toString(36).slice(2);
+        return v.save({name: name, owner: Parse.User.current(), change_count: 0});
+    };
+
     // Returns the Model class
     return Model;
 

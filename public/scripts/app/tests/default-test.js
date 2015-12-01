@@ -3,7 +3,7 @@
  * Created by Andrew on 11/7/2015.
  */
 
-define(["jquery", "parse", "../models/Vampire"], function ($, Parse, Vampire) {
+define(["underscore", "jquery", "parse", "../models/Vampire", "backbone"], function (_, $, Parse, Vampire, Backbone) {
     jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
     describe("A suite", function() {
         it("contains spec with an expectation", function() {
@@ -14,8 +14,9 @@ define(["jquery", "parse", "../models/Vampire"], function ($, Parse, Vampire) {
         Parse.$ = $;
         Parse.initialize("rXfLuSWZZs1xxyeX4IzlG1ZCuglbIoDlGHwg68Ru", "yymp8UWnJ7Va32Y2Q4uzvWxfPTYuDvZSA8kdhmdR");
         if (!Parse.User.current()) {
-            Parse.User.logIn("devuser", "thedumbness");
+            return Parse.User.logIn("devuser", "thedumbness");
         }
+        return Parse.Promise.as(Parse.User.current());
     };
     describe("Parse", function() {
         beforeAll(function() {
@@ -44,9 +45,64 @@ define(["jquery", "parse", "../models/Vampire"], function ($, Parse, Vampire) {
             });
         });
     });
+
+    describe("A Vampire's experience history", function() {
+        var vampire;
+        beforeAll(function (done) {
+            ParseStart().then(function () {
+                return Vampire.create_test_character();
+            }).then(function (v) {
+                return Vampire.get_character(v.id);
+            }).then(function (v) {
+                vampire = v;
+                done();
+            }, function(error) {
+                done.fail(error);
+            });
+        });
+
+        it("updates listeners on add", function(done) {
+            var Listener = Backbone.View.extend({
+                initialize: function() {
+                    var self = this;
+                    _.bindAll(this, "finish");
+                },
+
+                finish: function(en) {
+                    expect(en.get("reason")).toBe("meet hands");
+                    vampire.get_experience_notations().then(function (ens) {
+                        var l = _.last(ens.models);
+                        expect(l.get("reason")).toBe("meet hands");
+                        done();
+                    });
+                }
+            });
+            l = new Listener;
+            vampire.get_experience_notations(function (rc) {
+                l.listenTo(rc, "add", l.finish);
+                vampire.add_experience_notation("meet hands");
+            });
+        });
+    });
+
     describe("A Vampire", function() {
-        beforeAll(function () {
-            ParseStart();
+        beforeAll(function (done) {
+            ParseStart().then(function () {
+                done();
+            });
+        });
+
+        it("can be created", function(done) {
+            var random_name = "karmacharactertest" + Math.random().toString(36).slice(2);
+            Vampire.create(random_name).then(function (created_vamp) {
+                expect(created_vamp.get("name")).toBe(random_name);
+                return Vampire.get_character(created_vamp.id);
+            }).then(function (v) {
+                expect(v.get("name")).toBe(random_name);
+                done();
+            }, function (error) {
+                done.fail(error);
+            })
         });
 
         it("can be fetched", function(done) {
