@@ -38,9 +38,8 @@ define([
                 }
                 self.character = character;
                 p = self.character.get_experience_notations(function (rc) {
-                    self.listenTo(rc, "add", self.render);
-                    self.listenTo(rc, "reset", self.render);
-                    self.listenTo(rc, "remove", self.render);
+                    self.stopListening(rc);
+                    self.listenTo(rc, "add reset remove", self.render);
                     self.listenTo(self.character, "begin_experience_notation_propagation", function() {
                         $.mobile.loading("show");
                     });

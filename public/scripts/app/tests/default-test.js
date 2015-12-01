@@ -70,9 +70,11 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone"], funct
 
                 finish: function(en) {
                     expect(en.get("reason")).toBe("meet hands");
+                    expect(en.get("alteration_earned")).toBe(24);
                     vampire.get_experience_notations().then(function (ens) {
-                        var l = _.last(ens.models);
+                        var l = _.first(ens.models);
                         expect(l.get("reason")).toBe("meet hands");
+                        expect(l.get("alteration_earned")).toBe(24);
                         done();
                     });
                 }
@@ -80,9 +82,18 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone"], funct
             l = new Listener;
             vampire.get_experience_notations(function (rc) {
                 l.listenTo(rc, "add", l.finish);
-                vampire.add_experience_notation("meet hands");
+                vampire.add_experience_notation({reason: "meet hands", alteration_earned: 24});
             });
         });
+
+        it("got initial xp", function(done) {
+            vampire.get_experience_notations().then(function (ens) {
+                var en = _.last(ens.models);
+                expect(en.get("reason")).toBe("Character Creation XP");
+                expect(en.get("alteration_earned")).toBe(30);
+                done();
+            })
+        })
     });
 
     describe("A Vampire", function() {

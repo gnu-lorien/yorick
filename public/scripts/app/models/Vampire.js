@@ -203,6 +203,10 @@ define([
             return creation.save().then(function (newCreation) {
                 self.set("creation", newCreation);
                 return self.save();
+            }).then(function (c) {
+                return self.add_experience_notation({reason: "Character Creation XP", alteration_earned: 30});
+            }).then(function (en) {
+                return Parse.Promise.as(self);
             });
         },
 
@@ -349,6 +353,9 @@ define([
             var self = this;
 
             if (!_.isUndefined(self.experience_notations)) {
+                if (register) {
+                    register(self.experience_notations);
+                }
                 return Parse.Promise.as(self.experience_notations);
             }
 
@@ -438,18 +445,18 @@ define([
             }
         },
 
-        add_experience_notation: function(reason) {
+        add_experience_notation: function(options) {
             var self = this;
             return self.get_experience_notations().then(function (ens) {
-                var en = new ExperienceNotation({
+                var properties = _.defaults(options || {}, {
                     entered: new Date,
-                    reason: reason || "Unspecified reason",
+                    reason: "Unspecified reason",
                     earned: 0,
                     spent: 0,
                     alteration_earned: 0,
                     alteration_spent: 0,
-                    owner: self,
-                });
+                    owner: self});
+                var en = new ExperienceNotation(properties);
                 en.setACL(self.get_me_acl());
                 ens.add(en);
                 return en.save();
@@ -645,11 +652,9 @@ define([
             });
         }
         /* FIXME: Hack to inject something that should be created with the character */
-        var retp = character_cache._character.ensure_creation_rules_exist();
-        retp.then(function (c) {
+        return character_cache._character.ensure_creation_rules_exist().then(function (c) {
             return character_cache._character.initialize_vampire_costs();
         });
-        return retp;
     };
 
     Model.create = function(name) {
