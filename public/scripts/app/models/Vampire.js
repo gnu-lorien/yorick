@@ -202,9 +202,14 @@ define([
             });
             return creation.save().then(function (newCreation) {
                 self.set("creation", newCreation);
+                self.set("experience_spent", 0);
+                self.set("experience_earned", newCreation.get("initial_xp"));
                 return self.save();
             }).then(function (c) {
-                return self.add_experience_notation({reason: "Character Creation XP", alteration_earned: 30});
+                return self.add_experience_notation({
+                    reason: "Character Creation XP",
+                    alteration_earned: 30,
+                    earned: 30});
             }).then(function (en) {
                 return Parse.Promise.as(self);
             });

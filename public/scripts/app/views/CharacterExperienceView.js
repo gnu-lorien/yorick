@@ -179,7 +179,7 @@ define([
 
         add: function() {
             var self = this;
-            self.character.add_experience_notation("Unspecified reason");
+            self.character.add_experience_notation({reason: "Unspecified reason"});
         },
 
         update_collection_query_and_fetch: function () {

@@ -93,7 +93,13 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone"], funct
                 expect(en.get("alteration_earned")).toBe(30);
                 done();
             })
-        })
+        });
+
+        it("reports initial xp", function() {
+            expect(vampire.experience_available()).toBe(30);
+            expect(vampire.get("experience_earned")).toBe(30);
+            expect(vampire.get("experience_spent")).toBe(0);
+        });
     });
 
     describe("A Vampire", function() {
