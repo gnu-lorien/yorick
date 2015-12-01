@@ -27,12 +27,15 @@
     "grunt-node-webkit-builder": "*",
     "grunt-replace": "*",
     "grunt-usemin": "2.0.x",
-    "require": "*"
+    "require": "*",
+    "grunt-contrib-requirejs": "^0.4.4"
   },
   "devDependencies": {
+    "grunt-exec": "^0.4.6",
     "jasmine-core": "^2.3.4",
     "karma": "^0.13.15",
     "karma-chrome-launcher": "^0.2.1",
-    "karma-jasmine": "^0.3.6"
+    "karma-jasmine": "^0.3.6",
+    "nodefy": "^0.2.2"
   }
 }
