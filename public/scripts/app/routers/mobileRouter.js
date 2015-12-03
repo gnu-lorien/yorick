@@ -356,7 +356,11 @@ define([
                     };
                     if (!c.length) {
                         var q = new Parse.Query(Vampire);
-                        q.equalTo("owner", Parse.User.current()).addAscending("name");
+                        if (Parse.User.current().get("username") == "devuser") {
+                            q.equalTo("owner", Parse.User.current()).addDescending("createdAt");
+                        } else {
+                            q.equalTo("owner", Parse.User.current()).addAscending("name");
+                        }
                         c.query = q;
                         c.fetch({add: true, merge: true}).done(f)
                     } else {
