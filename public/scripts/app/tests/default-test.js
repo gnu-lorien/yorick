@@ -46,6 +46,99 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone"], funct
         });
     });
 
+    describe("A Vampire's creation", function() {
+        var vampire;
+
+        beforeAll(function (done) {
+            ParseStart().then(function () {
+                return Vampire.create_test_character();
+            }).then(function (v) {
+                return Vampire.get_character(v.id);
+            }).then(function (v) {
+                vampire = v;
+                done();
+            }, function(error) {
+                done.fail(error);
+            });
+        });
+
+        it("can pick a clan", function(done) {
+            vampire.update_text("clan", "TestClan").then(function() {
+                expect(vampire.get("clan")).toBe("TestClan");
+                done();
+            }, function(error) {
+                done.fail(error);
+            });
+        });
+
+        it("can repick a clan", function(done) {
+            vampire.update_text("clan", "DifferentClan").then(function() {
+                expect(vampire.get("clan")).toBe("DifferentClan");
+                done();
+            }, function(error) {
+                done.fail(error);
+            });
+        });
+
+        it("can pick Physical as a primary attribute", function (done) {
+            var creation = vampire.get("creation");
+            expect(creation.get("attributes_7_remaining")).toBe(1);
+            expect(creation.get("attributes_7_picks")).toBe(undefined);
+            vampire.update_trait("Physical", 1, "attributes", 7, true).then(function (st) {
+                expect(vampire.get("creation").get("attributes_7_remaining")).toBe(0);
+                expect(vampire.get("creation").get("attributes_7_picks").length).toBe(1);
+                expect(vampire.get("creation").get("attributes_7_picks")[0].get("name")).toBe("Physical");
+                expect(vampire.get("creation").get("attributes_7_picks")[0].get("value")).toBe(7);
+                return vampire.get_trait("attributes", st.id || st.cid);
+            }).then(function (physical) {
+                expect(physical).not.toBe(undefined);
+                expect(physical.get("name")).toBe("Physical");
+                expect(physical.get("value")).toBe(7);
+                done();
+            }, function(error) {
+                done.fail(error);
+            })
+        });
+
+        it("can unpick Physical as a primary attribute", function (done) {
+            expect(vampire.get("creation").get("attributes_7_remaining")).toBe(0);
+            expect(vampire.get("creation").get("attributes_7_picks").length).toBe(1);
+            var st = _.first(vampire.get("creation").get("attributes_7_picks"));
+            vampire.get_trait("attributes", st.id).then(function(physical) {
+                expect(physical.get("name")).toBe("Physical");
+                expect(physical.get("value")).toBe(7);
+                return vampire.unpick_from_creation("attributes", st.id, 7)
+            }).then(function () {
+                expect(vampire.get("creation").get("attributes_7_remaining")).toBe(1);
+                expect(vampire.get("creation").get("attributes_7_picks").length).toBe(0);
+                expect(vampire.get("attributes").length).toBe(0);
+                done();
+            }, function(error) {
+                done.fail(error);
+            });
+        });
+
+        it("can repick a primary attribute", function () {});
+        it("can pick a merit", function(done) {
+            // Pick a merit
+            // Check that the spent points match the value
+            done.fail("Not implemented");
+        });
+        it("can change the value of a picked merit", function(done) {
+            // Pick a merit
+            // Change the value of the merit
+            // Check that the spent points match the value
+            done.fail("Not implemented");
+        });
+        it("can unpick a merit with a changed value", function(done) {
+            // Pick a merit
+            // Change its cost
+            // Unpick the merit
+            // Make sure the remaining points are back to 7
+            done.fail("Not implemented");
+        });
+    });
+
     describe("A Vampire's experience history", function() {
         var vampire;
         beforeAll(function (done) {
