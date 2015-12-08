@@ -133,3 +133,42 @@ Parse.Cloud.define("removeRedundantHistory", function(request, response) {
         response.error(error);
     });
 })
+
+Parse.Cloud.job("deletetestcharacters", function(request, response) {
+    Parse.Cloud.useMasterKey();
+    var allTestCharacters = new Parse.Query("Vampire");
+    var ids = [];
+    var subids = [];
+    allTestCharacters.startsWith("name", "karmacharactertest");
+    allTestCharacters.each(function (v) {
+        ids.push(v);
+    });
+    new Parse.Query("SimpleTrait").containedIn("owner", ids).each(function (vc) {
+        return vc.destroy();
+    }).then(function () {
+         return new Parse.Query("VampireCreation").containedIn("owner", ids).each(function (vc) {
+            return vc.destroy();
+        });
+    }).then(function() {
+         return new Parse.Query("ExperienceNotation").containedIn("owner", ids).each(function (vc) {
+            return vc.destroy();
+        });
+    }).then(function() {
+         return new Parse.Query("VampireChange").containedIn("owner", ids).each(function (vc) {
+            return vc.destroy();
+        });
+    }).then(function() {
+        return Parse.Object.destroyAll(ids);
+    }).then(function() {
+        response.success();
+    }).fail(function(error) {
+        if (error.code === Parse.Error.AGGREGATE_ERROR) {
+            for (var i = 0; i < error.errors.length; i++) {
+                response.error("Couldn't delete " + error.errors[i].object.id + "due to " + error.errors[i].message);
+            }
+        } else {
+            response.error("Delete aborted because of " + error.message);
+        }
+        console.log(pretty(error));
+    });
+})
