@@ -152,12 +152,27 @@ define([
         get_trait: function(category, id) {
             var self = this;
             var models = self.get(category);
+            console.log(JSON.stringify(models));
             var st = _.findWhere(models, {cid: id});
             if (st) {
                 return Parse.Promise.as(st, self);
             }
             st = _.findWhere(models, {id: id});
-            return Parse.Object.fetchAllIfNeeded([st]).then(function (traits) {
+            try {
+                var p = Parse.Object.fetchAllIfNeeded([st]);
+            } catch (e) {
+                if (e instanceof TypeError) {
+                    console.log("Caught a typeerror indicating this object is still saving " + e.message);
+                    console.log(JSON.stringify(st));
+                    console.log(JSON.stringify(models));
+                    return st.save().then(function (st) {
+                        return Parse.Promise.as(st, self);
+                    })
+                } else {
+                    return Parse.Promise.reject(e);
+                }
+            }
+            return p.then(function (traits) {
                 return Parse.Promise.as(traits[0], self);
             });
         },
@@ -667,9 +682,10 @@ define([
         return v.save({name: name, owner: Parse.User.current(), change_count: 0});
     };
 
-    Model.create_test_character = function() {
+    Model.create_test_character = function(nameappend) {
         var v = new Model;
-        var name = "karmacharactertest" + Math.random().toString(36).slice(2);
+        var nameappend = nameappend || "";
+        var name = "karmacharactertest" + nameappend + Math.random().toString(36).slice(2);
         return v.save({name: name, owner: Parse.User.current(), change_count: 0});
     };
 

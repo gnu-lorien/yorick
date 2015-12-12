@@ -51,7 +51,7 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone"], funct
 
         beforeAll(function (done) {
             ParseStart().then(function () {
-                return Vampire.create_test_character();
+                return Vampire.create_test_character("vampirecreation");
             }).then(function (v) {
                 return Vampire.get_character(v.id);
             }).then(function (v) {
@@ -118,7 +118,49 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone"], funct
             });
         });
 
-        it("can repick a primary attribute", function () {});
+        it("can pick a Physical focus", function () {
+            var creation = vampire.get("creation");
+            expect(creation.get("focus_physicals_1_remaining")).toBe(1);
+            expect(creation.get("focus_physicals_1_picks")).toBe(undefined);
+            vampire.update_trait("Dexterity", 1, "focus_physicals", 1, true).then(function (st) {
+                expect(vampire.get("creation").get("focus_physicals_1_remaining")).toBe(0);
+                expect(vampire.get("creation").get("focus_physicals_1_picks").length).toBe(1);
+                expect(vampire.get("creation").get("focus_physicals_1_picks")[0].get("name")).toBe("Dexterity");
+                expect(vampire.get("creation").get("focus_physicals_1_picks")[0].get("value")).toBe(1);
+                return vampire.get_trait("focus_physicals", st.id || st.cid);
+            }).then(function (physical) {
+                expect(physical).not.toBe(undefined);
+                expect(physical.get("name")).toBe("Dexterity");
+                expect(physical.get("value")).toBe(1);
+                done();
+            }, function(error) {
+                done.fail(error);
+            })
+        });
+
+        it("can unpick a Physical focus", function () {
+            expect(vampire.get("creation").get("focus_physicals_1_remaining")).toBe(0);
+            expect(vampire.get("creation").get("focus_physicals_1_picks").length).toBe(1);
+            console.log(JSON.stringify(vampire.get("creation").get("focus_physicals_1_picks")));
+            var st = _.first(vampire.get("creation").get("focus_physicals_1_picks"));
+            vampire.get_trait("focus_physicals", st.id || st.cid).then(function(physical) {
+                expect(physical.get("name")).toBe("Dexterity");
+                expect(physical.get("value")).toBe(1);
+                return vampire.unpick_from_creation("focus_physicals", st.id, 1)
+            }).then(function () {
+                expect(vampire.get("creation").get("focus_physicals_1_remaining")).toBe(1);
+                expect(vampire.get("creation").get("focus_physicals_1_picks").length).toBe(0);
+                expect(vampire.get("focus_physicals").length).toBe(0);
+                done();
+            }, function(error) {
+                done.fail(error);
+            });
+        });
+
+        it("can repick a Physical focus", function () {
+            done.fail("Not implemented");
+        });
+
         it("can pick a merit", function(done) {
             // Pick a merit
             // Check that the spent points match the value

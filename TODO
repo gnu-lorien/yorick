@@ -1,3 +1,4 @@
 - Finish tests for merit adds
 - Make test to catch add merit, update cost, then remove merit
+- Split the remove button and the "repick" page
 - Rewrite character creation system?
