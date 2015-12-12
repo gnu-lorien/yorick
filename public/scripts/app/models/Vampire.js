@@ -152,7 +152,9 @@ define([
         get_trait: function(category, id) {
             var self = this;
             var models = self.get(category);
-            console.log(JSON.stringify(models));
+            if (_.isObject(id)) {
+                id = id.id || id.cid;
+            }
             var st = _.findWhere(models, {cid: id});
             if (st) {
                 return Parse.Promise.as(st, self);
