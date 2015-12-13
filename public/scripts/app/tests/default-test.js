@@ -186,24 +186,62 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone"], funct
             });
         });
 
-
         it("can pick a merit", function(done) {
-            // Pick a merit
-            // Check that the spent points match the value
-            done.fail("Not implemented");
+            var creation = vampire.get("creation")
+            expect(creation.get("merits_0_remaining")).toBe(7);
+            expect(creation.get("merits_0_picks")).toBe(undefined);
+            vampire.update_trait("Bloodline: Coyote", 2, "merits", 0, true).then(function (st) {
+                expect(vampire.get("creation").get("merits_0_remaining")).toBe(5);
+                expect(vampire.get("creation").get("merits_0_picks").length).toBe(1);
+                expect(vampire.get("creation").get("merits_0_picks")[0].get("name")).toBe("Bloodline: Coyote");
+                expect(vampire.get("creation").get("merits_0_picks")[0].get("value")).toBe(2);
+                return vampire.get_trait("merits", st);
+            }).then(function (physical) {
+                expect(physical).not.toBe(undefined);
+                expect(physical.get("name")).toBe("Bloodline: Coyote");
+                expect(physical.get("value")).toBe(2);
+                done();
+            }, function(error) {
+                done.fail(error);
+            })
         });
+
         it("can change the value of a picked merit", function(done) {
-            // Pick a merit
-            // Change the value of the merit
-            // Check that the spent points match the value
-            done.fail("Not implemented");
+            var creation = vampire.get("creation");
+            expect(creation.get("merits_0_remaining")).toBe(5);
+            expect(creation.get("merits_0_picks").length).toBe(1);
+            vampire.update_trait("Bloodline: Coyote", 3, "merits", 0, true).then(function (st) {
+                expect(vampire.get("creation").get("merits_0_remaining")).toBe(4);
+                expect(vampire.get("creation").get("merits_0_picks").length).toBe(1);
+                expect(vampire.get("creation").get("merits_0_picks")[0].get("name")).toBe("Bloodline: Coyote");
+                expect(vampire.get("creation").get("merits_0_picks")[0].get("value")).toBe(3);
+                return vampire.get_trait("merits", st);
+            }).then(function (physical) {
+                expect(physical).not.toBe(undefined);
+                expect(physical.get("name")).toBe("Bloodline: Coyote");
+                expect(physical.get("value")).toBe(3);
+                done();
+            }, function(error) {
+                done.fail(error);
+            })
         });
+
         it("can unpick a merit with a changed value", function(done) {
-            // Pick a merit
-            // Change its cost
-            // Unpick the merit
-            // Make sure the remaining points are back to 7
-            done.fail("Not implemented");
+            expect(vampire.get("creation").get("merits_0_remaining")).toBe(4);
+            expect(vampire.get("creation").get("merits_0_picks").length).toBe(1);
+            var st = _.first(vampire.get("creation").get("merits_0_picks"));
+            vampire.get_trait("merits", st).then(function(physical) {
+                expect(physical.get("name")).toBe("Bloodline: Coyote");
+                expect(physical.get("value")).toBe(3);
+                return vampire.unpick_from_creation("merits", physical, 0, true);
+            }).then(function () {
+                expect(vampire.get("creation").get("merits_0_remaining")).toBe(7);
+                expect(vampire.get("creation").get("merits_0_picks").length).toBe(0);
+                expect(vampire.get("merits").length).toBe(0);
+                done();
+            }, function(error) {
+                done.fail(error);
+            });
         });
     });
 

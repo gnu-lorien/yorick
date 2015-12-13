@@ -46,12 +46,13 @@ define([
                 var creation = creations[0];
                 var stepName = category + "_" + freeValue + "_remaining";
                 var listName = category + "_" + freeValue + "_picks";
+                creation.addUnique(listName, modified_trait);
                 if (_.contains(["merits", "flaws"], category)) {
-                    creation.increment(stepName, -1 * modified_trait.get("value"));
+                    var sum = _.sum(creation.get(listName), "attributes.value");
+                    creation.set(stepName, 7 - sum);
                 } else {
                     creation.increment(stepName, -1);
                 }
-                creation.addUnique(listName, modified_trait);
                 return Parse.Promise.as(self);
             })
         },
@@ -289,7 +290,8 @@ define([
                 var creation = self.get("creation");
                 creation.remove(picks_name, picked_trait);
                 if (_.contains(["merits", "flaws"], category)) {
-                    creation.increment(remaining_name, picked_trait.get("value"));
+                    var sum = _.sum(creation.get(picks_name), "attributes.value");
+                    creation.set(remaining_name, 7 - sum);
                 } else {
                     creation.increment(remaining_name, 1);
                 }
