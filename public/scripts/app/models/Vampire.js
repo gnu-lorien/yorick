@@ -271,6 +271,7 @@ define([
                 ["merits", "Merits"],
                 ["haven_specializations", "Haven Specializations"],
                 ["lore_specializations", "Lore Specializations"],
+                ["academics_specializations", "Academics Specializations"],
                 ["rituals", "Rituals"],
                 ["sabbat_rituals", "Sabbat Ritae"],
                 ["vampiric_texts", "Vampiric Texts"],
