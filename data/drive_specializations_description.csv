@@ -1,0 +1,12 @@
+name,category,requirement
+Custom,drive_specializations,requires_specialization
+Cars,drive_specializations,
+Carriages,drive_specializations,
+Chariots,drive_specializations,
+Motorcycles,drive_specializations,
+Sail Boats,drive_specializations,
+Motor Boats,drive_specializations,
+Large Ships,drive_specializations,
+Fixed-wing Planes,drive_specializations,
+Airliners,drive_specializations,
+Helicopters,drive_specializations,

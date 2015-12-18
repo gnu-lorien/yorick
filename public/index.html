@@ -707,6 +707,12 @@
             <%= _.pluck(character.get("academics_specializations"), "attributes.name").join("<br/>") %>
             <% } %>
         </div>
+        <div class="ui-block-a">
+            <% if (character.has("drive_specializations")) { %>
+            <h4 class="ui-bar ui-bar-a ui-corner-all">Drive</h4>
+            <%= _.pluck(character.get("drive_specializations"), "attributes.name").join("<br/>") %>
+            <% } %>
+        </div>
     </div>
 </script>
 
