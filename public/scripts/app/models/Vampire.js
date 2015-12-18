@@ -273,6 +273,8 @@ define([
                 ["lore_specializations", "Lore Specializations"],
                 ["academics_specializations", "Academics Specializations"],
                 ["drive_specializations", "Drive Specializations"],
+                ["contacts_specializations", "Contacts Specializations"],
+                ["allies_specializations", "Allies Specializations"],
                 ["rituals", "Rituals"],
                 ["sabbat_rituals", "Sabbat Ritae"],
                 ["vampiric_texts", "Vampiric Texts"],
