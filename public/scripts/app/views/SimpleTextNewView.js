@@ -89,7 +89,7 @@ define([
         },
 
         events: {
-            "click": "clicked"
+            "click .simpletext": "clicked"
         },
 
         clicked: function(e) {
