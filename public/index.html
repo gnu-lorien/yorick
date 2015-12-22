@@ -10,6 +10,13 @@
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
     <script data-main="scripts/app" src="scripts/lib/require.js?bust=2"></script>
 </head>
+
+<script>
+    if (window.location.protocol != "https:") {
+        window.location.href = "https:" + window.location.href.substring(window.location.protocol.length);
+    }
+</script>
+
 <body>
 
 
