@@ -591,7 +591,7 @@ define([
         max_trait_value: function(trait) {
             var self = this;
             if (trait.get("category") == "skills") {
-                return 6;
+                return 10;
             };
 
             return 20;
