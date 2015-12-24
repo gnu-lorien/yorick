@@ -559,13 +559,24 @@
 
 <script id="characterPrintView" type="text/template">
     <h1 class="ui-bar ui-bar-a"><%= character.get("name") %></h1>
-        <div class="ui-grid-b ui-responsive">
+    <div class="ui-grid-b ui-responsive">
         <div class="ui-block-a">
-        <h2 class="ui-bar ui-bar-a">Clan: <%= character.get("clan") %></h2>
-            </div>
+            <h2 class="ui-bar ui-bar-a">Clan: <%= character.get("clan") %></h2>
+        </div>
         <div class="ui-block-b">
             <h2 class="ui-bar ui-bar-a">Archetype: <%= character.get("archetype") %></h2>
-            </div>
+        </div>
+    </div>
+    <div class="ui-grid-b ui-responsive">
+        <div class="ui-block-a">
+            <h2 class="ui-bar ui-bar-a">Sect: <%= character.get("sect") %></h2>
+        </div>
+        <div class="ui-block-b">
+            <h2 class="ui-bar ui-bar-a">Faction: <%= character.get("faction") %></h2>
+        </div>
+        <div class="ui-block-c">
+            <h2 class="ui-bar ui-bar-a">Title: <%= character.get("title") %></h2>
+        </div>
     </div>
     <% var cl = {0: "a", 1: "b", 2: "c" }; %>
     <div class="ui-grid-b ui-responsive">
@@ -865,5 +876,6 @@
         </table>
     <% }; %>
 </script>
+
 </body>
 </html>
