@@ -701,6 +701,10 @@
             <h4 class="ui-bar ui-bar-a ui-corner-all">Lores</h4>
             <%= _.pluck(character.get("lore_specializations"), "attributes.name").join("<br/>") %>
             <% } %>
+            <% if (character.has("academics_specializations")) { %>
+            <h4 class="ui-bar ui-bar-a ui-corner-all">Academics</h4>
+            <%= _.pluck(character.get("academics_specializations"), "attributes.name").join("<br/>") %>
+            <% } %>
         </div>
         <div class="ui-block-b">
             <% if (character.has("rituals")) { %>
@@ -713,14 +717,6 @@
             <h4 class="ui-bar ui-bar-a ui-corner-all">Languages</h4>
             <%= _.pluck(character.get("linguistics_specializations"), "attributes.name").join("<br/>") %>
             <% } %>
-        </div>
-        <div class="ui-block-a">
-            <% if (character.has("academics_specializations")) { %>
-            <h4 class="ui-bar ui-bar-a ui-corner-all">Academics</h4>
-            <%= _.pluck(character.get("academics_specializations"), "attributes.name").join("<br/>") %>
-            <% } %>
-        </div>
-        <div class="ui-block-a">
             <% if (character.has("drive_specializations")) { %>
             <h4 class="ui-bar ui-bar-a ui-corner-all">Drive</h4>
             <%= _.pluck(character.get("drive_specializations"), "attributes.name").join("<br/>") %>
