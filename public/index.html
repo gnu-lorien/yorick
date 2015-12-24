@@ -667,6 +667,8 @@
                     <br/>&nbsp;&nbsp;<%= _.pluck(character.get("influence_underworld_specializations"), "attributes.name").join("<br/>&nbsp;&nbsp;") %>
                 <% } else if (background.get("name") == "Contacts") { %>
                     <br/>&nbsp;&nbsp;<%= _.pluck(character.get("contacts_specializations"), "attributes.name").join("<br/>&nbsp;&nbsp;") %>
+                <% } else if (background.get("name") == "Rituals") { %>
+                    <br/>&nbsp;&nbsp;<%= _.pluck(character.get("sabbat_rituals"), "attributes.name").join("<br/>&nbsp;&nbsp;") %>
                 <% } else if (background.get("name") == "Allies") { %>
                     <br/>&nbsp;&nbsp;<%= _.pluck(character.get("allies_specializations"), "attributes.name").join("<br/>&nbsp;&nbsp;") %>
                 <% } %>
