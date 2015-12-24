@@ -706,6 +706,12 @@
                 <%= d.get("name") %>: <%= d.get("value") %><br/>
             <% }); %>
             <% } %>
+            <% if (character.has("status_traits")) { %>
+            <h4 class="ui-bar ui-bar-a ui-corner-all">Status</h4>
+            <% _.each(character.get("status_traits"), function(d) { %>
+                <%= d.get("name") %>: <%= d.get("value") %><br/>
+            <% }); %>
+            <% } %>
         </div>
     </div>
     <div class="ui-grid-b ui-responsive">
