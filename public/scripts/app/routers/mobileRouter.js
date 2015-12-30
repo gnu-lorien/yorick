@@ -31,6 +31,7 @@ define([
     "../views/SignupView",
     "../views/LoginView",
     "../views/CharacterExperienceView",
+    "../views/UserSettingsProfileView",
 ], function ($,
              Parse,
              pretty,
@@ -58,7 +59,8 @@ define([
              CharacterHistoryView,
              SignupView,
              LoginView,
-             CharacterExperienceView) {
+             CharacterExperienceView,
+             UserSettingsProfileView) {
 
     // Extends Backbone.Router
     var CategoryRouter = Parse.Router.extend( {
@@ -96,10 +98,12 @@ define([
             this.characterCostsView = new CharacterCostsView({el: "#character-costs"});
             this.characterLogView = new CharacterLogView({el: "#character-log"});
             this.characterHistoryView = new CharacterHistoryView({el: "#character-history"});
-            this.characterExperienceView = new CharacterExperienceView({el: "#experience-notations-all"})
+            this.characterExperienceView = new CharacterExperienceView({el: "#experience-notations-all"});
 
             this.loginView = new LoginView();
             this.signupView = new SignupView();
+
+            this.userSettingsProfileView = new UserSettingsProfileView({el: "#user-settings-profile"});
 
             /*
             if (!Parse.User.current()) {
@@ -120,6 +124,8 @@ define([
 
             "logout": "logout",
             "signup": "signup",
+
+            "profile": "profile",
 
             // When #category? is on the url, the category method is called
             "category?:type": "category",
@@ -173,6 +179,15 @@ define([
             } else {
                 window.location.hash = "";
             }
+        },
+
+        profile: function() {
+            var self = this;
+            self.enforce_logged_in().then(function() {
+                self.set_back_button("#");
+                self.userSettingsProfileView.render();
+                $.mobile.changePage("#user-settings-profile", {reverse: false, changeHash: false});
+            })
         },
 
         set_back_button: function(url) {

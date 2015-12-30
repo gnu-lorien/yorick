@@ -50,6 +50,7 @@
 	<div role="main" class="ui-content">
         <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
             <li><a href="#characters?all">Characters</a></li>
+            <li><a href="#profile">Profile Settings</a></li>
         </ul>
 	</div><!-- /content -->
 </div>
@@ -883,6 +884,23 @@
             </tbody>
         </table>
     <% }; %>
+</script>
+
+<div id="user-settings-profile" data-role="page" data-title="Profile">
+    <div role="main" class="ui-content">
+    </div>
+</div>
+
+<script id="userSettingsProfileView" type="text/template">
+    <h1><%= user.get("name") %></h1>
+    <form class="profile-form">
+        <div class="error" style="display:none"></div>
+        <label for="input-name">Name</label>
+        <input type="text" name="input-name" id="input-name" value="<%= user.get('realname') %>">
+        <label for="input-email">Email</label>
+        <input type="text" name="input-email" id="input-email" value="<%= user.get('email') %>">
+        <button class="ui-shadow ui-btn ui-corner-all ui-icon-action ui-btn-icon-right update" disabled="">Update</button>
+    </form>
 </script>
 
 </body>
