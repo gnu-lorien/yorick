@@ -9,6 +9,7 @@ define([
     var View = Backbone.View.extend({
         initialize: function () {
             _.bindAll(this, "allowUpdates");
+            this.network = null;
         },
 
         register: function(characters) {
@@ -49,6 +50,65 @@ define([
             return false;
         },
 
+        build_network: function () {
+            var self = this;
+            var nodes = [];
+            var edges = [];
+            var lastId;
+            self.characters.each(function (character, i) {
+                nodes.push({
+                    id: character.id,
+                    shape: 'box',
+                    label: character.get("name")
+                });
+                if (lastId) {
+                    edges.push({
+                        from: lastId,
+                        to: character.id,
+                        color: "white"
+                    });
+                }
+                lastId = character.id;
+            });
+
+            var data = {
+                nodes: nodes,
+                edges: edges,
+            };
+            var jcontainer = self.$("#relationships-network");
+            var container = jcontainer[0];
+            var options = {
+                /*
+                 layout: {
+                 hierarchical: {
+                 direction: "LR"
+                 }
+                 },
+                 */
+                nodes: {
+                    borderWidth: 4,
+                    size: 30,
+                    color: {
+                        border: '#406897',
+                        background: '#6AAFFF'
+                    },
+                    font: {color: '#eeeeee'},
+                    shapeProperties: {
+                        useBorderWithImage: true
+                    }
+                },
+                edges: {
+                    color: 'lightgray'
+                }
+            };
+
+            if (self.network) {
+                self.network.destroy();
+            }
+            self.network = new vis.Network(container, data, options);
+            return self.network;
+        },
+
         render: function () {
             var self = this;
             this.template = _.template($("#troupeCharacterRelationshipsNetworkView").html())({
@@ -57,6 +117,7 @@ define([
             });
             this.$el.find("div[role='main']").html(this.template);
             this.$el.enhanceWithin();
+            self.build_network();
         }
     });
 
