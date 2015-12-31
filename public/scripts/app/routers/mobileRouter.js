@@ -32,6 +32,7 @@ define([
     "../views/LoginView",
     "../views/CharacterExperienceView",
     "../views/UserSettingsProfileView",
+    "../views/CharacterPortraitView",
 ], function ($,
              Parse,
              pretty,
@@ -60,7 +61,9 @@ define([
              SignupView,
              LoginView,
              CharacterExperienceView,
-             UserSettingsProfileView) {
+             UserSettingsProfileView,
+             CharacterPortraitView
+) {
 
     // Extends Backbone.Router
     var CategoryRouter = Parse.Router.extend( {
@@ -99,6 +102,7 @@ define([
             this.characterLogView = new CharacterLogView({el: "#character-log"});
             this.characterHistoryView = new CharacterHistoryView({el: "#character-history"});
             this.characterExperienceView = new CharacterExperienceView({el: "#experience-notations-all"});
+            this.characterPortraitView = new CharacterPortraitView({el: "#character-portrait"});
 
             this.loginView = new LoginView();
             this.signupView = new SignupView();
@@ -154,8 +158,10 @@ define([
             "character/:cid/costs": "charactercosts",
             "character/:cid/log/:start/:changeBy": "characterlog",
             "character/:cid/history/:id": "characterhistory",
+            "character/:cid/portrait": "characterportrait",
 
             "character/:cid/experience/:start/:changeBy": "characterexperience",
+
 
         },
 
@@ -346,6 +352,17 @@ define([
                 self.simpleTextNewView.register(c, category, target, "#charactercreate/" + c.id);
                 self.characterCreateView.backToTop = document.body.scrollTop;
                 $.mobile.changePage("#simpletext-new", {reverse: false, changeHash: false});
+            });
+        },
+
+        characterportrait: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid).done(function (c) {
+                return self.characterPortraitView.register(c);
+            }).always(function() {
+                $.mobile.changePage("#character-portrait", {reverse: false, changeHash: false});
             });
         },
 

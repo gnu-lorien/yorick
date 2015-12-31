@@ -903,5 +903,23 @@
     </form>
 </script>
 
+<div id="character-portrait" data-role="page" data-title="Profile">
+    <div role="main" class="ui-content">
+    </div>
+</div>
+
+<script id="characterPortraitView" type="text/template">
+    <h1><%= character.get("name") %></h1>
+    <% if (character.get('portrait')) { %>
+    <img src="<%= character.get('portrait').get('original').url() %>"/>
+    <% } %>
+    <form class="portrait-form">
+        <div class="error" style="display:none"></div>
+        <label for="input-portrait">Portrait</label>
+        <input type="file" name="input-portrait" id="input-portrait">
+        <button class="ui-shadow ui-btn ui-corner-all ui-icon-action ui-btn-icon-right update">Upload</button>
+    </form>
+</script>
+
 </body>
 </html>
