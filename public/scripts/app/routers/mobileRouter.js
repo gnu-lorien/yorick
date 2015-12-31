@@ -33,6 +33,7 @@ define([
     "../views/CharacterExperienceView",
     "../views/UserSettingsProfileView",
     "../views/CharacterPortraitView",
+    "../views/TroupeCharacterRelationshipsNetworkView",
 ], function ($,
              Parse,
              pretty,
@@ -62,7 +63,8 @@ define([
              LoginView,
              CharacterExperienceView,
              UserSettingsProfileView,
-             CharacterPortraitView
+             CharacterPortraitView,
+             TroupeCharacterRelationshipsNetworkView
 ) {
 
     // Extends Backbone.Router
@@ -108,6 +110,8 @@ define([
             this.signupView = new SignupView();
 
             this.userSettingsProfileView = new UserSettingsProfileView({el: "#user-settings-profile"});
+
+            this.troupeCharacterRelationshipsNetworkView = new TroupeCharacterRelationshipsNetworkView({el: "#troupe-character-relationships-network"});
 
             /*
             if (!Parse.User.current()) {
@@ -162,6 +166,7 @@ define([
 
             "character/:cid/experience/:start/:changeBy": "characterexperience",
 
+            "troupe/characters/relationships/network": "relationshipnetwork",
 
         },
 
@@ -198,6 +203,17 @@ define([
 
         set_back_button: function(url) {
             $("#header-back-button").attr("href", url);
+        },
+
+        relationshipnetwork: function() {
+            var self = this;
+            self.set_back_button("#characters?all");
+            $.mobile.loading("show");
+            self.get_user_characters().then(function(characters) {
+                return self.troupeCharacterRelationshipsNetworkView.register(characters);
+            }).always(function() {
+                $.mobile.changePage("#troupe-character-relationships-network", {reverse: false, changeHash: false});
+            })
         },
 
         charactercosts: function(cid) {
@@ -377,27 +393,33 @@ define([
             });
         },
 
+        get_user_characters: function() {
+            var self = this;
+            var c = self.characters.collection;
+            var p = Parse.Promise.as([]);
+            if (!c.length) {
+                var q = new Parse.Query(Vampire);
+                if (Parse.User.current().get("username") == "devuser") {
+                    q.equalTo("owner", Parse.User.current()).addDescending("createdAt");
+                } else {
+                    q.equalTo("owner", Parse.User.current()).addAscending("name");
+                }
+                c.query = q;
+                p = c.fetch({add: true, merge: true})
+            }
+            return p.done(function () {
+                return Parse.Promise.as(self.characters.collection);
+            })
+        },
+
         characters: function(type) {
             var self = this;
             if ("all" == type) {
                 $.mobile.loading("show");
                 self.enforce_logged_in().then(function () {
-                    var c = self.characters.collection;
-                    var f = function () {
-                        $.mobile.changePage("#characters-all", {reverse: false, changeHash: false});
-                    };
-                    if (!c.length) {
-                        var q = new Parse.Query(Vampire);
-                        if (Parse.User.current().get("username") == "devuser") {
-                            q.equalTo("owner", Parse.User.current()).addDescending("createdAt");
-                        } else {
-                            q.equalTo("owner", Parse.User.current()).addAscending("name");
-                        }
-                        c.query = q;
-                        c.fetch({add: true, merge: true}).done(f)
-                    } else {
-                        f();
-                    }
+                    return self.get_user_characters();
+                }).then(function (characters) {
+                    $.mobile.changePage("#characters-all", {reverse: false, changeHash: false});
                 });
             }
         },

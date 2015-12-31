@@ -2,7 +2,7 @@
 requirejs.config( {
 	baseUrl: "scripts/lib",
 	//urlArgs: "bust=" + (new Date()).getTime(),
-	urlArgs: "bust=" + 4,
+	urlArgs: "bust=" + 9,
 	bundles: {
 		"jquery-ui": ["jquery-ui/datepicker"]
 	},
@@ -22,6 +22,7 @@ requirejs.config( {
 		parse: "parse-1.5.0",
 		pretty: "prettyprint",
 		moment: "moment",
+		vis: "vis",
 
 		app: "../app"
 	},

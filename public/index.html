@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="css/jquery.mobile.datepicker.css">
     <link rel="stylesheet" href="css/printable_sheet.css" media="print">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="css/vis.css">
     <script type="text/javascript" src="//jslogger.com/jslogger.js"></script>
     <script type="text/javascript">window.jslogger = new JSLogger({apiKey: "567a2390ac8e1c167c000049"});</script>
     <script data-main="scripts/app" src="scripts/lib/require.js?bust=2"></script>
@@ -919,6 +920,26 @@
         <input type="file" name="input-portrait" id="input-portrait">
         <button class="ui-shadow ui-btn ui-corner-all ui-icon-action ui-btn-icon-right update">Upload</button>
     </form>
+</script>
+
+<div id="troupe-character-relationships-network" data-role="page" data-title="Relationships Network">
+    <div role="main" class="ui-content">
+    </div>
+</div>
+
+<script id="troupeCharacterRelationshipsNetworkView" type="text/template">
+    <div id="relationships-network"></div>
+    <div id="relationships-network-data-display"></div>
+    <div id="relationships-network-select-characters">
+        <fieldset data-role="controlgroup">
+            <legend>Characters to display:</legend>
+            <% _.each(characters, function (character, i) { %>
+            <% var n = "checkbox-" + character.id || character.cid; %>
+            <input type="checkbox" name="<%= n %>" id="<%= n %>">
+            <label for="<%= n %>"><%= character.get("name") %></label>
+            <% }) %>
+        </fieldset>
+    </div>
 </script>
 
 </body>
