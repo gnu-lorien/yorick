@@ -14,8 +14,8 @@
     <script data-main="scripts/app" src="scripts/lib/require.js?bust=2"></script>
     <style>
         #relationships-network {
-            width: 800px;
-            height: 800px;
+            width: 640px;
+            height: 480px;
             border: 1px solid lightgray;
             background-color:#333333;
         }
@@ -937,7 +937,9 @@
 
 <script id="troupeCharacterRelationshipsNetworkView" type="text/template">
     <div id="relationships-network"></div>
-    <div id="relationships-network-data-display"></div>
+    <div id="relationships-network-data-display">
+        <button class="ui-shadow ui-btn ui-corner-all ui-icon-action ui-btn-icon-right make-relationship" disabled="">Create Relationship</button>
+    </div>
     <div id="relationships-network-select-characters">
         <fieldset data-role="controlgroup">
             <legend>Characters to display:</legend>
