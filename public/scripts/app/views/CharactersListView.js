@@ -13,10 +13,10 @@ define([
         // The View Constructor
         initialize: function() {
 
-            // The render method is called when Category Models are added to the Collection
-            this.listenTo(this.collection, "add", this.render);
+            _.bindAll(this, "render");
+            var debounced_render = _.debounce(this.render, 150);
+            this.listenTo(this.collection, "add", debounced_render);
             this.listenTo(this.collection, "reset", this.render);
-
         },
 
         // Renders all of the Category models on the UI

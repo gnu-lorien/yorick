@@ -86,6 +86,9 @@
         <li><a href="#charactercreate/<%= character.id %>">Character Creation</a></li>
     </ul>
     <% } %>
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li><a href="#character/<%= character.id %>/portrait">Character Portrait</a></li>
+    </ul>
     <% _.each(character.all_simpletrait_categories(), function(grouping) { %>
         <% var description = grouping[1]; %>
         <% var category = grouping[0]; %>
@@ -482,7 +485,7 @@
     <% collection.each(function(e) { %>
     <li>
         <a href="#character?<%= e.id %>" class="ui-btn ui-btn-icon-right ui-icon-carat-r">
-            <img src="<%= e.get_thumbnail_sync(128) %>"/>
+            <img src="<%= e.get_thumbnail_sync(128) %>" class="character-link-portrait"/>
             <h2><%= e.get("name") %></h2>
             <p><%= e.get("sect") %> <%= e.get("archetype") %> <%= e.get("clan") %></p>
         </a>
