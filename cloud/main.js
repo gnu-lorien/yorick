@@ -9,15 +9,40 @@ Parse.Cloud.define("hello", function(request, response) {
   response.success("Hello world!");
 });
 
+var create_thumbnail = function(portrait, input_image, size) {
+    return input_image.data().then(function (data) {
+        var image = new Image;
+        return image.setData(data);
+    }).then(function(image) {
+        return image.scale({
+            width: size,
+            height: size
+        });
+    }).then(function(image) {
+        return image.setFormat("JPEG");
+    }).then(function(image) {
+        return image.data();
+    }).then(function(buffer) {
+        var base64 = buffer.toString("base64");
+        var cropped = new Parse.File("thumbnail_" + size + ".jpg", { base64: base64 });
+        return cropped.save();
+    }).then(function(cropped) {
+        portrait.set("thumb_" + size, cropped);
+    });
+}
+
 Parse.Cloud.beforeSave("CharacterPortrait", function(request, response) {
     var portrait = request.object;
+    var THUMBNAIL_SIZES = [32, 64,128, 256];
     var needed_sizes = [];
 
     if (portrait.dirty("original")) {
-        portrait.set("thumb_32", undefined);
+        _.each(THUMBNAIL_SIZES, function (size) {
+            portrait.set("thumb_" + size, undefined);
+        });
     }
 
-    _.each([32/*, 64, 128, 256*/], function (size) {
+    _.each(THUMBNAIL_SIZES, function (size) {
         if (!portrait.get("thumb_" + size)) {
             needed_sizes.push(size);
         }
@@ -42,20 +67,12 @@ Parse.Cloud.beforeSave("CharacterPortrait", function(request, response) {
             height: size
         });
     }).then(function(image) {
-        return image.scale({
-            width: 32,
-            height: 32,
+        var promises = [];
+        _.each(THUMBNAIL_SIZES, function(size) {
+            promises.push(create_thumbnail(portrait, image, size))
         })
-    }).then(function(image) {
-        return image.setFormat("JPEG");
-    }).then(function(image) {
-        return image.data();
-    }).then(function(buffer) {
-        var base64 = buffer.toString("base64");
-        var cropped = new Parse.File("thumbnail.jpg", { base64: base64 });
-        return cropped.save();
-    }).then(function(cropped) {
-        portrait.set("thumb_32", cropped);
+        return Parse.Promise.when(promises);
+    }).then(function() {
         response.success();
     }, function(error) {
         response.error(error);
