@@ -261,6 +261,35 @@ Parse.Cloud.job("fixcharacterownerships", function(request, response) {
     })
 })
 
+Parse.Cloud.job("fixcharacterchangeownerships", function(request, response) {
+    Parse.Cloud.useMasterKey();
+    var allCharacters = new Parse.Query("Vampire");
+    allCharacters.each(function (character) {
+        var allChanges = new Parse.Query("VampireChange");
+        allChanges.equalTo("owner", character);
+        return allChanges.each(function (change) {
+            var acl = new Parse.ACL;
+            acl.setPublicReadAccess(false);
+            acl.setPublicWriteAccess(false);
+            acl.setWriteAccess(character.get("owner"), false);
+            acl.setReadAccess(character.get("owner"), true);
+            change.setACL(acl);
+            return change.save();
+        })
+    }).then(function() {
+        response.success();
+    }, function(error) {
+        if (error.code === Parse.Error.AGGREGATE_ERROR) {
+            for (var i = 0; i < error.errors.length; i++) {
+                response.error("Couldn't fix " + error.errors[i].object.id + "due to " + error.errors[i].message);
+            }
+        } else {
+            response.error("Delete fix because of " + error.message);
+        }
+        console.log(pretty(error));
+    })
+})
+
 Parse.Cloud.job("deletetestcharacters", function(request, response) {
     Parse.Cloud.useMasterKey();
     var allTestCharacters = new Parse.Query("Vampire");
