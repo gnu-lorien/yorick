@@ -56,7 +56,8 @@ define([
                     */
                     nodes.push({
                         id: character.id,
-                        shape: 'box',
+                        shape: 'image',
+                        image: 'head_skull.png',
                         label: character.get("name")
                     })
                     portraitLoadingPromises.push(Parse.Promise.as(true));
