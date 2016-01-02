@@ -50,7 +50,12 @@ define([
             $.mobile.loading("show");
             self.undelegateEvents();
             parseFile.save().done(function(file) {
-                var characterPortrait = new Parse.Object("CharacterPortrait");
+                var characterPortrait;
+                if (self.character.get("portrait")) {
+                    characterPortrait = self.character.get("portrait");
+                } else {
+                    characterPortrait = new Parse.Object("CharacterPortrait");
+                }
                 characterPortrait.set("original", file);
                 return characterPortrait.save();
             }).done(function (portrait) {

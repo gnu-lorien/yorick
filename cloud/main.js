@@ -12,6 +12,11 @@ Parse.Cloud.define("hello", function(request, response) {
 Parse.Cloud.beforeSave("CharacterPortrait", function(request, response) {
     var portrait = request.object;
     var needed_sizes = [];
+
+    if (portrait.dirty("original")) {
+        portrait.set("thumb_32", undefined);
+    }
+
     _.each([32/*, 64, 128, 256*/], function (size) {
         if (!portrait.get("thumb_" + size)) {
             needed_sizes.push(size);
@@ -51,7 +56,6 @@ Parse.Cloud.beforeSave("CharacterPortrait", function(request, response) {
         return cropped.save();
     }).then(function(cropped) {
         portrait.set("thumb_32", cropped);
-    }).then(function(result) {
         response.success();
     }, function(error) {
         response.error(error);
