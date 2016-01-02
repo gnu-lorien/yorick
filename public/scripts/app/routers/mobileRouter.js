@@ -404,6 +404,7 @@ define([
                 } else {
                     q.equalTo("owner", Parse.User.current()).addAscending("name");
                 }
+                q.include("portrait");
                 c.query = q;
                 p = c.fetch({add: true, merge: true})
             }

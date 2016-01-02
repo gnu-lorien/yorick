@@ -644,11 +644,17 @@ define([
             if (self.get("portrait")) {
                 var portrait = self.get("portrait");
                 return portrait.fetch().then(function (portrait) {
+                    console.log(self.get_thumbnail_sync(size));
                     return Parse.Promise.as(portrait.get("thumb_" + size).url());
                 });
             } else {
                 return Parse.Promise.as("head_skull.png");
             }
+        },
+
+        get_thumbnail_sync: function (size) {
+            var self = this;
+            return _.result(self, "attributes.portrait.attributes.thumb_" + size + ".url", "head_skull.png");
         },
     } );
 
@@ -663,6 +669,7 @@ define([
         if (character_cache._character === null) {
             var q = new Parse.Query(Model);
             q.equalTo("owner", Parse.User.current());
+            q.include("portrait");
             return q.get(id).then(function(m) {
                 character_cache._character = m;
                 return Model.get_character(id, categories, character_cache);
