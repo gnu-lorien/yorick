@@ -1,11 +1,61 @@
 var pretty = require('cloud/prettyprint.js').pretty;
 var _ = require('underscore');
 var Vampire = Parse.Object.extend("Vampire");
+var Image = require("parse-image");
 
 // Use Parse.Cloud.define to define as many cloud functions as you want.
 // For example:
 Parse.Cloud.define("hello", function(request, response) {
   response.success("Hello world!");
+});
+
+Parse.Cloud.beforeSave("CharacterPortrait", function(request, response) {
+    var portrait = request.object;
+    var needed_sizes = [];
+    _.each([32/*, 64, 128, 256*/], function (size) {
+        if (!portrait.get("thumb_" + size)) {
+            needed_sizes.push(size);
+        }
+    })
+
+    if (0 == needed_sizes.length) {
+        return;
+    }
+
+    Parse.Cloud.httpRequest({
+        url: portrait.get("original").url()
+    }).then(function(response) {
+        var image = new Image();
+        return image.setData(response.buffer);
+    }).then(function(image) {
+        // Crop the image to the smaller of width or height.
+        var size = Math.min(image.width(), image.height());
+        return image.crop({
+            left: (image.width() - size) / 2,
+            top: (image.height() - size) / 2,
+            width: size,
+            height: size
+        });
+    }).then(function(image) {
+        return image.scale({
+            width: 32,
+            height: 32,
+        })
+    }).then(function(image) {
+        return image.setFormat("JPEG");
+    }).then(function(image) {
+        return image.data();
+    }).then(function(buffer) {
+        var base64 = buffer.toString("base64");
+        var cropped = new Parse.File("thumbnail.jpg", { base64: base64 });
+        return cropped.save();
+    }).then(function(cropped) {
+        portrait.set("thumb_32", cropped);
+    }).then(function(result) {
+        response.success();
+    }, function(error) {
+        response.error(error);
+    });
 });
 
 Parse.Cloud.beforeSave("Vampire", function(request, response) {
