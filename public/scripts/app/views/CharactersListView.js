@@ -16,6 +16,7 @@ define([
             _.bindAll(this, "render");
             var debounced_render = _.debounce(this.render, 150);
             this.listenTo(this.collection, "add", debounced_render);
+            this.listenTo(this.collection, "remove", debounced_render);
             this.listenTo(this.collection, "reset", this.render);
         },
 

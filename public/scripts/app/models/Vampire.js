@@ -664,6 +664,12 @@ define([
             var total = _.sum(wps, "attributes.value");
             return total;
         },
+
+        archive: function() {
+            var self = this;
+            self.unset("owner");
+            return self.save();
+        }
     } );
 
     Model.get_character = function(id, categories, character_cache) {

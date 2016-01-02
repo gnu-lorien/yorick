@@ -34,6 +34,7 @@ define([
     "../views/UserSettingsProfileView",
     "../views/CharacterPortraitView",
     "../views/TroupeCharacterRelationshipsNetworkView",
+    "../views/CharacterDeleteView",
 ], function ($,
              Parse,
              pretty,
@@ -64,7 +65,8 @@ define([
              CharacterExperienceView,
              UserSettingsProfileView,
              CharacterPortraitView,
-             TroupeCharacterRelationshipsNetworkView
+             TroupeCharacterRelationshipsNetworkView,
+             CharacterDeleteView
 ) {
 
     // Extends Backbone.Router
@@ -105,6 +107,7 @@ define([
             this.characterHistoryView = new CharacterHistoryView({el: "#character-history"});
             this.characterExperienceView = new CharacterExperienceView({el: "#experience-notations-all"});
             this.characterPortraitView = new CharacterPortraitView({el: "#character-portrait"});
+            this.characterDeleteView = new CharacterDeleteView({el: "#character-delete"});
 
             this.loginView = new LoginView();
             this.signupView = new SignupView();
@@ -163,6 +166,7 @@ define([
             "character/:cid/log/:start/:changeBy": "characterlog",
             "character/:cid/history/:id": "characterhistory",
             "character/:cid/portrait": "characterportrait",
+            "character/:cid/delete": "characterdelete",
 
             "character/:cid/experience/:start/:changeBy": "characterexperience",
 
@@ -391,6 +395,18 @@ define([
                 c.render();
                 $.mobile.changePage("#character", {reverse: false, changeHash:false});
             });
+        },
+
+        characterdelete: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            this.set_back_button("#character?" + cid);
+            self.get_character(cid).done(function (c) {
+                self.characterDeleteView.register(c, "#characters?all", function () {
+                    return self.characters.collection.fetch({reset: true});
+                });
+                $.mobile.changePage("#character-delete", {reverse: false, changeHash: false});
+            })
         },
 
         get_user_characters: function() {

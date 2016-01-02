@@ -112,6 +112,9 @@
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <li><a href="#character/<%= character.id %>/log/0/10">Log</a></li>
     </ul>
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li><a href="#character/<%= character.id %>/delete">Delete Character</a></li>
+    </ul>
 </script>
 
 <div id="character-create" data-role="page" data-title="Create Character">
@@ -957,6 +960,16 @@
             <% }) %>
         </fieldset>
     </div>
+</script>
+
+<div id="character-delete" data-role="page" data-title="Delete Character">
+    <div role="main" class="ui-content">
+    </div>
+</div>
+
+<script id="characterDeleteView" type="text/template">
+    <h1>Are you sure you want to delete <%= character.get("name") %>?</h1>
+    <button class="delete-character">Delete <%= character.get("name") %></button>
 </script>
 
 </body>
