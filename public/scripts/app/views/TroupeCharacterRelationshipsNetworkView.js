@@ -168,13 +168,14 @@ define([
             var jcontainer = self.$("#relationships-network");
             var container = jcontainer[0];
             var options = {
-                /*
-                 layout: {
-                 hierarchical: {
-                 direction: "LR"
-                 }
-                 },
-                 */
+                layout: {
+                    randomSeed: 24993,
+                    /*
+                    hierarchical: {
+                        direction: "LR"
+                    }
+                    */
+                },
                 nodes: {
                     borderWidth: 4,
                     size: 30,
