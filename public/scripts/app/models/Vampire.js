@@ -637,7 +637,19 @@ define([
                 });
             }
             return Parse.Promise.as(self);
-        }
+        },
+
+        get_thumbnail: function (size) {
+            var self = this;
+            if (self.get("portrait")) {
+                var portrait = self.get("portrait");
+                return portrait.fetch().then(function (portrait) {
+                    return Parse.Promise.as(portrait.get("thumb_" + size).url());
+                });
+            } else {
+                return Parse.Promise.as("head_skull.png");
+            }
+        },
     } );
 
     Model.get_character = function(id, categories, character_cache) {

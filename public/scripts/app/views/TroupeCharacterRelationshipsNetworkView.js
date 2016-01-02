@@ -26,60 +26,73 @@ define([
             var lastId;
             var portraitLoadingPromises = [];
             self.characters.each(function (character, i) {
-                if (character.get("portrait")) {
-                    var portrait = character.get("portrait");
-                    var p = portrait.fetch().then(function (portrait) {
-                        var t32 = portrait.get("thumb_32");
-                        nodes.push({
-                            id: character.id,
-                            shape: 'image',
-                            image: t32.url(),
-                            label: character.get("name"),
-                        })
-                    });
-                    portraitLoadingPromises.push(p);
-                } else {
-                    /*
-                    var p = new Parse.Promise;
-                    $.get("https://uifaces.com/api/v1/random").done(function (data) {
-                        var turl = data.image_urls.normal;
-                        nodes.push({
-                            id: character.id,
-                            shape: 'image',
-                            image: turl,
-                            label: character.get("name")
-                        });
-                        p.resolve(turl);
-                    }).fail(function (xhr, status, error) {
-                        p.reject(error);
-                    });
-                    */
+                var p = character.get_thumbnail(32).then(function (url) {
                     nodes.push({
                         id: character.id,
                         shape: 'image',
-                        image: 'head_skull.png',
-                        label: character.get("name")
+                        image: url,
+                        label: character.get("name"),
                     })
-                    portraitLoadingPromises.push(Parse.Promise.as(true));
-                }
-                /*
-                edges.push({
-                    from: me_id,
-                    to: character.id,
-                    color: "white"
-                });
-                */
-                /*
-                if (lastId) {
-                    edges.push({
-                        from: lastId,
-                        to: character.id,
-                        color: "white"
-                    });
-                }
-                lastId = character.id;
-                */
+                })
+                portraitLoadingPromises.push(p);
             });
+            if (false) {
+                self.characters.each(function (character, i) {
+                    if (character.get("portrait")) {
+                        var portrait = character.get("portrait");
+                        var p = portrait.fetch().then(function (portrait) {
+                            var t32 = portrait.get("thumb_32");
+                            nodes.push({
+                                id: character.id,
+                                shape: 'image',
+                                image: t32.url(),
+                                label: character.get("name"),
+                            })
+                        });
+                        portraitLoadingPromises.push(p);
+                    } else {
+                        /*
+                         var p = new Parse.Promise;
+                         $.get("https://uifaces.com/api/v1/random").done(function (data) {
+                         var turl = data.image_urls.normal;
+                         nodes.push({
+                         id: character.id,
+                         shape: 'image',
+                         image: turl,
+                         label: character.get("name")
+                         });
+                         p.resolve(turl);
+                         }).fail(function (xhr, status, error) {
+                         p.reject(error);
+                         });
+                         */
+                        nodes.push({
+                            id: character.id,
+                            shape: 'image',
+                            image: 'head_skull.png',
+                            label: character.get("name")
+                        })
+                        portraitLoadingPromises.push(Parse.Promise.as(true));
+                    }
+                    /*
+                     edges.push({
+                     from: me_id,
+                     to: character.id,
+                     color: "white"
+                     });
+                     */
+                    /*
+                     if (lastId) {
+                     edges.push({
+                     from: lastId,
+                     to: character.id,
+                     color: "white"
+                     });
+                     }
+                     lastId = character.id;
+                     */
+                });
+            }
 
             return Parse.Promise.when(portraitLoadingPromises).then(function () {
                 var queries = [];
