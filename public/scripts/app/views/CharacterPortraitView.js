@@ -53,8 +53,14 @@ define([
                 var characterPortrait;
                 if (self.character.get("portrait")) {
                     characterPortrait = self.character.get("portrait");
+                    var acl = self.character.get_me_acl();
+                    acl.setPublicReadAccess(true);
+                    characterPortrait.setACL(acl);
                 } else {
                     characterPortrait = new Parse.Object("CharacterPortrait");
+                    var acl = self.character.get_me_acl();
+                    acl.setPublicReadAccess(true);
+                    characterPortrait.setACL(acl);
                 }
                 characterPortrait.set("original", file);
                 return characterPortrait.save();
