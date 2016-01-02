@@ -182,7 +182,7 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
     });
 });
 
-Parse.Cloud.afterDelete("SimpleTrait", function(request) {
+Parse.Cloud.beforeDelete("SimpleTrait", function(request, response) {
     Parse.Cloud.useMasterKey();
     var vc = new Parse.Object("VampireChange");
     var trait = request.object;
