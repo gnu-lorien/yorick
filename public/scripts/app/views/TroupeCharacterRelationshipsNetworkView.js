@@ -24,12 +24,43 @@ define([
             }];
             var edges = [];
             var lastId;
+            var portraitLoadingPromises = [];
             self.characters.each(function (character, i) {
-                nodes.push({
-                    id: character.id,
-                    shape: 'box',
-                    label: character.get("name")
-                });
+                if (character.get("portrait")) {
+                    var portrait = character.get("portrait");
+                    var p = portrait.fetch().then(function (portrait) {
+                        var t32 = portrait.get("thumb_32");
+                        nodes.push({
+                            id: character.id,
+                            shape: 'image',
+                            image: t32.url(),
+                            label: character.get("name"),
+                        })
+                    });
+                    portraitLoadingPromises.push(p);
+                } else {
+                    /*
+                    var p = new Parse.Promise;
+                    $.get("https://uifaces.com/api/v1/random").done(function (data) {
+                        var turl = data.image_urls.normal;
+                        nodes.push({
+                            id: character.id,
+                            shape: 'image',
+                            image: turl,
+                            label: character.get("name")
+                        });
+                        p.resolve(turl);
+                    }).fail(function (xhr, status, error) {
+                        p.reject(error);
+                    });
+                    */
+                    nodes.push({
+                        id: character.id,
+                        shape: 'box',
+                        label: character.get("name")
+                    })
+                    portraitLoadingPromises.push(Parse.Promise.as(true));
+                }
                 /*
                 edges.push({
                     from: me_id,
@@ -49,25 +80,28 @@ define([
                 */
             });
 
-            var queries = [];
-            self.characters.each(function (character, i) {
-                var q = new Parse.Query("CharacterRelationship");
-                q.equalTo("from", character.id);
-                queries.push(q.each(function (r) {
-                    edges.push({
-                        from: r.get("from"),
-                        to: r.get("to"),
-                        color: r.get("color"),
-                    });
-                }));
-            });
-
-            return Parse.Promise.when(queries).then(function() {
+            return Parse.Promise.when(portraitLoadingPromises).then(function () {
+                var queries = [];
+                self.characters.each(function (character, i) {
+                    var q = new Parse.Query("CharacterRelationship");
+                    q.equalTo("from", character.id);
+                    queries.push(q.each(function (r) {
+                        edges.push({
+                            from: r.get("from"),
+                            to: r.get("to"),
+                            color: r.get("color"),
+                        });
+                    }));
+                });
+                return Parse.Promise.when(queries);
+            }).then(function () {
                 self.data = {
                     nodes: nodes,
                     edges: edges,
                 };
                 return Parse.Promise.as(self.render());
+            }, function (error) {
+                console.log(error);
             })
         },
 
