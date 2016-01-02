@@ -135,6 +135,9 @@ var isMeaningfulChange = function (vc) {
         if (vc.get("old_text") != vc.get("name")) {
             changed = true;
         }
+        if (vc.get("free_value") != vc.get("old_free_value")) {
+            changed = true;
+        }
     }
 
     return changed;
@@ -152,6 +155,7 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
         "old_value": serverData.value,
         "value": modified_trait.get("value"),
         "type": serverData.value === undefined ? "define" : "update",
+        "old_free_value": serverData.free_value,
         "free_value": modified_trait.get("free_value"),
         "old_cost": serverData.cost,
         "cost": modified_trait.get("cost"),
@@ -193,6 +197,7 @@ Parse.Cloud.beforeDelete("SimpleTrait", function(request, response) {
         "owner": trait.get("owner"),
         "old_value": serverData.value,
         "value": trait.get("value"),
+        "old_free_value": serverData.free_value,
         "free_value": trait.get("free_value"),
         "type": "remove",
         "old_cost": serverData.cost
