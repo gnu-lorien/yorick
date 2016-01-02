@@ -72,35 +72,8 @@ define([
         },
 
         events: {
-            "submit form.profile-form": "update",
-            "change #input-name": "allowUpdates",
-            "change #input-email": "allowUpdates",
             "click .update": "update",
             "click .make-relationship": "make_relationship",
-        },
-
-        allowUpdates: function(e) {
-            this.$(".update").removeAttr("disabled");
-        },
-
-        update: function(e) {
-            var self = this;
-            var user = Parse.User.current();
-            user.set("realname", this.$("#input-name").val());
-            user.set("email", this.$("#input-email").val());
-            $.mobile.loading("show");
-            self.undelegateEvents();
-            user.save().then(function () {
-                self.$(".error").hide();
-                self.render();
-            }, function(error) {
-                self.$(".error").html(_.escape(error.message)).show();
-            }).always(function() {
-                $.mobile.loading("hide");
-                self.delegateEvents();
-            });
-
-            return false;
         },
 
         select_node: function(params) {
