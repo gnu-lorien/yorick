@@ -107,6 +107,11 @@ Parse.Cloud.beforeSave("Vampire", function(request, response) {
                 "owner": vampire,
                 "type": serverData[attribute] === undefined ? "core_define" : "core_update",
             });
+            var acl = new Parse.ACL;
+            acl.setPublicReadAccess(false);
+            acl.setPublicWriteAccess(false);
+            acl.setReadAccess(vampire.get("owner"), true);
+            vc.setACL(acl);
             return vc;
         }));
     }).then(function () {
@@ -159,9 +164,19 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
         return;
     }
 
-    vc.save().then(function () {
+    var vToFetch = new Vampire({id: vc.get("owner").id});
+    vToFetch.fetch().then(function(vampire) {
+        var acl = new Parse.ACL;
+        acl.setPublicReadAccess(false);
+        acl.setPublicWriteAccess(false);
+        acl.setReadAccess(vampire.get("owner"), true);
+        vc.setACL(acl);
+
+        return vc.save();
+    }).then(function () {
         response.success();
-    }, function(error) {
+    }, function (error) {
+        console.log(error.message);
         console.log("Failed to save change for", request.object.id, "because of", pretty(error));
         response.error();
     });
@@ -182,9 +197,19 @@ Parse.Cloud.afterDelete("SimpleTrait", function(request) {
         "type": "remove",
         "old_cost": serverData.cost
     });
-    vc.save().then(function () {
+    var vToFetch = new Vampire({id: vc.get("owner").id});
+    vToFetch.fetch().then(function(vampire) {
+        var acl = new Parse.ACL;
+        acl.setPublicReadAccess(false);
+        acl.setPublicWriteAccess(false);
+        acl.setReadAccess(vampire.get("owner"), true);
+        vc.setACL(acl);
+        return vc.save();
+    }).then(function () {
+        response.success();
     }, function (error) {
-        console.log("Failed to save delete for", request.object.id, "because of", pretty(error));
+        console.log("Failed to save delete for" + request.object.id + "because of" + pretty(error));
+        response.error();
     });
 });
 
