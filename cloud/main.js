@@ -49,6 +49,7 @@ Parse.Cloud.beforeSave("CharacterPortrait", function(request, response) {
     })
 
     if (0 == needed_sizes.length) {
+        response.success();
         return;
     }
 
