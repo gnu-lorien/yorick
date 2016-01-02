@@ -259,6 +259,7 @@ define([
                 ["attributes", "Attributes"],
                 ["paths", "Path of Enlightenment/Humanity"],
                 ["health_levels", "Health Levels"],
+                ["willpower_sources", "Willpower"],
                 ["skills", "Skills"],
                 ["focus_mentals", "Mental Focus"],
                 ["focus_physicals", "Physical Focus"],
@@ -655,6 +656,13 @@ define([
         get_thumbnail_sync: function (size) {
             var self = this;
             return _.result(self, "attributes.portrait.attributes.thumb_" + size + ".url", "head_skull.png");
+        },
+
+        get_willpower_total: function() {
+            var self = this;
+            var wps = self.get("willpower_sources");
+            var total = _.sum(wps, "attributes.value");
+            return total;
         },
     } );
 

@@ -631,9 +631,9 @@
         </div>
         <div class="ui-block-b">
             <h4 class="ui-bar ui-bar-a ui-corner-all">Willpower</h4>
-            <% _.each(_.range(1, 8), function (i) { %>
+            <% _.each(_.range(0, character.get_willpower_total()), function (i) { %>
                 <i class="fa fa-square-o"></i>
-                <% if (0 == i % 5) { %>
+                <% if (0 == (i + 1) % 5) { %>
                 &nbsp;
                 <% } %>
             <% }); %>
