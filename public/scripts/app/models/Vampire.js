@@ -687,6 +687,12 @@ define([
 
     Model.create = function(name) {
         var v = new Model;
+        var acl = new Parse.ACL;
+        acl.setPublicReadAccess(false);
+        acl.setPublicWriteAccess(false);
+        acl.setWriteAccess(Parse.User.current(), true);
+        acl.setReadAccess(Parse.User.current(), true);
+        v.setACL(acl);
         return v.save({name: name, owner: Parse.User.current(), change_count: 0});
     };
 
@@ -694,6 +700,12 @@ define([
         var v = new Model;
         var nameappend = nameappend || "";
         var name = "karmacharactertest" + nameappend + Math.random().toString(36).slice(2);
+        var acl = new Parse.ACL;
+        acl.setPublicReadAccess(false);
+        acl.setPublicWriteAccess(false);
+        acl.setWriteAccess(Parse.User.current(), true);
+        acl.setReadAccess(Parse.User.current(), true);
+        v.setACL(acl);
         return v.save({name: name, owner: Parse.User.current(), change_count: 0});
     };
 

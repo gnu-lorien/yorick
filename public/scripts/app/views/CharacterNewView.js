@@ -5,7 +5,8 @@
 define([
 	"jquery",
 	"backbone",
-], function( $, Backbone ) {
+    "../models/Vampire",
+], function( $, Backbone, Vampire ) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend({
@@ -44,7 +45,7 @@ define([
         save_clicked: function(a, b, c) {
             var self = this;
             var v = self.$el.find('input[name="characterName"]').val();
-            self.model.save({name: v, owner: Parse.User.current(), change_count: 0}).then(function() {
+            Vampire.create(v).then(function() {
                 window.location.hash = self.redirectSave({"self": self});
             }, function(error) {
                 console.log("Failed to save a character", error);
