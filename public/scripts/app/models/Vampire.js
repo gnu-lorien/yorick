@@ -728,6 +728,7 @@ define([
             var q = new Parse.Query(Model);
             q.equalTo("owner", Parse.User.current());
             q.include("portrait");
+            q.include("backgrounds");
             return q.get(id).then(function(m) {
                 character_cache._character = m;
                 return Model.get_character(id, categories, character_cache);

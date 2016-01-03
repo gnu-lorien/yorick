@@ -18,7 +18,7 @@ define([
             if ([] == icd) {
                 return false;
             }
-            return _.contains(icd, trait.get("name"));
+            return _.contains(icd, trait.get_base_name());
         },
 
         get_cost_table: function(cost_per_entry) {
