@@ -213,7 +213,6 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone"], funct
         });
     });
 
-    /*
     describe("A Vampire's creation", function() {
         var vampire;
 
@@ -632,5 +631,4 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone"], funct
             })
         });
     });
-    */
 });

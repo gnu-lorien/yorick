@@ -45,10 +45,12 @@ define([
         save_clicked: function(a, b, c) {
             var self = this;
             var v = self.$el.find('input[name="characterName"]').val();
-            Vampire.create(v).then(function() {
+            $.mobile.loading("show");
+            Vampire.create(v).then(function(populated_character) {
+                self.model = populated_character;
                 window.location.hash = self.redirectSave({"self": self});
             }, function(error) {
-                console.log("Failed to save a character", error);
+                console.log("Failed to save a character", error.message);
             })
             return false;
         },

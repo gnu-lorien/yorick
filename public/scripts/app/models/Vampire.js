@@ -764,6 +764,7 @@ define([
     };
 
     Model.create = function(name) {
+        var populated_character;
         var v = new Model;
         var acl = new Parse.ACL;
         acl.setPublicReadAccess(false);
@@ -771,7 +772,22 @@ define([
         acl.setWriteAccess(Parse.User.current(), true);
         acl.setReadAccess(Parse.User.current(), true);
         v.setACL(acl);
-        return v.save({name: name, owner: Parse.User.current(), change_count: 0});
+        return v.save({name: name, owner: Parse.User.current(), change_count: 0}).then(function () {
+            return Model.get_character(v.id);
+        }).then(function (vampire) {
+            populated_character = vampire;
+            return populated_character.update_trait("Humanity", 5, "paths", 5, true);
+        }).then(function () {
+            return populated_character.update_trait("Healthy", 3, "health_levels", 3, true);
+        }).then(function () {
+            return populated_character.update_trait("Injured", 3, "health_levels", 3, true);
+        }).then(function () {
+            return populated_character.update_trait("Incapacitated", 3, "health_levels", 3, true);
+        }).then(function () {
+            return populated_character.update_trait("Willpower", 6, "willpower_sources", 6, true);
+        }).then(function () {
+            return Parse.Promise.as(populated_character);
+        });
     };
 
     Model.create_test_character = function(nameappend) {
