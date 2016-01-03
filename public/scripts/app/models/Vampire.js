@@ -496,24 +496,47 @@ define([
             var self = this;
 
             if (!_.isUndefined(self.recorded_changes)) {
-                return Parse.Promise.as(self.recorded_changes);
+                return self.update_recorded_changes();
             }
 
             self.recorded_changes = new VampireChangeCollection;
-            self.on("saved", self.fetch_recorded_changes, self);
+            self.on("saved", self.update_recorded_changes, self);
+            //self.on("saved", self.fetch_recorded_changes, self);
             if (register) {
                 register(self.recorded_changes);
             }
             return self.fetch_recorded_changes();
         },
 
+        update_recorded_changes: function() {
+            var self = this;
+            if (0 == self.recorded_changes.models.length) {
+                return self.fetch_recorded_changes();
+            }
+            self._recordedChangesFetch = self._recordedChangesFetch || Parse.Promise.as();
+            self._recordedChangesFetch = self._recordedChangesFetch.always(function () {
+                var lastCreated = _.last(self.recorded_changes.models).createdAt;
+                var q = new Parse.Query(VampireChange);
+                q.equalTo("owner", self).addAscending("createdAt").limit(1000);
+                q.greaterThan("createdAt", lastCreated);
+                self.recorded_changes.query = q;
+                return self.recorded_changes.fetch({add: true});
+            });
+            return self._recordedChangesFetch;
+        },
+
         fetch_recorded_changes: function() {
             var self = this;
-            var q = new Parse.Query(VampireChange);
-            q.equalTo("owner", self).addAscending("createdAt").limit(1000);
-            self.recorded_changes.query = q;
-            console.log("Resetting recorded changes");
-            return self.recorded_changes.fetch({reset: true});
+            self._recordedChangesFetch = self._recordedChangesFetch || Parse.Promise.as();
+            self._recordedChangesFetch = self._recordedChangesFetch.always(function () {
+                console.log("Resetting recorded changes");
+                var q = new Parse.Query(VampireChange);
+                q.equalTo("owner", self).addAscending("createdAt").limit(1000);
+                self.recorded_changes.query = q;
+
+                return self.recorded_changes.fetch({reset: true});
+            });
+            return self._recordedChangesFetch;
         },
 
         calculate_trait_cost: function(trait) {
