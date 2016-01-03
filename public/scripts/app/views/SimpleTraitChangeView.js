@@ -13,7 +13,7 @@ define([
 
         // The View Constructor
         initialize: function () {
-            _.bindAll(this, "remove", "update_value", "save_clicked", "render_view");
+            _.bindAll(this, "remove", "update_value", "update_free_value", "update_specialty_name", "save_clicked", "render_view");
         },
 
         register: function (character, simpletrait, category) {
@@ -46,7 +46,9 @@ define([
 
         events: {
             "click .remove": "remove",
-            "change": "update_value",
+            "change .value-slider": "update_value",
+            "change .free-slider": "update_free_value",
+            "change #specialize-name": "update_specialty_name",
             "click .save": "save_clicked"
         },
 
@@ -66,6 +68,20 @@ define([
             var v = this.$(a.target).val();
             console.log("update value", self.category, self.simpletrait, this.$(a.target).val());
             this.simpletrait.set("value", _.parseInt(this.$(a.target).val()));
+            self.render_view();
+        },
+
+        update_free_value: function(a, b, c) {
+            var self = this;
+            var v = this.$(a.target).val();
+            this.simpletrait.set("free_value", _.parseInt(this.$(a.target).val()));
+            self.render_view();
+        },
+
+        update_specialty_name: function(a) {
+            var self = this;
+            var v = this.$(a.target).val();
+            self.simpletrait.set_specialization(this.$(a.target).val());
             self.render_view();
         },
 

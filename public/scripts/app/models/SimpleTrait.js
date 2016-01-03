@@ -27,7 +27,11 @@ define([
 
         set_specialization: function(specialization) {
             var self = this;
-            self.set("name", self.get_base_name() + ": " + specialization);
+            if (!specialization) {
+                self.set("name", self.get_base_name());
+            } else {
+                self.set("name", self.get_base_name() + ": " + specialization);
+            }
 
             return self;
         },

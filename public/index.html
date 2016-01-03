@@ -310,12 +310,19 @@
 
 <script id="simpleTraitChangeChange" type="text/template">
     <p>
-        <label for="slider">Slider:</label>
-        <input type="range" name="simpleTraitValue" id="slider" value="<%= b.get('value') %>" min="1" max="<%= traitmax %>">
+        <label for="value-slider">Slider:</label>
+        <input type="range" name="simpleTraitValue" id="value-slider" class="value-slider" value="<%= b.get('value') %>" min="1" max="<%= traitmax %>">
     </p>
     <p>
         <button class="remove ui-btn">Remove</button>
         <button class="save ui-btn">Save Changes</button>
+    </p>
+    <p>
+        <h2>Advanced Options</h2>
+        <label for="specialize-name">Specialize Name</label>
+        <input type="text" id="specialize-name" name="specialize-name" value="<%= b.get_specialization() %>">
+        <label for="free-slider">Free Value:</label>
+        <input type="range" name="free-slider" id="free-slider" class="free-slider" value="<%= b.get('free_value') %>" min="0" max="<%= traitmax %>">
     </p>
 </script>
 
