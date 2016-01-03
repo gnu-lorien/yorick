@@ -160,6 +160,7 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
         "old_cost": serverData.cost,
         "cost": modified_trait.get("cost"),
         "old_text": serverData.name,
+        "simple_trait_id": modified_trait.id,
     });
 
     if (!isMeaningfulChange(vc)) {
@@ -200,7 +201,8 @@ Parse.Cloud.beforeDelete("SimpleTrait", function(request, response) {
         "old_free_value": serverData.free_value,
         "free_value": trait.get("free_value"),
         "type": "remove",
-        "old_cost": serverData.cost
+        "old_cost": serverData.cost,
+        "simple_trait_id": trait.id,
     });
     var vToFetch = new Vampire({id: vc.get("owner").id});
     vToFetch.fetch().then(function(vampire) {
