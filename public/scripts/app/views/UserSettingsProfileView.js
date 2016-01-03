@@ -9,7 +9,6 @@ define([
     var UserSettingsProfileView = Backbone.View.extend({
         initialize: function () {
             _.bindAll(this, "allowUpdates");
-            this.render();
         },
 
         events: {
