@@ -80,6 +80,7 @@ define([
             if (!_.isString(nameOrTrait)) {
                 modified_trait = nameOrTrait;
                 category = modified_trait.get("category");
+                wait = true;
             } else {
                 name = nameOrTrait;
             };
