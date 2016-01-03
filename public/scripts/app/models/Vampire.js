@@ -88,7 +88,27 @@ define([
             return Parse.Object.fetchAllIfNeeded(self.get_category_for_fetch(category)).then(function() {
                 if (!_.isString(nameOrTrait)) {
                     if (!_.contains(self.get(category), modified_trait)) {
-                        throw "Provided trait not already in Vampire as expected";
+                        return Parse.Promise.error({code:0, message:"Provided trait not already in Vampire as expected"});
+                    }
+                    if (modified_trait.dirty("name")) {
+                        var matching_names = _.select(
+                            _.without(self.get(category), modified_trait),
+                            "attributes.name",
+                            modified_trait.get("name"));
+                        if (0 != matching_names.length) {
+                            try {
+                                modified_trait.set("name", modified_trait._serverData.name);
+                                return Parse.Promise.error({
+                                    code: 1,
+                                    message: "Name matches an existing trait. Restoring original name"
+                                });
+                            } catch (e) {
+                                 return Parse.Promise.error({
+                                    code: 2,
+                                    message: "Name matches an existing trait. Failed to restore original name. " + e
+                                });
+                            }
+                        }
                     }
                 } else {
                     modified_trait = new SimpleTrait;

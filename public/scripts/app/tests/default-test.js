@@ -204,9 +204,11 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone"], funct
                 not_classic_trait.set("name", "Retainers: Classic");
                 return vampire.update_trait(not_classic_trait);
             }).done(function(){
-                done();
+                done.fail("Allowed the rename to be persisted");
             }).fail(function(error) {
-                done.fail(error);
+                expect(error.code).toBe(1);
+                expect(not_classic_trait.get("name")).toBe("Retainers: Not Classic");
+                done();
             })
         });
     });
