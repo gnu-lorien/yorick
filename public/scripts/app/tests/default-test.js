@@ -46,6 +46,172 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone"], funct
         });
     });
 
+    describe("A Vampire's traits", function() {
+        var vampire;
+
+        beforeAll(function (done) {
+            ParseStart().then(function () {
+                return Vampire.create_test_character("vampiretraits");
+            }).then(function (v) {
+                return Vampire.get_character(v.id);
+            }).then(function (v) {
+                vampire = v;
+                done();
+            }, function (error) {
+                done.fail(error);
+            });
+        });
+
+        it("show up in the history", function (done) {
+            vampire.get_recorded_changes().done(function (changes) {
+                expect(changes.models.length).toBe(0);
+                return vampire.update_trait("Haven", 1, "backgrounds", 0, true)
+            }).done(function (trait) {
+                return vampire.get_recorded_changes();
+            }).done(function(changes) {
+                expect(changes.models.length).toBe(1);
+                return vampire.update_trait("Haven", 1, "backgrounds", 0, true);
+            }).done(function(trait) {
+                return vampire.get_recorded_changes();
+            }).done(function(changes) {
+                expect(changes.models.length).toBe(1);
+                return vampire.update_trait("Haven", 2, "backgrounds", 0, true);
+            }).done(function(trait) {
+                return vampire.get_recorded_changes();
+            }).done(function(changes) {
+                expect(changes.models.length).toBe(2);
+                done();
+            }).fail(function(error) {
+                done.fail(error);
+            })
+        });
+
+        /*
+        // FIXME: Won't work until server side cost calculation works
+        it("can be renamed", function (done) {
+            vampire.update_trait("Retainers", 1, "backgrounds", 0, true).done(function (trait) {
+                trait.set("name", "Retainers: Specialized Now");
+                return trait.save();
+            }).done(function(trait) {
+                trait.set("name", "Retainers: Specialized Again");
+                trait.set("value", 4);
+                return trait.save();
+            }).done(function (trait) {
+                trait.set("value", 5);
+                return trait.save();
+            }).done(function(){
+                done();
+            }).fail(function(error) {
+                done.fail(error);
+            })
+        });
+        */
+        it("can be renamed", function (done) {
+            vampire.update_trait("Retainers", 1, "backgrounds", 0, true).done(function (trait) {
+                trait.set("name", "Retainers: Specialized Now");
+                return vampire.update_trait(trait);
+            }).done(function(trait) {
+                trait.set("name", "Retainers: Specialized Again");
+                trait.set("value", 4);
+                return vampire.update_trait(trait);
+            }).done(function (trait) {
+                trait.set("value", 5);
+                return vampire.update_trait(trait);
+            }).done(function(){
+                return vampire.update_trait("Retainers: Specialized Now", 2, "backgrounds", 0, true);
+            }).done(function(){
+                return vampire.update_trait("Retainers", 3, "backgrounds", 0, true);
+            }).done(function(){
+                return vampire.update_trait("Retainers: Specialized Now", 4, "backgrounds", 0, true);
+            }).done(function(){
+                return vampire.update_trait("Retainers", 4, "backgrounds", 0, true);
+            }).done(function(){
+                return vampire.get_recorded_changes();
+            }).done(function(changes){
+                expect(changes.models.length).toBe(10);
+                changes.each(function(change, i) {
+                    expect(change.get("name")).not.toBe(undefined);
+                    var name = change.get("name");
+                    var startsWithRetainers = _.startsWith(name, "Retainers");
+                    if (startsWithRetainers) {
+                        if (2 == i) {
+                            expect(change.get("type")).toBe("define");
+                            expect(change.get("value")).toBe(1);
+                            expect(change.get("cost")).toBe(1);
+                        } else if (3 == i) {
+                            expect(change.get("type")).toBe("update");
+                            expect(change.get("value")).toBe(1);
+                            expect(change.get("cost")).toBe(1);
+                            expect(change.get("name")).toBe("Retainers: Specialized Now");
+                            expect(change.get("old_text")).toBe("Retainers");
+                        } else if (4 == i) {
+                            expect(change.get("type")).toBe("update");
+                            expect(change.get("value")).toBe(4);
+                            expect(change.get("cost")).toBe(10);
+                            expect(change.get("name")).toBe("Retainers: Specialized Again");
+                            expect(change.get("old_text")).toBe("Retainers: Specialized Now");
+                        } else if (5 == i) {
+                            expect(change.get("type")).toBe("update");
+                            expect(change.get("old_value")).toBe(4);
+                            expect(change.get("value")).toBe(5);
+                            expect(change.get("old_cost")).toBe(10);
+                            expect(change.get("cost")).toBe(15);
+                            expect(change.get("name")).toBe("Retainers: Specialized Again");
+                            expect(change.get("old_text")).toBe("Retainers: Specialized Again");
+                        } else if (6 == i) {
+                            expect(change.get("type")).toBe("define");
+                            expect(change.get("value")).toBe(2);
+                            expect(change.get("cost")).toBe(3);
+                            expect(change.get("name")).toBe("Retainers: Specialized Now");
+                        } else if (7 == i) {
+                            expect(change.get("type")).toBe("define");
+                            expect(change.get("value")).toBe(3);
+                            expect(change.get("cost")).toBe(6);
+                            expect(change.get("name")).toBe("Retainers");
+                        } else if (8 == i) {
+                            expect(change.get("type")).toBe("update");
+                            expect(change.get("value")).toBe(4);
+                            expect(change.get("old_value")).toBe(2);
+                            expect(change.get("old_cost")).toBe(3);
+                            expect(change.get("cost")).toBe(10);
+                            expect(change.get("name")).toBe("Retainers: Specialized Now");
+                            expect(change.get("old_text")).toBe("Retainers: Specialized Now");
+                        } else if (9 == i) {
+                            expect(change.get("type")).toBe("update");
+                            expect(change.get("value")).toBe(4);
+                            expect(change.get("old_value")).toBe(3);
+                            expect(change.get("old_cost")).toBe(6);
+                            expect(change.get("cost")).toBe(10);
+                            expect(change.get("name")).toBe("Retainers");
+                            expect(change.get("old_text")).toBe("Retainers");
+                        }
+                    }
+                })
+            }).done(function(){
+                done();
+            }).fail(function(error) {
+                done.fail(error);
+            })
+        });
+
+        it("can't be renamed to collide", function (done) {
+            var classic_trait, not_classic_trait;
+            vampire.update_trait("Retainers: Classic", 1, "backgrounds", 0, true).done(function (trait) {
+                classic_trait = trait;
+                return vampire.update_trait("Retainers: Not Classic", 2, "backgrounds", 0, true);
+            }).done(function(trait) {
+                not_classic_trait = trait;
+                not_classic_trait.set("name", "Retainers: Classic");
+                return vampire.update_trait(not_classic_trait);
+            }).done(function(){
+                done();
+            }).fail(function(error) {
+                done.fail(error);
+            })
+        });
+    });
+
+    /*
     describe("A Vampire's creation", function() {
         var vampire;
 
@@ -464,4 +630,5 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone"], funct
             })
         });
     });
+    */
 });
