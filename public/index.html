@@ -818,7 +818,7 @@
     <h1><%= character.get("name") %></h1>
     <button class="previous ui-btn ui-btn-icon-left">Previous</button>
     <button class="next ui-btn ui-btn-icon-left">Next</button>
-    <% var headers = ["createdAt", "category", "name", "type", "old_value", "value", "free_value", "old_cost", "cost", "old_text", "new_text"]; %>
+    <% var headers = ["createdAt", "category", "name", "type", "old_value", "value", "old_free_value", "free_value", "old_cost", "cost", "old_text", "new_text"]; %>
     <table data-role="table" id="table-column-toggle" class="ui-responsive table-stroke">
         <thead>
         <tr>
@@ -860,7 +860,7 @@
 
 <script id="characterHistorySelectedView" type="text/template">
     <span>Showing changes including</span>
-    <% var headers = ["createdAt", "category", "name", "type", "old_value", "value", "free_value", "old_cost", "cost", "old_text", "new_text"]; %>
+    <% var headers = ["createdAt", "category", "name", "type", "old_value", "value", "old_free_value", "free_value", "old_cost", "cost", "old_text", "new_text"]; %>
     <table data-role="table" id="table-column-toggle" class="ui-responsive table-stroke">
         <thead>
         <tr>
