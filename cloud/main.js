@@ -164,7 +164,7 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
     });
 
     if (!isMeaningfulChange(vc)) {
-        console.log("Update does not actually encode a change " + pretty(vc.attributes));
+        console.log("Update does not actually encode a change");
         response.success();
         return;
     }
