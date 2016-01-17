@@ -416,7 +416,7 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone"], funct
         var vampire;
         beforeAll(function (done) {
             ParseStart().then(function () {
-                return Vampire.create_test_character();
+                return Vampire.create_test_character("experiencehistory");
             }).then(function (v) {
                 return Vampire.get_character(v.id);
             }).then(function (v) {
@@ -424,31 +424,6 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone"], funct
                 done();
             }, function(error) {
                 done.fail(error);
-            });
-        });
-
-        it("updates listeners on add", function(done) {
-            var Listener = Backbone.View.extend({
-                initialize: function() {
-                    var self = this;
-                    _.bindAll(this, "finish");
-                },
-
-                finish: function(en) {
-                    expect(en.get("reason")).toBe("meet hands");
-                    expect(en.get("alteration_earned")).toBe(24);
-                    vampire.get_experience_notations().then(function (ens) {
-                        var l = _.first(ens.models);
-                        expect(l.get("reason")).toBe("meet hands");
-                        expect(l.get("alteration_earned")).toBe(24);
-                        done();
-                    });
-                }
-            });
-            l = new Listener;
-            vampire.get_experience_notations(function (rc) {
-                l.listenTo(rc, "add", l.finish);
-                vampire.add_experience_notation({reason: "meet hands", alteration_earned: 24});
             });
         });
 
@@ -466,6 +441,102 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone"], funct
             expect(vampire.get("experience_earned")).toBe(30);
             expect(vampire.get("experience_spent")).toBe(0);
         });
+
+        it("updates listeners on add", function(done) {
+            var Listener = Backbone.View.extend({
+                initialize: function() {
+                    var self = this;
+                    _.bindAll(this, "finish");
+                },
+
+                finish: function(en) {
+                    var self = this;
+                    expect(en.get("reason")).toBe("meet hands");
+                    expect(en.get("alteration_earned")).toBe(24);
+                    vampire.get_experience_notations().then(function (ens) {
+                        var l = _.first(ens.models);
+                        expect(l.get("reason")).toBe("meet hands");
+                        expect(l.get("alteration_earned")).toBe(24);
+                        expect(l.get("earned")).toBe(54);
+                        self.stopListening();
+                        done();
+                    });
+                }
+            });
+            l = new Listener;
+            vampire.get_experience_notations(function (rc) {
+                l.listenTo(rc, "add", l.finish);
+                vampire.add_experience_notation({reason: "meet hands", alteration_earned: 24});
+            });
+        });
+
+
+        it("can be quickly sequential", function(done) {
+            var p = _.map(_.range(1, 20), function(i) {
+                return vampire.add_experience_notation({
+                    alteration_earned: i,
+                    alteration_spent: i});
+            })
+            Parse.Promise.when(p).then(function() {
+                // check them all and see if they work
+                vampire.get_experience_notations().then(function (ens) {
+                    // Ignore the first two because of their creation above us
+                    var debug_alterations_earned = _.map(ens.models, "attributes.alteration_earned");
+                    var models = _.dropRight(ens.models, 2);
+                    var expected = 54;
+                    var initial_expected = expected;
+                    var thisval = 1;
+                    _.eachRight(models, function(en) {
+                        expected += thisval;
+                        expect(en.get("alteration_earned")).toBe(thisval);
+                        expect(en.get("alteration_spent")).toBe(thisval);
+                        expect(en.get("earned")).toBe(expected);
+                        expect(en.get("spent")).toBe(expected - initial_expected);
+                        thisval += 1;
+                    })
+                    expect(vampire.experience_available()).toBe(initial_expected);
+                    expect(vampire.get("experience_earned")).toBe(expected);
+                    expect(vampire.get("experience_spent")).toBe(expected - initial_expected);
+                    done();
+                })
+            }, function(errors) {
+                _.each(errors, function(error) {
+                    console.log("Failed to add experience notations" + error.message);
+                });
+                done.fail();
+            })
+        });
+
+        it("can remove the top most", function(done) {
+            vampire.get_experience_notations().then(function(ens) {
+                return vampire.remove_experience_notation(ens.at(0));
+            }).then(function() {
+                expect(vampire.experience_available()).toBe(54);
+                expect(vampire.get("experience_earned")).toBe(244 - 19);
+                expect(vampire.get("experience_spent")).toBe(244 - 54 - 19);
+                done();
+            }, function(error) {
+                done.fail(error.message);
+            })
+        });
+
+        it("can remove a middle one", function(done) {
+            vampire.get_experience_notations().then(function(ens) {
+                return vampire.remove_experience_notation(ens.at(ens.models.length - 3));
+            }).then(function() {
+                expect(vampire.experience_available()).toBe(54);
+                expect(vampire.get("experience_earned")).toBe(244 - 19 - 1);
+                expect(vampire.get("experience_spent")).toBe(244 - 54 - 19 - 1);
+                done();
+            }, function(error) {
+                done.fail(error.message);
+            })
+        })
+
+        // Handles moving from top to bottom
+        // Handles moving from bottom to top
+        // Handles resorting internally
+        // Handles removing the only
     });
 
     describe("A Vampire", function() {
