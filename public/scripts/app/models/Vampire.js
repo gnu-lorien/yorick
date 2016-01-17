@@ -499,21 +499,100 @@ define([
             }
         },
 
+        _default_experience_notation: function(options) {
+            var self = this;
+            var properties = _.defaults(options || {}, {
+                entered: new Date,
+                reason: "Unspecified reason",
+                earned: 0,
+                spent: 0,
+                alteration_earned: 0,
+                alteration_spent: 0,
+                owner: self});
+            var en = new ExperienceNotation(properties);
+            en.setACL(self.get_me_acl());
+            return en;
+        },
+
         add_experience_notation: function(options) {
             var self = this;
             return self.get_experience_notations().then(function (ens) {
-                var properties = _.defaults(options || {}, {
-                    entered: new Date,
-                    reason: "Unspecified reason",
-                    earned: 0,
-                    spent: 0,
-                    alteration_earned: 0,
-                    alteration_spent: 0,
-                    owner: self});
-                var en = new ExperienceNotation(properties);
-                en.setACL(self.get_me_acl());
-                ens.add(en);
-                return en.save();
+                var en = self._default_experience_notation(options);
+                // Silence the notification
+                ens.add(en, {silent: true});
+                // Find the index for the new model afterward
+                var index, model;
+                for (var i = 0, length = ens.models.length; i < length; i++) {
+                    model = ens.models[i];
+                    if (ens._byCid[model.cid]) {
+                        index = i;
+                        break;
+                    }
+                }
+                // Do the reflow update now
+                self.trigger("begin_experience_notation_propagation");
+                var initial_accumulator;
+                if (index + 1 < ens.models.length) {
+                    initial_accumulator = ens.at(index + 1);
+                } else {
+                    initial_accumulator = self._default_experience_notation();
+                }
+                var altered_ens = [];
+                var final_en = _.reduceRight(_.slice(ens.models, 0, index + 1), function(previous_en, en, index, collection) {
+                    var tearned = en.get("alteration_earned") + previous_en.get("earned");
+                    en.set("earned", tearned, {silent: true});
+                    var tspent = en.get("alteration_spent") + previous_en.get("spent");
+                    en.set("spent", tspent, {silent: true});
+                    altered_ens.push(en);
+                    return en;
+                }, initial_accumulator);
+                // trigger the add when we're done adding stuff
+                self.set("experience_earned", final_en.get("earned"));
+                self.set("experience_spent", final_en.get("spent"));
+                altered_ens.push(self);
+                return Parse.Object.saveAll(altered_ens).then(function() {
+                    model.trigger('add', model, ens, {index: index});
+                    self.trigger("finish_experience_notation_propagation");
+                });
+            })
+        },
+
+        remove_experience_notation: function(models, options) {
+            var self = this;
+            var options, models;
+            options = options || {};
+            models = _.isArray(models) ? models.slice() : [models];
+            var en = models[0];
+            var model = en;
+            return self.get_experience_notations().then(function (ens) {
+                var index = ens.indexOf(en);
+                // Silence the notification
+                ens.remove(en, {silent: true});
+                // Do the reflow update now
+                self.trigger("begin_experience_notation_propagation");
+                var initial_accumulator;
+                if (index + 1 < ens.models.length) {
+                    initial_accumulator = ens.at(index + 1);
+                } else {
+                    initial_accumulator = self._default_experience_notation();
+                }
+                var altered_ens = [];
+                var final_en = _.reduceRight(_.slice(ens.models, 0, index + 1), function(previous_en, en, index, collection) {
+                    var tearned = en.get("alteration_earned") + previous_en.get("earned");
+                    en.set("earned", tearned, {silent: true});
+                    var tspent = en.get("alteration_spent") + previous_en.get("spent");
+                    en.set("spent", tspent, {silent: true});
+                    altered_ens.push(en);
+                    return en;
+                }, initial_accumulator);
+                // trigger the add when we're done adding stuff
+                self.set("experience_earned", final_en.get("earned"));
+                self.set("experience_spent", final_en.get("spent"));
+                altered_ens.push(self);
+                return Parse.Object.saveAll(altered_ens).then(function() {
+                    model.trigger('remove', model, ens, {index: index});
+                    self.trigger("finish_experience_notation_propagation");
+                });
             })
         },
 
