@@ -419,10 +419,14 @@ define([
 
         fetch_experience_notations: function () {
             var self = this;
-            var q = new Parse.Query(ExperienceNotation);
-            q.equalTo("owner", self).addDescending("entered").addDescending("createdAt");
-            self.experience_notations.query = q;
-            return self.experience_notations.fetch({reset: true});
+            self._experienceNotationsFetch = self._experienceNotationsFetch || Parse.Promise.as();
+            self._experienceNotationsFetch = self._experienceNotationsFetch.always(function () {
+                var q = new Parse.Query(ExperienceNotation);
+                q.equalTo("owner", self).addDescending("entered").addDescending("createdAt");
+                self.experience_notations.query = q;
+                return self.experience_notations.fetch({reset: true});
+            });
+            return self._experienceNotationsFetch;
         },
 
         update_experience_notation: function(en, changes, options) {
