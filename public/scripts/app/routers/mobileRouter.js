@@ -437,6 +437,8 @@ define([
                     return self.get_user_characters();
                 }).then(function (characters) {
                     $.mobile.changePage("#characters-all", {reverse: false, changeHash: false});
+                }).fail(function (error) {
+                    console.log(error.message);
                 });
             }
         },
