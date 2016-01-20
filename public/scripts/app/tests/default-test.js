@@ -533,6 +533,38 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone"], funct
             })
         })
 
+        it("can remove a middle one by trigger", function(done) {
+            var Listener = Backbone.View.extend({
+                initialize: function() {
+                    var self = this;
+                    _.bindAll(this, "finish");
+                },
+
+                finish: function() {
+                    var self = this;
+                    self.stopListening();
+                    expect(vampire.experience_available()).toBe(54);
+                    expect(vampire.get("experience_earned")).toBe(244 - 19 - 1 - 2);
+                    expect(vampire.get("experience_spent")).toBe(244 - 54 - 19 - 1 - 2);
+                    done();
+                }
+            });
+            l = new Listener;
+            l.listenTo(vampire, "finish_experience_notation_propagation", l.finish);
+            vampire.get_experience_notations().then(function(ens) {
+                return vampire.remove_experience_notation(ens.at(ens.models.length - 3));
+            }, function(error) {
+                done.fail(error.message);
+            })
+        })
+
+        it("can update a middle one", function() {
+
+        })
+
+        it("can add a middle one", function() {
+
+        })
         // Handles moving from top to bottom
         // Handles moving from bottom to top
         // Handles resorting internally
