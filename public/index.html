@@ -302,7 +302,7 @@
 
 <script id="simpleTraitChangeView" type="text/template">
     <p><%= c.get("name") %> <%= b.get("name") %> <%= b.get("value") %></p>
-    <% var cost = character.calculate_trait_cost(trait); %>
+    <% var cost = character.calculate_trait_to_spend(trait); %>
     <p>Cost: <%= cost %></p>
     <p>Available XP: <%= character.experience_available() %></p>
     <p>Final: <%= character.experience_available() - cost %></p>

@@ -127,17 +127,23 @@ define([
                     });
                 }
                 var cost = self.calculate_trait_cost(modified_trait);
+                var spend = self.calculate_trait_to_spend(modified_trait);
                 modified_trait.set("cost", cost);
                 self.increment("change_count");
                 self.addUnique(category, modified_trait);
 
                 var minimumPromise = self._update_creation(category, modified_trait, freeValue).then(function() {
-                    return self.save();
+                    return self.add_experience_notation({
+                        alteration_spent: spend,
+                        reason: modified_trait.get("name"),
+                    });
                 }).then(function() {
                     console.log("Finished saving vampire");
                     return Parse.Promise.as(self);
-                }).fail(function (error) {
-                    console.log("Failed to save vampire because of " + error.message);
+                }).fail(function (errors) {
+                    _.each(errors, function(error) {
+                        console.log("Failed to save vampire because of " + error.message);
+                    });
                 })
                 var returnPromise;
                 if (wait) {
@@ -608,6 +614,13 @@ define([
         calculate_trait_cost: function(trait) {
             var self = this;
             return self.VampireCosts.calculate_trait_cost(self, trait);
+        },
+
+        calculate_trait_to_spend: function(trait) {
+            var self = this;
+            var new_cost = self.VampireCosts.calculate_trait_cost(self, trait);
+            var old_cost = trait.get("cost") || 0;
+            return new_cost - old_cost;
         },
 
         calculate_total_cost: function() {
