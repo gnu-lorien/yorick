@@ -19,10 +19,6 @@ define([
         initialize: function() {
             var self = this;
 
-            self.changes = new VampireChangeCollection;
-            self.listenTo(self.changes, "add", self.render);
-            self.listenTo(self.changes, "reset", self.render);
-
             self.start = 0;
             self.changeBy = 10;
         },
