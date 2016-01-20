@@ -551,7 +551,7 @@ define([
                 // Silence the notification
                 ens.remove(en, {silent: true});
                 var altered_ens = self._propagate_experience_notation_change(ens, index);
-                return Parse.Object.saveAll(altered_ens).then(function() {
+                return Parse.Promise.when(en.destroy(), Parse.Object.saveAll(altered_ens)).then(function() {
                     model.trigger('remove', model, ens, {index: index});
                     self.trigger("finish_experience_notation_propagation");
                 });

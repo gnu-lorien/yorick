@@ -514,6 +514,10 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone"], funct
                 expect(vampire.experience_available()).toBe(54);
                 expect(vampire.get("experience_earned")).toBe(244 - 19);
                 expect(vampire.get("experience_spent")).toBe(244 - 54 - 19);
+                return vampire.fetch_experience_notations();
+            }).then(function(ens) {
+                expect(ens.at(0).get("alteration_earned")).toBe(18);
+                expect(ens.at(0).get("alteration_spent")).toBe(18);
                 done();
             }, function(error) {
                 done.fail(error.message);
