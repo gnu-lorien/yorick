@@ -562,7 +562,32 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone"], funct
             })
         })
 
-        it("can update a middle one", function() {
+        it("can update a middle one by trigger", function(done) {
+            var Listener = Backbone.View.extend({
+                initialize: function() {
+                    var self = this;
+                    _.bindAll(this, "finish");
+                },
+
+                finish: function() {
+                    var self = this;
+                    self.stopListening();
+                    expect(vampire.experience_available()).toBe(54);
+                    expect(vampire.get("experience_earned")).toBe(244 - 19 - 1 - 2 - 1);
+                    expect(vampire.get("experience_spent")).toBe(244 - 54 - 19 - 1 - 2 - 1);
+                    done();
+                }
+            });
+            l = new Listener;
+            l.listenTo(vampire, "finish_experience_notation_propagation", l.finish);
+            vampire.get_experience_notations().then(function(ens) {
+                console.log(_.map(ens.models, "attributes.earned"));
+                var en = ens.at(ens.models.length - 3);
+                return en.save({alteration_spent: 2, alteration_earned: 2});
+            }, function(error) {
+                done.fail(error.message);
+            })
+        })
 
         })
 

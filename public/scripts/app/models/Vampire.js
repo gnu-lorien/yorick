@@ -474,7 +474,7 @@ define([
                 return Parse.Promise.as([]);
             }
             changed_index = self.experience_notations.indexOf(en);
-            return self._finalize_triggered_experience_notation_changes(changed_index, ens);
+            return self._finalize_triggered_experience_notation_changes(changed_index, self.experience_notations);
         },
 
         _default_experience_notation: function(options) {
