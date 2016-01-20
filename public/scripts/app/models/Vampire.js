@@ -133,10 +133,14 @@ define([
                 self.addUnique(category, modified_trait);
 
                 var minimumPromise = self._update_creation(category, modified_trait, freeValue).then(function() {
-                    return self.add_experience_notation({
-                        alteration_spent: spend,
-                        reason: modified_trait.get("name"),
-                    });
+                    if (0 < spend) {
+                        return self.add_experience_notation({
+                            alteration_spent: spend,
+                            reason: modified_trait.get("name"),
+                        });
+                    } else {
+                        return self.save();
+                    }
                 }).then(function() {
                     console.log("Finished saving vampire");
                     return Parse.Promise.as(self);
