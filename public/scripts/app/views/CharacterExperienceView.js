@@ -148,8 +148,7 @@ define([
             if (!en) {
                 return self;
             }
-            self.collection.remove(en);
-            en.destroy();
+            self.character.remove_experience_notation(en);
         },
 
         previous: function() {
