@@ -19,10 +19,14 @@ define([
     var Model = Parse.Object.extend( "Vampire", {
         remove_trait: function (trait) {
             var self = this;
+            var en_options = {
+                alteration_spent: (trait.get("cost") || 0) * -1,
+                reason: "Removed " + trait.get("name"),
+            };
             self.remove(trait.get("category"), trait);
             self.increment("change_count");
             trait.destroy();
-            return self.save();
+            return self.add_experience_notation(en_options);
         },
 
         ensure_category: function(category) {
