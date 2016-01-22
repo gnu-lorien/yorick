@@ -40,9 +40,16 @@ define([
             return total_cost - free_cost;
         },
 
+        get_generation_cost: function(trait) {
+            var self = this;
+            var s = [1];
+            return _(s).concat(self.get_cost_table(2)).value();
+        },
+
         calculate_trait_cost: function (character, trait) {
             var self = this;
             var category = trait.get("category");
+            var name = trait.get("name");
             var value = trait.get("value");
             var free_value = trait.get("free_value") || 0;
             var mod_value = value - free_value;
@@ -76,7 +83,9 @@ define([
                 ooc_elder_cost = 99999;
 
             if ("backgrounds" == category) {
-                if (generation == 1) {
+                if (name == "Generation") {
+                    background_ct = self.get_generation_cost();
+                } else if (generation == 1) {
                     background_ct = self.get_cost_table(1);
                 } else {
                     background_ct = self.get_cost_table(2);
