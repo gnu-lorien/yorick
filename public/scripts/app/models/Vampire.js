@@ -412,12 +412,15 @@ define([
             return self.get("experience_earned") - self.get("experience_spent");
         },
 
-        get_experience_notations: function(register) {
+        get_experience_notations: function(register, already_exists) {
             var self = this;
 
             if (!_.isUndefined(self.experience_notations)) {
                 if (register) {
                     register(self.experience_notations);
+                }
+                if (already_exists) {
+                    already_exists(self.experience_notations);
                 }
                 return Parse.Promise.as(self.experience_notations);
             }

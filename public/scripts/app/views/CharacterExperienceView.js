@@ -44,6 +44,8 @@ define([
                         $.mobile.loading("hide");
                     })
                     self.collection = rc;
+                }, function (rc) {
+                    self.render();
                 });
             }
 
