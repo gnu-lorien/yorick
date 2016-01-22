@@ -40,10 +40,11 @@ define([
             return total_cost - free_cost;
         },
 
-        get_generation_cost: function(trait) {
+        get_generation_cost_table: function() {
             var self = this;
-            var s = [1];
-            return _(s).concat(self.get_cost_table(2)).value();
+            var ct = self.get_cost_table(2);
+            ct[0] = 1;
+            return ct;
         },
 
         calculate_trait_cost: function (character, trait) {
@@ -84,7 +85,7 @@ define([
 
             if ("backgrounds" == category) {
                 if (name == "Generation") {
-                    background_ct = self.get_generation_cost();
+                    background_ct = self.get_generation_cost_table();
                 } else if (generation == 1) {
                     background_ct = self.get_cost_table(1);
                 } else {
