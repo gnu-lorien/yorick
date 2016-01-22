@@ -128,15 +128,18 @@ define([
                 }
                 var cost = self.calculate_trait_cost(modified_trait);
                 var spend = self.calculate_trait_to_spend(modified_trait);
+                if (!_.isFinite(spend)) {
+                    spend = 0;
+                }
                 modified_trait.set("cost", cost);
                 self.increment("change_count");
                 self.addUnique(category, modified_trait);
 
                 var minimumPromise = self._update_creation(category, modified_trait, freeValue).then(function() {
-                    if (0 < spend) {
+                    if (0 != spend) {
                         return self.add_experience_notation({
                             alteration_spent: spend,
-                            reason: modified_trait.get("name"),
+                            reason: "Update " + modified_trait.get("name") + " to " + modified_trait.get("value"),
                         });
                     } else {
                         return self.save();
