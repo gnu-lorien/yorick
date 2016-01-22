@@ -70,7 +70,10 @@ define([
 
             var generation = character.generation();
 
-            var background_ct, skill_ct, ooc_discipline_ct, technique_cost, ic_elder_cost, ooc_elder_cost;
+            var background_ct, skill_ct, ooc_discipline_ct;
+            var technique_cost = 9999,
+                ic_elder_cost = 99999,
+                ooc_elder_cost = 99999;
 
             if ("backgrounds" == category) {
                 if (generation == 1) {
