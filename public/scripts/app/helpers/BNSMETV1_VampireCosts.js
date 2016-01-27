@@ -72,6 +72,10 @@ define([
                 return mod_value;
             }
 
+            if ("flaws" == category) {
+                return mod_value * -1;
+            }
+
             if ("rituals" == category) {
                 return mod_value * 2;
             }
