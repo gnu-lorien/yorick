@@ -432,6 +432,7 @@ define([
         characters: function(type) {
             var self = this;
             if ("all" == type) {
+                self.set_back_button("#");
                 $.mobile.loading("show");
                 self.enforce_logged_in().then(function () {
                     return self.get_user_characters();
