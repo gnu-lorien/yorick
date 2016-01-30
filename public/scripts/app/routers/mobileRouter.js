@@ -35,6 +35,7 @@ define([
     "../views/CharacterPortraitView",
     "../views/TroupeCharacterRelationshipsNetworkView",
     "../views/CharacterDeleteView",
+    "../views/PlayerOptionsView",
 ], function ($,
              Parse,
              pretty,
@@ -66,7 +67,8 @@ define([
              UserSettingsProfileView,
              CharacterPortraitView,
              TroupeCharacterRelationshipsNetworkView,
-             CharacterDeleteView
+             CharacterDeleteView,
+             PlayerOptionsView
 ) {
 
     // Extends Backbone.Router
@@ -176,7 +178,10 @@ define([
 
         // Home method
         home: function() {
+            var self = this;
             this.enforce_logged_in().then(function () {
+                self.playerOptionsView = self.playerOptionsView || new PlayerOptionsView({el: "#player-options"});
+                self.playerOptionsView.render();
                 $.mobile.changePage("#player-options", {reverse: false, changeHash: false});
             });
         },

@@ -1,0 +1,7 @@
+<ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+    <li><a href="#characters?all">Characters</a></li>
+    <li><a href="#profile">Profile Settings</a></li>
+    <% if (Parse.User.current().get("admininterface")) { %>
+    <li><a href="#administration">Administration</a></li>
+    <% } %>
+</ul>
