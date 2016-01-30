@@ -23,7 +23,7 @@ define([
             var username = this.$("#signup-username").val();
             var password = this.$("#signup-password").val();
 
-            Parse.User.signUp(username, password, { ACL: new Parse.ACL() }, {
+            Parse.User.signUp(username, password, { }, {
                 success: function(user) {
                     location.reload();
                     self.undelegateEvents();
