@@ -180,8 +180,7 @@ define([
         home: function() {
             var self = this;
             this.enforce_logged_in().then(function () {
-                self.playerOptionsView = self.playerOptionsView || new PlayerOptionsView({el: "#player-options"});
-                self.playerOptionsView.render();
+                self.playerOptionsView = self.playerOptionsView || new PlayerOptionsView({el: "#player-options"}).render();
                 $.mobile.changePage("#player-options", {reverse: false, changeHash: false});
             });
         },
