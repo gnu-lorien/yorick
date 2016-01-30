@@ -23,6 +23,7 @@ requirejs.config( {
 		pretty: "prettyprint",
 		moment: "moment",
 		vis: "vis",
+		backform: "backform",
 
 		app: "../app"
 	},
@@ -33,6 +34,11 @@ requirejs.config( {
 		"backbone": {
 			"deps": [ "underscore", "jquery" ],
 			"exports": "Backbone"
+		},
+
+		"backform": {
+			"deps": [ "backbone" ],
+			"exports": "Backform",
 		},
 
         "parse": {
