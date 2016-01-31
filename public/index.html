@@ -56,12 +56,36 @@
 </div>
 
 <div id="player-options" data-role="page" data-title="Player Options">
-	<div role="main" class="ui-content">
-        <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-            <li><a href="#characters?all">Characters</a></li>
-            <li><a href="#profile">Profile Settings</a></li>
+    <div role="main" class="ui-content">
+    </div><!-- /content -->
+</div>
+
+<div id="administration" data-role="page" data-title="Administration">
+    <div role="main" class="ui-content">
+        <ul>
+            <li><a href="#troupes">Troupes</a></li>
         </ul>
-	</div><!-- /content -->
+    </div><!-- /content -->
+</div>
+
+<div id="troupe-new" data-role="page" data-title="New Troupe">
+    <div role="main" class="ui-content">
+        <form id="troupe-new-form"></form>
+    </div><!-- /content -->
+</div>
+
+<div id="troupes-list" data-role="page" data-title="Troupes">
+    <div role="main" class="ui-content">
+    </div>
+</div>
+
+<div id="troupe" data-role="page" data-title="Troupe">
+    <div role="main" class="ui-content">
+        <h1>Troupe</h1>
+        <div id="troupe-data"></div>
+        <h1>Staff</h1>
+        <div id="troupe-staff"></div>
+    </div>
 </div>
 
 <div data-role="footer" data-position="fixed" data-theme="a">
@@ -322,7 +346,7 @@
         <label for="specialize-name">Specialize Name</label>
         <input type="text" id="specialize-name" name="specialize-name" value="<%= b.get_specialization() %>">
         <label for="free-slider">Free Value:</label>
-        <input type="range" name="free-slider" id="free-slider" class="free-slider" value="<%= b.get('free_value') %>" min="0" max="<%= traitmax %>">
+        <input type="range" name="free-slider" id="free-slider" class="free-slider" value="<%= b.get('free_value') || 0 %>" min="0" max="<%= traitmax %>">
     </p>
 </script>
 

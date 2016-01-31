@@ -28,6 +28,18 @@ define([
             })
         },
 
+        events: {
+            "click .troupe-listing": "clicked",
+        },
+
+        clicked: function(e) {
+            var self = this;
+            e.preventDefault();
+            $.mobile.loading("show");
+            var pickedId = $(e.target).attr("backendId");
+            window.location.hash = "#troupe/" + pickedId;
+        },
+
         // Renders all of the Category models on the UI
         render: function() {
             var self = this;

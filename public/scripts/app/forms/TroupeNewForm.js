@@ -6,7 +6,6 @@ define([
 ], function( $, Backbone, Backform, Troupe) {
     var Form = Backform.Form.extend({
         fields: [
-            {name: "id", label: "id", control: "uneditable-input"},
             {name: "name", label: "Name", control: "input"},
             {name: "shortname", label: "Short Name", control: "input"},
             {name: "shortdescription", label: "Short Public Description", control: "input"},

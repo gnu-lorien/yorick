@@ -38,6 +38,7 @@ define([
     "../views/PlayerOptionsView",
     "../views/TroupeNewView",
     "../views/TroupesListView",
+    "../views/TroupeView",
 ], function ($,
              Parse,
              pretty,
@@ -72,7 +73,8 @@ define([
              CharacterDeleteView,
              PlayerOptionsView,
              TroupeNewView,
-             TroupesListView
+             TroupesListView,
+             TroupeView
 ) {
 
     // Extends Backbone.Router
@@ -179,6 +181,7 @@ define([
             "troupe/characters/relationships/network": "relationshipnetwork",
             "troupe/new": "troupenew",
             "troupes": "troupes",
+            "troupe/:id": "troupe",
 
             "administration": "administration",
 
@@ -568,6 +571,21 @@ define([
 
             }
 
+        },
+
+        troupe: function(id) {
+            var self = this;
+            $.mobile.loading("show");
+            self.enforce_logged_in().then(function() {
+                self.set_back_button("#troupes");
+                return new Parse.Query("Troupe").get(id);
+            }).then(function (troupe) {
+                self.troupeView = self.troupeView || new TroupeView({el: "#troupe"});
+                self.troupeView.register(troupe);
+                $.mobile.changePage("#troupe", {reverse: false, changeHash: false});
+            }).always(function() {
+                $.mobile.loading("hide");
+            });
         },
 
         troupes: function() {
