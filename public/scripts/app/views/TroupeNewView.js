@@ -29,6 +29,7 @@ define([
                     "submit": function (e) {
                         e.preventDefault();
                         var troupe;
+                        $.mobile.loading("show");
                         this.model.save().then(function (t) {
                             console.log("Saved the troupe");
                             troupe = t;
@@ -82,8 +83,12 @@ define([
                             return troupe.save();
                         }).then(function (t) {
                             console.log("Saved troupe again");
+                            window.location.hash = "#troupe/" + t.id;
                         }).fail(function(error) {
                             console.log("Failed to save troupe " + error.message);
+                            window.location.hash = "#administration";
+                        }).always(function () {
+                            $.mobile.loading("hide");
                         })
                     }
                 }

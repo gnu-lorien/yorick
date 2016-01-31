@@ -1,0 +1,15 @@
+<ul>
+    <li><a href="#troupe/new">Create Troupe</a></li>
+</ul>
+<form class="ui-filterable">
+    <input id="troupes-list-filter" data-type="search">
+</form>
+<ul data-role="listview" data-filter="true" data-input="#troupes-list-filter">
+    <% _.each(collection, function(e) { %>
+    <li>
+        <a name="<%= e.get('name') %>" backendId="<%= e.id %>" href="#" class="ui-btn ui-btn-icon-right ui-icon-carat-r troupe-listing">
+            <%= e.get("name") %>
+        </a>
+    </li>
+    <% }); %>
+</ul>

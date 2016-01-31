@@ -37,6 +37,7 @@ define([
     "../views/CharacterDeleteView",
     "../views/PlayerOptionsView",
     "../views/TroupeNewView",
+    "../views/TroupesListView",
 ], function ($,
              Parse,
              pretty,
@@ -70,7 +71,8 @@ define([
              TroupeCharacterRelationshipsNetworkView,
              CharacterDeleteView,
              PlayerOptionsView,
-             TroupeNewView
+             TroupeNewView,
+             TroupesListView
 ) {
 
     // Extends Backbone.Router
@@ -176,6 +178,7 @@ define([
 
             "troupe/characters/relationships/network": "relationshipnetwork",
             "troupe/new": "troupenew",
+            "troupes": "troupes",
 
             "administration": "administration",
 
@@ -567,12 +570,28 @@ define([
 
         },
 
-        troupenew: function() {
+        troupes: function() {
             var self = this;
+            $.mobile.loading("show");
             self.enforce_logged_in().then(function() {
                 self.set_back_button("#administration");
+                self.troupesListView = self.troupesListView || new TroupesListView({el: "#troupes-list"}).render();
+                self.troupesListView.register();
+                $.mobile.changePage("#troupes-list", {reverse: false, changeHash: false});
+            }).always(function() {
+                $.mobile.loading("hide");
+            });
+        },
+
+        troupenew: function() {
+            var self = this;
+            $.mobile.loading("show");
+            self.enforce_logged_in().then(function() {
+                self.set_back_button("#troupes");
                 self.troupeNewView = self.troupeNewView || new TroupeNewView({el: "#troupe-new"}).render();
                 $.mobile.changePage("#troupe-new", {reverse: false, changeHash: false});
+            }).always(function() {
+                $.mobile.loading("hide");
             });
         },
 
