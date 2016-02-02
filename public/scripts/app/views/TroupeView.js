@@ -3,8 +3,8 @@ define([
     "backbone",
     "backform",
     "../models/Troupe",
-    "../forms/TroupeNewForm"
-], function( $, Backbone, Backform, Troupe, TroupeNewForm) {
+    "../forms/TroupeForm"
+], function( $, Backbone, Backform, Troupe, TroupeForm) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
@@ -20,10 +20,25 @@ define([
             var changed = false;
             if (troupe !== self.troupe) {
                 self.troupe = troupe;
-                self.form = new TroupeNewForm({
+                self.form = new TroupeForm({
                     el: "#troupe-data",
                     model: self.troupe,
+                    events: {
+                        "submit": function (e) {
+                            e.preventDefault();
+                            $.mobile.loading("show");
+                            this.model.save().then(function (t) {
+                                console.log("Saved the troupe");
+                            }).fail(function (error) {
+                                console.log("Failed to save troupe " + error.message);
+                                window.location.hash = "#administration";
+                            }).always(function () {
+                                $.mobile.loading("hide");
+                            })
+                        }
+                    }
                 });
+                self.form.fields.add(new Backform.Field({control: "button", label: "Update"}))
                 changed = true;
             }
 
