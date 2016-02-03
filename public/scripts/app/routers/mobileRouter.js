@@ -39,6 +39,7 @@ define([
     "../views/TroupeNewView",
     "../views/TroupesListView",
     "../views/TroupeView",
+    "../views/TroupeAddStaffView",
 ], function ($,
              Parse,
              pretty,
@@ -74,7 +75,8 @@ define([
              PlayerOptionsView,
              TroupeNewView,
              TroupesListView,
-             TroupeView
+             TroupeView,
+             TroupeAddStaffView
 ) {
 
     // Extends Backbone.Router
@@ -182,6 +184,7 @@ define([
             "troupe/new": "troupenew",
             "troupes": "troupes",
             "troupe/:id": "troupe",
+            "troupe/:id/staff/add": "troupeaddstaff",
 
             "administration": "administration",
 
@@ -571,6 +574,21 @@ define([
 
             }
 
+        },
+
+        troupeaddstaff: function(id) {
+            var self = this;
+            $.mobile.loading("show");
+            self.enforce_logged_in().then(function() {
+                self.set_back_button("#troupe/" + id);
+                return new Parse.Query("Troupe").get(id);
+            }).then(function (troupe) {
+                self.troupeAddStaffView = self.troupeAddStaffView || new TroupeAddStaffView({el: "#troupe-add-staff"});
+                self.troupeAddStaffView.register(troupe);
+                $.mobile.changePage("#troupe-add-staff", {reverse: false, changeHash: false});
+            }).always(function() {
+                $.mobile.loading("hide");
+            });
         },
 
         troupe: function(id) {

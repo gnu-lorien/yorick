@@ -12,7 +12,7 @@ define([
         // The View Constructor
         initialize: function () {
             var self = this;
-            _.bindAll(this, "render");
+            _.bindAll(this, "render", "addstaff");
         },
 
         register: function(troupe) {
@@ -47,6 +47,16 @@ define([
             } else {
                 return self;
             }
+        },
+
+        events: {
+            "click .troupe-add-staff": "addstaff",
+        },
+
+        addstaff: function (e) {
+            var self = this;
+            e.preventDefault();
+            window.location.hash = "#troupe/" + self.troupe.id + "/staff/add";
         },
 
         // Renders all of the Category models on the UI
