@@ -1,3 +1,5 @@
 <ul>
-    <li>Where the staff is gonna be listed</li>
+    <% _.each(collection, function (user) { %>
+    <li><%= user.get("username") %></li>
+    <% }) %>
 </ul>

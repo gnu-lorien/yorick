@@ -3,8 +3,9 @@ define([
     "backbone",
     "backform",
     "../models/Troupe",
-    "../forms/TroupeForm"
-], function( $, Backbone, Backform, Troupe, TroupeForm) {
+    "../forms/TroupeForm",
+    "text!../templates/troupe-staff-list.html",
+], function( $, Backbone, Backform, Troupe, TroupeForm, troupe_staff_list_html) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
@@ -64,12 +65,13 @@ define([
             var self = this;
 
             // Sets the view's template property
-            //this.template = _.template(player_options_html)();
-            self.form.render();
+            self.troupe.get_staff().then(function (users) {
+                self.template = _.template(troupe_staff_list_html)({collection: users});
+                self.$el.find("#troupe-staff").html(self.template);
+                self.form.render();
+                self.$el.enhanceWithin();
+            })
 
-            // Renders the view's template inside of the current div element
-            //this.$el.find("div[role='main']").html(this.template);
-            this.$el.enhanceWithin();
 
             // Maintains chainability
             return this;
