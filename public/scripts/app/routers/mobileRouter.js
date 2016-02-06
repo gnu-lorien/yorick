@@ -40,6 +40,7 @@ define([
     "../views/TroupesListView",
     "../views/TroupeView",
     "../views/TroupeAddStaffView",
+    "../views/TroupeEditStaffView",
 ], function ($,
              Parse,
              pretty,
@@ -76,7 +77,8 @@ define([
              TroupeNewView,
              TroupesListView,
              TroupeView,
-             TroupeAddStaffView
+             TroupeAddStaffView,
+             TroupeEditStaffView
 ) {
 
     // Extends Backbone.Router
@@ -185,6 +187,7 @@ define([
             "troupes": "troupes",
             "troupe/:id": "troupe",
             "troupe/:id/staff/add": "troupeaddstaff",
+            "troupe/:id/staff/edit/:uid": "troupeeditstaff",
 
             "administration": "administration",
 
@@ -574,6 +577,32 @@ define([
 
             }
 
+        },
+
+        troupeeditstaff: function(id, uid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.enforce_logged_in().then(function() {
+                self.set_back_button("#troupe/" + id);
+                var get_troupe = new Parse.Query("Troupe").get(id);
+                var get_user = new Parse.Query("User").get(uid);
+                return Parse.Promise.when(get_troupe, get_user);
+            }).then(function (troupe, user) {
+                self.troupeEditStaffView = self.troupeEditStaffView || new TroupeEditStaffView({el: "#troupe-edit-staff"});
+                return self.troupeEditStaffView.register(troupe, user);
+            }).then(function() {
+                $.mobile.changePage("#troupe-edit-staff", {reverse: false, changeHash: false});
+            }).always(function() {
+                $.mobile.loading("hide");
+            }).fail(function(error) {
+                if (_.isArray(error)) {
+                    _.each(error, function(e) {
+                        console.log("Something failed" + e.message);
+                    })
+                } else {
+                    console.log("error updating experience" + error.message);
+                }
+            });
         },
 
         troupeaddstaff: function(id) {

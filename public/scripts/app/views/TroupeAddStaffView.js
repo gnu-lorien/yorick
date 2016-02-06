@@ -38,8 +38,7 @@ define([
             e.preventDefault();
             $.mobile.loading("show");
             var pickedId = $(e.target).attr("backendId");
-            var user = self.collection.getById(pickedId);
-            window.location.hash = "#troupe/" + pickedId;
+            window.location.hash = "#troupe/" + self.troupe.id + "/staff/edit/" + pickedId;
         },
 
         // Renders all of the Category models on the UI
