@@ -15,29 +15,13 @@ define([
             this.title_options = ["LST", "AST", "Narrator"];
         },
 
-        get_roles: function() {
-            var self = this;
-            var roles = {};
-            var promises = _.map(self.title_options, function (title) {
-                var q = new Parse.Query(Parse.Role);
-                q.equalTo("name", title + "_" + self.troupe.id);
-                return q.first().then(function (role) {
-                    console.log("Finding " + title + " " + role);
-                    roles[title] = role;
-                });
-            })
-            return Parse.Promise.when(promises).then(function () {
-                return Parse.Promise.as(roles);
-            });
-        },
-
         register: function(troupe, user) {
             var self = this;
             self.troupe = troupe;
             self.user = user;
 
             var roles = {};
-            return Parse.Promise.when(self.get_roles()).then(function (inroles) {
+            return Parse.Promise.when(self.troupe.get_roles()).then(function (inroles) {
                 roles = inroles;
                 var promises = _.map(self.title_options, function (title) {
                     var u = roles[title].getUsers();
