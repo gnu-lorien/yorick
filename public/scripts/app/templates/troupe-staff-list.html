@@ -1,5 +1,5 @@
 <ul>
     <% _.each(collection, function (user) { %>
-    <li><%= user.get("username") %></li>
+    <li><%= user.get("username") %> <%= user.get("role") %></li>
     <% }) %>
 </ul>

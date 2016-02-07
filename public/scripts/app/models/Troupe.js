@@ -25,6 +25,7 @@ define([
                     var u = role.getUsers();
                     var q = u.query();
                     return q.each(function(user) {
+                        user.set("role", title);
                         users.push(user);
                     });
                 })
