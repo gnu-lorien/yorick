@@ -41,6 +41,7 @@ define([
     "../views/TroupeView",
     "../views/TroupeAddStaffView",
     "../views/TroupeEditStaffView",
+    "../models/Troupe",
 ], function ($,
              Parse,
              pretty,
@@ -78,7 +79,8 @@ define([
              TroupesListView,
              TroupeView,
              TroupeAddStaffView,
-             TroupeEditStaffView
+             TroupeEditStaffView,
+             Troupe
 ) {
 
     // Extends Backbone.Router
@@ -179,6 +181,7 @@ define([
             "character/:cid/history/:id": "characterhistory",
             "character/:cid/portrait": "characterportrait",
             "character/:cid/delete": "characterdelete",
+            "character/:cid/troupe/:tid/join": "characterjointroupe",
 
             "character/:cid/experience/:start/:changeBy": "characterexperience",
 
@@ -577,6 +580,31 @@ define([
 
             }
 
+        },
+
+        characterjointroupe: function(cid, tid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            var character, troupe;
+            self.get_character(cid).then(function (c) {
+                character = c;
+                var t = new Troupe({id: tid});
+                return t.fetch();
+            }).then(function (t) {
+                troupe = t;
+                return character.join_troupe(t);
+            }).always(function() {
+                $.mobile.loading("hide");
+            }).fail(function(error) {
+                if (_.isArray(error)) {
+                    _.each(error, function(e) {
+                        console.log("Something failed" + e.message);
+                    })
+                } else {
+                    console.log("error updating experience" + error.message);
+                }
+            });
         },
 
         troupeeditstaff: function(id, uid) {

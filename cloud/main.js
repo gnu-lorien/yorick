@@ -106,6 +106,7 @@ Parse.Cloud.beforeSave("Vampire", function(request, response) {
                 "new_text": val,
                 "owner": vampire,
                 "type": serverData[attribute] === undefined ? "core_define" : "core_update",
+                "instigator": request.user
             });
             var acl = new Parse.ACL;
             acl.setPublicReadAccess(false);
@@ -161,6 +162,7 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
         "cost": modified_trait.get("cost"),
         "old_text": serverData.name,
         "simple_trait_id": modified_trait.id,
+        "instigator": request.user
     });
 
     if (!isMeaningfulChange(vc)) {
@@ -203,6 +205,7 @@ Parse.Cloud.beforeDelete("SimpleTrait", function(request, response) {
         "type": "remove",
         "old_cost": serverData.cost,
         "simple_trait_id": trait.id,
+        "instigator": request.user
     });
     var vToFetch = new Vampire({id: vc.get("owner").id});
     vToFetch.fetch().then(function(vampire) {

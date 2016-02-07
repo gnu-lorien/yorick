@@ -62,11 +62,16 @@ define([
         },
 
         get_me_acl: function () {
+            var self = this;
             var acl = new Parse.ACL;
             acl.setPublicReadAccess(false);
             acl.setPublicWriteAccess(false);
             acl.setWriteAccess(Parse.User.current(), true);
             acl.setReadAccess(Parse.User.current(), true);
+            _.each(self.troupe_ids, function(id) {
+                acl.setRoleReadAccess("LST_" + id, true);
+                acl.setRoleWriteAccess("LST_" + id, true);
+            });
             return acl;
         },
 
@@ -785,7 +790,35 @@ define([
             var self = this;
             self.unset("owner");
             return self.save();
-        }
+        },
+
+        initialize_troupe_membership: function() {
+            var self = this;
+            self.troupe_ids = [];
+            var troupes = self.relation("troupes");
+            var q = troupes.query();
+            return q.each(function(troupe) {
+                self.troupe_ids.push(troupe.id);
+            }).then(function () {
+                return Parse.Promise.as(self);
+            })
+        },
+
+        join_troupe: function(troupe) {
+            var self = this;
+            self.relation("troupes").add(troupe);
+            self.troupe_ids.push(troupe.id);
+            var newACL = self.get_me_acl();
+            self.setACL(newACL);
+            return self.save().then(function () {
+                var q = new Parse.Query("SimpleTrait");
+                q.equalTo("owner", self);
+                return q.each(function (st) {
+                    st.setACL(self.get_me_acl());
+                    return st.save();
+                })
+            });
+        },
     } );
 
     Model.get_character = function(id, categories, character_cache) {
@@ -832,6 +865,8 @@ define([
         /* FIXME: Hack to inject something that should be created with the character */
         return character_cache._character.ensure_creation_rules_exist().then(function (c) {
             return character_cache._character.initialize_vampire_costs();
+        }).then(function (c) {
+            return character_cache._character.initialize_troupe_membership();
         });
     };
 
