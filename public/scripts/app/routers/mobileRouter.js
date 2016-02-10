@@ -202,9 +202,15 @@ define([
         home: function() {
             var self = this;
             this.enforce_logged_in().then(function () {
+                var q = (new Parse.Query(Parse.Role)).equalTo("users", Parse.User.current());
+                return q.count();
+            }).then(function (count) {
+                if (0 < count) {
+                    Parse.User.current().set("storytellerinterface", true);
+                }
                 self.playerOptionsView = self.playerOptionsView || new PlayerOptionsView({el: "#player-options"}).render();
                 $.mobile.changePage("#player-options", {reverse: false, changeHash: false});
-            });
+            }).fail(PromiseFailReport);
         },
 
         logout: function() {
