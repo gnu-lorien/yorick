@@ -799,6 +799,8 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
                     var acl = vampire.get_me_acl();
                     expect(acl.getRoleWriteAccess("LST_" + SAMPLE_TROUPE_ID)).toBe(true);
                     expect(acl.getRoleReadAccess("LST_" + SAMPLE_TROUPE_ID)).toBe(true);
+                    expect(acl.getRoleWriteAccess("AST_" + SAMPLE_TROUPE_ID)).toBe(true);
+                    expect(acl.getRoleReadAccess("AST_" + SAMPLE_TROUPE_ID)).toBe(true);
                     done();
                 }, function (error) {
                     if (_.isString(error)) {

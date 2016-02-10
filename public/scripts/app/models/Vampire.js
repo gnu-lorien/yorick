@@ -71,6 +71,8 @@ define([
             _.each(self.troupe_ids, function(id) {
                 acl.setRoleReadAccess("LST_" + id, true);
                 acl.setRoleWriteAccess("LST_" + id, true);
+                acl.setRoleReadAccess("AST_" + id, true);
+                acl.setRoleWriteAccess("AST_" + id, true);
             });
             return acl;
         },
