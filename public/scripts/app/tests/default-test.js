@@ -3,8 +3,8 @@
  * Created by Andrew on 11/7/2015.
  */
 
-define(["underscore", "jquery", "parse", "../models/Vampire", "backbone"], function (_, $, Parse, Vampire, Backbone) {
-    jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
+define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../models/Troupe"], function (_, $, Parse, Vampire, Backbone, Troupe) {
+    jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
     describe("A suite", function() {
         it("contains spec with an expectation", function() {
             expect(true).toBe(true);
@@ -18,6 +18,16 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone"], funct
         }
         return Parse.Promise.as(Parse.User.current());
     };
+
+    var MemberParseStart = function () {
+        Parse.$ = $;
+        Parse.initialize("rXfLuSWZZs1xxyeX4IzlG1ZCuglbIoDlGHwg68Ru", "yymp8UWnJ7Va32Y2Q4uzvWxfPTYuDvZSA8kdhmdR");
+        if (!Parse.User.current()) {
+            return Parse.User.logIn("sampmem", "sampmem");
+        }
+        return Parse.Promise.as(Parse.User.current());
+    }
+
     describe("Parse", function() {
         beforeAll(function() {
             Parse.$ = $;
@@ -762,5 +772,43 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone"], funct
                 done.fail(error);
             })
         });
+    });
+    */
+
+    describe("A Troupe Member", function() {
+        var vampire;
+        var SAMPLE_TROUPE_ID = "deiNfiuZdD";
+        beforeAll(function (done) {
+            MemberParseStart().then(function () {
+                return Vampire.create_test_character("troupemember");
+            }).then(function (v) {
+                return Vampire.get_character(v.id);
+            }).then(function (v) {
+                vampire = v;
+                done();
+            }, function(error) {
+                done.fail(error);
+            });
+        });
+
+        it("can add a vampire", function(done) {
+            var t = new Troupe({id: SAMPLE_TROUPE_ID});
+            t.fetch().then(function (troupe) {
+                return vampire.join_troupe(troupe).then(function () {
+                    var acl = vampire.get_me_acl();
+                    expect(acl.getRoleWriteAccess("LST_" + SAMPLE_TROUPE_ID)).toBe(true);
+                    expect(acl.getRoleReadAccess("LST_" + SAMPLE_TROUPE_ID)).toBe(true);
+                    done();
+                }, function (error) {
+                    if (_.isString(error)) {
+                        done.fail(error);
+                    } else {
+                        done.fail(error.message);
+                    }
+                })
+            });
+        });
+
+
     });
 });
