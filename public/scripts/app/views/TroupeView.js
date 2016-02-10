@@ -28,6 +28,7 @@ define([
                         "submit": function (e) {
                             e.preventDefault();
                             $.mobile.loading("show");
+                            console.log(Parse.User.current().get("username"));
                             this.model.save().then(function (t) {
                                 console.log("Saved the troupe");
                             }).fail(function (error) {

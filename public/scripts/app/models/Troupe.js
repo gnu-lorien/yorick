@@ -15,6 +15,7 @@ define([
             acl.setRoleWriteAccess("Administrator", true);
             self.setACL(acl);
             self.title_options = ["LST", "AST", "Narrator"];
+            //self.title_options = ["AST", "Narrator"];
         },
 
         get_staff: function() {
@@ -49,6 +50,21 @@ define([
                 return Parse.Promise.as(roles);
             });
         },
+
+        get_generic_roles: function() {
+            var self = this;
+            var roles = {};
+            var promises = _.map(self.title_options, function (title) {
+                var q = new Parse.Query(Parse.Role);
+                q.equalTo("name", title);
+                return q.first().then(function (role) {
+                    roles[title] = role;
+                });
+            })
+            return Parse.Promise.when(promises).then(function () {
+                return Parse.Promise.as(roles);
+            });
+        }
 
 
     } );

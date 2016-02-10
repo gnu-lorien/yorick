@@ -4,7 +4,8 @@ define([
     "backbone",
     "parse",
     "backform",
-], function( $, Backbone, Parse, Backform) {
+    "../helpers/PromiseFailReport"
+], function( $, Backbone, Parse, Backform, PromiseFailReport) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
@@ -12,7 +13,6 @@ define([
         // The View Constructor
         initialize: function () {
             _.bindAll(this, "render", "submit");
-            this.title_options = ["LST", "AST", "Narrator"];
         },
 
         register: function(troupe, user) {
@@ -23,7 +23,7 @@ define([
             var roles = {};
             return Parse.Promise.when(self.troupe.get_roles()).then(function (inroles) {
                 roles = inroles;
-                var promises = _.map(self.title_options, function (title) {
+                var promises = _.map(self.troupe.title_options, function (title) {
                     var u = roles[title].getUsers();
                     var q = u.query();
                     q.equalTo("objectId", self.user.id);
@@ -86,34 +86,39 @@ define([
             var self = this;
             e.preventDefault();
             var role = self.user.get("role");
-            var roles_to_remove = _.slice(self.title_options),
+            var roles_to_remove = _.slice(self.troupe.title_options),
                 roles_to_add = [];
             if (!_.isUndefined(role)) {
                 roles_to_add.push(role);
                 roles_to_remove = _.xor(roles_to_remove, roles_to_add);
             }
 
-            return Parse.Promise.when(self.get_roles()).then(function (roles) {
-                _.each(roles_to_remove, function(title) {
+            var alter_roles = function (roles) {
+                _.each(roles_to_remove, function (title) {
                     var u = roles[title].getUsers();
                     console.log(u);
                     u.remove(self.user);
                 });
-                _.each(roles_to_add, function(title) {
+                _.each(roles_to_add, function (title) {
                     roles[title].getUsers().add(self.user);
                 })
-                return Parse.Object.saveAll(_.values(roles));
-            }).then(function() {
-                window.location.hash = "#troupe/" + self.troupe.id;
-            }).fail(function(error) {
-                if (_.isArray(error)) {
-                    _.each(error, function(e) {
-                        console.log("Something failed" + e.message);
-                    })
-                } else {
-                    console.log("error updating experience" + error.message);
-                }
-            });
+                var to_save = _.values(roles);
+                var promises = _.map(to_save, function (s) {
+                    return s.save().fail(PromiseFailReport);
+                })
+                return Parse.Promise.when(promises);
+            }
+
+            return Parse.Promise
+                .when(self.troupe.get_roles())
+                .then(alter_roles)
+                .then(function () {
+                    return self.troupe.get_generic_roles();
+                })
+                .then(alter_roles)
+                .always(function () {
+                    window.location.hash = "#troupe/" + self.troupe.id;
+                }).fail(PromiseFailReport);
         },
 
         // Renders all of the Category models on the UI
