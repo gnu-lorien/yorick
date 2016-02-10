@@ -812,6 +812,34 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
             });
         });
 
+        it("shows her vampire to the AST", function (done) {
+            ASTParseStart().then(function () {
+                return Vampire.get_character(vampire.id);
+            }).then(function (v) {
+                var acl = v.get_me_acl();
+                expect(acl.getRoleWriteAccess("LST_" + SAMPLE_TROUPE_ID)).toBe(true);
+                expect(acl.getRoleReadAccess("LST_" + SAMPLE_TROUPE_ID)).toBe(true);
+                expect(acl.getRoleWriteAccess("AST_" + SAMPLE_TROUPE_ID)).toBe(true);
+                expect(acl.getRoleReadAccess("AST_" + SAMPLE_TROUPE_ID)).toBe(true);
+                done();
+            }, function (error) {
+                if (_.isString(error)) {
+                    done.fail(error);
+                } else {
+                    done.fail(error.message);
+                }
+            })
+        });
+
+        it("doesn't show her vampire to everybody", function (done) {
+            ParseStart().then(function () {
+                return Vampire.get_character(vampire.id);
+            }).then(function (v) {
+                done.fail("Fetched the vampire as devuser");
+            }, function (error) {
+                done();
+            })
+        });
 
     });
 });
