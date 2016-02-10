@@ -22,7 +22,7 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
     var MemberParseStart = function () {
         Parse.$ = $;
         Parse.initialize("rXfLuSWZZs1xxyeX4IzlG1ZCuglbIoDlGHwg68Ru", "yymp8UWnJ7Va32Y2Q4uzvWxfPTYuDvZSA8kdhmdR");
-        if (!Parse.User.current()) {
+        if (!_.eq(Parse.User.current().get("username"), "sampmem")) {
             return Parse.User.logIn("sampmem", "sampmem");
         }
         return Parse.Promise.as(Parse.User.current());
@@ -780,6 +780,7 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
         var SAMPLE_TROUPE_ID = "deiNfiuZdD";
         beforeAll(function (done) {
             MemberParseStart().then(function () {
+                expect(Parse.User.current().get("username")).toBe("sampmem");
                 return Vampire.create_test_character("troupemember");
             }).then(function (v) {
                 return Vampire.get_character(v.id);
