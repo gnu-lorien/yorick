@@ -5,8 +5,7 @@ require([
     "app/routers/mobileRouter",
     "app/collections/BNSMETV1_ClanRules",
     "moment",
-    "mobiledatepicker"
-], function ( $, Parse, Mobile, ClanRules, moment, mobiledatepicker ) {
+], function ( $, Parse, Mobile, ClanRules, moment ) {
 
     $( document ).on( "mobileinit",
 
