@@ -42,6 +42,7 @@ define([
     "../views/TroupeAddStaffView",
     "../views/TroupeEditStaffView",
     "../models/Troupe",
+    "../helpers/PromiseFailReport"
 ], function ($,
              Parse,
              pretty,
@@ -80,7 +81,8 @@ define([
              TroupeView,
              TroupeAddStaffView,
              TroupeEditStaffView,
-             Troupe
+             Troupe,
+             PromiseFailReport
 ) {
 
     // Extends Backbone.Router
@@ -462,8 +464,8 @@ define([
                     return self.get_user_characters();
                 }).then(function (characters) {
                     $.mobile.changePage("#characters-all", {reverse: false, changeHash: false});
-                }).fail(function (error) {
-                    console.log(error.message);
+                }).fail(PromiseFailReport).fail(function () {
+                    $.mobile.loading("hide");
                 });
             }
         },
