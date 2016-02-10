@@ -420,6 +420,8 @@ define([
                 c.model = m;
                 c.render();
                 $.mobile.changePage("#character", {reverse: false, changeHash:false});
+            }).fail(PromiseFailReport).fail(function () {
+                window.location.hash = "#characters?all";
             });
         },
 
@@ -442,20 +444,18 @@ define([
                 c.sortbycreated = true;
             }
             var p = Parse.Promise.as([]);
-            if (!c.length) {
-                var q = new Parse.Query(Vampire);
-                q.equalTo("owner", Parse.User.current());
-                q.include("portrait");
-                c.query = q;
-                //p = c.fetch({add: true, merge: true})
-                p = q.each(function (character) {
-                    try {
-                        c.add(character);
-                    } catch (err) {
-                        console.log("" + err);
-                    }
-                })
-            }
+            var q = new Parse.Query(Vampire);
+            q.equalTo("owner", Parse.User.current());
+            q.include("portrait");
+            c.query = q;
+            //p = c.fetch({add: true, merge: true})
+            p = q.each(function (character) {
+                try {
+                    c.add(character);
+                } catch (err) {
+                    console.log("" + err);
+                }
+            })
             return p.done(function () {
                 return Parse.Promise.as(self.characters.collection);
             })
