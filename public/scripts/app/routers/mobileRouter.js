@@ -438,17 +438,23 @@ define([
         get_user_characters: function() {
             var self = this;
             var c = self.characters.collection;
+            if (Parse.User.current().get("username") == "devuser") {
+                c.sortbycreated = true;
+            }
             var p = Parse.Promise.as([]);
             if (!c.length) {
                 var q = new Parse.Query(Vampire);
-                if (Parse.User.current().get("username") == "devuser") {
-                    q.equalTo("owner", Parse.User.current()).addDescending("createdAt");
-                } else {
-                    q.equalTo("owner", Parse.User.current()).addAscending("name");
-                }
+                q.equalTo("owner", Parse.User.current());
                 q.include("portrait");
                 c.query = q;
-                p = c.fetch({add: true, merge: true})
+                //p = c.fetch({add: true, merge: true})
+                p = q.each(function (character) {
+                    try {
+                        c.add(character);
+                    } catch (err) {
+                        console.log("" + err);
+                    }
+                })
             }
             return p.done(function () {
                 return Parse.Promise.as(self.characters.collection);
