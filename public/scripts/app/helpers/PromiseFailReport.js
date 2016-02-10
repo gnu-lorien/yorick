@@ -3,9 +3,12 @@ define([
     "parse",
 ], function( _, Parse  ) {
 
-    var log_single = function (error) {
+    var process_single = function (error) {
         if (_.has(error, "message")) {
             console.log("Error in promise " + error.message);
+            if (Parse.Error.INVALID_LINKED_SESSION == error.code) {
+                Parse.User.logOut();
+            }
         } else {
             console.log("Error in promise " + error);
         }
@@ -14,10 +17,10 @@ define([
     var func = function (error) {
         if (_.isArray(error)) {
             _.each(error, function (e) {
-                log_single(e);
+                process_single(e);
             })
         } else {
-            log_single(error);
+            process_single(error);
         }
     };
 
