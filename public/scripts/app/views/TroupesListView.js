@@ -1,31 +1,45 @@
 // Includes file dependencies
 define([
+    "underscore",
     "jquery",
     "backbone",
     "text!../templates/troupes-list.html",
-    "parse"
-], function( $, Backbone, troupes_list_html, Parse) {
+    "parse",
+    "../collections/Troupes",
+    "../helpers/PromiseFailReport"
+], function( _, $, Backbone, troupes_list_html, Parse, Troupes, PromiseFailReport) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
 
         // The View Constructor
         initialize: function () {
-            _.bindAll(this, "render");
+            _.bindAll(this, "render", "register");
+            this.collection = new Troupes();
+            this.listenTo(this.collection, "add remove reset", this.render);
         },
 
-        register: function() {
+        register: function(base_url, filter) {
             var self = this;
-            self.collection = [];
-            var q = new Parse.Query("Troupe");
-            q.select("id", "name");
-            q.each(function (t) {
-                self.collection.push(t);
-            }).then(function () {
-                self.render();
-            }, function (error) {
-                console.log("No troupes? " + error.message);
-            })
+            var changed;
+            base_url = base_url || "#troupe/";
+            if (!_.eq(base_url, self.base_url)) {
+                self.base_url = base_url;
+                changed = true;
+            }
+
+            filter = filter || function () {};
+            if (!_.eq(filter, self.filter)) {
+                var incoming = [];
+                var q = new Parse.Query("Troupe");
+                q.select("id", "name");
+                filter(q);
+                q.each(function (t) {
+                    incoming.push(t);
+                }).then(function () {
+                    self.collection.reset(incoming);
+                }).fail(PromiseFailReport)
+            }
         },
 
         events: {
@@ -37,7 +51,7 @@ define([
             e.preventDefault();
             $.mobile.loading("show");
             var pickedId = $(e.target).attr("backendId");
-            window.location.hash = "#troupe/" + pickedId;
+            window.location.hash = self.base_url + pickedId;
         },
 
         // Renders all of the Category models on the UI
@@ -45,7 +59,7 @@ define([
             var self = this;
 
             // Sets the view's template property
-            this.template = _.template(troupes_list_html)({collection: self.collection});
+            this.template = _.template(troupes_list_html)({collection: self.collection.models});
 
             // Renders the view's template inside of the current div element
             this.$el.find("div[role='main']").html(this.template);
