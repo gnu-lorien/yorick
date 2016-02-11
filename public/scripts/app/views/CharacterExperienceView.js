@@ -8,9 +8,8 @@ define([
     "moment",
     "../models/ExperienceNotation",
     "../collections/ExperienceNotationCollection",
-    "mobiledatepicker",
     "../collections/VampireChangeCollection"
-], function( $, Backbone, moment, ExperienceNotation, ExperienceNotationCollection, mobiledatepicker, VampireChangeCollection) {
+], function( $, Backbone, moment, ExperienceNotation, ExperienceNotationCollection, VampireChangeCollection) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
