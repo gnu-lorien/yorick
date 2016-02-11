@@ -53,12 +53,19 @@ define([
 
         events: {
             "click .troupe-add-staff": "addstaff",
+            "click .troupe-view-characters": "viewcharacters",
         },
 
         addstaff: function (e) {
             var self = this;
             e.preventDefault();
             window.location.hash = "#troupe/" + self.troupe.id + "/staff/add";
+        },
+
+        addstaff: function (e) {
+            var self = this;
+            e.preventDefault();
+            window.location.hash = "#troupe/" + self.troupe.id + "/characters/all";
         },
 
         // Renders all of the Category models on the UI

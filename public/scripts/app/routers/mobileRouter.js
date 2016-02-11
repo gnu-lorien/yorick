@@ -193,6 +193,7 @@ define([
             "troupe/:id": "troupe",
             "troupe/:id/staff/add": "troupeaddstaff",
             "troupe/:id/staff/edit/:uid": "troupeeditstaff",
+            "troupe/:id/characters/:type": "troupecharacters",
 
             "administration": "administration",
 
@@ -608,6 +609,31 @@ define([
             }).then(function (t) {
                 troupe = t;
                 return character.join_troupe(t);
+            }).always(function() {
+                $.mobile.loading("hide");
+            }).fail(function(error) {
+                if (_.isArray(error)) {
+                    _.each(error, function(e) {
+                        console.log("Something failed" + e.message);
+                    })
+                } else {
+                    console.log("error updating experience" + error.message);
+                }
+            });
+        },
+
+        troupecharacters: function(id, type) {
+            var self = this;
+            $.mobile.loading("show");
+            self.enforce_logged_in().then(function() {
+                self.set_back_button("#troupe/" + id);
+                var get_troupe = new Parse.Query("Troupe").get(id);
+                return get_troupe;
+            }).then(function (troupe, user) {
+                self.troupeEditStaffView = self.troupeEditStaffView || new TroupeEditStaffView({el: "#troupe-edit-staff"});
+                return self.troupeEditStaffView.register(troupe, user);
+            }).then(function() {
+                $.mobile.changePage("#troupe-edit-staff", {reverse: false, changeHash: false});
             }).always(function() {
                 $.mobile.loading("hide");
             }).fail(function(error) {
