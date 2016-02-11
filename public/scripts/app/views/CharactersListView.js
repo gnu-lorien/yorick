@@ -4,9 +4,8 @@
 // Includes file dependencies
 define([
 	"jquery",
-	"backbone",
-    "text!../templates/character-link-item.html"
-], function( $, Backbone, character_link_item_html) {
+	"backbone"
+], function( $, Backbone) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
@@ -25,7 +24,7 @@ define([
         render: function() {
 
             // Sets the view's template property
-            this.template = _.template( character_link_item_html )({ "collection": this.collection } );
+            this.template = _.template( $( "script#characterLinkItems" ).html() )({ "collection": this.collection } );
 
             // Renders the view's template inside of the current div element
             this.$el.find("ul[data-role='listview']").html(this.template);

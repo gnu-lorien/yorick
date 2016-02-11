@@ -26,7 +26,7 @@
         window.location.href = "https:" + window.location.href.substring(window.location.protocol.length);
     }
 </script>
-
+ 
 <body>
 
 
@@ -55,14 +55,59 @@
 </div>
 
 <div id="player-options" data-role="page" data-title="Player Options">
-	<div role="main" class="ui-content">
-        <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-            <li><a href="#characters?all">Characters</a></li>
-            <li><a href="#profile">Profile Settings</a></li>
-        </ul>
-	</div><!-- /content -->
+    <div role="main" class="ui-content">
+    </div><!-- /content -->
 </div>
 
+<div id="administration" data-role="page" data-title="Administration">
+    <div role="main" class="ui-content">
+        <ul>
+            <li><a href="#troupes">Troupes</a></li>
+        </ul>
+    </div><!-- /content -->
+</div>
+
+<div id="troupe-new" data-role="page" data-title="New Troupe">
+    <div role="main" class="ui-content">
+        <form id="troupe-new-form"></form>
+    </div><!-- /content -->
+</div>
+
+<div id="troupes-list" data-role="page" data-title="Troupes">
+    <div role="main" class="ui-content">
+    </div>
+</div>
+
+<div id="troupe" data-role="page" data-title="Troupe">
+    <div role="main" class="ui-content">
+        <button class="troupe-view-characters ui-btn">View Characters</button>
+        <div class="ui-grid-a ui-responsive">
+            <div class="ui-block-a">
+                <h1>Troupe</h1>
+                <form id="troupe-data"></form>
+            </div>
+            <div class="ui-block-b">
+                <h1>Staff</h1>
+                <div id="troupe-staff"></div>
+                <button class="troupe-add-staff ui-btn">Add New Staff Member</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="troupe-add-staff" data-role="page" data-title="Add Staff">
+    <div role="main" class="ui-content">
+    </div>
+</div>
+
+<div id="troupe-edit-staff" data-role="page" data-title="Edit Staff">
+    <div role="main" class="ui-content">
+        <h1>Edit Staff</h1>
+        <form id="troupe-edit-staff-form"></form>
+    </div>
+</div>
+
+<!--
 <div data-role="footer" data-position="fixed" data-theme="a">
     <div data-role="navbar">
         <ul>
@@ -71,8 +116,9 @@
             <li><a href="page-c.html" data-transition="turn">Albums</a></li>
             <li><a href="page-d.html" data-transition="slide">Emails</a></li>
         </ul>
-    </div><!-- /navbar -->
-</div><!-- /footer -->
+    </div>
+</div>
+-->
 
 <div id="character" data-role="page" data-title="Character">
     <div role="main" class="ui-content">
@@ -321,7 +367,7 @@
         <label for="specialize-name">Specialize Name</label>
         <input type="text" id="specialize-name" name="specialize-name" value="<%= b.get_specialization() %>">
         <label for="free-slider">Free Value:</label>
-        <input type="range" name="free-slider" id="free-slider" class="free-slider" value="<%= b.get('free_value') %>" min="0" max="<%= traitmax %>">
+        <input type="range" name="free-slider" id="free-slider" class="free-slider" value="<%= b.get('free_value') || 0 %>" min="0" max="<%= traitmax %>">
     </p>
 </script>
 
@@ -440,7 +486,7 @@
       <div data-role="header">
 	    <h1>Animals</h1>
       </div><!-- /header -->
-
+  
       <div role="main" class="ui-content">
             <ul data-role="listview" data-inset="true">
             </ul>
@@ -465,7 +511,7 @@
       <div data-role="header">
 	    <h1>Vehicles</h1>
       </div><!-- /header -->
-
+  
       <div role="main" class="ui-content">
             <ul data-role="listview" data-inset="true">
             </ul>
