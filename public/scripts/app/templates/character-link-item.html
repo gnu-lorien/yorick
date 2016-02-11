@@ -1,0 +1,9 @@
+<% collection.each(function(e) { %>
+    <li>
+        <a href="#character?<%= e.id %>" class="ui-btn ui-btn-icon-right ui-icon-carat-r">
+            <img src="<%= e.get_thumbnail_sync(128) %>" class="character-link-portrait"/>
+            <h2><%= e.get("name") %></h2>
+            <p><%= e.get("sect") %> <%= e.get("archetype") %> <%= e.get("clan") %></p>
+        </a>
+    </li>
+<% }); %>
