@@ -611,15 +611,7 @@ define([
                 return character.join_troupe(t);
             }).always(function() {
                 $.mobile.loading("hide");
-            }).fail(function(error) {
-                if (_.isArray(error)) {
-                    _.each(error, function(e) {
-                        console.log("Something failed" + e.message);
-                    })
-                } else {
-                    console.log("error updating experience" + error.message);
-                }
-            });
+            }).fail(PromiseFailReport);
         },
 
         troupecharacters: function(id, type) {
