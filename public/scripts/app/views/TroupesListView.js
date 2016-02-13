@@ -22,7 +22,7 @@ define([
         register: function(base_url, filter) {
             var self = this;
             var changed;
-            base_url = base_url || "#troupe/";
+            base_url = base_url || "#troupe/<%= troupe_id %>";
             if (!_.eq(base_url, self.base_url)) {
                 self.base_url = base_url;
                 changed = true;
