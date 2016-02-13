@@ -62,7 +62,7 @@ define([
             window.location.hash = "#troupe/" + self.troupe.id + "/staff/add";
         },
 
-        addstaff: function (e) {
+        viewcharacters: function (e) {
             var self = this;
             e.preventDefault();
             window.location.hash = "#troupe/" + self.troupe.id + "/characters/all";

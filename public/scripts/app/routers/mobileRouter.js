@@ -451,7 +451,7 @@ define([
 
         get_user_characters: function() {
             var self = this;
-            var c = self.characters.collection;
+            var c = [];
             if (Parse.User.current().get("username") == "devuser") {
                 c.sortbycreated = true;
             }
@@ -459,14 +459,30 @@ define([
             var q = new Parse.Query(Vampire);
             q.equalTo("owner", Parse.User.current());
             q.include("portrait");
-            c.query = q;
-            //p = c.fetch({add: true, merge: true})
             p = q.each(function (character) {
-                try {
-                    c.add(character);
-                } catch (err) {
-                    console.log("" + err);
-                }
+                c.push(character);
+            }).then(function () {
+                self.characters.collection.reset(c);
+            })
+            return p.done(function () {
+                return Parse.Promise.as(self.characters.collection);
+            })
+        },
+
+        get_troupe_characters: function(troupe) {
+            var self = this;
+            var c = [];
+            if (Parse.User.current().get("username") == "devuser") {
+                c.sortbycreated = true;
+            }
+            var p = Parse.Promise.as([]);
+            var q = new Parse.Query(Vampire);
+            q.equalTo("troupes", troupe);
+            q.include("portrait");
+            p = q.each(function (character) {
+                c.push(character);
+            }).then(function () {
+                self.characters.collection.reset(c);
             })
             return p.done(function () {
                 return Parse.Promise.as(self.characters.collection);
@@ -725,21 +741,12 @@ define([
                 var get_troupe = new Parse.Query("Troupe").get(id);
                 return get_troupe;
             }).then(function (troupe, user) {
-                self.troupeEditStaffView = self.troupeEditStaffView || new TroupeEditStaffView({el: "#troupe-edit-staff"});
-                return self.troupeEditStaffView.register(troupe, user);
+                return self.get_troupe_characters(troupe);
             }).then(function() {
-                $.mobile.changePage("#troupe-edit-staff", {reverse: false, changeHash: false});
+                $.mobile.changePage("#characters-all", {reverse: false, changeHash: false});
             }).always(function() {
                 $.mobile.loading("hide");
-            }).fail(function(error) {
-                if (_.isArray(error)) {
-                    _.each(error, function(e) {
-                        console.log("Something failed" + e.message);
-                    })
-                } else {
-                    console.log("error updating experience" + error.message);
-                }
-            });
+            }).fail(PromiseFailReport);
         },
 
         troupeeditstaff: function(id, uid) {
