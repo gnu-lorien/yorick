@@ -51,7 +51,8 @@ define([
             e.preventDefault();
             $.mobile.loading("show");
             var pickedId = $(e.target).attr("backendId");
-            window.location.hash = self.base_url + pickedId;
+            var tmpl = _.template(self.base_url)({troupe_id: pickedId});
+            window.location.hash = tmpl;
         },
 
         // Renders all of the Category models on the UI
@@ -62,7 +63,7 @@ define([
             this.template = _.template(troupes_list_html)({collection: self.collection.models});
 
             // Renders the view's template inside of the current div element
-            this.$el.find("div[role='main']").html(this.template);
+            this.$el.find("div[role='troupe-list']").html(this.template);
             this.$el.enhanceWithin();
 
             // Maintains chainability
