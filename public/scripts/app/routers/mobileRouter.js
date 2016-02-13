@@ -183,7 +183,10 @@ define([
             "character/:cid/history/:id": "characterhistory",
             "character/:cid/portrait": "characterportrait",
             "character/:cid/delete": "characterdelete",
-            "character/:cid/troupe/:tid/join": "characterjointroupe",
+            "character/:cid/troupes/leave": "character_pick_troupe_to_leave",
+            "character/:cid/troupes/join": "character_pick_troupe_to_join",
+            "character/:cid/troupe/:tid/join": "character_join_troupe",
+            "character/:cid/troupe/:tid/leave": "character_leave_troupe",
 
             "character/:cid/experience/:start/:changeBy": "characterexperience",
 
@@ -597,7 +600,41 @@ define([
 
         },
 
-        characterjointroupe: function(cid, tid) {
+        character_pick_troupe_to_leave: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid).then(function (c) {
+                self.characterPickTroupeToLeaveView = self.characterPickTroupeToLeaveView || new TroupesListView({el: "#character-pick-troupe-to-leave"}).render();
+                self.characterPickTroupeToLeaveView.register(
+                    "#character/" + cid + "/troupe/<%= troupe_id %>/leave",
+                    function (q) {
+                        q.containedIn("objectId", c.get_troupe_ids());
+                    });
+                $.mobile.changePage("#character-pick-troupe-to-leave", {reverse: false, changeHash: false});
+            }).always(function() {
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
+        },
+
+        character_pick_troupe_to_join: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid).then(function (c) {
+                self.characterPickTroupeToJoinView = self.characterPickTroupeToJoinView || new TroupesListView({el: "#character-pick-troupe-to-join"}).render();
+                self.characterPickTroupeToJoinView.register(
+                    "#character/" + cid + "/troupe/<%= troupe_id %>/join",
+                    function (q) {
+                        q.notContainedIn("objectId", c.get_troupe_ids());
+                    });
+                $.mobile.changePage("#character-pick-troupe-to-join", {reverse: false, changeHash: false});
+            }).always(function() {
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
+        },
+
+        character_join_troupe: function(cid, tid) {
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
@@ -609,11 +646,34 @@ define([
             }).then(function (t) {
                 troupe = t;
                 return character.join_troupe(t);
+            }).then(function () {
+                self.joinedTroupeView = self.joinedTroupeView || new TroupeView({el: "#troupe"});
+                self.joinedTroupeView.register(troupe);
+                $.mobile.changePage("#troupe", {reverse: false, changeHash: false});
+            }).fail(function () {
+                window.location.hash = "#character?" + cid;
             }).always(function() {
                 $.mobile.loading("hide");
             }).fail(PromiseFailReport);
         },
 
+        character_leave_troupe: function(cid, tid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            var character, troupe;
+            self.get_character(cid).then(function (c) {
+                character = c;
+                var t = new Troupe({id: tid});
+                return t.fetch();
+            }).then(function (t) {
+                troupe = t;
+                return character.leave_troupe(t);
+            }).always(function() {
+                window.location.hash = "#character?" + cid;
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
+        },
         troupecharacters: function(id, type) {
             var self = this;
             $.mobile.loading("show");

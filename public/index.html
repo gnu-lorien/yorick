@@ -88,6 +88,13 @@
     </div>
 </div>
 
+<div id="character-pick-troupe-to-join" data-role="page" data-title="Join Troupe">
+    <div role="main" class="ui-content">
+        <div role="troupe-list"></div>
+    </div>
+</div>
+
+
 <div id="troupe" data-role="page" data-title="Troupe">
     <div role="main" class="ui-content">
         <button class="troupe-view-characters ui-btn">View Characters</button>
@@ -166,6 +173,12 @@
     </ul>
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <li><a href="#character/<%= character.id %>/log/0/10">Log</a></li>
+    </ul>
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li><a href="#character/<%= character.id %>/troupes/join">Join Troupe</a></li>
+    </ul>
+    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li><a href="#character/<%= character.id %>/troupes/leave">Leave Troupe</a></li>
     </ul>
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <li><a href="#character/<%= character.id %>/delete">Delete Character</a></li>
