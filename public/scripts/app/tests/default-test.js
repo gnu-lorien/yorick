@@ -13,7 +13,7 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
     var ParseStart = function() {
         Parse.$ = $;
         Parse.initialize("rXfLuSWZZs1xxyeX4IzlG1ZCuglbIoDlGHwg68Ru", "yymp8UWnJ7Va32Y2Q4uzvWxfPTYuDvZSA8kdhmdR");
-        if (!Parse.User.current()) {
+        if (!_.eq(Parse.User.current().get("username"), "devuser")) {
             return Parse.User.logIn("devuser", "thedumbness");
         }
         return Parse.Promise.as(Parse.User.current());
@@ -26,7 +26,16 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
             return Parse.User.logIn("sampmem", "sampmem");
         }
         return Parse.Promise.as(Parse.User.current());
-    }
+    };
+
+    var ASTParseStart = function () {
+        Parse.$ = $;
+        Parse.initialize("rXfLuSWZZs1xxyeX4IzlG1ZCuglbIoDlGHwg68Ru", "yymp8UWnJ7Va32Y2Q4uzvWxfPTYuDvZSA8kdhmdR");
+        if (!_.eq(Parse.User.current().get("username"), "sampast")) {
+            return Parse.User.logIn("sampast", "sampast");
+        }
+        return Parse.Promise.as(Parse.User.current());
+    };
 
     describe("Parse", function() {
         beforeAll(function() {
@@ -840,6 +849,50 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
                 done();
             })
         });
+
+        it("can remove a vampire", function (done) {
+            MemberParseStart().then(function () {
+                var t = new Troupe({id: SAMPLE_TROUPE_ID});
+                return t.fetch();
+            }).then(function (troupe) {
+                return vampire.leave_troupe(troupe).then(function () {
+                    var acl = vampire.get_me_acl();
+                    expect(acl.getRoleWriteAccess("LST_" + SAMPLE_TROUPE_ID)).toBe(false);
+                    expect(acl.getRoleReadAccess("LST_" + SAMPLE_TROUPE_ID)).toBe(false);
+                    expect(acl.getRoleWriteAccess("AST_" + SAMPLE_TROUPE_ID)).toBe(false);
+                    expect(acl.getRoleReadAccess("AST_" + SAMPLE_TROUPE_ID)).toBe(false);
+                    done();
+                }, function (error) {
+                    if (_.isString(error)) {
+                        done.fail(error);
+                    } else {
+                        done.fail(error.message);
+                    }
+                })
+            });
+        });
+
+        it("doesn't show her vampire to the AST", function (done) {
+            ASTParseStart().then(function () {
+                return Vampire.get_character(vampire.id);
+            }).then(function (v) {
+                done.fail("Can still fetch vampire after remvoal");
+            }, function (error) {
+                expect(error.code).toBe(Parse.Error.OBJECT_NOT_FOUND);
+                done();
+            })
+        });
+
+        it("still doesn't show her vampire to everybody", function (done) {
+            ParseStart().then(function () {
+                return Vampire.get_character(vampire.id);
+            }).then(function (v) {
+                done.fail("Fetched the vampire as devuser");
+            }, function (error) {
+                done();
+            })
+        });
+
 
     });
 });

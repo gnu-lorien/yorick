@@ -61,6 +61,10 @@ define([
             })
         },
 
+        get_troupe_ids: function () {
+            return this.troupe_ids;
+        },
+
         get_me_acl: function () {
             var self = this;
             var acl = new Parse.ACL;
@@ -806,10 +810,8 @@ define([
             })
         },
 
-        join_troupe: function(troupe) {
+        update_troupe_acls: function() {
             var self = this;
-            self.relation("troupes").add(troupe);
-            self.troupe_ids.push(troupe.id);
             var newACL = self.get_me_acl();
             self.setACL(newACL);
             return self.save().then(function () {
@@ -821,6 +823,20 @@ define([
                 })
             });
         },
+
+        join_troupe: function(troupe) {
+            var self = this;
+            self.relation("troupes").add(troupe);
+            self.troupe_ids.push(troupe.id);
+            return self.update_troupe_acls();
+        },
+
+        leave_troupe: function(troupe) {
+            var self = this;
+            self.relation("troupes").remove(troupe);
+            self.troupe_ids = _.remove(self.troupe_ids, troupe.id);
+            return self.update_troupe_acls();
+        }
     } );
 
     Model.get_character = function(id, categories, character_cache) {
