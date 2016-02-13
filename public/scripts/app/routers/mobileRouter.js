@@ -183,10 +183,12 @@ define([
             "character/:cid/history/:id": "characterhistory",
             "character/:cid/portrait": "characterportrait",
             "character/:cid/delete": "characterdelete",
+            "character/:cid/troupes": "character_list_troupes",
             "character/:cid/troupes/leave": "character_pick_troupe_to_leave",
             "character/:cid/troupes/join": "character_pick_troupe_to_join",
             "character/:cid/troupe/:tid/join": "character_join_troupe",
             "character/:cid/troupe/:tid/leave": "character_leave_troupe",
+            "character/:cid/troupe/:tid/show": "character_show_troupe",
 
             "character/:cid/experience/:start/:changeBy": "characterexperience",
 
@@ -600,6 +602,23 @@ define([
 
         },
 
+        character_list_troupes: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid).then(function (c) {
+                self.characterListTroupesView = self.characterListTroupesView || new TroupesListView({el: "#character-pick-troupe-to-join"}).render();
+                self.characterListTroupesView.register(
+                    "#character/" + cid + "/troupe/<%= troupe_id %>/show",
+                    function (q) {
+                        q.containedIn("objectId", c.get_troupe_ids());
+                    });
+                $.mobile.changePage("#character-pick-troupe-to-join", {reverse: false, changeHash: false});
+            }).always(function() {
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
+        },
+
         character_pick_troupe_to_leave: function(cid) {
             var self = this;
             $.mobile.loading("show");
@@ -634,6 +653,29 @@ define([
             }).fail(PromiseFailReport);
         },
 
+        character_show_troupe: function(cid, tid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            var character, troupe;
+            self.get_character(cid).then(function (c) {
+                character = c;
+                var t = new Troupe({id: tid});
+                return t.fetch();
+            }).then(function (t) {
+                troupe = t;
+                return character.join_troupe(t);
+            }).then(function () {
+                self.troupeView = self.troupeView || new TroupeView({el: "#troupe"});
+                self.troupeView.register(troupe);
+                $.mobile.changePage("#troupe", {reverse: false, changeHash: false});
+            }).fail(function () {
+                window.location.hash = "#character?" + cid;
+            }).always(function() {
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
+        },
+
         character_join_troupe: function(cid, tid) {
             var self = this;
             $.mobile.loading("show");
@@ -647,8 +689,8 @@ define([
                 troupe = t;
                 return character.join_troupe(t);
             }).then(function () {
-                self.joinedTroupeView = self.joinedTroupeView || new TroupeView({el: "#troupe"});
-                self.joinedTroupeView.register(troupe);
+                self.troupeView = self.troupeView || new TroupeView({el: "#troupe"});
+                self.troupeView.register(troupe);
                 $.mobile.changePage("#troupe", {reverse: false, changeHash: false});
             }).fail(function () {
                 window.location.hash = "#character?" + cid;
@@ -674,6 +716,7 @@ define([
                 $.mobile.loading("hide");
             }).fail(PromiseFailReport);
         },
+
         troupecharacters: function(id, type) {
             var self = this;
             $.mobile.loading("show");
