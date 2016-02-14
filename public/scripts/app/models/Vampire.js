@@ -81,6 +81,12 @@ define([
             return acl;
         },
 
+        set_cached_acl: function(acl) {
+            var self = this;
+            acl = acl || self.get_me_acl();
+            self.set("acl_to_json", JSON.stringify(acl.toJSON()));
+        },
+
         get_category_for_fetch: function(category) {
             var self = this;
             var cat = self.get(category);
@@ -813,6 +819,7 @@ define([
         update_troupe_acls: function() {
             var self = this;
             var newACL = self.get_me_acl();
+            self.set_cached_acl(newACL);
             self.setACL(newACL);
             return self.save().then(function () {
                 var q = new Parse.Query("SimpleTrait");
