@@ -5,8 +5,9 @@
 define([
 	"jquery",
 	"backbone",
-	"../models/SimpleTrait"
-], function( $, Backbone, SimpleTrait ) {
+	"../models/SimpleTrait",
+    "../helpers/PromiseFailReport"
+], function( $, Backbone, SimpleTrait, PromiseFailReport ) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend({
@@ -91,9 +92,7 @@ define([
             self.character.update_trait(self.simpletrait).then(function (a, b, c) {
                 console.log("asaved", self.category, self.simpletrait);
                 window.location.hash = "#simpletraits/" + self.category + "/" + self.character.id + "/all";
-            }, function(error) {
-                console.log(error.message);
-            });
+            }, PromiseFailReport);
             return false;
         },
 
