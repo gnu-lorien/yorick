@@ -828,6 +828,8 @@ define([
                     st.setACL(self.get_me_acl());
                     return st.save();
                 })
+            }).then(function () {
+                return Parse.Cloud.run("update_vampire_change_permissions_for", {character: self.id});
             });
         },
 
