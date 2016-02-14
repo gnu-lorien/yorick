@@ -16,12 +16,15 @@ define([
         register: function(characters) {
             var self = this;
             self.characters = characters;
+            /*
             var me_id = Parse.User.current().get("name") | "Me";
             var nodes = [{
                 id: me_id,
                 shape: 'box',
                 label: me_id,
             }];
+            */
+            var nodes = [];
             var edges = [];
             var lastId;
             var portraitLoadingPromises = [];
