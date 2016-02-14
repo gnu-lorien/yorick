@@ -829,6 +829,13 @@ define([
                     return st.save();
                 })
             }).then(function () {
+                return self.get_experience_notations();
+            }).then(function (ens) {
+                ens.each(function (en) {
+                    en.setACL(self.get_me_acl());
+                })
+                return Parse.Object.saveAll(ens.models);
+            }).then(function () {
                 return Parse.Cloud.run("update_vampire_change_permissions_for", {character: self.id});
             });
         },
