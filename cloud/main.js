@@ -80,6 +80,21 @@ Parse.Cloud.beforeSave("CharacterPortrait", function(request, response) {
     });
 });
 
+var get_vampire_acl = function(vampire) {
+    var daString = vampire.get("acl_to_json");
+    if (_.isUndefined(daString)) {
+        var acl = new Parse.ACL;
+        acl.setPublicReadAccess(false);
+        acl.setPublicWriteAccess(false);
+        acl.setReadAccess(vampire.get("owner"), true);
+        acl.setWriteAccess(vampire.get("owner"), true);
+        return acl;
+    }
+    var acl = new Parse.ACL;
+    acl.permissionsById = JSON.parse(daString);
+    return acl;
+}
+
 Parse.Cloud.beforeSave("Vampire", function(request, response) {
     var tracked_texts = ["clan", "state", "archetype", "faction", "title", "sect"];
     var v = request.object;
@@ -89,6 +104,7 @@ Parse.Cloud.beforeSave("Vampire", function(request, response) {
         response.success();
         return;
     }
+    // TODO: Update the history permissions if troupes has changed
     Parse.Cloud.useMasterKey();
     var new_values = {};
     _.each(v.dirtyKeys(), function(k) {
@@ -108,10 +124,13 @@ Parse.Cloud.beforeSave("Vampire", function(request, response) {
                 "type": serverData[attribute] === undefined ? "core_define" : "core_update",
                 "instigator": request.user
             });
-            var acl = new Parse.ACL;
+            var acl = get_vampire_acl(vampire);
             acl.setPublicReadAccess(false);
             acl.setPublicWriteAccess(false);
-            acl.setReadAccess(vampire.get("owner"), true);
+            _.each(acl.permissionsById, function (permissions, key) {
+                permissions.write = false;
+                return permissions;
+            });
             vc.setACL(acl);
             return vc;
         }));
@@ -173,10 +192,7 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
 
     var vToFetch = new Vampire({id: vc.get("owner").id});
     vToFetch.fetch().then(function(vampire) {
-        var acl = new Parse.ACL;
-        acl.setPublicReadAccess(false);
-        acl.setPublicWriteAccess(false);
-        acl.setReadAccess(vampire.get("owner"), true);
+        var acl = get_vampire_acl(vampire);
         vc.setACL(acl);
 
         return vc.save();
@@ -267,6 +283,7 @@ Parse.Cloud.job("fixcharacterownerships", function(request, response) {
 })
 
 Parse.Cloud.job("fixcharacterchangeownerships", function(request, response) {
+    // TODO: Add support for troupe permissions to this job
     Parse.Cloud.useMasterKey();
     var allCharacters = new Parse.Query("Vampire");
     allCharacters.each(function (character) {
