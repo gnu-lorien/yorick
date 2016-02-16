@@ -768,7 +768,7 @@ define([
             $.mobile.loading("show");
             self.enforce_logged_in().then(function() {
                 self.set_back_button("#troupe/" + id);
-                var get_troupe = new Parse.Query("Troupe").get(id);
+                var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
                 return get_troupe;
             }).then(function (troupe, user) {
                 return self.get_troupe_characters(troupe);
@@ -785,7 +785,7 @@ define([
             $.mobile.loading("show");
             self.enforce_logged_in().then(function() {
                 self.set_back_button("#troupe/" + id);
-                var get_troupe = new Parse.Query("Troupe").get(id);
+                var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
                 return get_troupe;
             }).then(function (troupe) {
                 self.troupePortraitView = self.troupePortraitView || new TroupePortraitView({el: "#troupe-portrait"});
@@ -802,7 +802,7 @@ define([
             $.mobile.loading("show");
             self.enforce_logged_in().then(function() {
                 self.set_back_button("#troupe/" + id);
-                var get_troupe = new Parse.Query("Troupe").get(id);
+                var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
                 return get_troupe;
             }).then(function (troupe, user) {
                 return self.get_troupe_characters(troupe);
@@ -819,7 +819,7 @@ define([
             $.mobile.loading("show");
             self.enforce_logged_in().then(function() {
                 self.set_back_button("#troupe/" + id);
-                var get_troupe = new Parse.Query("Troupe").get(id);
+                var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
                 var get_user = new Parse.Query("User").get(uid);
                 return Parse.Promise.when(get_troupe, get_user);
             }).then(function (troupe, user) {
