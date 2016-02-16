@@ -201,6 +201,7 @@ define([
             "troupe/:id/characters/relationships/network": "troupe_relationship_network",
 
             "administration": "administration",
+            "administration/characters/all": "administration_characters_all",
 
         },
 
@@ -479,6 +480,27 @@ define([
             })
         },
 
+        get_administrator_characters: function() {
+            var self = this;
+            var c = [];
+            if (Parse.User.current().get("username") == "devuser") {
+                c.sortbycreated = true;
+            }
+            var p = Parse.Promise.as([]);
+            var q = new Parse.Query(Vampire);
+            //q.equalTo("owner", Parse.User.current());
+            q.exists("owner");
+            q.include("portrait");
+            p = q.each(function (character) {
+                c.push(character);
+            }).then(function () {
+                self.characters.collection.reset(c);
+            })
+            return p.done(function () {
+                return Parse.Promise.as(self.characters.collection);
+            })
+        },
+
         characters: function(type) {
             var self = this;
             if ("all" == type) {
@@ -593,7 +615,7 @@ define([
 
                     // Programatically changes to the current categories page
                     $.mobile.changePage( "#" + type, { reverse: false, changeHash: false } );
-    
+
                 } );
 
             }
@@ -843,6 +865,19 @@ define([
                 self.set_back_button("#");
                 $.mobile.changePage("#administration", {reverse: false, changeHash: false});
             })
+        },
+
+        administration_characters_all: function() {
+            var self = this;
+            $.mobile.loading("show");
+            self.enforce_logged_in().then(function() {
+                self.set_back_button("#administration");
+                return self.get_administrator_characters();
+            }).then(function() {
+                $.mobile.changePage("#characters-all", {reverse: false, changeHash: false});
+            }).always(function() {
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
         },
 
     } );
