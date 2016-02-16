@@ -42,7 +42,8 @@ define([
     "../views/TroupeAddStaffView",
     "../views/TroupeEditStaffView",
     "../models/Troupe",
-    "../helpers/PromiseFailReport"
+    "../helpers/PromiseFailReport",
+    "../views/TroupePortraitView",
 ], function ($,
              Parse,
              pretty,
@@ -82,7 +83,8 @@ define([
              TroupeAddStaffView,
              TroupeEditStaffView,
              Troupe,
-             PromiseFailReport
+             PromiseFailReport,
+             TroupePortraitView
 ) {
 
     // Extends Backbone.Router
@@ -200,6 +202,7 @@ define([
             "troupe/:id/characters/:type": "troupecharacters",
             "troupe/:id/characters/relationships/network": "troupe_relationship_network",
             "troupe/:id/character/:cid": "troupe_character",
+            "troupe/:id/portrait": "troupe_portrait",
 
             "administration": "administration",
             "administration/characters/all": "administration_characters_all",
@@ -776,6 +779,23 @@ define([
                 $.mobile.loading("hide");
             }).fail(PromiseFailReport);
         },
+
+        troupe_portrait: function(id) {
+            var self = this;
+            $.mobile.loading("show");
+            self.enforce_logged_in().then(function() {
+                self.set_back_button("#troupe/" + id);
+                var get_troupe = new Parse.Query("Troupe").get(id);
+                return get_troupe;
+            }).then(function (troupe) {
+                self.troupePortraitView = self.troupePortraitView || new TroupePortraitView({el: "#troupe-portrait"});
+                self.troupePortraitView.register(troupe);
+                $.mobile.changePage("#troupe-portrait", {reverse: false, changeHash: false});
+            }).always(function() {
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
+        },
+
 
         troupe_relationship_network: function(id) {
             var self = this;
