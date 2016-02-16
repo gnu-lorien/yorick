@@ -199,9 +199,11 @@ define([
             "troupe/:id/staff/edit/:uid": "troupeeditstaff",
             "troupe/:id/characters/:type": "troupecharacters",
             "troupe/:id/characters/relationships/network": "troupe_relationship_network",
+            "troupe/:id/character/:cid": "troupe_character",
 
             "administration": "administration",
             "administration/characters/all": "administration_characters_all",
+            "administration/character/:id": "administration_character"
 
         },
 
@@ -415,17 +417,29 @@ define([
             });
         },
 
-        character: function(id) {
+        show_character_helper: function(id, back_url) {
             $.mobile.loading("show");
-            this.set_back_button("#characters?all");
+            this.set_back_button(back_url);
             var c = this.character;
             this.get_character(id).done(function (m) {
                 c.model = m;
                 c.render();
                 $.mobile.changePage("#character", {reverse: false, changeHash:false});
             }).fail(PromiseFailReport).fail(function () {
-                window.location.hash = "#characters?all";
+                window.location.hash = back_url;
             });
+        },
+
+        character: function(id) {
+            this.show_character_helper(id, "#characters?all");
+        },
+
+        troupe_character: function(id, cid) {
+            this.show_character_helper(cid, "#troupe/" + id);
+        },
+
+        administration_character: function(id) {
+            this.show_character_helper(id, "#administration/characters/all");
         },
 
         characterdelete: function(cid) {
@@ -509,6 +523,7 @@ define([
                 self.enforce_logged_in().then(function () {
                     return self.get_user_characters();
                 }).then(function (characters) {
+                    self.characters.register("#character?<%= character_id %>");
                     $.mobile.changePage("#characters-all", {reverse: false, changeHash: false});
                 }).fail(PromiseFailReport).fail(function () {
                     $.mobile.loading("hide");
@@ -755,6 +770,7 @@ define([
             }).then(function (troupe, user) {
                 return self.get_troupe_characters(troupe);
             }).then(function() {
+                self.characters.register("#troupe/" + id + "/character/<%= character_id %>");
                 $.mobile.changePage("#characters-all", {reverse: false, changeHash: false});
             }).always(function() {
                 $.mobile.loading("hide");
@@ -874,6 +890,7 @@ define([
                 self.set_back_button("#administration");
                 return self.get_administrator_characters();
             }).then(function() {
+                self.characters.register("#administration/character/<%= character_id %>");
                 $.mobile.changePage("#characters-all", {reverse: false, changeHash: false});
             }).always(function() {
                 $.mobile.loading("hide");
