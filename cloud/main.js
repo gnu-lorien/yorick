@@ -332,6 +332,40 @@ Parse.Cloud.job("fixcharacterchangeownerships", function(request, response) {
     })
 })
 
+var add_administrator_to_everything = function(model) {
+    var acl = model.getACL();
+    if (_.isUndefined(acl)) {
+        // Not completely defined for some reason
+        return Parse.Promise.as([]);
+    }
+    acl.setRoleReadAccess("Administrator", true);
+    acl.setRoleWriteAccess("Administrator", true);
+    model.setACL(acl);
+    return model.save();
+}
+
+Parse.Cloud.job("add_administrator_to_many_things", function (request, response) {
+    Parse.Cloud.useMasterKey();
+    new Parse.Query("SimpleTrait").each(add_administrator_to_everything).then(function () {
+         return new Parse.Query("VampireCreation").each(add_administrator_to_everything);
+    }).then(function() {
+         return new Parse.Query("ExperienceNotation").each(add_administrator_to_everything);
+    }).then(function() {
+         return new Parse.Query("VampireChange").each(add_administrator_to_everything);
+    }).then(function() {
+        response.success();
+    }).fail(function(error) {
+        if (error.code === Parse.Error.AGGREGATE_ERROR) {
+            for (var i = 0; i < error.errors.length; i++) {
+                response.error("Couldn't delete " + error.errors[i].object.id + "due to " + error.errors[i].message);
+            }
+        } else {
+            response.error("Add administrator broken of " + error.message);
+        }
+        console.log(pretty(error));
+    });
+});
+
 Parse.Cloud.job("deletetestcharacters", function(request, response) {
     Parse.Cloud.useMasterKey();
     var allTestCharacters = new Parse.Query("Vampire");
