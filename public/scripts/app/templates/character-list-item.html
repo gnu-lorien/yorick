@@ -1,6 +1,6 @@
 <% collection.each(function(e) { %>
 <li class="ui-li-has-thumb">
-    <a href="#" backendId="<%= e.id %>" class="ui-btn ui-btn-icon-right ui-icon-carat-r character-list-item">
+    <a href="<%= _.template(click_url)({character_id: e.id}) %>" backendId="<%= e.id %>" class="ui-btn ui-btn-icon-right ui-icon-carat-r character-list-item">
         <img src="<%= e.get_thumbnail_sync(128) %>" class="character-link-portrait"/>
         <h2><%= e.get("name") %></h2>
         <p><%= e.get("sect") %> <%= e.get("archetype") %> <%= e.get("clan") %></p>

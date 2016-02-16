@@ -19,11 +19,13 @@ define([
             this.listenTo(this.collection, "add", debounced_render);
             this.listenTo(this.collection, "remove", debounced_render);
             this.listenTo(this.collection, "reset", this.render);
+            this.click_url = "#";
         },
 
         register: function(click_url) {
             var self = this;
-            self.click_url = click_url
+            self.click_url = click_url;
+            return self.render();
         },
 
         events: {
@@ -44,7 +46,9 @@ define([
         render: function() {
 
             // Sets the view's template property
-            this.template = _.template( character_list_item_html )({ "collection": this.collection } );
+            this.template = _.template( character_list_item_html )(
+                { "collection": this.collection,
+                "click_url": this.click_url} );
 
             // Renders the view's template inside of the current div element
             this.$el.find("ul[data-role='listview']").html(this.template);
