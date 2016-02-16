@@ -86,8 +86,14 @@ var get_vampire_change_acl = function(vampire) {
         var acl = new Parse.ACL;
         acl.setPublicReadAccess(false);
         acl.setPublicWriteAccess(false);
-        acl.setReadAccess(vampire.get("owner"), true);
-        acl.setWriteAccess(vampire.get("owner"), false);
+        var owner = vampire.get("owner");
+        if (!_.isUndefined(owner)) {
+            // Archived characters have no owner
+            acl.setReadAccess(owner, true);
+            acl.setWriteAccess(owner, false);
+        }
+        acl.setRoleReadAccess("Administrator", true);
+        acl.setRoleWriteAccess("Administrator", true);
         return acl;
     }
     var acl = new Parse.ACL;
@@ -98,6 +104,8 @@ var get_vampire_change_acl = function(vampire) {
     });
     acl.setPublicReadAccess(false);
     acl.setPublicWriteAccess(false);
+    acl.setRoleReadAccess("Administrator", true);
+    acl.setRoleWriteAccess("Administrator", false);
     return acl;
 }
 
@@ -254,16 +262,20 @@ Parse.Cloud.define("removeRedundantHistory", function(request, response) {
     });
 })
 
+var fix_character_ownership = function(v) {
+    var acl = get_vampire_change_acl(v);
+    Parse.Cloud.useMasterKey();
+    return new Parse.Query("VampireChange").equalTo("owner", v).each(function (vc) {
+        vc.setACL(acl);
+        return vc.save();
+    });
+};
+
 Parse.Cloud.define("update_vampire_change_permissions_for", function(request, response) {
     var character_id = request.params.character;
     var tmp = new Vampire({id: character_id});
     tmp.fetch().then(function (v) {
-        var acl = get_vampire_change_acl(v);
-        Parse.Cloud.useMasterKey();
-        return new Parse.Query("VampireChange").equalTo("owner", v).each(function (vc) {
-            vc.setACL(acl);
-            return vc.save();
-        });
+        return fix_character_ownership(v);
     }).then(function() {
         response.success("Successfully updated permissions.");
     }, function(error) {
@@ -278,8 +290,28 @@ Parse.Cloud.define("update_vampire_change_permissions_for", function(request, re
     });
 });
 
-Parse.Cloud.define("leave_troupe", function(request, response) {
-
+Parse.Cloud.job("fixuserownership", function(request, response) {
+    Parse.Cloud.useMasterKey();
+    var q = new Parse.Query(Parse.User);
+    q.each(function (user) {
+        var acl = new Parse.ACL;
+        acl.setPublicReadAccess(true);
+        acl.setPublicWriteAccess(false);
+        acl.setWriteAccess(user, true);
+        user.setACL(acl);
+        return user.save();
+    }).then(function() {
+        response.success();
+    }, function(error) {
+        if (error.code === Parse.Error.AGGREGATE_ERROR) {
+            for (var i = 0; i < error.errors.length; i++) {
+                response.error("Couldn't fix " + error.errors[i].object.id + "due to " + error.errors[i].message);
+            }
+        } else {
+            response.error("Couldn't fix user ownership " + error.message);
+        }
+        console.log(pretty(error));
+    })
 })
 
 Parse.Cloud.job("fixcharacterownerships", function(request, response) {
@@ -289,8 +321,14 @@ Parse.Cloud.job("fixcharacterownerships", function(request, response) {
         var acl = new Parse.ACL;
         acl.setPublicReadAccess(false);
         acl.setPublicWriteAccess(false);
-        acl.setWriteAccess(character.get("owner"), true);
-        acl.setReadAccess(character.get("owner"), true);
+        var owner = character.get("owner");
+        if (!_.isUndefined(owner)) {
+            // Archived characters have no owner
+            acl.setWriteAccess(owner, true);
+            acl.setReadAccess(owner, true);
+        }
+        acl.setRoleReadAccess("Administrator", true);
+        acl.setRoleWriteAccess("Administrator", true);
         character.setACL(acl);
         return character.save();
     }).then(function() {
@@ -301,7 +339,7 @@ Parse.Cloud.job("fixcharacterownerships", function(request, response) {
                 response.error("Couldn't fix " + error.errors[i].object.id + "due to " + error.errors[i].message);
             }
         } else {
-            response.error("Delete fix because of " + error.message);
+            response.error("Fix character ownership because of " + error.message);
         }
         console.log(pretty(error));
     })
@@ -326,7 +364,7 @@ Parse.Cloud.job("fixcharacterchangeownerships", function(request, response) {
                 response.error("Couldn't fix " + error.errors[i].object.id + "due to " + error.errors[i].message);
             }
         } else {
-            response.error("Delete fix because of " + error.message);
+            response.error("Couldn't fix character change ownership " + error.message);
         }
         console.log(pretty(error));
     })

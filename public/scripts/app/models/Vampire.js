@@ -70,8 +70,10 @@ define([
             var acl = new Parse.ACL;
             acl.setPublicReadAccess(false);
             acl.setPublicWriteAccess(false);
-            acl.setWriteAccess(Parse.User.current(), true);
             acl.setReadAccess(Parse.User.current(), true);
+            acl.setWriteAccess(Parse.User.current(), true);
+            acl.setRoleReadAccess("Administrator", true);
+            acl.setRoleWriteAccess("Administrator", true);
             _.each(self.troupe_ids, function(id) {
                 acl.setRoleReadAccess("LST_" + id, true);
                 acl.setRoleWriteAccess("LST_" + id, true);
