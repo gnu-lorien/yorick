@@ -51,7 +51,7 @@ define([
             var self = this;
             e.preventDefault();
             $.mobile.loading("show");
-            var pickedId = $(e.target).attr("backendId");
+            var pickedId = $(e.currentTarget).attr("backendId");
             var tmpl = _.template(self.base_url)({troupe_id: pickedId});
             window.location.hash = tmpl;
         },
