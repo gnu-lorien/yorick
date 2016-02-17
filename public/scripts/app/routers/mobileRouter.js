@@ -221,7 +221,10 @@ define([
             }).then(function (count) {
                 if (0 < count) {
                     Parse.User.current().set("storytellerinterface", true);
+                } else {
+                    Parse.User.current().set("storytellerinterface", false);
                 }
+                Parse.User.current().save();
                 self.playerOptionsView = self.playerOptionsView || new PlayerOptionsView({el: "#player-options"}).render();
                 $.mobile.changePage("#player-options", {reverse: false, changeHash: false});
             }).fail(PromiseFailReport);
@@ -545,10 +548,8 @@ define([
                 return Parse.Promise.error(e);
             }
             $("#header-logout-button").attr("href", "#logout");
-            /*
             self.footerTemplate = _.template(footer_html)();
-            $('[data-role="footer"]').html(self.footerTemplate).trigger('create');
-            */
+            $('div[data-role="footer"] > div[data-role="navbar"]').html(self.footerTemplate).trigger('create');
             return Parse.Promise.as([]);
         },
 
