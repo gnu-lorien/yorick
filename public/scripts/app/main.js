@@ -19,14 +19,14 @@ require([
             $.mobile.hashListeningEnabled = false;
 
             $( "[data-role='navbar']" ).navbar();
-            $( "[data-role='header']/*, [data-role='footer']*/" ).toolbar();
+            $( "[data-role='header'], [data-role='footer']" ).toolbar();
         }
     )
 
     $( document ).on( "pagecontainerbeforetransition", function() {
         if (Parse.applicationId && Parse.User.current()) {
             $( "[data-role='navbar']" ).show();
-            $( "[data-role='header']/*, [data-role='footer']*/" ).show();
+            $( "[data-role='header'], [data-role='footer']" ).show();
             // Each of the four pages in this demo has a data-title attribute
             // which value is equal to the text of the nav button
             // For example, on first page: <div data-role="page" data-title="Info">
@@ -43,7 +43,7 @@ require([
             });
         } else {
             $( "[data-role='navbar']" ).hide();
-            $( "[data-role='header']/*, [data-role='footer']*/" ).hide();
+            $( "[data-role='header'], [data-role='footer']" ).hide();
         }
 
     });

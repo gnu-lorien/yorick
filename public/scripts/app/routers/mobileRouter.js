@@ -44,6 +44,7 @@ define([
     "../models/Troupe",
     "../helpers/PromiseFailReport",
     "../views/TroupePortraitView",
+    "text!../templates/footer.html",
 ], function ($,
              Parse,
              pretty,
@@ -84,7 +85,8 @@ define([
              TroupeEditStaffView,
              Troupe,
              PromiseFailReport,
-             TroupePortraitView
+             TroupePortraitView,
+             footer_html
 ) {
 
     // Extends Backbone.Router
@@ -535,6 +537,7 @@ define([
         },
 
         enforce_logged_in: function() {
+            var self = this;
             if (!Parse.User.current()) {
                 $.mobile.changePage("#login", {reverse: false, changeHash: false});
                 $.mobile.loading("hide");
@@ -542,6 +545,10 @@ define([
                 return Parse.Promise.error(e);
             }
             $("#header-logout-button").attr("href", "#logout");
+            /*
+            self.footerTemplate = _.template(footer_html)();
+            $('[data-role="footer"]').html(self.footerTemplate).trigger('create');
+            */
             return Parse.Promise.as([]);
         },
 
