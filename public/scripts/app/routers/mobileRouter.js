@@ -351,7 +351,7 @@ define([
                     "#charactercreate/<%= self.character.id %>",
                     specialCategory,
                     "#charactercreate/simpletraits/<%= self.category %>/<%= self.character.id %>/specialize/<%= b.linkId() %>/" + i);
-                self.characterCreateView.backToTop = document.body.scrollTop;
+                self.characterCreateView.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
                 $.mobile.changePage("#simpletrait-new", {reverse: false, changeHash: false});
             });
         },
@@ -384,7 +384,7 @@ define([
             $.mobile.loading("show");
             self.set_back_button("#charactercreate/" + cid);
             self.get_character(cid, [category]).then(function (character) {
-                self.characterCreateView.backToTop = document.body.scrollTop;
+                self.characterCreateView.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
                 return character.unpick_from_creation(category, stid, i);
             }).done(function (c) {
                 window.location.hash = "#charactercreate/" + c.id;
@@ -399,7 +399,7 @@ define([
             self.set_back_button("#charactercreate/" + cid);
             self.get_character(cid, [category]).done(function (c) {
                 self.simpleTextNewView.register(c, category, target, "#charactercreate/" + c.id);
-                self.characterCreateView.backToTop = document.body.scrollTop;
+                self.characterCreateView.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
                 $.mobile.changePage("#simpletext-new", {reverse: false, changeHash: false});
             });
         },
