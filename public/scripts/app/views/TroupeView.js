@@ -5,7 +5,9 @@ define([
     "../models/Troupe",
     "../forms/TroupeForm",
     "text!../templates/troupe-staff-list.html",
-], function( $, Backbone, Backform, Troupe, TroupeForm, troupe_staff_list_html) {
+    "parse",
+    "text!../templates/troupe-portrait-display.html"
+], function( $, Backbone, Backform, Troupe, TroupeForm, troupe_staff_list_html, Parse, troupe_portrait_display_html) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
@@ -84,6 +86,13 @@ define([
                 self.template = _.template(troupe_staff_list_html)({collection: users});
                 self.$el.find("#troupe-staff").html(self.template);
                 self.form.render();
+                self.$el.enhanceWithin();
+            })
+
+            var p = self.troupe.get("portrait") ? self.troupe.get("portrait").fetch() : Parse.Promise.as([]);
+            p.then(function() {
+                var t = _.template(troupe_portrait_display_html)({troupe: self.troupe});
+                self.$el.find("#troupe-portrait-display").html(t);
                 self.$el.enhanceWithin();
             })
 

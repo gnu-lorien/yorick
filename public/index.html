@@ -63,6 +63,7 @@
     <div role="main" class="ui-content">
         <ul>
             <li><a href="#troupes">Troupes</a></li>
+            <li><a href="#administration/characters/all">Characters</a></li>
         </ul>
     </div><!-- /content -->
 </div>
@@ -97,6 +98,8 @@
 
 <div id="troupe" data-role="page" data-title="Troupe">
     <div role="main" class="ui-content">
+        <div id="troupe-portrait-display">
+        </div>
         <button class="troupe-view-characters ui-btn">View Characters</button>
         <button class="troupe-view-character-relationships ui-btn">View Character Relationships</button>
         <div class="ui-grid-a ui-responsive">
@@ -109,6 +112,7 @@
                 <div id="troupe-staff"></div>
                 <button class="troupe-add-staff ui-btn">Add New Staff Member</button>
             </div>
+
         </div>
     </div>
 </div>
@@ -125,18 +129,15 @@
     </div>
 </div>
 
-<!--
 <div data-role="footer" data-position="fixed" data-theme="a">
     <div data-role="navbar">
         <ul>
+            <li><a href="#" data-transition="fade">Top</a></li>
             <li><a href="#characters?all" data-transition="fade">Characters</a></li>
-            <li><a href="page-b.html" data-transition="flip">Friends</a></li>
-            <li><a href="page-c.html" data-transition="turn">Albums</a></li>
-            <li><a href="page-d.html" data-transition="slide">Emails</a></li>
+            <li><a href="#profile" data-transition="flip">Profile</a></li>
         </ul>
     </div>
 </div>
--->
 
 <div id="character" data-role="page" data-title="Character">
     <div role="main" class="ui-content">
@@ -333,7 +334,7 @@
 
 </script>
 
-<div id="characters-all" data-role="page" data-title="All Characters">
+<div id="characters-all" data-role="page" data-title="Characters">
 
     <div role="main" class="ui-content">
         <ul>
@@ -1003,6 +1004,25 @@
         <div class="error" style="display:none"></div>
         <label for="input-portrait">Portrait</label>
         <input type="file" name="input-portrait" id="input-portrait">
+        <button class="ui-shadow ui-btn ui-corner-all ui-icon-action ui-btn-icon-right update">Upload</button>
+    </form>
+</script>
+
+<div id="troupe-portrait" data-role="page" data-title="Profile">
+    <div role="main" class="ui-content">
+    </div>
+</div>
+
+
+<script id="troupePortraitView" type="text/template">
+    <h1><%= troupe.get("name") %></h1>
+    <% if (troupe.get('portrait')) { %>
+    <img src="<%= troupe.get('portrait').get('original').url() %>"/>
+    <% } %>
+    <form class="portrait-form">
+        <div class="error" style="display:none"></div>
+        <label for="input-portrait">Portrait</label>
+        <input type="file" name="input-portrait" id="troupe-input-portrait">
         <button class="ui-shadow ui-btn ui-corner-all ui-icon-action ui-btn-icon-right update">Upload</button>
     </form>
 </script>

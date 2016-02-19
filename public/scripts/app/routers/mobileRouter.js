@@ -42,7 +42,9 @@ define([
     "../views/TroupeAddStaffView",
     "../views/TroupeEditStaffView",
     "../models/Troupe",
-    "../helpers/PromiseFailReport"
+    "../helpers/PromiseFailReport",
+    "../views/TroupePortraitView",
+    "text!../templates/footer.html",
 ], function ($,
              Parse,
              pretty,
@@ -82,7 +84,9 @@ define([
              TroupeAddStaffView,
              TroupeEditStaffView,
              Troupe,
-             PromiseFailReport
+             PromiseFailReport,
+             TroupePortraitView,
+             footer_html
 ) {
 
     // Extends Backbone.Router
@@ -199,9 +203,12 @@ define([
             "troupe/:id/staff/edit/:uid": "troupeeditstaff",
             "troupe/:id/characters/:type": "troupecharacters",
             "troupe/:id/characters/relationships/network": "troupe_relationship_network",
+            "troupe/:id/character/:cid": "troupe_character",
+            "troupe/:id/portrait": "troupe_portrait",
 
             "administration": "administration",
             "administration/characters/all": "administration_characters_all",
+            "administration/character/:id": "administration_character"
 
         },
 
@@ -214,7 +221,10 @@ define([
             }).then(function (count) {
                 if (0 < count) {
                     Parse.User.current().set("storytellerinterface", true);
+                } else {
+                    Parse.User.current().set("storytellerinterface", false);
                 }
+                Parse.User.current().save();
                 self.playerOptionsView = self.playerOptionsView || new PlayerOptionsView({el: "#player-options"}).render();
                 $.mobile.changePage("#player-options", {reverse: false, changeHash: false});
             }).fail(PromiseFailReport);
@@ -415,17 +425,29 @@ define([
             });
         },
 
-        character: function(id) {
+        show_character_helper: function(id, back_url) {
             $.mobile.loading("show");
-            this.set_back_button("#characters?all");
+            this.set_back_button(back_url);
             var c = this.character;
             this.get_character(id).done(function (m) {
                 c.model = m;
                 c.render();
                 $.mobile.changePage("#character", {reverse: false, changeHash:false});
             }).fail(PromiseFailReport).fail(function () {
-                window.location.hash = "#characters?all";
+                window.location.hash = back_url;
             });
+        },
+
+        character: function(id) {
+            this.show_character_helper(id, "#characters?all");
+        },
+
+        troupe_character: function(id, cid) {
+            this.show_character_helper(cid, "#troupe/" + id);
+        },
+
+        administration_character: function(id) {
+            this.show_character_helper(id, "#administration/characters/all");
         },
 
         characterdelete: function(cid) {
@@ -509,6 +531,7 @@ define([
                 self.enforce_logged_in().then(function () {
                     return self.get_user_characters();
                 }).then(function (characters) {
+                    self.characters.register("#character?<%= character_id %>");
                     $.mobile.changePage("#characters-all", {reverse: false, changeHash: false});
                 }).fail(PromiseFailReport).fail(function () {
                     $.mobile.loading("hide");
@@ -517,6 +540,7 @@ define([
         },
 
         enforce_logged_in: function() {
+            var self = this;
             if (!Parse.User.current()) {
                 $.mobile.changePage("#login", {reverse: false, changeHash: false});
                 $.mobile.loading("hide");
@@ -524,6 +548,8 @@ define([
                 return Parse.Promise.error(e);
             }
             $("#header-logout-button").attr("href", "#logout");
+            self.footerTemplate = _.template(footer_html)();
+            $('div[data-role="footer"] > div[data-role="navbar"]').html(self.footerTemplate).trigger('create');
             return Parse.Promise.as([]);
         },
 
@@ -750,23 +776,41 @@ define([
             $.mobile.loading("show");
             self.enforce_logged_in().then(function() {
                 self.set_back_button("#troupe/" + id);
-                var get_troupe = new Parse.Query("Troupe").get(id);
+                var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
                 return get_troupe;
             }).then(function (troupe, user) {
                 return self.get_troupe_characters(troupe);
             }).then(function() {
+                self.characters.register("#troupe/" + id + "/character/<%= character_id %>");
                 $.mobile.changePage("#characters-all", {reverse: false, changeHash: false});
             }).always(function() {
                 $.mobile.loading("hide");
             }).fail(PromiseFailReport);
         },
 
+        troupe_portrait: function(id) {
+            var self = this;
+            $.mobile.loading("show");
+            self.enforce_logged_in().then(function() {
+                self.set_back_button("#troupe/" + id);
+                var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
+                return get_troupe;
+            }).then(function (troupe) {
+                self.troupePortraitView = self.troupePortraitView || new TroupePortraitView({el: "#troupe-portrait"});
+                self.troupePortraitView.register(troupe);
+                $.mobile.changePage("#troupe-portrait", {reverse: false, changeHash: false});
+            }).always(function() {
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
+        },
+
+
         troupe_relationship_network: function(id) {
             var self = this;
             $.mobile.loading("show");
             self.enforce_logged_in().then(function() {
                 self.set_back_button("#troupe/" + id);
-                var get_troupe = new Parse.Query("Troupe").get(id);
+                var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
                 return get_troupe;
             }).then(function (troupe, user) {
                 return self.get_troupe_characters(troupe);
@@ -783,7 +827,7 @@ define([
             $.mobile.loading("show");
             self.enforce_logged_in().then(function() {
                 self.set_back_button("#troupe/" + id);
-                var get_troupe = new Parse.Query("Troupe").get(id);
+                var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
                 var get_user = new Parse.Query("User").get(uid);
                 return Parse.Promise.when(get_troupe, get_user);
             }).then(function (troupe, user) {
@@ -874,6 +918,7 @@ define([
                 self.set_back_button("#administration");
                 return self.get_administrator_characters();
             }).then(function() {
+                self.characters.register("#administration/character/<%= character_id %>");
                 $.mobile.changePage("#characters-all", {reverse: false, changeHash: false});
             }).always(function() {
                 $.mobile.loading("hide");

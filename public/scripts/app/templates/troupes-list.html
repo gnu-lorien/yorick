@@ -3,9 +3,10 @@
 </form>
 <ul data-role="listview" data-filter="true" data-input="#troupes-list-filter">
     <% _.each(collection, function(e) { %>
-    <li>
+    <li class="ul-li-has-thumb">
         <a name="<%= e.get('name') %>" backendId="<%= e.id %>" href="#" class="ui-btn ui-btn-icon-right ui-icon-carat-r troupe-listing">
-            <%= e.get("name") %>
+            <img src="<%= e.get_thumbnail_sync(128) %>" class="troupe-link-portrait"/>
+            <h2><%= e.get("name") %></h2>
         </a>
     </li>
     <% }); %>

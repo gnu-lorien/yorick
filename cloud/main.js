@@ -31,6 +31,59 @@ var create_thumbnail = function(portrait, input_image, size) {
     });
 }
 
+var crop_and_thumb = function(request, response) {
+    var portrait = request.object;
+    var THUMBNAIL_SIZES = [32, 64,128, 256];
+    var needed_sizes = [];
+
+    if (portrait.dirty("original")) {
+        _.each(THUMBNAIL_SIZES, function (size) {
+            portrait.set("thumb_" + size, undefined);
+        });
+    }
+
+    _.each(THUMBNAIL_SIZES, function (size) {
+        if (!portrait.get("thumb_" + size)) {
+            needed_sizes.push(size);
+        }
+    })
+
+    if (0 == needed_sizes.length) {
+        response.success();
+        return;
+    }
+
+    Parse.Cloud.httpRequest({
+        url: portrait.get("original").url()
+    }).then(function(response) {
+        var image = new Image();
+        return image.setData(response.buffer);
+    }).then(function(image) {
+        // Crop the image to the smaller of width or height.
+        var size = Math.min(image.width(), image.height());
+        return image.crop({
+            left: (image.width() - size) / 2,
+            top: (image.height() - size) / 2,
+            width: size,
+            height: size
+        });
+    }).then(function(image) {
+        var promises = [];
+        _.each(THUMBNAIL_SIZES, function(size) {
+            promises.push(create_thumbnail(portrait, image, size))
+        })
+        return Parse.Promise.when(promises);
+    }).then(function() {
+        response.success();
+    }, function(error) {
+        response.error(error);
+    });
+};
+
+Parse.Cloud.beforeSave("TroupePortrait", function(request, response) {
+    crop_and_thumb(request, response);
+});
+
 Parse.Cloud.beforeSave("CharacterPortrait", function(request, response) {
     var portrait = request.object;
     var THUMBNAIL_SIZES = [32, 64,128, 256];

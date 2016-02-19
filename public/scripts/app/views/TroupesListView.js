@@ -32,7 +32,8 @@ define([
             if (!_.eq(filter, self.filter)) {
                 var incoming = [];
                 var q = new Parse.Query("Troupe");
-                q.select("id", "name");
+                q.select("id", "name", "portrait");
+                q.include("portrait");
                 filter(q);
                 q.each(function (t) {
                     incoming.push(t);
@@ -50,7 +51,7 @@ define([
             var self = this;
             e.preventDefault();
             $.mobile.loading("show");
-            var pickedId = $(e.target).attr("backendId");
+            var pickedId = $(e.currentTarget).attr("backendId");
             var tmpl = _.template(self.base_url)({troupe_id: pickedId});
             window.location.hash = tmpl;
         },
