@@ -550,6 +550,11 @@ define([
             $("#header-logout-button").attr("href", "#logout");
             self.footerTemplate = _.template(footer_html)();
             $('div[data-role="footer"] > div[data-role="navbar"]').html(self.footerTemplate).trigger('create');
+            var u = Parse.User.current();
+            trackJs.configure({
+                userId: u.get("username"),
+                sessionId: u.getSessionToken(),
+            })
             return Parse.Promise.as([]);
         },
 

@@ -18,7 +18,12 @@
         }
     </style>
     <!-- BEGIN TRACKJS -->
-    <script type="text/javascript">window._trackJs = { token: '8c029fff54d841498640d86379af7316' };</script>
+    <script type="text/javascript">
+        window._trackJs = {
+            token: '8c029fff54d841498640d86379af7316',
+            enabled: !(window.location.host.indexOf('localhost') >= 0)
+        };
+    </script>
     <script type="text/javascript" src="https://d2zah9y47r7bi2.cloudfront.net/releases/current/tracker.js"></script>
     <!-- END TRACKJS -->
 </head>
