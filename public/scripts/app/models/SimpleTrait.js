@@ -15,13 +15,15 @@ define([
 
         get_base_name: function() {
             var self = this;
-            var s = self.get("name").split(": ");
+            var name = self.get("name") || "";
+            var s = name.split(": ");
             return s[0];
         },
 
         get_specialization: function() {
             var self = this;
-            var s = self.get("name").split(": ");
+            var name = self.get("name") || "";
+            var s = name.split(": ");
             return s[1];
         },
 

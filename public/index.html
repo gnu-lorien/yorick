@@ -676,12 +676,13 @@
     <% var cl = {0: "a", 1: "b", 2: "c" }; %>
     <div class="ui-grid-b ui-responsive">
     <% _.each(character.get("attributes"), function (attribute, i) { %>
+        <% var name = attribute.get("name") || ""; %>
         <div class="ui-block-<%= cl[i] %>">
-            <h4 class="ui-bar ui-bar-a ui-corner-all"><%= attribute.get("name") %></h4>
+            <h4 class="ui-bar ui-bar-a ui-corner-all"><%= name %></h4>
             <div class="ui-body">
                 <%= attribute.get("value") %>
                 <br/>
-                <% var focusName = "focus_" + attribute.get("name").toLowerCase() + "s"; %>
+                <% var focusName = "focus_" + name.toLowerCase() + "s"; %>
                 <% _.each(character.get(focusName), function (focus) { %>
                 <%= focus.get("name") %>
                 <% }); %>
