@@ -2,7 +2,7 @@
 requirejs.config( {
 	baseUrl: "scripts/lib",
 	//urlArgs: "bust=" + (new Date()).getTime(),
-	urlArgs: "bust=" + 10,
+	urlArgs: "bust=" + 16,
 
 	// 3rd party script alias names
 	paths: {
