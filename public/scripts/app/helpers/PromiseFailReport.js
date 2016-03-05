@@ -5,12 +5,14 @@ define([
 
     var process_single = function (error) {
         if (_.has(error, "message")) {
-            console.log("Error in promise:" + error.message);
+            console.log("Error in promise: " + error.message);
+            trackJs.track("Error in promise: " + error.message);
             if (Parse.Error.INVALID_LINKED_SESSION == error.code) {
                 Parse.User.logOut();
             }
         } else {
-            console.log("Error in promise:" + error);
+            console.log("Error in promise: " + error);
+            trackJs.track("Error in promise: " + error);
         }
     };
 
