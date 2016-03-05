@@ -315,7 +315,7 @@ define([
                 self.characterPrintView.model = character;
                 self.characterPrintView.render();
                 $.mobile.changePage("#printable-sheet", {reverse: false, changeHash: false});
-            });
+            }).fail(PromiseFailReport);
         },
 
         characternew: function() {
