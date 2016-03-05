@@ -19,6 +19,7 @@ requirejs.config( {
 		moment: "moment",
 		vis: "vis",
 		backform: "backform",
+		nprogress: "nprogress",
 
 		app: "../app"
 	},
@@ -47,3 +48,4 @@ requirejs.config( {
 
 // Load the main app module to start the app
 requirejs(["app/main"]);
+requirejs(["app/loadall"]);
