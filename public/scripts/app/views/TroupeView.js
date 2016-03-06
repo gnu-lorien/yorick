@@ -6,8 +6,9 @@ define([
     "../forms/TroupeForm",
     "text!../templates/troupe-staff-list.html",
     "parse",
-    "text!../templates/troupe-portrait-display.html"
-], function( $, Backbone, Backform, Troupe, TroupeForm, troupe_staff_list_html, Parse, troupe_portrait_display_html) {
+    "text!../templates/troupe-portrait-display.html",
+    "text!../templates/troupe.html"
+], function( $, Backbone, Backform, Troupe, TroupeForm, troupe_staff_list_html, Parse, troupe_portrait_display_html, troupe_html) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
@@ -18,11 +19,12 @@ define([
             _.bindAll(this, "render", "addstaff");
         },
 
-        register: function(troupe) {
+        register: function(troupe, readonly) {
             var self = this;
             var changed = false;
-            if (troupe !== self.troupe) {
+            if (troupe !== self.troupe || readonly != self.readonly) {
                 self.troupe = troupe;
+                self.readonly = readonly;
                 self.form = new TroupeForm({
                     el: "#troupe-data",
                     model: self.troupe,
@@ -42,7 +44,9 @@ define([
                         }
                     }
                 });
-                self.form.fields.add(new Backform.Field({control: "button", label: "Update"}))
+                if (!readonly) {
+                    self.form.fields.add(new Backform.Field({control: "button", label: "Update"}))
+                }
                 changed = true;
             }
 
@@ -81,11 +85,15 @@ define([
         render: function() {
             var self = this;
 
+            self.template = _.template(troupe_html)({readonly: self.readonly});
+            self.$el.find("div[role='main']").html(self.template);
+            self.form.setElement($("#troupe-data"));
+            self.form.render();
+
             // Sets the view's template property
             self.troupe.get_staff().then(function (users) {
-                self.template = _.template(troupe_staff_list_html)({collection: users});
-                self.$el.find("#troupe-staff").html(self.template);
-                self.form.render();
+                self.staff_template = _.template(troupe_staff_list_html)({collection: users});
+                self.$el.find("#troupe-staff").html(self.staff_template);
                 self.$el.enhanceWithin();
             })
 
@@ -95,7 +103,6 @@ define([
                 self.$el.find("#troupe-portrait-display").html(t);
                 self.$el.enhanceWithin();
             })
-
 
             // Maintains chainability
             return this;

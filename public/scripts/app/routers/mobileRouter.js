@@ -876,7 +876,7 @@ define([
                 return new Parse.Query("Troupe").get(id);
             }).then(function (troupe) {
                 self.troupeView = self.troupeView || new TroupeView({el: "#troupe"});
-                self.troupeView.register(troupe);
+                self.troupeView.register(troupe, !Parse.User.current().get("storytellerinterface"));
                 $.mobile.changePage("#troupe", {reverse: false, changeHash: false});
             }).always(function() {
                 $.mobile.loading("hide");
