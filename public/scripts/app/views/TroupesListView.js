@@ -32,7 +32,7 @@ define([
             if (!_.eq(filter, self.filter)) {
                 var incoming = [];
                 var q = new Parse.Query("Troupe");
-                q.select("id", "name", "portrait");
+                q.select("id", "name", "portrait", "shortdescription", "location");
                 q.include("portrait");
                 filter(q);
                 q.each(function (t) {
