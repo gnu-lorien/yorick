@@ -13,7 +13,8 @@ define([
     "../collections/ExperienceNotationCollection",
     "../models/ExperienceNotation",
     "../helpers/BNSMETV1_VampireCosts",
-], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSMETV1_VampireCosts ) {
+    "../helpers/PromiseFailReport"
+], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSMETV1_VampireCosts, PromiseFailReport ) {
 
     // The Model constructor
     var Model = Parse.Object.extend( "Vampire", {
@@ -171,9 +172,8 @@ define([
                     console.log("Finished saving vampire");
                     return Parse.Promise.as(self);
                 }).fail(function (errors) {
-                    _.each(errors, function(error) {
-                        console.log("Failed to save vampire because of " + error.message);
-                    });
+                    console.log("Failing to save vampire because of %o", errors);
+                    PromiseFailReport(errors);
                 })
                 var returnPromise;
                 if (wait) {
