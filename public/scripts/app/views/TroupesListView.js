@@ -35,12 +35,14 @@ define([
                 q.select("id", "name", "portrait", "shortdescription", "location");
                 q.include("portrait");
                 filter(q);
-                q.each(function (t) {
+                return q.each(function (t) {
                     incoming.push(t);
                 }).then(function () {
                     self.collection.reset(incoming);
                 }).fail(PromiseFailReport)
             }
+
+            return Parse.Promise.as([]);
         },
 
         events: {

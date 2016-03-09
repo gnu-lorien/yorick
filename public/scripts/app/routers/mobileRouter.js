@@ -667,11 +667,12 @@ define([
             self.set_back_button("#character?" + cid);
             self.get_character(cid).then(function (c) {
                 self.characterListTroupesView = self.characterListTroupesView || new TroupesListView({el: "#character-pick-troupe-to-join"}).render();
-                self.characterListTroupesView.register(
+                return self.characterListTroupesView.register(
                     "#character/" + cid + "/troupe/<%= troupe_id %>/show",
                     function (q) {
                         q.containedIn("objectId", c.get_troupe_ids());
                     });
+            }).then(function () {
                 $.mobile.changePage("#character-pick-troupe-to-join", {reverse: false, changeHash: false});
             }).always(function() {
                 $.mobile.loading("hide");
@@ -684,11 +685,12 @@ define([
             self.set_back_button("#character?" + cid);
             self.get_character(cid).then(function (c) {
                 self.characterPickTroupeToLeaveView = self.characterPickTroupeToLeaveView || new TroupesListView({el: "#character-pick-troupe-to-leave"}).render();
-                self.characterPickTroupeToLeaveView.register(
+                return self.characterPickTroupeToLeaveView.register(
                     "#character/" + cid + "/troupe/<%= troupe_id %>/leave",
                     function (q) {
                         q.containedIn("objectId", c.get_troupe_ids());
                     });
+            }).then(function () {
                 $.mobile.changePage("#character-pick-troupe-to-leave", {reverse: false, changeHash: false});
             }).always(function() {
                 $.mobile.loading("hide");
@@ -701,11 +703,12 @@ define([
             self.set_back_button("#character?" + cid);
             self.get_character(cid).then(function (c) {
                 self.characterPickTroupeToJoinView = self.characterPickTroupeToJoinView || new TroupesListView({el: "#character-pick-troupe-to-join"}).render();
-                self.characterPickTroupeToJoinView.register(
+                return self.characterPickTroupeToJoinView.register(
                     "#character/" + cid + "/troupe/<%= troupe_id %>/join",
                     function (q) {
                         q.notContainedIn("objectId", c.get_troupe_ids());
                     });
+            }).then(function () {
                 $.mobile.changePage("#character-pick-troupe-to-join", {reverse: false, changeHash: false});
             }).always(function() {
                 $.mobile.loading("hide");
@@ -889,7 +892,8 @@ define([
             self.enforce_logged_in().then(function() {
                 self.set_back_button("#administration");
                 self.troupesListView = self.troupesListView || new TroupesListView({el: "#troupes-list"}).render();
-                self.troupesListView.register();
+                return self.troupesListView.register();
+            }).then(function () {
                 $.mobile.changePage("#troupes-list", {reverse: false, changeHash: false});
             }).always(function() {
                 $.mobile.loading("hide");
