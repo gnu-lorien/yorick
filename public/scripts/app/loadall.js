@@ -20,6 +20,14 @@ require([
         this.BNSMETV1_ClanRules.fetch();
 
         trackJs.configure({
+            serialize: function (item) {
+                try {
+                    return JSON.stringify(item);
+                } catch (e) {
+                    return item.toString();
+                }
+            },
+
             onError: function (payload) {
                 _.defer(function () {
                     var closebtn = '<a href="#" data-rel="back" class="ui-btn ui-corner-all ui-btn-a ui-icon-delete ui-btn-icon-notext ui-btn-right">Close</a>',
