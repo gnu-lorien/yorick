@@ -443,7 +443,7 @@ define([
         },
 
         troupe_character: function(id, cid) {
-            this.show_character_helper(cid, "#troupe/" + id);
+            this.show_character_helper(cid, "#troupe/" + id + "/characters/all");
         },
 
         administration_character: function(id) {
