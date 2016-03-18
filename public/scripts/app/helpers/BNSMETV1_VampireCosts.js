@@ -130,10 +130,10 @@ define([
                 if (generation >= 3) {
                     ic_elder_cost = 18;
                 }
-                if (generation == 5) {
+                if (generation >= 5) {
                     ooc_elder_cost = 30;
                 } else if (generation >= 3) {
-                    ooc_elder_cost = 30;
+                    ooc_elder_cost = 24;
                 }
                 if (self.discipline_is_in_clan(character, trait)) {
                     return mod_value * ic_elder_cost;
