@@ -10,7 +10,6 @@
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
     <link rel="stylesheet" href="css/vis.min.css">
     <link rel="stylesheet" href="css/nprogress.css">
-    <script data-main="scripts/app" src="scripts/lib/require.js?bust=4"></script>
     <style>
         #relationships-network {
             width: 640px;
@@ -25,17 +24,28 @@
             token: '8c029fff54d841498640d86379af7316',
             enabled: !(window.location.host.indexOf('localhost') >= 0)
         };
+        if (window.location.protocol != "https:") {
+            window.location.href = "https:" + window.location.href.substring(window.location.protocol.length);
+        }
+        // Add a script element as a child of the body
+        function downloadJSAtOnload() {
+            var element = document.createElement("script");
+            element.src = "scripts/lib/require.js";
+            element.setAttribute("data-main", "scripts/app");
+            document.body.appendChild(element);
+        }
+
+        // Check for browser support of event handling capability
+        if (window.addEventListener)
+            window.addEventListener("load", downloadJSAtOnload, false);
+        else if (window.attachEvent)
+            window.attachEvent("onload", downloadJSAtOnload);
+        else window.onload = downloadJSAtOnload;
     </script>
     <script type="text/javascript" src="https://d2zah9y47r7bi2.cloudfront.net/releases/current/tracker.js"></script>
     <!-- END TRACKJS -->
 </head>
 
-<script>
-    if (window.location.protocol != "https:") {
-        window.location.href = "https:" + window.location.href.substring(window.location.protocol.length);
-    }
-</script>
- 
 <body>
 
 <div data-role="header" data-position="fixed" data-theme="a">
@@ -1053,5 +1063,6 @@
     <button class="delete-character">Delete <%= character.get("name") %></button>
 </script>
 
+<!-- <script data-main="scripts/app" src="scripts/lib/require.js?bust=4"></script> -->
 </body>
 </html>
