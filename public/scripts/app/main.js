@@ -21,6 +21,7 @@ require([
     )
 
     $( document ).on( "pagecontainertransition", function() {
+        $("#splashscreen").remove();
         if (Parse.applicationId && Parse.User.current()) {
             $( "[data-role='navbar']" ).show();
             $( "[data-role='header'], [data-role='footer']" ).show();
