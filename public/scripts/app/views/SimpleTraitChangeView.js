@@ -86,13 +86,17 @@ define([
             self.render_view();
         },
 
-        save_clicked: function(a, b, c) {
+        save_clicked: function(e) {
             var self = this;
-            console.log("save clicked", self.category, self.simpletrait);
-            self.character.update_trait(self.simpletrait).then(function (a, b, c) {
-                console.log("asaved", self.category, self.simpletrait);
-                window.location.hash = "#simpletraits/" + self.category + "/" + self.character.id + "/all";
-            }, PromiseFailReport);
+            e.preventDefault();
+            $.mobile.loading("show");
+            _.defer(function () {
+                console.log("save clicked", self.category, self.simpletrait);
+                self.character.update_trait(self.simpletrait).then(function (a, b, c) {
+                    console.log("asaved", self.category, self.simpletrait);
+                    window.location.hash = "#simpletraits/" + self.category + "/" + self.character.id + "/all";
+                }, PromiseFailReport);
+            });
             return false;
         },
 
