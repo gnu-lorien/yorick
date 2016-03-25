@@ -1,7 +1,7 @@
 <!doctype html>
 <html class="no-js ui-mobile-rendering" lang="en">
 <head>
-    <title>Twisted Vines</title>
+    <title>Yorick</title>
     <meta name="description" content="">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <!-- <link rel="stylesheet" href="css/themes/default/jquery.mobile.css"> -->
@@ -16,6 +16,10 @@
             height: 480px;
             border: 1px solid lightgray;
             background-color:#333333;
+        }
+        .max-yorick-sizing {
+            max-width: 100%;
+            max-height: 90vh;
         }
     </style>
     <!-- BEGIN TRACKJS -->
@@ -49,8 +53,8 @@
 <body>
 
 <div id="splashscreen">
-    <img src="UndergroundTheaterBlackLogo.jpg" style="visibility: visible; width: 100%"/>
-    <p style="visibility: visible; width: 100%">Loading...</p>
+    <p style="visibility: visible">Loading...</p>
+    <img src="yorick_max.png" style="visibility: visible;" class="max-yorick-sizing"/>
 </div>
 
 <div data-role="header" data-position="fixed" data-theme="a">
@@ -61,19 +65,20 @@
 
 <div id="splashscreen" data-role="page" data-title="Yorick Splash Screen">
     <div role="main" class="ui-content">
-        <img style="width:100%" src="UndergroundTheaterBlackLogo.jpg"/>
+        <p>Loading...</p>
+        <img class="max-yorick-sizing" src="yorick_max.png"/>
     </div>
 </div>
 
 <div id="login" data-role="page" data-title="Log In">
     <div role="main" class="ui-content">
-        <img src="VinesLogoSmall.png"/>
+        <img class="max-yorick-sizing" src="yorick_256.png"/>
     </div><!-- /content -->
 </div>
 
 <div id="signup" data-role="page" data-title="Sign Up">
     <div role="main" class="ui-content">
-        <img src="VinesLogoSmall.png"/>
+        <img class="max-yorick-sizing" src="yorick_256.png"/>
     </div><!-- /content -->
 </div>
 
@@ -843,8 +848,10 @@
 
 <script type="text/template" id="login-template">
     <div class="login">
-        <img style="width: 100%;" src="UndergroundTheaterBlackLogo.jpg"/>
+        <img class="max-yorick-sizing" src="yorick_256.png"/>
+        <p>
         Welcome to Yorick, a character management system for <a href="http://www.undergroundtheater.org/">Underground Theater</a>.
+        </p>
         <form class="login-form">
             <h2>Log In</h2>
             <div class="error" style="display:none"></div>
@@ -858,8 +865,8 @@
 
 <script type="text/template" id="signup-template">
     <div class="signup">
-        <img src="VinesLogoSmall.png"/>
-        Sign up for Twisted Vines
+        <img class="max-yorick-sizing" src="yorick_256.png"/>
+        Sign up for Yorick.
         <form class="signup-form">
             <h2>Sign Up</h2>
             <div class="error" style="display:none"></div>
