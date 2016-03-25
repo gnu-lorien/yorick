@@ -82,7 +82,7 @@ define([
             self.character.update_trait(self.simpletrait).then(function (trait) {
                 window.location.hash = self.redirectSave({'self': self});
             }).fail(function (error) {
-                console.log("Couldn't specialize trait because of " + error.message);
+                console.log("Couldn't specialize trait because of " + JSON.stringify(error));
                 window.location.hash = self.redirectRemove({'self': self});
             })
             return false;
