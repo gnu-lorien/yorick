@@ -547,10 +547,11 @@ define([
                 var e = new Parse.Error(Parse.Error.USERNAME_MISSING, "Not logged in");
                 return Parse.Promise.error(e);
             }
+            var u = Parse.User.current();
             $("#header-logout-button").attr("href", "#logout");
+            $("#header-logout-button").text("Log Out " + u.get("username"));
             self.footerTemplate = _.template(footer_html)();
             $('div[data-role="footer"] > div[data-role="navbar"]').html(self.footerTemplate).trigger('create');
-            var u = Parse.User.current();
             trackJs.configure({
                 userId: u.get("username"),
                 sessionId: u.getSessionToken(),
