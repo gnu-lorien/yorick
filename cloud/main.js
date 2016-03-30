@@ -199,7 +199,7 @@ Parse.Cloud.beforeSave("Vampire", function(request, response) {
         return response.success();
     }).fail(function (error) {
         console.log(error.message);
-        response.error();
+        response.error(error);
     })
 });
 
@@ -259,10 +259,21 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
         return vc.save();
     }).then(function () {
         response.success();
+        if (!request.object.id) {
+            console.log("Successfully beforeSave new SimpleTrait " + modified_trait.get("name") + " for " + modified_trait.get("owner"));
+        } else {
+            console.log("Successfully beforeSave SimpleTrait " + request.object.id + " " + modified_trait.get("name") + " for " + modified_trait.get("owner"));
+        }
     }, function (error) {
-        console.log(error.message);
-        console.log("Failed to save change for", request.object.id, "because of", pretty(error));
-        response.error();
+        var failStr;
+        if (!request.object.id) {
+            failStr = "Failed to beforeSave new SimpleTrait " + modified_trait.get("name") + " for " + modified_trait.get("owner") + " because of " + error.message;
+        } else {
+            failStr = "Failed to beforeSave SimpleTrait " + request.object.id + " " + modified_trait.get("name")  + " for " + modified_trait.get("owner") + " because of " + error.message;
+        }
+        console.log(failStr);
+        error.message = failStr;
+        response.error(error);
     });
 });
 
@@ -293,7 +304,7 @@ Parse.Cloud.beforeDelete("SimpleTrait", function(request, response) {
         response.success();
     }, function (error) {
         console.log("Failed to save delete for" + request.object.id + "because of" + pretty(error));
-        response.error();
+        response.error(error);
     });
 });
 
