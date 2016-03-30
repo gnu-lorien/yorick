@@ -75,16 +75,20 @@ define([
             var self = this;
         },
 
-        save_clicked: function(a, b, c) {
+        save_clicked: function(e) {
             var self = this;
+            e.preventDefault();
+            $.mobile.loading("show");
             var v = self.$el.find('input[name="specialization"]').val();
-            self.simpletrait.set_specialization(v);
-            self.character.update_trait(self.simpletrait).then(function (trait) {
-                window.location.hash = self.redirectSave({'self': self});
-            }).fail(function (error) {
-                console.log("Couldn't specialize trait because of " + JSON.stringify(error));
-                window.location.hash = self.redirectRemove({'self': self});
-            })
+            _.defer(function() {
+                self.simpletrait.set_specialization(v);
+                self.character.update_trait(self.simpletrait).then(function (trait) {
+                    window.location.hash = self.redirectSave({'self': self});
+                }).fail(function (error) {
+                    console.log("Couldn't specialize trait because of " + JSON.stringify(error));
+                    window.location.hash = self.redirectRemove({'self': self});
+                })
+            });
             return false;
         },
 
