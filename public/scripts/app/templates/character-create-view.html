@@ -2,7 +2,7 @@
 
 <p>You have <%= creation.get("initial_xp") %> initial XP to spend</p>
 <p>Remaining steps for <%= character.get("name") %></p>
-<% _.each(["clan", "archetype", "sect", "faction", "title"], function (st) { %>
+<% _.each(["clan", "archetype", "sect", "faction", "title", "antecedence"], function (st) { %>
 <% var ust = st[0].toUpperCase() + st.substr(1); %>
 <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
     <% if (creation.get(st)) { %>
