@@ -7,13 +7,15 @@ define([
     var process_single = function (error) {
         if (_.has(error, "message")) {
             console.info("Error in promise %s", JSON.stringify(error));
-            trackJs.console.error("Error in promise", JSON.stringify(error));
+            if (trackJs)
+                trackJs.console.error("Error in promise", JSON.stringify(error));
             if (Parse.Error.INVALID_LINKED_SESSION == error.code) {
                 Parse.User.logOut();
             }
         } else {
             console.info("Error in promise %s", JSON.stringify(error));
-            trackJs.console.error("Error in promise", JSON.stringify(error));
+            if (trackJs)
+                trackJs.console.error("Error in promise", JSON.stringify(error));
         }
     };
 
