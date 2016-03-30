@@ -5,7 +5,7 @@
     <% _.each(collection, function(e) { %>
     <li>
         <a name="<%= e.get('name') %>" backendId="<%= e.id %>" href="#" class="ui-btn ui-btn-icon-right ui-icon-carat-r user-listing">
-            <%= e.get("username") %>
+            <%= e.get("username") %> <%= e.get("email") %> <%= e.get("realname") %>
         </a>
     </li>
     <% }); %>

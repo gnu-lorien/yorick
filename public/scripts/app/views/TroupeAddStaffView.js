@@ -19,7 +19,7 @@ define([
             self.troupe = troupe;
             self.collection = [];
             var q = new Parse.Query("User");
-            q.select("id", "username");
+            q.select("id", "username", "realname", "email");
             q.each(function (t) {
                 self.collection.push(t);
             }).then(function () {
