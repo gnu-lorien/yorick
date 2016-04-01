@@ -7,8 +7,9 @@ define([
     "backbone",
     "moment",
     "text!../templates/character-print-view.html",
-    "text!../templates/character-history-selected-view.html"
-], function( $, Backbone, moment, character_print_view_html, character_history_selected_view_html) {
+    "text!../templates/character-history-selected-view.html",
+    "text!../templates/character-history-view.html"
+], function( $, Backbone, moment, character_print_view_html, character_history_selected_view_html, character_history_view_html) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
@@ -115,8 +116,7 @@ define([
             }
 
             // Sets the view's template property
-            this.template = _.template(
-                $( "script#characterHistoryView" ).html())({
+            this.template = _.template(character_history_view_html)({
                     "character": this.character,
                     "logs": this.character.recorded_changes.models,
                     "format_entry": this.format_entry,
