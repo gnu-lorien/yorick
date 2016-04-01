@@ -688,7 +688,13 @@ define([
             if (0 == changes.length) {
                 return null;
             }
+            // Work around oddness due to cloning relationships
+            // I have to change the parent and hope nothing is still set on them
+            // Relations aren't cloned properly so it's the *same* damned relation
+            var theRelation = this.relation("troupes");
             var c = this.clone();
+            theRelation.parent = null;
+
             _.each(changes, function(change) {
                 if (change.get("category") != "core") {
                     // Find current
