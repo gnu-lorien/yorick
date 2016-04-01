@@ -4,8 +4,9 @@
 // Includes file dependencies
 define([
 	"jquery",
-	"backbone"
-], function( $, Backbone) {
+	"backbone",
+    "text!../templates/character-print-view.html"
+], function( $, Backbone, character_print_view_html) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
@@ -28,8 +29,7 @@ define([
             var groupedSkills = character.get_grouped_skills(sortedSkills, 3);
 
             // Sets the view's template property
-            this.template = _.template(
-                $( "script#characterPrintView" ).html())(
+            this.template = _.template(character_print_view_html)(
                 { "character": this.model,
                   "skills": sortedSkills,
                   "groupedSkills": groupedSkills} );

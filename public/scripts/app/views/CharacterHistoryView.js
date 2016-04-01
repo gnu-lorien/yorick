@@ -6,9 +6,9 @@ define([
     "jquery",
     "backbone",
     "moment",
-    "../models/VampireChange",
-    "../collections/VampireChangeCollection"
-], function( $, Backbone, moment, VampireChange, VampireChangeCollection) {
+    "text!../templates/character-print-view.html",
+    "text!../templates/character-history-selected-view.html"
+], function( $, Backbone, moment, character_print_view_html, character_history_selected_view_html) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
@@ -17,8 +17,8 @@ define([
         initialize: function() {
             var self = this;
 
-            self.sheetTemplate = _.template($( "script#characterPrintView" ).html());
-            self.selectedTemplate = _.template($("script#characterHistorySelectedView").html());
+            self.sheetTemplate = _.template(character_print_view_html);
+            self.selectedTemplate = _.template(character_history_selected_view_html);
         },
 
         register: function(character, changeId) {
@@ -46,18 +46,7 @@ define([
         },
 
         events: {
-            "click .previous": "previous",
-            "click .next": "next",
             "change": "update_selected",
-        },
-
-        update_collection_query_and_fetch: function () {
-            var self = this;
-            var options = {reset: true};
-            var q = new Parse.Query(VampireChange);
-            q.equalTo("owner", self.character).addAscending("createdAt").limit(1000);
-            self.collection.query = q;
-            return self.collection.fetch(options);
         },
 
         format_entry: function(log, entry) {
