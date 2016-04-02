@@ -20,14 +20,19 @@ require([
         }
     )
 
-    $( document ).on( "pagecontainertransition", function() {
+    $( document ).on( "pagecreate", function() {
         $("#splashscreen").remove();
         if (Parse.applicationId && Parse.User.current()) {
             $( "[data-role='navbar']" ).show();
             $( "[data-role='header'], [data-role='footer']" ).show();
-            // Each of the four pages in this demo has a data-title attribute
-            // which value is equal to the text of the nav button
-            // For example, on first page: <div data-role="page" data-title="Info">
+        } else {
+            $( "[data-role='navbar']" ).hide();
+            $( "[data-role='header'], [data-role='footer']" ).hide();
+        }
+    });
+
+    $( document ).on( "pagecontainertransition", function() {
+        if (Parse.applicationId && Parse.User.current()) {
             var current = $(".ui-page-active").jqmData("title");
             // Change the heading
             $("[data-role='header'] h1").text(current);
@@ -39,11 +44,7 @@ require([
                     $(this).addClass("ui-btn-active");
                 }
             });
-        } else {
-            $( "[data-role='navbar']" ).hide();
-            $( "[data-role='header'], [data-role='footer']" ).hide();
         }
-
     });
 
 });
