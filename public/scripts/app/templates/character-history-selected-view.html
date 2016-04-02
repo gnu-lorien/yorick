@@ -1,27 +1,6 @@
-<span>Showing changes including</span>
 <% var headers = ["createdAt", "category", "name", "type", "old_value", "value", "old_free_value", "free_value", "old_cost", "cost", "old_text", "new_text"]; %>
-<table data-role="table" id="table-column-toggle" class="ui-responsive table-stroke">
-    <thead>
-    <tr>
-        <% _.each(headers, function (h, i) { %>
-        <th data-priority="<%= i + 1 %>"><%= h %></th>
-        <% }); %>
-    </tr>
-    </thead>
-    <tbody>
-    <% _.each([logs[idForPickedIndex]], function (log, i) { %>
-    <tr>
-        <% _.each(headers, function (h) { %>
-        <td><%= format_entry(log, h) %></td>
-        <% }); %>
-    </tr>
-    <% }); %>
-    </tbody>
-</table>
-<%= idForPickedIndex %>
-<%= logs.length - 1 %>
 <% if (idForPickedIndex != logs.length - 1) { %>
-<span>Just undid</span>
+<span>Reversed Change</span>
 <% var undoneLog = _.min([idForPickedIndex + 1, logs.length - 1]); %>
 <table data-role="table" id="table-column-toggle" class="ui-responsive table-stroke">
     <thead>
@@ -42,3 +21,23 @@
     </tbody>
 </table>
 <% }; %>
+<span>Most Recent Change Applied</span>
+<table data-role="table" id="table-column-toggle" class="ui-responsive table-stroke">
+    <thead>
+    <tr>
+        <% _.each(headers, function (h, i) { %>
+        <th data-priority="<%= i + 1 %>"><%= h %></th>
+        <% }); %>
+    </tr>
+    </thead>
+    <tbody>
+    <% _.each([logs[idForPickedIndex]], function (log, i) { %>
+    <tr>
+        <% _.each(headers, function (h) { %>
+        <td><%= format_entry(log, h) %></td>
+        <% }); %>
+    </tr>
+    <% }); %>
+    </tbody>
+</table>
+
