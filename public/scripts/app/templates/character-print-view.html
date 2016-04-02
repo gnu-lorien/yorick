@@ -6,6 +6,11 @@
     <div class="ui-block-b">
         <h2 class="ui-bar ui-bar-a">Archetype: <%= character.get("archetype") %></h2>
     </div>
+    <% if (character.get("antecedence")) { %>
+    <div class="ui-block-c">
+        <h2 class="ui-bar ui-bar-a">Antecedence: <%= character.get("antecedence") %></h2>
+    </div>
+    <% } %>
 </div>
 <div class="ui-grid-b ui-responsive">
     <div class="ui-block-a">
