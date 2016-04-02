@@ -4,8 +4,8 @@
         <img src="<%= e.get_thumbnail_sync(128) %>" class="character-link-portrait"/>
         <h2><%= e.get("name") %></h2>
         <p><%= e.get("sect") %> <%= e.get("archetype") %> <%= e.get("clan") %></p>
-        <% if (e.get("antecedence")) { %>
-        <p><%= e.get("antecedence") %></p>
+        <% if (e.get("antecedence") || e.get("faction") || e.get("title")) { %>
+        <p><%= e.get("antecedence") %> <%= e.get("faction") %> <%= e.get("title") %></p>
         <% } %>
     </a>
 </li>
