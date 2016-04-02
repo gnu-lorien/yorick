@@ -214,12 +214,21 @@
 
 
 <div id="characters-all" data-role="page" data-title="Characters">
-
     <div role="main" class="ui-content">
         <ul>
             <li><a href="#characternew">Add New Vampire</a></li>
         </ul>
         <ul data-role="listview" data-inset="true">
+        </ul>
+    </div><!-- /content -->
+</div>
+
+<div id="troupe-characters-all" data-role="page" data-title="Troupe Characters">
+    <div role="main" class="ui-content">
+        <form class="ui-filterable">
+            <input id="troupes-characters-filter" data-type="search">
+        </form>
+        <ul data-role="listview" data-inset="true" data-filter="true" data-input="#troupes-characters-filter">
         </ul>
     </div><!-- /content -->
 </div>

@@ -109,6 +109,7 @@ define([
             this.vehiclesView = new CategoryView( { el: "#vehicles", collection: new CategoriesCollection( [] , { type: "vehicles" } ) } );
 
             this.characters = new CharactersListView( {el: "#characters-all", collection: new Vampires});
+            this.troupeCharacters = new CharactersListView({el: "#troupe-characters-all", collection: new Vampires});
 
             this.character = new CharacterView({ el: "#character"});
 
@@ -495,10 +496,10 @@ define([
             p = q.each(function (character) {
                 c.push(character);
             }).then(function () {
-                self.characters.collection.reset(c);
+                self.troupeCharacters.collection.reset(c);
             })
             return p.done(function () {
-                return Parse.Promise.as(self.characters.collection);
+                return Parse.Promise.as(self.troupeCharacters.collection);
             })
         },
 
@@ -790,8 +791,9 @@ define([
             }).then(function (troupe, user) {
                 return self.get_troupe_characters(troupe);
             }).then(function() {
-                self.characters.register("#troupe/" + id + "/character/<%= character_id %>");
-                $.mobile.changePage("#characters-all", {reverse: false, changeHash: false});
+                self.troupeCharacters = self.troupeCharacters || new CharactersListView({el: "#troupe-characters-all", collection: new Vampires});
+                self.troupeCharacters.register("#troupe/" + id + "/character/<%= character_id %>");
+                $.mobile.changePage("#troupe-characters-all", {reverse: false, changeHash: false});
             }).always(function() {
                 $.mobile.loading("hide");
             }).fail(PromiseFailReport);
