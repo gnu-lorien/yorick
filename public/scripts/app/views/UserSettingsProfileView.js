@@ -17,6 +17,7 @@ define([
                 fields: [
                     {name: "realname", label: "Real Name", control: "input"},
                     {name: "email", label: "Email", control: "input", type: "email"},
+                    {name: "massmailauthorization", label: "I authorize Underground Theater to contact me using this email address", control: "checkbox"},
                     {name: "submit", label: "Update", control: "button", disabled: true, id: "submit"}
                 ],
                 events: {
