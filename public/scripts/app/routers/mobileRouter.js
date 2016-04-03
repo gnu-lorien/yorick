@@ -493,6 +493,7 @@ define([
             var q = new Parse.Query(Vampire);
             q.equalTo("troupes", troupe);
             q.include("portrait");
+            q.include("owner");
             p = q.each(function (character) {
                 c.push(character);
             }).then(function () {
@@ -514,6 +515,7 @@ define([
             //q.equalTo("owner", Parse.User.current());
             q.exists("owner");
             q.include("portrait");
+            q.include("owner");
             p = q.each(function (character) {
                 c.push(character);
             }).then(function () {

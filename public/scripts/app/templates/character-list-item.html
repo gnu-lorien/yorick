@@ -7,6 +7,13 @@
         <% if (e.get("antecedence") || e.get("faction") || e.get("title")) { %>
         <p><%= e.get("antecedence") %> <%= e.get("faction") %> <%= e.get("title") %></p>
         <% } %>
+        <% if (e.has("owner")) { %>
+        <% if (e.get("owner").get("username")) { %>
+            <% var user = e.get("owner"); %>
+            <p><%= user.get("realname") %> <%= user.get("email") %> <%= user.get("username") %></p>
+        <% }} else { %>
+            <p>DELETED</p>
+        <% } %>
     </a>
 </li>
 <% }); %>
