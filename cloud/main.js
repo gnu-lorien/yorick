@@ -505,4 +505,19 @@ Parse.Cloud.job("deletetestcharacters", function(request, response) {
         }
         console.log(pretty(error));
     });
-})
+});
+
+Parse.Cloud.define("check_user_password", function(request, response)
+{
+    var password = request.params.password;
+
+    Parse.User.logIn(request.user.getUsername(), password, {
+        success: function(results)
+        {
+            response.success(true);
+        },
+        error: function() {
+            response.success(false);
+        }
+    });
+});

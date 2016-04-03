@@ -25,7 +25,7 @@ define([
                         this.$('button[name=submit]').removeAttr("disabled");
                         var s = this.fields.get("submit");
                         if ("success" == s.get("status")) {
-                            s.set({status: "", message: ""});
+                            s.set({status: "", message: "", disabled: false});
                             this.$el.enhanceWithin();
                         }
                     },
@@ -37,10 +37,10 @@ define([
                         self.model.errorModel.clear();
 
                         self.model.save().then(function () {
-                            self.fields.get("submit").set({status: "success", message: "Successfully Updated"});
+                            self.fields.get("submit").set({status: "success", message: "Successfully Updated", disabled: true});
                             self.$el.enhanceWithin();
                         }, function (error) {
-                            self.fields.get("submit").set({status: "error", message: _.escape(error.message)});
+                            self.fields.get("submit").set({status: "error", message: _.escape(error.message), disabled: false});
                             self.$el.enhanceWithin();
                         }).always(function () {
                             $.mobile.loading("hide");
