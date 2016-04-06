@@ -6,11 +6,15 @@ define([
 
     var process_single = function (error) {
         if (_.has(error, "message")) {
-            console.info("Error in promise %s", JSON.stringify(error));
-            if (trackJs)
-                trackJs.console.error("Error in promise", JSON.stringify(error));
-            if (Parse.Error.INVALID_LINKED_SESSION == error.code) {
+            if (Parse.Error.INVALID_LINKED_SESSION == error.code ||
+                Parse.Error.INVALID_SESSION_TOKEN == error.code) {
                 Parse.User.logOut();
+                if (window)
+                    window.location.reload();
+            } else {
+                console.info("Error in promise %s", JSON.stringify(error));
+                if (trackJs)
+                    trackJs.console.error("Error in promise", JSON.stringify(error));
             }
         } else {
             console.info("Error in promise %s", JSON.stringify(error));
