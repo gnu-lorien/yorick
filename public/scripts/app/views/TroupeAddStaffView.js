@@ -14,9 +14,9 @@ define([
             _.bindAll(this, "render");
         },
 
-        register: function(troupe) {
+        register: function(click_template) {
             var self = this;
-            self.troupe = troupe;
+            self.click_template = _.template(click_template);
             self.collection = [];
             var q = new Parse.Query("User");
             q.select("id", "username", "realname", "email");
@@ -38,7 +38,7 @@ define([
             e.preventDefault();
             $.mobile.loading("show");
             var pickedId = $(e.target).attr("backendId");
-            window.location.hash = "#troupe/" + self.troupe.id + "/staff/edit/" + pickedId;
+            window.location.hash = self.click_template({id: pickedId});
         },
 
         // Renders all of the Category models on the UI

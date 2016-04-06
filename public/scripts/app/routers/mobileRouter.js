@@ -209,7 +209,8 @@ define([
 
             "administration": "administration",
             "administration/characters/all": "administration_characters_all",
-            "administration/character/:id": "administration_character"
+            "administration/character/:id": "administration_character",
+            "administration/users/all": "administration_users",
 
         },
 
@@ -449,6 +450,19 @@ define([
 
         administration_character: function(id) {
             this.show_character_helper(id, "#administration/characters/all");
+        },
+
+        administration_users: function() {
+            var self = this;
+            $.mobile.loading("show");
+            self.enforce_logged_in().then(function() {
+                self.set_back_button("#administration");
+                self.troupeAddStaffView = self.troupeAddStaffView || new TroupeAddStaffView({el: "#troupe-add-staff"});
+                self.troupeAddStaffView.register("#administration/users/<%= id %>");
+                $.mobile.changePage("#troupe-add-staff", {reverse: false, changeHash: false});
+            }).always(function() {
+                $.mobile.loading("hide");
+            });
         },
 
         characterdelete: function(cid) {
@@ -869,7 +883,7 @@ define([
                 return new Parse.Query("Troupe").get(id);
             }).then(function (troupe) {
                 self.troupeAddStaffView = self.troupeAddStaffView || new TroupeAddStaffView({el: "#troupe-add-staff"});
-                self.troupeAddStaffView.register(troupe);
+                self.troupeAddStaffView.register("#troupe/" + troupe.id + "/staff/edit/<%= id %>");
                 $.mobile.changePage("#troupe-add-staff", {reverse: false, changeHash: false});
             }).always(function() {
                 $.mobile.loading("hide");
