@@ -39,12 +39,13 @@ define([
     "../views/TroupeNewView",
     "../views/TroupesListView",
     "../views/TroupeView",
-    "../views/TroupeAddStaffView",
+    "../views/UsersView",
     "../views/TroupeEditStaffView",
     "../models/Troupe",
     "../helpers/PromiseFailReport",
     "../views/TroupePortraitView",
     "text!../templates/footer.html",
+    "../views/AdministrationUserView"
 ], function ($,
              Parse,
              pretty,
@@ -81,12 +82,13 @@ define([
              TroupeNewView,
              TroupesListView,
              TroupeView,
-             TroupeAddStaffView,
+             UsersView,
              TroupeEditStaffView,
              Troupe,
              PromiseFailReport,
              TroupePortraitView,
-             footer_html
+             footer_html,
+             AdministrationUserView
 ) {
 
     // Extends Backbone.Router
@@ -457,7 +459,7 @@ define([
             $.mobile.loading("show");
             self.enforce_logged_in().then(function() {
                 self.set_back_button("#administration");
-                self.troupeAddStaffView = self.troupeAddStaffView || new TroupeAddStaffView({el: "#troupe-add-staff"});
+                self.troupeAddStaffView = self.troupeAddStaffView || new UsersView({el: "#troupe-add-staff"});
                 self.troupeAddStaffView.register("#administration/users/<%= id %>");
                 $.mobile.changePage("#troupe-add-staff", {reverse: false, changeHash: false});
             }).always(function() {
@@ -882,7 +884,7 @@ define([
                 self.set_back_button("#troupe/" + id);
                 return new Parse.Query("Troupe").get(id);
             }).then(function (troupe) {
-                self.troupeAddStaffView = self.troupeAddStaffView || new TroupeAddStaffView({el: "#troupe-add-staff"});
+                self.troupeAddStaffView = self.troupeAddStaffView || new UsersView({el: "#troupe-add-staff"});
                 self.troupeAddStaffView.register("#troupe/" + troupe.id + "/staff/edit/<%= id %>");
                 $.mobile.changePage("#troupe-add-staff", {reverse: false, changeHash: false});
             }).always(function() {
