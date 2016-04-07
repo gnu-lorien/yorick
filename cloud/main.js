@@ -262,14 +262,14 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
         if (!request.object.id) {
             console.log("Successfully beforeSave new SimpleTrait " + modified_trait.get("name") + " for " + modified_trait.get("owner"));
         } else {
-            console.log("Successfully beforeSave SimpleTrait " + request.object.id + " " + modified_trait.get("name") + " for " + modified_trait.get("owner"));
+            console.log("Successfully beforeSave SimpleTrait " + request.object.id + " " + modified_trait.get("name") + " for " + modified_trait.get("owner").id);
         }
     }, function (error) {
         var failStr;
         if (!request.object.id) {
             failStr = "Failed to beforeSave new SimpleTrait " + modified_trait.get("name") + " for " + modified_trait.get("owner") + " because of " + error.message;
         } else {
-            failStr = "Failed to beforeSave SimpleTrait " + request.object.id + " " + modified_trait.get("name")  + " for " + modified_trait.get("owner") + " because of " + error.message;
+            failStr = "Failed to beforeSave SimpleTrait " + request.object.id + " " + modified_trait.get("name")  + " for " + modified_trait.get("owner").id + " because of " + error.message;
         }
         console.log(failStr);
         error.message = failStr;
