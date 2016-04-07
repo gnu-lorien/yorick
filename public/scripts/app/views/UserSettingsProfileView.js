@@ -3,23 +3,18 @@ define([
     "jquery",
     "backbone",
     "parse",
-    "backform"
-], function ($, Backbone, Parse, Backform) {
+    "backform",
+    "../forms/UserForm"
+], function ($, Backbone, Parse, Backform, UserForm) {
 
     // Extends Backbone.View
     var UserSettingsProfileView = Backbone.View.extend({
         initialize: function () {
             var view = this;
             view.errorModel = new Backbone.Model();
-            this.form = new Backform.Form({
+            this.form = new UserForm({
                 errorModel: view.errorModel,
                 model: Parse.User.current() || new Backbone.Model,
-                fields: [
-                    {name: "realname", label: "Real Name", control: "input"},
-                    {name: "email", label: "Email", control: "input", type: "email"},
-                    {name: "massmailauthorization", label: "I authorize Underground Theater to contact me using this email address", control: "checkbox"},
-                    {name: "submit", label: "Update", control: "button", disabled: true, id: "submit"}
-                ],
                 events: {
                     "change": function (e) {
                         e.preventDefault();
@@ -37,6 +32,10 @@ define([
                         self.undelegateEvents();
                         self.model.errorModel.clear();
 
+                        /*
+                        self.model.errorModel.set({"realname": "Refusing any real name whatsoever"});
+                        */
+
                         self.model.save().then(function () {
                             self.fields.get("submit").set({status: "success", message: "Successfully Updated", disabled: true});
                             self.$el.enhanceWithin();
@@ -52,6 +51,7 @@ define([
                     }
                 }
             });
+            view.form.fields.add(new Backform.Field({name: "submit", label: "Update", control: "button", disabled: true, id: "submit"}));
         },
 
         render: function () {

@@ -213,6 +213,7 @@ define([
             "administration/characters/all": "administration_characters_all",
             "administration/character/:id": "administration_character",
             "administration/users/all": "administration_users",
+            "administration/user/:id": "administration_user"
 
         },
 
@@ -460,11 +461,26 @@ define([
             self.enforce_logged_in().then(function() {
                 self.set_back_button("#administration");
                 self.troupeAddStaffView = self.troupeAddStaffView || new UsersView({el: "#troupe-add-staff"});
-                self.troupeAddStaffView.register("#administration/users/<%= id %>");
+                self.troupeAddStaffView.register("#administration/user/<%= id %>");
                 $.mobile.changePage("#troupe-add-staff", {reverse: false, changeHash: false});
             }).always(function() {
                 $.mobile.loading("hide");
             });
+        },
+        
+        administration_user: function(id) {
+            var self = this;
+            $.mobile.loading("show");
+            self.enforce_logged_in().then(function() {
+                self.set_back_button("#administration/users/all");
+                return new Parse.Query("User").get(id);
+            }).then(function (user) {
+                self.administrationUserView = self.administrationUserView || new AdministrationUserView({el: "#administration-user-view"});
+                self.administrationUserView.register(user);
+                $.mobile.changePage("#administration-user-view", {reverse: false, changeHash: false});
+            }).always(function() {
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
         },
 
         characterdelete: function(cid) {

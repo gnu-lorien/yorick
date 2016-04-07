@@ -1,9 +1,8 @@
 define([
     "jquery",
     "backbone",
-    "backform",
-    "../models/Troupe"
-], function( $, Backbone, Backform, Troupe) {
+    "backform"
+], function( $, Backbone, Backform) {
     var Form = Backform.Form.extend({
         fields: [
             {name: "name", label: "Name", control: "input"},
