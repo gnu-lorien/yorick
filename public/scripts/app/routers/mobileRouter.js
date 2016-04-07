@@ -45,7 +45,8 @@ define([
     "../helpers/PromiseFailReport",
     "../views/TroupePortraitView",
     "text!../templates/footer.html",
-    "../views/AdministrationUserView"
+    "../views/AdministrationUserView",
+    "../views/PasswordReset"
 ], function ($,
              Parse,
              pretty,
@@ -88,7 +89,8 @@ define([
              PromiseFailReport,
              TroupePortraitView,
              footer_html,
-             AdministrationUserView
+             AdministrationUserView,
+             PasswordResetView
 ) {
 
     // Extends Backbone.Router
@@ -158,6 +160,7 @@ define([
 
             "logout": "logout",
             "signup": "signup",
+            "reset": "resetpassword",
 
             "profile": "profile",
 
@@ -248,6 +251,13 @@ define([
             } else {
                 window.location.hash = "";
             }
+        },
+
+        resetpassword: function() {
+            var self = this;
+            self.resetPasswordView = self.resetPasswordView || new PasswordResetView({el: "#user-reset-password"});
+            self.resetPasswordView.render();
+            $.mobile.changePage("#user-reset-password", {reverse: false, changeHash: false});
         },
 
         profile: function() {
