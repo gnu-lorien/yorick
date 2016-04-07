@@ -18,7 +18,20 @@ define([
                 events: {
                     "click .reset-user-password": function (e) {
                         e.preventDefault();
-                        alert("reset that password");
+                        var self = this;
+                        var email = self.model.get("email");
+                        $.mobile.loading("show");
+                        self.undelegateEvents();
+                        self.$(".reset-password-button").attr("disabled", true);
+                        Parse.User.requestPasswordReset(email, function () {
+                            self.fields.get("reset").set({status: "success", message: "Password Reset Email Sent"});
+                        }, function (error) {
+                            self.fields.get("reset").set({status: "error", message: _.escape(error.message)});
+                        }).always(function() {
+                            self.$el.enhanceWithin();
+                            self.$(".reset-password-button").removeAttr("disabled");
+                            $.mobile.loading("hide");
+                        })
                     },
                 }
             });
