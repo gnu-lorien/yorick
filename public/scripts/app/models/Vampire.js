@@ -335,7 +335,8 @@ define([
                 ["linguistics_specializations", "Languages"],
                 ["influence_elite_specializations", "Influence: Elite"],
                 ["influence_underworld_specializations", "Influence: Underworld"],
-                ["status_traits", "Sect Status"]];
+                ["status_traits", "Sect Status"],
+                ["extra_in_clan_disciplines", "Extra In Clan Disciplines"]];
         },
 
         unpick_from_creation: function(category, picked_trait_id, pick_index, wait) {
@@ -885,6 +886,7 @@ define([
             //q.equalTo("owner", Parse.User.current());
             q.include("portrait");
             q.include("backgrounds");
+            q.include("extra_in_clan_disciplines");
             return q.get(id).then(function(m) {
                 character_cache._character = m;
                 return Model.get_character(id, categories, character_cache);

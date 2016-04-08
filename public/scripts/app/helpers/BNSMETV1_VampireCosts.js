@@ -15,6 +15,8 @@ define([
         discipline_is_in_clan: function(character, trait) {
             var self = this;
             var icds = self.ClanRules.get_in_clan_disciplines(character);
+            var eicds = _.map(character.get('extra_in_clan_disciplines'), "attributes.name");
+            icds = [].concat(icds, eicds);
             if ([] == icds) {
                 return false;
             }
