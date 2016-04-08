@@ -184,6 +184,7 @@ define([
             "charactercreate/simpletraits/:category/:cid/unpick/:stid/:i": "charactercreateunpicksimpletrait",
             "charactercreate/simpletraits/:category/:cid/specialize/:stid/:i": "charactercreatespecializesimpletrait",
             "charactercreate/simpletext/:category/:target/:cid/pick": "charactercreatepicksimpletext",
+            "charactercreate/complete/:cid": "charactercreatecomplete",
 
             "characternew": "characternew",
 
@@ -354,9 +355,7 @@ define([
                 self.characterCreateView.scroll_back_after_page_change();
                 $.mobile.changePage("#character-create", {reverse: false, changeHash: false});
                 $.mobile.loading("hide");
-            }).fail(function (error) {
-                console.log("Failed to get the character create page", pretty(error));
-            });
+            }).fail(PromiseFailReport);
         },
 
         charactercreatepicksimpletrait: function(category, cid, i) {
@@ -427,6 +426,20 @@ define([
                 self.characterCreateView.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
                 $.mobile.changePage("#simpletext-new", {reverse: false, changeHash: false});
             });
+        },
+        
+        charactercreatecomplete: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#charactercreate/" + cid);
+            self.get_character(cid).done(function (c) {
+                return c.complete_character_creation();
+            }).then(function () {
+                window.location.hash = "#character?" + cid;
+            }).fail(function (error) {
+                alert(error.message);
+                window.location.hash = "#charactercreate/" + cid;
+            }).fail(PromiseFailReport);
         },
 
         characterportrait: function(cid) {

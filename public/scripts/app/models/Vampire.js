@@ -367,6 +367,15 @@ define([
             return !this.get("creation").get("completed");
         },
 
+        complete_character_creation: function() {
+            var self = this;
+            return self.fetch_all_creation_elements().then(function() {
+                var creation = self.get("creation");
+                creation.set("completed", true);
+                return creation.save();
+            });
+        },
+
         _raw_generation: function() {
             var self = this;
             var generation;
