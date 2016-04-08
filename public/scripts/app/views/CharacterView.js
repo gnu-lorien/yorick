@@ -12,8 +12,18 @@ define([
 
         // The View Constructor
         initialize: function() {
-
+            _.bindAll(this, "scroll_back_after_page_change");
         },
+
+        scroll_back_after_page_change: function() {
+            var self = this;
+            $(document).one("pagechange", function() {
+                var top = _.parseInt(self.backToTop);
+                $.mobile.silentScroll(top);
+                self.backToTop = 0;
+            });
+        },
+
 
         // Renders all of the Category models on the UI
         render: function() {

@@ -177,6 +177,8 @@ define([
 
             "simpletrait/:category/:cid/:bid": "simpletrait",
             "simpletrait/specialize/:category/:cid/:bid": "simpletraitspecialize",
+            
+            "simpletext/:category/:target/:cid/pick": "simpletextpick",
 
             "charactercreate/:cid": "charactercreate",
 
@@ -460,6 +462,7 @@ define([
             this.get_character(id).done(function (m) {
                 c.model = m;
                 c.render();
+                c.scroll_back_after_page_change();
                 $.mobile.changePage("#character", {reverse: false, changeHash:false});
             }).fail(PromiseFailReport).fail(function () {
                 window.location.hash = back_url;
@@ -656,6 +659,18 @@ define([
                 console.log(error.message);
             });
         },
+        
+        simpletextpick: function(category, target, cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid, [category]).done(function (c) {
+                self.simpleTextNewView.register(c, category, target, "#character?" + c.id);
+                self.character.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
+                $.mobile.changePage("#simpletext-new", {reverse: false, changeHash: false});
+            });
+        },
+ 
 
         simpletraits: function(category, cid, type) {
             var self = this;

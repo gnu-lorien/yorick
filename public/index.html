@@ -167,6 +167,7 @@
         <li><a href="#charactercreate/<%= character.id %>">Character Creation</a></li>
     </ul>
     <% } %>
+
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <li><a href="#character/<%= character.id %>/portrait">Character Portrait</a></li>
     </ul>
@@ -177,6 +178,20 @@
             <li><a href="#simpletraits/<%= category %>/<%= character.id %>/all"><%= description %></a></li>
         </ul>
     <% }) %>
+
+    <% if (!character.is_being_created()) { %>
+        <% _.each(["clan", "archetype", "sect", "faction", "title", "antecedence"], function (st) { %>
+        <% var ust = st[0].toUpperCase() + st.substr(1); %>
+        <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+            <% if (character.get(st)) { %>
+            <li data-role="list-divider"><%= ust %><p><%= character.get(st) %></p></li>
+            <li><a href="#simpletext/<%= st %>s/<%= st %>/<%= character.id %>/pick">Repick <%= ust %></a></li>
+            <% } else { %>
+            <li><a href="#simpletext/<%= st %>s/<%= st %>/<%= character.id %>/pick">Pick <%= ust %></a></li>
+            <% } %>
+        </ul>
+        <% }) %>
+    <% } %>
 
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <li><a href="#character/<%= character.id %>/history/0">History</a></li>
