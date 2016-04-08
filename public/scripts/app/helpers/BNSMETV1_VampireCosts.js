@@ -14,11 +14,20 @@ define([
 
         discipline_is_in_clan: function(character, trait) {
             var self = this;
-            var icd = self.ClanRules.get_in_clan_disciplines(character);
-            if ([] == icd) {
+            var icds = self.ClanRules.get_in_clan_disciplines(character);
+            if ([] == icds) {
                 return false;
             }
-            return _.contains(icd, trait.get_base_name());
+            return _.any(icds, function (icd) {
+                // Need to check if an in-clan includes a specialized name
+                if (_.eq(icd, trait.get_base_name())) {
+                    return true;
+                }
+                if (_.eq(icd, trait.get("name"))) {
+                    return true;
+                }
+                return false;
+            });
         },
 
         get_cost_table: function(cost_per_entry) {
