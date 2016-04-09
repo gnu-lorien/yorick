@@ -235,7 +235,10 @@
         <ul>
             <li><a href="#characternew">Add New Vampire</a></li>
         </ul>
-        <ul data-role="listview" data-inset="true">
+        <form class="ui-filterable">
+            <input id="characters-filter" data-type="search">
+        </form>
+        <ul data-role="listview" data-inset="true" data-filter="true" data-input="#characters-filter">
         </ul>
     </div><!-- /content -->
 </div>
