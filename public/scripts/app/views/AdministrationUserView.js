@@ -79,6 +79,7 @@ define([
             self.user = user;
             //(new Parse.Query(Parse.Role)).equalTo("users", theUser).find()
             if (self.form.model.id != user.id) {
+                self.form.fields.get("submit").set({status: "", message: ""});
                 var adminq = (new Parse.Query(Parse.Role)).equalTo("users", user).equalTo("name", "Administrator");
                 var siteadminq = (new Parse.Query(Parse.Role)).equalTo("users", user).equalTo("name", "SiteAdministrator");
                 var q = Parse.Query.or(adminq, siteadminq);
