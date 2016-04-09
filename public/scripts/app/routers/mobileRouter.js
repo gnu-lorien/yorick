@@ -617,7 +617,18 @@ define([
                 userId: u.get("username"),
                 sessionId: u.getSessionToken(),
             })
-            return Parse.Promise.as([]);
+            var adminq = (new Parse.Query(Parse.Role)).equalTo("users", Parse.User.current()).equalTo("name", "Administrator");
+            var siteadminq = (new Parse.Query(Parse.Role)).equalTo("users", Parse.User.current()).equalTo("name", "SiteAdministrator");
+            var q = Parse.Query.or(adminq, siteadminq);
+            return q.count().then(function (count) {
+                var isadministrator = count ? true : false;
+                var u = Parse.User.current();
+                if (u.get("admininterface") != isadministrator) {
+                    u.set("admininterface", isadministrator);
+                    return Parse.User.current().save();
+                }
+                return Parse.Promise.as(Parse.User.current());
+            });
         },
 
         get_character: function(id, categories) {
