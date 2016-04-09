@@ -854,7 +854,14 @@ define([
                 })
                 return Parse.Object.saveAll(ens.models);
             }).then(function () {
-                return Parse.Cloud.run("update_vampire_change_permissions_for", {character: self.id});
+                return (new Parse.Query("VampireChange").equalTo("owner", self)).each(function (vc) {
+                    return Parse.Cloud.run(
+                        "update_indv_vc_permissions_for",
+                        {
+                            character: self.id,
+                            change: vc.id,
+                        });
+                });
             });
         },
 

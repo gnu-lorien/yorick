@@ -177,8 +177,7 @@ Parse.Cloud.beforeSave("Vampire", function(request, response) {
     _.each(v.dirtyKeys(), function(k) {
         new_values[k] = v.get(k);
     })
-    var vToFetch = new Vampire({id: v.id});
-    vToFetch.fetch().then(function(vampire) {
+    (new Parse.Query("Vampire").get(v.id)).then(function(vampire) {
         return Parse.Object.saveAll(_.map(_.pairs(new_values), function(a) {
             var attribute = a[0], val = a[1];
             var vc = new Parse.Object("VampireChange");
@@ -251,8 +250,7 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
         return;
     }
 
-    var vToFetch = new Vampire({id: vc.get("owner").id});
-    vToFetch.fetch().then(function(vampire) {
+    (new Parse.Query("Vampire").get(vc.get("owner").id)).then(function(vampire) {
         var acl = get_vampire_change_acl(vampire);
         vc.setACL(acl);
 
@@ -295,8 +293,7 @@ Parse.Cloud.beforeDelete("SimpleTrait", function(request, response) {
         "simple_trait_id": trait.id,
         "instigator": request.user
     });
-    var vToFetch = new Vampire({id: vc.get("owner").id});
-    vToFetch.fetch().then(function(vampire) {
+    (new Parse.Query("Vampire").get(vc.get("owner").id)).then(function(vampire) {
         var acl = get_vampire_change_acl(vampire);
         vc.setACL(acl);
         return vc.save();
@@ -326,7 +323,8 @@ Parse.Cloud.define("removeRedundantHistory", function(request, response) {
     });
 })
 
-var fix_character_ownership = function(v) {
+
+var fix_all_vampire_change_acl_for_character = function(v) {
     var acl = get_vampire_change_acl(v);
     Parse.Cloud.useMasterKey();
     return new Parse.Query("VampireChange").equalTo("owner", v).each(function (vc) {
@@ -335,11 +333,11 @@ var fix_character_ownership = function(v) {
     });
 };
 
+
 Parse.Cloud.define("update_vampire_change_permissions_for", function(request, response) {
     var character_id = request.params.character;
-    var tmp = new Vampire({id: character_id});
-    tmp.fetch().then(function (v) {
-        return fix_character_ownership(v);
+    (new Parse.Query("Vampire").get(character_id)).then(function (v) {
+        return fix_all_vampire_change_acl_for_character(v);
     }).then(function() {
         response.success("Successfully updated permissions.");
     }, function(error) {
@@ -353,6 +351,35 @@ Parse.Cloud.define("update_vampire_change_permissions_for", function(request, re
         console.log(pretty(error));
     });
 });
+
+
+Parse.Cloud.define("update_indv_vc_permissions_for", function(request, response) {
+    Parse.Cloud.useMasterKey();
+    var character_id = request.params.character;
+    var vc_id = request.params.change;
+    var acl;
+    (new Parse.Query("Vampire").get(character_id)).then(function (v) {
+        console.log("Got vamp. Getting the ACL");
+        acl = get_vampire_change_acl(v);
+        var q = new Parse.Query("VampireChange");
+        return q.get(vc_id);
+    }).then(function(vc) {
+        vc.setACL(acl);
+        return vc.save();
+    }).then(function() {
+        response.success("Successfully updated acl on " + vc_id + " for " + character_id);
+    }, function(error) {
+        if (error.code === Parse.Error.AGGREGATE_ERROR) {
+            for (var i = 0; i < error.errors.length; i++) {
+                response.error("Couldn't fix " + error.errors[i].object.id + "due to " + error.errors[i].message);
+            }
+        } else {
+            response.error("Update acl because of " + error.message);
+        }
+        console.log(pretty(error));
+    });
+});
+
 
 Parse.Cloud.job("fixuserownership", function(request, response) {
     Parse.Cloud.useMasterKey();
