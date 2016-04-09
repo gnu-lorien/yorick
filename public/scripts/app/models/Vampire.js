@@ -938,6 +938,8 @@ define([
         acl.setPublicWriteAccess(false);
         acl.setWriteAccess(Parse.User.current(), true);
         acl.setReadAccess(Parse.User.current(), true);
+        acl.setRoleReadAccess("Administrator", true);
+        acl.setRoleWriteAccess("Administrator", true);
         v.setACL(acl);
         return v.save({name: name, owner: Parse.User.current(), change_count: 0}).then(function () {
             return Model.get_character(v.id);
