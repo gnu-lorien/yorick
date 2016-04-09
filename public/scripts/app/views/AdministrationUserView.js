@@ -31,21 +31,64 @@ define([
                             self.$el.enhanceWithin();
                             self.$(".reset-password-button").removeAttr("disabled");
                             $.mobile.loading("hide");
+                            self.delegateEvents();
                         })
                     },
+                    "submit": function (e) {
+                        var self = this;
+                        e.preventDefault();
+                        self.undelegateEvents();
+                        $.mobile.loading("show");
+
+                        var user = self.model;
+                        new Parse.Query(Parse.Role).equalTo("name", "Administrator").first().then(function (role) {
+                            if (user.get("admininterface")) {
+                                // Make an admin
+                                role.getUsers().add(user);
+                            } else {
+                                // Destroy their admin rights
+                                role.getUsers().remove(user);
+                            }
+                            return role.save();
+                        }).then(function () {
+                            if (user.get("admininterface")) {
+                                self.fields.get("submit").set({status: "success", message: "Made them an admin!"});
+                            } else {
+                                self.fields.get("submit").set({status: "success", message: "Removed their admin privileges!"});
+                            }
+                        }).fail(function (error) {
+                            self.fields.get("submit").set({status: "error", message: _.escape(error.message)});
+                        }).always(function () {
+                            self.$el.enhanceWithin();
+                            $.mobile.loading("hide");
+                            self.delegateEvents();
+                        });
+                    }
                 }
             });
+            view.form.fields.each(function(field) {
+                field.set("disabled", true);
+            });
+            view.form.fields.add(new Backform.Field({name: "admininterface", label: "Administrator", control: "checkbox"}));
             view.form.fields.add(new Backform.Field({name: "reset", label: "Reset Password", control: "button", id: "reset", extraClasses: ["reset-user-password"], type: "reset"}));
+            view.form.fields.add(new Backform.Field({name: "submit", label: "Update", control: "button", id: "submit"}));
         },
 
         register: function (user) {
             var self = this;
             self.user = user;
+            //(new Parse.Query(Parse.Role)).equalTo("users", theUser).find()
             if (self.form.model.id != user.id) {
-                var errorModel = self.form.errorModel;
-                this.form.model = user;
-                this.form.model.errorModel = errorModel;
-                return self.render();
+                var adminq = (new Parse.Query(Parse.Role)).equalTo("users", user).equalTo("name", "Administrator");
+                var siteadminq = (new Parse.Query(Parse.Role)).equalTo("users", user).equalTo("name", "SiteAdministrator");
+                var q = Parse.Query.or(adminq, siteadminq);
+                return q.count().then(function (isadministrator) {
+                    user.set("admininterface", isadministrator ? true : false);
+                    var errorModel = self.form.errorModel;
+                    self.form.model = user;
+                    self.form.model.errorModel = errorModel;
+                    return self.render();
+                });
             }
         },
         
