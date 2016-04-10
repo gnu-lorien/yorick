@@ -6,6 +6,9 @@ define([
 
     var process_single = function (error) {
         if (_.has(error, "message")) {
+            if (Parse.Error.USERNAME_MISSING == error.code) {
+                return;
+            }
             if (Parse.Error.INVALID_LINKED_SESSION == error.code ||
                 Parse.Error.INVALID_SESSION_TOKEN == error.code) {
                 Parse.User.logOut();
