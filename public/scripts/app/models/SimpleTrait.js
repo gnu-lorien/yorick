@@ -38,18 +38,6 @@ define([
             return self;
         },
 
-        save: function() {
-            return Parse.Object.prototype.save.apply(this, arguments);
-        },
-
-        dirty: function() {
-            var ret = Parse.Object.prototype.dirty.apply(this, arguments);
-            if (ret) {
-                console.log("SimpleTrait " + this.get("name") + "is dirty " + ret);
-            }
-            return ret;
-        },
-
         _findUnsavedChildren: function(object, children, files) {
             console.log("Before " + this.get("name") + ": " + children.length);
             Parse.Object._findUnsavedChildren.apply(this, object, children, files);
