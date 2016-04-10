@@ -836,32 +836,34 @@ define([
 
         update_troupe_acls: function() {
             var self = this;
+            var allsts = [];
             var newACL = self.get_me_acl();
+            $.mobile.loading("show", {text: "Updating character permissions", textVisible: true});
             self.set_cached_acl(newACL);
             self.setACL(newACL);
             return self.save().then(function () {
+                $.mobile.loading("show", {text: "Updating trait permissions", textVisible: true});
                 var q = new Parse.Query("SimpleTrait");
                 q.equalTo("owner", self);
                 return q.each(function (st) {
                     st.setACL(self.get_me_acl());
-                    return st.save();
+                    allsts.push(st)
                 })
             }).then(function () {
+                $.mobile.loading("show", {text: "Saving trait permissions", textVisible: true});
+                return Parse.Object.saveAll(allsts);
+            }).then(function () {
+                $.mobile.loading("show", {text: "Fetching experience notations", textVisible: true});
                 return self.get_experience_notations();
             }).then(function (ens) {
+                $.mobile.loading("show", {text: "Updating experience notations", textVisible: true});
                 ens.each(function (en) {
                     en.setACL(self.get_me_acl());
                 })
                 return Parse.Object.saveAll(ens.models);
             }).then(function () {
-                return (new Parse.Query("VampireChange").equalTo("owner", self)).each(function (vc) {
-                    return Parse.Cloud.run(
-                        "update_indv_vc_permissions_for",
-                        {
-                            character: self.id,
-                            change: vc.id,
-                        });
-                });
+                $.mobile.loading("show", {text: "Updating server side change log", textVisible: true});
+                return Parse.Cloud.run("update_vampire_change_permissions_for", {character: self.id});
             });
         },
 

@@ -327,9 +327,12 @@ Parse.Cloud.define("removeRedundantHistory", function(request, response) {
 var fix_all_vampire_change_acl_for_character = function(v) {
     var acl = get_vampire_change_acl(v);
     Parse.Cloud.useMasterKey();
+    var batch = [];
     return new Parse.Query("VampireChange").equalTo("owner", v).each(function (vc) {
         vc.setACL(acl);
-        return vc.save();
+        batch.push(vc);
+    }).then(function () {
+        return Parse.Object.saveAll(batch);
     });
 };
 
