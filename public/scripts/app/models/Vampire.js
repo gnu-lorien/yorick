@@ -71,8 +71,14 @@ define([
             var acl = new Parse.ACL;
             acl.setPublicReadAccess(false);
             acl.setPublicWriteAccess(false);
-            acl.setReadAccess(Parse.User.current(), true);
-            acl.setWriteAccess(Parse.User.current(), true);
+            var owner = self.get("owner");
+            if (_.isUndefined(owner)) {
+                acl.setReadAccess(Parse.User.current(), true);
+                acl.setWriteAccess(Parse.User.current(), true);
+            } else {
+                acl.setReadAccess(owner, true);
+                acl.setWriteAccess(owner, true);
+            }
             acl.setRoleReadAccess("Administrator", true);
             acl.setRoleWriteAccess("Administrator", true);
             _.each(self.troupe_ids, function(id) {
@@ -834,7 +840,7 @@ define([
             })
         },
 
-        update_troupe_acls: function() {
+        broken_update_troupe_acls: function() {
             var self = this;
             var allsts = [];
             var newACL = self.get_me_acl();
@@ -854,7 +860,8 @@ define([
                 return Parse.Object.saveAll(allsts);
             }).then(function () {
                 $.mobile.loading("show", {text: "Fetching experience notations", textVisible: true});
-                return self.get_experience_notations();
+                return Parse.Promise.error();
+                //return self.get_experience_notations();
             }).then(function (ens) {
                 $.mobile.loading("show", {text: "Updating experience notations", textVisible: true});
                 ens.each(function (en) {
@@ -864,6 +871,49 @@ define([
             }).then(function () {
                 $.mobile.loading("show", {text: "Updating server side change log", textVisible: true});
                 return Parse.Cloud.run("update_vampire_change_permissions_for", {character: self.id});
+            });
+        },
+
+        progress: function(text) {
+            if (_.isUndefined($) || _.isUndefined($.mobile) || _.isUndefined($.mobile.loading)) {
+                console.log("Progress: " + text);
+            } else {
+                $.mobile.loading("show", {text: text, textVisible: true});
+            }
+        },
+
+        update_troupe_acls: function() {
+            var self = this;
+            var allsts = [];
+            var newACL = self.get_me_acl();
+            self.progress("Updating character permissions");
+            self.set_cached_acl(newACL);
+            self.setACL(newACL);
+            return self.save().then(function () {
+                self.progress("Updating trait permissions");
+                var q = new Parse.Query("SimpleTrait");
+                q.equalTo("owner", self);
+                return q.each(function (st) {
+                    st.setACL(self.get_me_acl());
+                    allsts.push(st)
+                })
+            }).then(function () {
+                self.progress("Saving trait permissions");
+                return Parse.Object.saveAll(allsts);
+            }).then(function () {
+                self.progress("Fetching experience notations");
+                return self.get_experience_notations();
+            }).then(function (ens) {
+                self.progress("Updating experience notations");
+                ens.each(function (en) {
+                    en.setACL(self.get_me_acl());
+                })
+                return Parse.Object.saveAll(ens.models);
+            }).then(function () {
+                self.progress("Updating server side change log");
+                return Parse.Cloud.run("update_vampire_change_permissions_for", {character: self.id});
+            }).then(function () {
+                return Parse.Promise.as(self);
             });
         },
 
@@ -879,6 +929,46 @@ define([
             self.relation("troupes").remove(troupe);
             self.troupe_ids = _.remove(self.troupe_ids, troupe.id);
             return self.update_troupe_acls();
+        },
+
+        get_owned_ids: function () {
+            // A spiritual clone of get_expected_vampire_ids in cloud\main.js
+            var self = this;
+            var results = {
+                SimpleTrait: [],
+                ExperienceNotation: [],
+                VampireChange: []
+            };
+            var v = self;
+            return Parse.Promise.when(_.map(["SimpleTrait", "ExperienceNotation", "VampireChange"], function (class_name) {
+                 var q = new Parse.Query(class_name)
+                    .equalTo("owner", v)
+                    .select("id");
+                 return q.each(function (t) {
+                     results[class_name].push(t.id);
+                 })
+            })).then(function () {
+                return Parse.Promise.as(results);
+            });
+        },
+
+        update_server_client_permissions_mismatch: function () {
+            var self = this;
+            self._mismatchFetch = self._mismatchFetch || Parse.Promise.as();
+            self._mismatchFetch = self._mismatchFetch.always(function () {
+                return Parse.Promise.when(
+                    self.get_owned_ids(),
+                    Parse.Cloud.run("get_expected_vampire_ids", {character: self.id}))
+                    .then(function (client, server) {
+                        if (_.eq(client, server)) {
+                            self.is_mismatched = false;
+                        } else {
+                            self.is_mismatched = true;
+                        }
+                        return Parse.Promise.as(self);
+                    })
+            });
+            return self._mismatchFetch;
         }
     } );
 

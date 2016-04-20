@@ -51,6 +51,10 @@ define([
         },
 
         format_entry: function(log, entry) {
+            if (_.isUndefined(log)) {
+                console.log("Undefined log");
+                return "Undefined log";
+            }
             if (log.get(entry)) {
                 return log.get(entry);
             }

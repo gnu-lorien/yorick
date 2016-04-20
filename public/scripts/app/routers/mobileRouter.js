@@ -316,13 +316,21 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
-            self.get_character(cid, "all").done(function (character) {
+            self.get_character(cid, "all").then(function (character) {
+                return character.update_server_client_permissions_mismatch();
+            }).then(function (character) {
+                if (character.is_mismatched) {
+                    $.mobile.loading("show", {text: "Server data mismatch. Attempting to correct.", textVisible: true});
+                    return character.working_update_troupe_acls();
+                }
+                return Parse.Promise.as(character);
+            }).then(function (character) {
                 self.characterHistoryView.register(character, id).then(function() {
                     var activePage = $(".ui-page-active").attr("id");
                     var r = $.mobile.changePage("#character-history", {reverse: false, changeHash: false});
                     $.mobile.loading("hide");
                 });
-            });
+            }).fail(PromiseFailReport);
         },
 
         characterprint: function(cid) {

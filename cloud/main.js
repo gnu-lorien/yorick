@@ -384,6 +384,32 @@ Parse.Cloud.define("update_indv_vc_permissions_for", function(request, response)
 });
 
 
+Parse.Cloud.define("get_expected_vampire_ids", function(request, response) {
+    Parse.Cloud.useMasterKey();
+    var character_id = request.params.character;
+    var results = {
+        SimpleTrait: [],
+        ExperienceNotation: [],
+        VampireChange: []
+    };
+    var v = new Parse.Object("Vampire", {id: character_id});
+    Parse.Promise.when(_.map(["SimpleTrait", "ExperienceNotation", "VampireChange"], function (class_name) {
+         var q = new Parse.Query(class_name)
+            .equalTo("owner", v)
+            .select("id");
+         return q.each(function (t) {
+             results[class_name].push(t.id);
+         })
+    })).then(function () {
+        console.log("About to return results " + results);
+        response.success(results);
+    }).fail(function (error) {
+        response.error(error);
+    })
+});
+
+
+
 Parse.Cloud.job("fixuserownership", function(request, response) {
     Parse.Cloud.useMasterKey();
     var q = new Parse.Query(Parse.User);
@@ -463,6 +489,9 @@ Parse.Cloud.job("fixcharacterchangeownerships", function(request, response) {
         console.log(pretty(error));
     })
 })
+
+
+
 
 var add_administrator_to_everything = function(model) {
     var acl = model.getACL();
