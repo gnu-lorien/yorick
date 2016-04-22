@@ -15,12 +15,12 @@ define([
                 if (window)
                     window.location.reload();
             } else {
-                console.info("Error in promise %s", JSON.stringify(error));
+                console.info("Error in promise " + JSON.stringify(error));
                 if (trackJs)
                     trackJs.console.error("Error in promise", JSON.stringify(error));
             }
         } else {
-            console.info("Error in promise %s", JSON.stringify(error));
+            console.info("Error in promise " + JSON.stringify(error));
             if (trackJs)
                 trackJs.console.error("Error in promise", JSON.stringify(error));
         }
