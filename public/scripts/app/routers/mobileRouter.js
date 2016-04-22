@@ -317,15 +317,7 @@ define([
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
             self.get_character(cid, "all").then(function (character) {
-                return character.update_server_client_permissions_mismatch();
-            }).then(function (character) {
-                if (character.is_mismatched) {
-                    $.mobile.loading("show", {text: "Server data mismatch. Attempting to correct.", textVisible: true});
-                    return character.working_update_troupe_acls();
-                }
-                return Parse.Promise.as(character);
-            }).then(function (character) {
-                self.characterHistoryView.register(character, id).then(function() {
+                self.characterHistoryView.register(character, id).then(function () {
                     var activePage = $(".ui-page-active").attr("id");
                     var r = $.mobile.changePage("#character-history", {reverse: false, changeHash: false});
                     $.mobile.loading("hide");
@@ -646,9 +638,26 @@ define([
             })
         },
 
+        _check_character_mismatch: function(character) {
+            if (character.get("owner").id != Parse.User.current().id) {
+                return character.update_server_client_permissions_mismatch().then(function () {
+                    if (character.is_mismatched) {
+                        $.mobile.loading("show", {
+                            text: "Server data mismatch. Attempting to correct.",
+                            textVisible: true
+                        });
+                        return character.update_troupe_acls();
+                    }
+                    return Parse.Promise.as(character);
+                });
+            }
+            return Parse.Promise.as(character);
+        },
+
         _get_character: function(id, categories) {
             var self = this;
-            return Vampire.get_character(id, categories, self);
+            return Vampire.get_character(id, categories, self)
+                .then(self._check_character_mismatch);
         },
 
         simpletrait: function(category, cid, bid) {
