@@ -828,8 +828,6 @@ define([
                 return t.fetch();
             }).then(function (t) {
                 troupe = t;
-                return character.join_troupe(t);
-            }).then(function () {
                 self.troupeView = self.troupeView || new TroupeView({el: "#troupe"});
                 self.troupeView.register(troupe);
                 $.mobile.changePage("#troupe", {reverse: false, changeHash: false});
