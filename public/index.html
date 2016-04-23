@@ -182,17 +182,24 @@
         </div>
     </div>
 
-    <h3 class="ui-bar ui-bar-a">Update</h3>
     <% if (character.is_being_created()) { %>
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <li><a href="#charactercreate/<%= character.id %>">Character Creation</a></li>
     </ul>
     <% } %>
 
+    <% var sorted = _.sortBy(character.all_simpletrait_categories(), function(n) { %>
+        <% return n[2]; %>
+    <% }) %>
+    <% var heading = null; %>
     <div class="ui-grid-b ui-responsive">
-    <% _.each(character.all_simpletrait_categories(), function(grouping) { %>
+    <% _.each(sorted, function(grouping) { %>
         <% var description = grouping[1]; %>
         <% var category = grouping[0]; %>
+        <% if (heading != grouping[2]) { %>
+            <% heading = grouping[2]; %>
+            <h3 class="ui-bar ui-bar-a"><%= heading %></h3>
+        <% } %>
         <div class="ui-block-b">
             <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
                 <li><a href="#simpletraits/<%= category %>/<%= character.id %>/all"><%= description %></a></li>
