@@ -969,7 +969,14 @@ define([
                     })
             });
             return self._mismatchFetch;
-        }
+        },
+        
+        check_server_client_permissions_mismatch: function () {
+            if (_.isUndefined(this.is_mismatched)) {
+                return this.update_server_client_permissions_mismatch();
+            }
+            return Parse.Promise.as(this);
+        },
     } );
 
     Model.get_character = function(id, categories, character_cache) {

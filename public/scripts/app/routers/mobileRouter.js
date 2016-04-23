@@ -640,7 +640,7 @@ define([
 
         _check_character_mismatch: function(character) {
             if (character.get("owner").id != Parse.User.current().id) {
-                return character.update_server_client_permissions_mismatch().then(function () {
+                return character.check_server_client_permissions_mismatch().then(function () {
                     if (character.is_mismatched) {
                         $.mobile.loading("show", {
                             text: "Server data mismatch. Attempting to correct.",
