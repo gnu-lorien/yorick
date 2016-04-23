@@ -162,64 +162,115 @@
 </div>
 
 <script id="characterView" type="text/template">
+    <div class="ui-grid-b ui-responsive">
+        <div class="ui-block-a">
+            <ul data-role="listview" data-inset="true"
+                class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/print">Show</a></li>
+            </ul>
+        </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/portrait">Character Portrait</a></li>
+            </ul>
+        </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true"
+                class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/print">Print</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <h3 class="ui-bar ui-bar-a">Update</h3>
     <% if (character.is_being_created()) { %>
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <li><a href="#charactercreate/<%= character.id %>">Character Creation</a></li>
     </ul>
     <% } %>
 
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#character/<%= character.id %>/portrait">Character Portrait</a></li>
-    </ul>
+    <div class="ui-grid-b ui-responsive">
     <% _.each(character.all_simpletrait_categories(), function(grouping) { %>
         <% var description = grouping[1]; %>
         <% var category = grouping[0]; %>
-        <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-            <li><a href="#simpletraits/<%= category %>/<%= character.id %>/all"><%= description %></a></li>
-        </ul>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#simpletraits/<%= category %>/<%= character.id %>/all"><%= description %></a></li>
+            </ul>
+        </div>
     <% }) %>
 
     <% if (!character.is_being_created()) { %>
         <% _.each(["clan", "archetype", "sect", "faction", "title", "antecedence"], function (st) { %>
         <% var ust = st[0].toUpperCase() + st.substr(1); %>
-        <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-            <% if (character.get(st)) { %>
-            <li data-role="list-divider"><%= ust %><p><%= character.get(st) %></p></li>
-            <li><a href="#simpletext/<%= st %>s/<%= st %>/<%= character.id %>/pick">Repick <%= ust %></a></li>
-            <% } else { %>
-            <li><a href="#simpletext/<%= st %>s/<%= st %>/<%= character.id %>/pick">Pick <%= ust %></a></li>
-            <% } %>
-        </ul>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <% if (character.get(st)) { %>
+                <li data-role="list-divider"><%= ust %><p><%= character.get(st) %></p></li>
+                <li><a href="#simpletext/<%= st %>s/<%= st %>/<%= character.id %>/pick">Repick <%= ust %></a></li>
+                <% } else { %>
+                <li><a href="#simpletext/<%= st %>s/<%= st %>/<%= character.id %>/pick">Pick <%= ust %></a></li>
+                <% } %>
+            </ul>
+        </div>
         <% }) %>
     <% } %>
+    </div>
 
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#character/<%= character.id %>/history/0">History</a></li>
-    </ul>
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#character/<%= character.id %>/experience/0/10">Experience Points</a></li>
-    </ul>
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#character/<%= character.id %>/print">Print</a></li>
-    </ul>
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#character/<%= character.id %>/costs">Costs</a></li>
-    </ul>
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#character/<%= character.id %>/log/0/10">Log</a></li>
-    </ul>
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#character/<%= character.id %>/troupes">Show My Troupes</a></li>
-    </ul>
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#character/<%= character.id %>/troupes/join">Join Troupe</a></li>
-    </ul>
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#character/<%= character.id %>/troupes/leave">Leave Troupe</a></li>
-    </ul>
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-        <li><a href="#character/<%= character.id %>/delete">Delete Character</a></li>
-    </ul>
+    <h3 class="ui-bar ui-bar-a">Progression</h3>
+    <div class="ui-grid-b ui-responsive">
+        <div class="ui-block-a">
+            <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/history/0">History</a></li>
+            </ul>
+        </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/experience/0/10">Experience Points</a></li>
+            </ul>
+        </div>
+
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true"
+                class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/costs">Costs</a></li>
+            </ul>
+        </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true"
+                class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/log/0/10">Log</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <h3 class="ui-bar ui-bar-a">Troupes</h3>
+    <div class="ui-grid-b ui-responsive">
+        <div class="ui-block-a">
+            <ul data-role="listview" data-inset="true"
+                class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/troupes">Show My Troupes</a></li>
+            </ul>
+        </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/troupes/join">Join Troupe</a></li>
+            </ul>
+        </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/troupes/leave">Leave Troupe</a></li>
+            </ul>
+        </div>
+    </div>
+    <h3 class="ui-bar ui-bar-a">Final Death</h3>
+    <div class="ui-grid-b ui-responsive">
+        <div class="ui-block-a">
+            <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/delete">Delete Character</a></li>
+            </ul>
+        </div>
+    </div>
 </script>
 
 <div id="character-create" data-role="page" data-title="Create Character">
