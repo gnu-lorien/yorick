@@ -1,4 +1,4 @@
-<img src="<%= e.get_thumbnail_sync(128) %>" class="character-link-portrait"/>
+<a href="#character/<%= e.id %>/portrait"><img src="<%= e.get_thumbnail_sync(128) %>" class="character-link-portrait"/></a>
 <h2><%= e.get("name") %></h2>
 <p><%= e.get("sect") %> <%= e.get("archetype") %> <%= e.get("clan") %></p>
 <% if (e.get("antecedence") || e.get("faction") || e.get("title")) { %>
