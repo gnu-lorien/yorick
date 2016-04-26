@@ -991,6 +991,7 @@ define([
             var q = new Parse.Query(Model);
             //q.equalTo("owner", Parse.User.current());
             q.include("portrait");
+            q.include("owner");
             q.include("backgrounds");
             q.include("extra_in_clan_disciplines");
             return q.get(id).then(function(m) {
