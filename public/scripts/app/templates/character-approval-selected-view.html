@@ -18,8 +18,9 @@
     </tbody>
 </table>
 
-<button class="approve-change">Approve Change</button>
-
+<% if (approval_index > approvals.length - 1) { %>
+<button class="approve-change">Approve changes up to <%= idForPickedIndex %></button>
+<% } else { %>
 <% var headers = ["createdAt", "approved", "change", "approver", "owner"]; %>
 <table data-role="table" id="table-column-toggle" class="ui-responsive table-stroke">
     <thead>
@@ -41,3 +42,4 @@
     </tbody>
 </table>
 
+<% } %>

@@ -7,7 +7,6 @@ define([
     "backbone",
     "moment",
     "text!../templates/character-print-view.html",
-    "text!../templates/character-history-selected-view.html",
     "text!../templates/character-approval-view.html",
     "../collections/Approvals",
     "../models/Approval",
@@ -16,7 +15,6 @@ define([
              Backbone,
              moment,
              character_print_view_html,
-             character_history_selected_view_html,
              character_approval_view_html,
              Approvals,
              Approval,
@@ -30,10 +28,7 @@ define([
             var self = this;
 
             self.sheetTemplate = _.template(character_print_view_html);
-            self.selectedTemplate = _.template(character_history_selected_view_html);
             self.approvalSelectedTemplate = _.template(character_approval_selected_view_html);
-
-            self.approval_index = 0;
         },
 
         register: function(character) {
@@ -55,7 +50,7 @@ define([
                 self.approvals.query = q;
                 p = q.each(function (approval) {
                     self.approvals.add(approval);
-                    self.approval_index = self.approvals.length - 1;
+                    self.approval_index = self.approvals.length;
                 });
                 p.then(function () {
                     return self.character.get_recorded_changes(function (rc) {
@@ -114,24 +109,55 @@ define([
             return sub;
         },
 
+        _update_approval_selected: function (selectedIndex) {
+            var self = this;
+            self.approval_index = selectedIndex;
+            self.approved = self.approvals.models[self.approval_index];
+            self.left_approval_index = self.approval_index - 1
+            if (self.left_approval_index >= 0) {
+                self.left_approved = self.approvals.models[self.left_approval_index];
+            } else {
+                self.left_approved = null;
+            }
+
+            var selectedIndex = 0;
+            if (self.approval_index < self.approvals.length) {
+                var change = _.findLast(self.character.recorded_changes.models, function (model, i) {
+                    if (model.id == self.approved.get("change").id) {
+                        selectedIndex = i;
+                        return true;
+                    }
+                    return false;
+                })
+            } else {
+                selectedIndex = self.character.recorded_changes.length - 1;
+            }
+            self.idForPickedIndex = selectedIndex;
+            if (self.left_approval_index >= 0) {
+                _.findLast(self.character.recorded_changes.models, function (model, i) {
+                    if (model.id == self.left_approved.get("change").id) {
+                        self.left_rc_index = i + 1;
+                        return true;
+                    }
+                    return false;
+                });
+            } else {
+                self.left_rc_index = 0;
+            }
+
+            self.$("#slider").val(selectedIndex).slider('refresh');
+            self.$("#sliderbaserange").val(self.left_rc_index).slider('refresh');
+
+            return change || _.at(self.character.recorded_changes.models, -1);
+        },
+
         update_approval_selected: function (e) {
             var self = this;
             var selectedIndex = _.parseInt(this.$(e.target).val());
-            self.approval_index = selectedIndex;
-            self.approved = self.approvals.models[self.approval_index];
+            var change = self._update_approval_selected(selectedIndex);
 
-            var selectedIndex = 0;
-            var change = _.findLast(self.character.recorded_changes.models, function (model, i) {
-                if (model.id == self.approved.get("change").id) {
-                    selectedIndex = i;
-                    return true;
-                }
-                return false;
-            })
-            self.idForPickedIndex = selectedIndex;
             self._render_viewing(true);
 
-            self.$("#slider").val(selectedIndex).slider('refresh');
             var changesToApply = _.chain(self.character.recorded_changes.models).takeRightWhile(function (model) {
                 return model.id != change.id;
             }).reverse().value();
@@ -159,24 +185,18 @@ define([
             if (_.isUndefined(sendId)) {
                 sendId = self.character.recorded_changes.models.length - 1;
             }
-            this.$el.find("#history-viewing").html(this.selectedTemplate({
-                "character": this.character,
-                "logs": self.character.recorded_changes.models,
-                "format_entry": this.format_entry,
-                idForPickedIndex: sendId,
-            }));
             this.$el.find("#approval-viewing").html(this.approvalSelectedTemplate({
                 "character": this.character,
                 "logs": self.character.recorded_changes.models,
                 "format_entry": this.format_entry,
                 "format_approval": this.format_approval,
                 idForPickedIndex: sendId,
+                left_rc_index: self.left_rc_index,
                 approval_index: self.approval_index,
                 approvals: self.approvals.models,
                 approval: self.approvals.models[self.approval_index]
             }));
             if (enhance) {
-                this.$el.find("#history-viewing").enhanceWithin();
                 this.$el.find("#approval-viewing").enhanceWithin();
             }
         },
@@ -186,12 +206,12 @@ define([
             var c = characterOverride || self.character;
             var sortedSkills = c.get_sorted_skills();
             var groupedSkills = c.get_grouped_skills(sortedSkills, 3);
-            this.$el.find("#history-sheet").html(this.sheetTemplate({
+            this.$el.find("#approval-sheet").html(this.sheetTemplate({
                 "character": c,
                 "skills": sortedSkills,
                 "groupedSkills": groupedSkills} ));
             if (enhance) {
-                this.$el.find("#history-sheet").enhanceWithin();
+                this.$el.find("#approval-sheet").enhanceWithin();
             }
         },
 
@@ -204,6 +224,8 @@ define([
                 sendId = self.character.recorded_changes.models.length - 1;
             }
 
+            self._update_approval_selected(self.approvals.length);
+
             // Sets the view's template property
             this.template = _.template(character_approval_view_html)({
                     "character": this.character,
@@ -211,6 +233,7 @@ define([
                     "format_entry": this.format_entry,
                     "format_approval": this.format_approval,
                     idForPickedIndex: sendId,
+                    left_rc_index: self.left_rc_index,
                     approval_index: self.approval_index,
                     approvals: self.approvals.models,
                     approval: self.approvals.models[self.approval_index]
@@ -225,7 +248,7 @@ define([
             });
             */
             // Renders the view's template inside of the current listview element
-            this.$el.find("#history-main").html(this.template);
+            this.$el.find("#approval-main").html(this.template);
 
             this._render_viewing();
 
