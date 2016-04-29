@@ -1,0 +1,11 @@
+<p>
+    <label for="slider">Point it time:</label>
+    <input type="range" name="historyChangePicker" id="slider" value="<%= idForPickedIndex %>" min="0" max="<%= logs.length - 1 %>">
+    <input type="range" name="approvalChangePicker" id="approval-slider" value="<%= approval_index %>" min="0" max="<%= approvals.length - 1 %>">
+    <% _.each(logs, function (log, i) { %>
+    <input type="hidden" value="<%= log.id %>" id="history-changes-<%= i %>" />
+    <% }); %>
+    <% _.each(approvals, function (approval, i) { %>
+    <input type="hidden" value="<%= approval.id %>" id="approval-changes-<%= i %>" />
+    <% }); %>
+</p>

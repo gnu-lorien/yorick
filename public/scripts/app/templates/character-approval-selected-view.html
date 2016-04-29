@@ -1,0 +1,43 @@
+<% var headers = ["createdAt", "category", "name", "type", "old_value", "value", "old_free_value", "free_value", "old_cost", "cost", "old_text", "new_text"]; %>
+<table data-role="table" id="table-column-toggle" class="ui-responsive table-stroke">
+    <thead>
+    <tr>
+        <% _.each(headers, function (h, i) { %>
+        <th data-priority="<%= i + 1 %>"><%= h %></th>
+        <% }); %>
+    </tr>
+    </thead>
+    <tbody>
+    <% _.each([logs[idForPickedIndex]], function (log, i) { %>
+    <tr>
+        <% _.each(headers, function (h) { %>
+        <td><%= format_entry(log, h) %></td>
+        <% }); %>
+    </tr>
+    <% }); %>
+    </tbody>
+</table>
+
+<button class="approve-change">Approve Change</button>
+
+<% var headers = ["approved", "change", "approver", "owner"]; %>
+<table data-role="table" id="table-column-toggle" class="ui-responsive table-stroke">
+    <thead>
+    <tr>
+        <% _.each(headers, function (h, i) { %>
+        <th data-priority="<%= i + 1 %>"><%= h %></th>
+        <% }); %>
+    </tr>
+    </thead>
+    <tbody>
+    <% var approval = approvals[approval_index]; %>
+    <% if (approval) { %>
+    <tr>
+        <% _.each(headers, function (h) { %>
+        <td><%= format_approval(approval, h) %></td>
+        <% }); %>
+    </tr>
+    <% } %>
+    </tbody>
+</table>
+

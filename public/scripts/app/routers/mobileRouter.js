@@ -46,7 +46,8 @@ define([
     "../views/TroupePortraitView",
     "text!../templates/footer.html",
     "../views/AdministrationUserView",
-    "../views/PasswordReset"
+    "../views/PasswordReset",
+    "../views/CharacterApprovalView"
 ], function ($,
              Parse,
              pretty,
@@ -90,7 +91,8 @@ define([
              TroupePortraitView,
              footer_html,
              AdministrationUserView,
-             PasswordResetView
+             PasswordResetView,
+             CharacterApprovalView
 ) {
 
     // Extends Backbone.Router
@@ -133,6 +135,7 @@ define([
             this.characterExperienceView = new CharacterExperienceView({el: "#experience-notations-all"});
             this.characterPortraitView = new CharacterPortraitView({el: "#character-portrait"});
             this.characterDeleteView = new CharacterDeleteView({el: "#character-delete"});
+            this.characterApprovalView = new CharacterApprovalView({el: "#character-approval"});
 
             this.loginView = new LoginView();
             this.signupView = new SignupView();
@@ -202,6 +205,7 @@ define([
             "character/:cid/troupe/:tid/join": "character_join_troupe",
             "character/:cid/troupe/:tid/leave": "character_leave_troupe",
             "character/:cid/troupe/:tid/show": "character_show_troupe",
+            "character/:cid/approval": "characterapproval",
 
             "character/:cid/experience/:start/:changeBy": "characterexperience",
 
@@ -324,6 +328,20 @@ define([
                 });
             }).fail(PromiseFailReport);
         },
+
+        characterapproval: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid, "all").then(function (character) {
+                self.characterApprovalView.register(character).then(function () {
+                    var activePage = $(".ui-page-active").attr("id");
+                    var r = $.mobile.changePage("#character-approval", {reverse: false, changeHash: false});
+                    $.mobile.loading("hide");
+                });
+            }).fail(PromiseFailReport);
+        },
+
 
         characterprint: function(cid) {
             var self = this;
