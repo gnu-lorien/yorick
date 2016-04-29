@@ -15,9 +15,9 @@ define([
             l = right.createdAt;
             r = left.createdAt;
             if (_.gt(l, r)) {
-                return 1;
-            } else if (_.lt(l, r)){
                 return -1;
+            } else if (_.lt(l, r)){
+                return 1;
             }
             return 0;
         },

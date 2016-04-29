@@ -55,6 +55,7 @@ define([
                 self.approvals.query = q;
                 p = q.each(function (approval) {
                     self.approvals.add(approval);
+                    self.approval_index = self.approvals.length - 1;
                 });
                 p.then(function () {
                     return self.character.get_recorded_changes(function (rc) {
@@ -104,6 +105,9 @@ define([
         
         format_approval: function(approval, h) {
             var sub = approval.get(h);
+            if (_.isUndefined(sub)) {
+                return _.result(approval, h);
+            }
             if (_.has(sub, "id")) {
                 return sub.id;
             }
@@ -114,16 +118,25 @@ define([
             var self = this;
             var selectedIndex = _.parseInt(this.$(e.target).val());
             self.approval_index = selectedIndex;
+            self.approved = self.approvals.models[self.approval_index];
+
+            var selectedIndex = 0;
+            var change = _.findLast(self.character.recorded_changes.models, function (model, i) {
+                if (model.id == self.approved.get("change").id) {
+                    selectedIndex = i;
+                    return true;
+                }
+                return false;
+            })
+            self.idForPickedIndex = selectedIndex;
             self._render_viewing(true);
 
-            /*
-            var selectedId = this.$("#approval-changes-" + selectedIndex).val();
+            self.$("#slider").val(selectedIndex).slider('refresh');
             var changesToApply = _.chain(self.character.recorded_changes.models).takeRightWhile(function (model) {
-                return model.id != selectedId;
+                return model.id != change.id;
             }).reverse().value();
             var c = self.character.get_transformed(changesToApply);
             self._render_sheet(c, true);
-            */
         },
 
         update_selected: function (e) {
