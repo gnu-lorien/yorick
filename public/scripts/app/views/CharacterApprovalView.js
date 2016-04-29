@@ -27,6 +27,8 @@ define([
         initialize: function() {
             var self = this;
 
+            _.bindAll(this, "render");
+            
             self.sheetTemplate = _.template(character_print_view_html);
             self.approvalSelectedTemplate = _.template(character_approval_selected_view_html);
         },
@@ -56,6 +58,9 @@ define([
                     return self.character.get_recorded_changes(function (rc) {
                         self.listenTo(rc, "add", self.render);
                         self.listenTo(rc, "reset", self.render);
+                        if (self.character.recorded_changes.length > 0) {
+                            _.defer(self.render);
+                        }
                     });
                 });
             }
