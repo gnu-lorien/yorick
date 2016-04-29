@@ -18,6 +18,8 @@ define([
         initialize: function() {
             var self = this;
 
+            _.bindAll(this, "render");
+            
             self.sheetTemplate = _.template(character_print_view_html);
             self.selectedTemplate = _.template(character_history_selected_view_html);
         },
@@ -38,6 +40,9 @@ define([
                 p = self.character.get_recorded_changes(function (rc) {
                     self.listenTo(rc, "add", self.render);
                     self.listenTo(rc, "reset", self.render);
+                    if (self.character.recorded_changes.length > 0) {
+                        _.defer(self.render);
+                    }
                 });
             }
 

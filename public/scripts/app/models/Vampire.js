@@ -617,7 +617,13 @@ define([
             var self = this;
 
             if (!_.isUndefined(self.recorded_changes)) {
-                return self.update_recorded_changes();
+                var p = self.update_recorded_changes();
+                if (register) {
+                    p.then(function (rc) {
+                        register(rc);
+                    });
+                }
+                return p;
             }
 
             self.recorded_changes = new VampireChangeCollection;
