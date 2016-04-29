@@ -208,9 +208,7 @@ define([
                         return Parse.Promise.as(self);
                     });
                 });
-            }).fail(function (error) {
-                console.log("Error received when updating text" + error.message);
-            })
+            }).fail(PromiseFailReport)
         },
 
         get_trait: function(category, id) {
@@ -716,6 +714,15 @@ define([
             var theRelation = this.relation("troupes");
             var c = this.clone();
             theRelation.parent = null;
+            var description = {
+                trait: {
+                    changed: [],
+                    removed: [],
+                },
+                core: {
+                    changed: [],
+                }
+            }
 
             _.each(changes, function(change) {
                 if (change.get("category") != "core") {
@@ -736,19 +743,44 @@ define([
                     });
                     if (change.get("type") == "update") {
                         c.set(category, _.xor(c.get(category), [current, trait]));
+                        description.trait.changed.push({
+                            category: category,
+                            name: trait.get("name"),
+                            fake: trait
+                        });
                     } else if (change.get("type") == "define") {
                         c.set(category, _.without(c.get(category), current));
+                        description.trait.changed.push({
+                            category: category,
+                            name: trait.get("name"),
+                            fake: undefined
+                        });
                     } else if (change.get("type") == "remove") {
                         c.set(category, _.union(c.get(category), [trait]));
+                        description.trait.removed.push({
+                            category: category,
+                            name: trait.get("name"),
+                            fake: current
+                        });
                     }
                 } else {
                     if (change.get("type") == "core_define") {
                         c.set(change.get("name"), undefined);
+                        description.core.changed.push({
+                            name: change.get("name"),
+                            old_text: undefined
+                        });
                     } else if (change.get("type") == "core_update") {
                         c.set(change.get("name"), change.get("old_text"));
+                        description.core.changed.push({
+                            name: change.get("name"),
+                            old_text: change.get("old_text")
+                        });
                     }
+
                 }
             })
+            c.transform_description = description;
             return c;
         },
 

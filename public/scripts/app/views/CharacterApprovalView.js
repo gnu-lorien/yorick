@@ -189,7 +189,13 @@ define([
             var self = this;
             var selectedIndex = _.parseInt(this.$(e.target).val());
             self.left_rc_index = selectedIndex;
+            var changesToApply = _.chain(self.character.recorded_changes.models).takeRightWhile(function (model, i) {
+                return i != selectedIndex;
+            }).reverse().value();
+            var c = self.character.get_transformed(changesToApply);
+            self.transform_description = c.transform_description;
             self._render_viewing(true);
+            self._render_sheet();
         },
 
 
@@ -223,7 +229,9 @@ define([
             this.$el.find("#approval-sheet").html(this.sheetTemplate({
                 "character": c,
                 "skills": sortedSkills,
-                "groupedSkills": groupedSkills} ));
+                "groupedSkills": groupedSkills,
+                "transform_description": self.transform_description
+            }));
             if (enhance) {
                 this.$el.find("#approval-sheet").enhanceWithin();
             }
