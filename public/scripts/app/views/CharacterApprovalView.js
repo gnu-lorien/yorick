@@ -28,7 +28,7 @@ define([
             var self = this;
 
             _.bindAll(this, "render");
-            
+
             self.sheetTemplate = _.template(character_print_view_html);
             self.approvalSelectedTemplate = _.template(character_approval_selected_view_html);
         },
@@ -153,7 +153,7 @@ define([
             self.$("#slider").val(selectedIndex).slider('refresh');
             self.$("#sliderbaserange").val(self.left_rc_index).slider('refresh');
 
-            return change || _.at(self.character.recorded_changes.models, -1);
+            return change || _.last(self.character.recorded_changes.models);
         },
 
         update_approval_selected: function (e) {
