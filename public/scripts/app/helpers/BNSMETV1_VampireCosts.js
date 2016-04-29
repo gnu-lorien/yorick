@@ -74,7 +74,7 @@ define([
                 return self.get_trait_cost_on_table(self.get_cost_table(3), trait);
             }
 
-            if ("humanity" == category) {
+            if ("humanity" == category || "paths" == category) {
                 return mod_value * 10;
             }
 
