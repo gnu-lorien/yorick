@@ -177,7 +177,8 @@ Parse.Cloud.beforeSave("Vampire", function(request, response) {
     _.each(v.dirtyKeys(), function(k) {
         new_values[k] = v.get(k);
     })
-    (new Parse.Query("Vampire").get(v.id)).then(function(vampire) {
+    var vToFetch = new Vampire({id: v.id});
+    vToFetch.fetch().then(function(vampire) { 
         return Parse.Object.saveAll(_.map(_.pairs(new_values), function(a) {
             var attribute = a[0], val = a[1];
             var vc = new Parse.Object("VampireChange");
