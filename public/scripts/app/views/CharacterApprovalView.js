@@ -72,6 +72,7 @@ define([
 
         events: {
             "change #slider": "update_selected",
+            "change #sliderbaserange": "update_base_selected",
             "change #approval-slider": "update_approval_selected",
             "click .approve-change": "approve_change"
         },
@@ -183,6 +184,14 @@ define([
             var c = self.character.get_transformed(changesToApply);
             self._render_sheet(c, true);
         },
+
+        update_base_selected: function (e) {
+            var self = this;
+            var selectedIndex = _.parseInt(this.$(e.target).val());
+            self.left_rc_index = selectedIndex;
+            self._render_viewing(true);
+        },
+
 
         _render_viewing: function(enhance) {
             var self = this;
