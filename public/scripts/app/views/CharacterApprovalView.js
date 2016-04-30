@@ -177,6 +177,7 @@ define([
                 // Add back any removed traits
                 var a = _(self.transform_description).select({type: "removed"}).value();
                 _.each(a, function (trait) {
+                    trait.fake.is_deleted = true;
                     c.set(trait.category, _.union(c.get(trait.category), [trait.fake]));
                 });
             }

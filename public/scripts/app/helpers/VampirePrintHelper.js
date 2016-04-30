@@ -151,7 +151,9 @@ define([
                             return "<span style='color: indianred'><i class='fa fa-minus'></i>" + fake_format + "</span>";
                         })
                         .value();
-                    updates.push("<span style='color: darkseagreen'><i class='fa fa-plus'></i>" + output + "</span>");
+                    if (!skill.is_deleted) {
+                        updates.push("<span style='color: darkseagreen'><i class='fa fa-plus'></i>" + output + "</span>");
+                    }
                     return updates.join(" ");
                 }
             }
