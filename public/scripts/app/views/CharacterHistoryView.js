@@ -8,8 +8,9 @@ define([
     "moment",
     "text!../templates/character-print-view.html",
     "text!../templates/character-history-selected-view.html",
-    "text!../templates/character-history-view.html"
-], function( $, Backbone, moment, character_print_view_html, character_history_selected_view_html, character_history_view_html) {
+    "text!../templates/character-history-view.html",
+    "../helpers/VampirePrintHelper"
+], function( $, Backbone, moment, character_print_view_html, character_history_selected_view_html, character_history_view_html, VampirePrintHelper) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
@@ -18,7 +19,14 @@ define([
         initialize: function() {
             var self = this;
 
-            _.bindAll(this, "render");
+            _.bindAll(this,
+                "render",
+                "format_simpletext",
+                "format_attribute_value",
+                "format_attribute_focus",
+                "format_skill",
+                "format_specializations"
+            );
             
             self.sheetTemplate = _.template(character_print_view_html);
             self.selectedTemplate = _.template(character_history_selected_view_html);
@@ -109,7 +117,12 @@ define([
             this.$el.find("#history-sheet").html(this.sheetTemplate({
                 "character": c,
                 "skills": sortedSkills,
-                "groupedSkills": groupedSkills} ));
+                "groupedSkills": groupedSkills,
+                format_simpletext: this.format_simpletext,
+                format_attribute_value: this.format_attribute_value,
+                format_attribute_focus: this.format_attribute_focus,
+                format_skill: this.format_skill,
+                format_specializations: this.format_specializations,} ));
             if (enhance) {
                 this.$el.find("#history-sheet").enhanceWithin();
             }
@@ -148,6 +161,8 @@ define([
 
     } );
 
+    _.extend(View.prototype, VampirePrintHelper);
+    
     // Returns the View class
     return View;
 
