@@ -26,6 +26,12 @@ define([
             var s = name.split(": ");
             return s[1];
         },
+        
+        has_specialization: function () {
+            var self = this;
+            var name = self.get("name") || "";
+            return -1 != name.indexOf(": ");
+        },
 
         set_specialization: function(specialization) {
             var self = this;

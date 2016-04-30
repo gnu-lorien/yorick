@@ -797,16 +797,6 @@ define([
             var self = this;
             var sortedSkills = self.get("skills");
             sortedSkills = _.sortBy(sortedSkills, "attributes.name");
-            sortedSkills = _.map(sortedSkills, function (skill) {
-                var name = skill.get("name");
-                if (-1 == name.indexOf(":")) {
-                    return name + " x" + skill.get("value");
-                } else {
-                    var rootName = name.slice(0, name.indexOf(':'));
-                    var rightName = name.slice(name.indexOf(':'));
-                    return rootName + " x" + skill.get("value") + rightName;
-                }
-            });
             return sortedSkills;
         },
 
