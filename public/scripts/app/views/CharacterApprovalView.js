@@ -195,15 +195,20 @@ define([
             self._render_sheet(c, true);
         },
 
-        update_base_selected: function (e) {
+        _update_transform_description: function(selectedIndex) {
             var self = this;
-            var selectedIndex = _.parseInt(this.$(e.target).val());
-            self.left_rc_index = selectedIndex;
             var changesToApply = _.chain(self.character.recorded_changes.models).takeRightWhile(function (model, i) {
                 return i != selectedIndex;
             }).reverse().value();
             var c = self.character.get_transformed(changesToApply);
             self.transform_description = c.transform_description;
+        },
+
+        update_base_selected: function (e) {
+            var self = this;
+            var selectedIndex = _.parseInt(this.$(e.target).val());
+            self.left_rc_index = selectedIndex;
+            self._update_transform_description();
             self._render_viewing(true);
             self._render_sheet();
         },
@@ -262,6 +267,7 @@ define([
             }
 
             self._update_approval_selected(self.approvals.length);
+            self._update_transform_description(self.left_rc_index);
 
             // Sets the view's template property
             this.template = _.template(character_approval_view_html)({
