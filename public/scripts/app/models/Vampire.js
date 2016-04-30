@@ -732,12 +732,13 @@ define([
                         "free_value": change.get("free_value"),
                         "value": change.get("old_value") || change.get("value"),
                         "cost": change.get("old_cost") || change.get("cost"),
+                        "category": change.get("category")
                     });
                     if (change.get("type") == "update") {
                         c.set(category, _.xor(c.get(category), [current, trait]));
                         description.push({
                             category: category,
-                            name: trait.get("name"),
+                            name: change.get("name"),
                             fake: trait,
                             type: "changed",
                         });
