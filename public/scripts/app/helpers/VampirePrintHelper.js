@@ -6,6 +6,7 @@ define([
 
     var Mixin = {
         format_simpletext: function(attrname) {
+            var character = this.character_override || this.character;
             if (this.transform_description) {
                 var matcher = {
                     name: attrname,
@@ -21,11 +22,11 @@ define([
                             return "<span style='color: indianred'><i class='fa fa-minus'></i>" + t + "</span>";
                         })
                         .value();
-                    updates.push("<span style='color: darkseagreen'><i class='fa fa-plus'></i>" + this.character.get(attrname) + "</span>");
+                    updates.push("<span style='color: darkseagreen'><i class='fa fa-plus'></i>" + character.get(attrname) + "</span>");
                     return updates.join(" ");
                 }
             }
-            return this.character.get(attrname);
+            return character.get(attrname);
         },
 
         format_attribute_value: function(attribute) {
@@ -52,8 +53,9 @@ define([
         },
 
         format_attribute_focus: function(name) {
+            var character = this.character_override || this.character;
             var focusName = "focus_" + name.toLowerCase() + "s";
-            var focusNames = _.map(this.character.get(focusName), function (focus) {
+            var focusNames = _.map(character.get(focusName), function (focus) {
                 return focus.get("name");
             });
             return focusNames.join(" ");
@@ -155,7 +157,8 @@ define([
         },
 
         format_specializations: function(name) {
-            return _.pluck(this.character.get(name), "attributes.name");
+            var character = this.character_override || this.character;
+            return _.pluck(character.get(name), "attributes.name");
         },
     };
 

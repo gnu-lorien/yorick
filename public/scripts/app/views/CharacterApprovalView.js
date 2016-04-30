@@ -243,7 +243,8 @@ define([
 
         _render_sheet: function(characterOverride, enhance) {
             var self = this;
-            var c = characterOverride || self.character;
+            self.character_override = characterOverride || self.character;
+            var c = self.character_override;
             var sortedSkills = c.get_sorted_skills();
             var groupedSkills = c.get_grouped_skills(sortedSkills, 3);
             this.$el.find("#approval-sheet").html(this.sheetTemplate({
