@@ -129,6 +129,7 @@ define([
         },
         
         format_skill: function(skill, style) {
+            var self = this;
             var output = this._format_skill_string(skill, style);
             if (this.transform_description) {
                 var matcher = {
@@ -142,7 +143,7 @@ define([
                         .reject({fake: undefined})
                         .map("fake")
                         .map(function (fake) {
-                            var fake_format = this._format_skill_string(fake, style);
+                            var fake_format = self._format_skill_string(fake, style);
                             return "<span style='color: indianred'><i class='fa fa-minus'></i>" + fake_format + "</span>";
                         })
                         .value();
