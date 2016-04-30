@@ -705,9 +705,6 @@ define([
 
         get_transformed: function(changes) {
             // do not define self to prevent self-modification
-            if (0 == changes.length) {
-                return null;
-            }
             // Work around oddness due to cloning relationships
             // I have to change the parent and hope nothing is still set on them
             // Relations aren't cloned properly so it's the *same* damned relation
@@ -755,7 +752,7 @@ define([
                         description.push({
                             category: category,
                             name: trait.get("name"),
-                            fake: current,
+                            fake: trait,
                             type: "removed",
                         });
                     }

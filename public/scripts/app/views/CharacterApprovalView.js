@@ -173,6 +173,13 @@ define([
                 return model.id != id;
             }).reverse().value();
             var c = self.character.get_transformed(changesToApply);
+            if (self.transform_description) {
+                // Add back any removed traits
+                var a = _(self.transform_description).select({type: "removed"}).value();
+                _.each(a, function (trait) {
+                    c.set(trait.category, _.union(c.get(trait.category), [trait.fake]));
+                });
+            }
             return c;
         },
 
