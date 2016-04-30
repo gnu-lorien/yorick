@@ -167,6 +167,15 @@ define([
             return change || _.last(self.character.recorded_changes.models);
         },
 
+        _get_display_character: function(id) {
+            var self = this;
+            var changesToApply = _.chain(self.character.recorded_changes.models).takeRightWhile(function (model) {
+                return model.id != id;
+            }).reverse().value();
+            var c = self.character.get_transformed(changesToApply);
+            return c;
+        },
+
         update_approval_selected: function (e) {
             var self = this;
             var selectedIndex = _.parseInt(this.$(e.target).val());
@@ -175,10 +184,7 @@ define([
 
             self._render_viewing(true);
 
-            var changesToApply = _.chain(self.character.recorded_changes.models).takeRightWhile(function (model) {
-                return model.id != change.id;
-            }).reverse().value();
-            var c = self.character.get_transformed(changesToApply);
+            var c = self._get_display_character(change.id);
             self._render_sheet(c, true);
         },
 
@@ -190,10 +196,7 @@ define([
             self._render_viewing(true);
 
             var selectedId = this.$("#history-changes-" + selectedIndex).val();
-            var changesToApply = _.chain(self.character.recorded_changes.models).takeRightWhile(function (model) {
-                return model.id != selectedId;
-            }).reverse().value();
-            var c = self.character.get_transformed(changesToApply);
+            var c = self._get_display_character(selectedId);
             self._render_sheet(c, true);
         },
 
@@ -215,7 +218,10 @@ define([
             self.left_rc_index = selectedIndex;
             self._update_transform_description(self.left_rc_index);
             self._render_viewing(true);
-            self._render_sheet();
+
+            var selectedId = this.$("#history-changes-" + self.idForPickedIndex).val();
+            var c = self._get_display_character(selectedId);
+            self._render_sheet(c);
         },
 
 
