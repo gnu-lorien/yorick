@@ -17,7 +17,7 @@ define([
                             return "<span style='color: indianred'><i class='fa fa-minus'></i>" + t + "</span>";
                         })
                         .value();
-                    updates.push("<i class='fa fa-plus'></i>" + this.character.get(attrname));
+                    updates.push("<span style='color: darkseagreen'><i class='fa fa-plus'></i>" + this.character.get(attrname) + "</span>");
                     return updates.join(" ");
                 }
             }
