@@ -122,6 +122,26 @@ define([
         
         format_skill: function(skill, style) {
             var output = this._format_skill_string(skill, style);
+            if (this.transform_description) {
+                var matcher = {
+                    name: skill.get("name"),
+                    category: skill.get("category"),
+                }
+                var change = _.find(this.transform_description.trait, matcher);
+                if (change) {
+                    var updates = _(this.transform_description.trait)
+                        .select(matcher)
+                        .reject({fake: undefined})
+                        .map("fake")
+                        .map(function (fake) {
+                            var fake_format = this._format_skill_string(fake, style);
+                            return "<span style='color: indianred'><i class='fa fa-minus'></i>" + fake_format + "</span>";
+                        })
+                        .value();
+                    updates.push("<span style='color: darkseagreen'><i class='fa fa-plus'></i>" + output + "</span>");
+                    return updates.join(" ");
+                }
+            }
             return output;
         },
 
