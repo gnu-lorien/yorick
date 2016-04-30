@@ -186,6 +186,7 @@ define([
             var self = this;
             var selectedIndex = _.parseInt(this.$(e.target).val());
             self.idForPickedIndex = selectedIndex;
+            self._update_transform_description(self.left_rc_index);
             self._render_viewing(true);
 
             var selectedId = this.$("#history-changes-" + selectedIndex).val();
@@ -199,11 +200,13 @@ define([
         _update_transform_description: function(selectedIndex) {
             var self = this;
             var changesToApply = _.chain(self.character.recorded_changes.models)
-                .slice(selectedIndex, self.idForPickedIndex + 1)
+                .takeRightWhile(function (model, i) {
+                    return i != selectedIndex - 1;
+                })
                 .reverse()
                 .value();
             var c = self.character.get_transformed(changesToApply);
-            self.transform_description = c.transform_description;
+            self.transform_description = _.takeRight(c.transform_description, (self.idForPickedIndex + 1) - selectedIndex);
         },
 
         update_base_selected: function (e) {

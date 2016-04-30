@@ -714,10 +714,7 @@ define([
             var theRelation = this.relation("troupes");
             var c = this.clone();
             theRelation.parent = null;
-            var description = {
-                trait: [],
-                core: [],
-            }
+            var description = [];
 
             _.each(changes, function(change) {
                 if (change.get("category") != "core") {
@@ -738,7 +735,7 @@ define([
                     });
                     if (change.get("type") == "update") {
                         c.set(category, _.xor(c.get(category), [current, trait]));
-                        description.trait.push({
+                        description.push({
                             category: category,
                             name: trait.get("name"),
                             fake: trait,
@@ -746,7 +743,7 @@ define([
                         });
                     } else if (change.get("type") == "define") {
                         c.set(category, _.without(c.get(category), current));
-                        description.trait.push({
+                        description.push({
                             category: category,
                             name: trait.get("name"),
                             fake: undefined,
@@ -754,7 +751,7 @@ define([
                         });
                     } else if (change.get("type") == "remove") {
                         c.set(category, _.union(c.get(category), [trait]));
-                        description.trait.push({
+                        description.push({
                             category: category,
                             name: trait.get("name"),
                             fake: current,
@@ -764,14 +761,16 @@ define([
                 } else {
                     if (change.get("type") == "core_define") {
                         c.set(change.get("name"), undefined);
-                        description.core.push({
+                        description.push({
+                            category: change.get("category"),
                             name: change.get("name"),
                             old_text: undefined,
                             type: "define"
                         });
                     } else if (change.get("type") == "core_update") {
                         c.set(change.get("name"), change.get("old_text"));
-                        description.core.push({
+                        description.push({
+                            category: change.get("category"),
                             name: change.get("name"),
                             old_text: change.get("old_text"),
                             type: "update"

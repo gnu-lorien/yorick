@@ -7,9 +7,13 @@ define([
     var Mixin = {
         format_simpletext: function(attrname) {
             if (this.transform_description) {
-                if (_.find(this.transform_description.core, {name: attrname})) {
-                    var updates = _(this.transform_description.core)
-                        .select({name: attrname})
+                var matcher = {
+                    name: attrname,
+                    category: "core"
+                }
+                if (_.find(this.transform_description, matcher)) {
+                    var updates = _(this.transform_description)
+                        .select(matcher)
                         .reject({old_text: undefined})
                         .reverse()
                         .map("old_text")
@@ -26,10 +30,14 @@ define([
 
         format_attribute_value: function(attribute) {
             if (this.transform_description) {
-                var change = _.find(this.transform_description.trait, {name: attribute.get("name")});
+                var matcher = {
+                    name: attribute.get("name"),
+                    category: "attributes"
+                }
+                var change = _.find(this.transform_description, matcher);
                 if (change) {
-                    var updates = _(this.transform_description.trait)
-                        .select({name: attribute.get("name")})
+                    var updates = _(this.transform_description)
+                        .select(matcher)
                         .reject({fake: undefined})
                         .map("fake")
                         .map(function (fake) {
@@ -127,9 +135,9 @@ define([
                     name: skill.get("name"),
                     category: skill.get("category"),
                 }
-                var change = _.find(this.transform_description.trait, matcher);
+                var change = _.find(this.transform_description, matcher);
                 if (change) {
-                    var updates = _(this.transform_description.trait)
+                    var updates = _(this.transform_description)
                         .select(matcher)
                         .reject({fake: undefined})
                         .map("fake")
