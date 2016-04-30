@@ -317,7 +317,6 @@ define([
             var selectedId = this.$("#history-changes-" + self.idForPickedIndex).val();
             var c = self._get_display_character(selectedId);
             self._render_sheet(c);
-            this._render_sheet();
 
             this.$el.enhanceWithin();
 
