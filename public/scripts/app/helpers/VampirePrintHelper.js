@@ -40,6 +40,7 @@ define([
                     var updates = _(this.transform_description)
                         .select(matcher)
                         .reject({fake: undefined})
+                        .reverse()
                         .map("fake")
                         .map(function (fake) {
                             return "<span style='color: indianred'><i class='fa fa-minus'></i>" + fake.get("value") + "</span>";
@@ -143,6 +144,7 @@ define([
                     var updates = _(this.transform_description)
                         .select(matcher)
                         .reject({fake: undefined})
+                        .reverse()
                         .map("fake")
                         .map(function (fake) {
                             var fake_format = self._format_skill_string(fake, style);
