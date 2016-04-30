@@ -33,15 +33,14 @@ define([
         // Renders all of the Category models on the UI
         render: function() {
 
-            this.character = this.model;
-            var character = this.model;
+            var character = this.character;
             var sortedSkills = character.get_sorted_skills();
             var groupedSkills = character.get_grouped_skills(sortedSkills, 3);
 
             // Sets the view's template property
             this.template = _.template(character_print_view_html)(
                 {
-                    "character": this.model,
+                    "character": this.character,
                     "skills": sortedSkills,
                     "groupedSkills": groupedSkills,
                     format_simpletext: this.format_simpletext,

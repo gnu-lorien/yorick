@@ -348,7 +348,7 @@ define([
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
             self.get_character(cid, "all").done(function (character) {
-                self.characterPrintView.model = character;
+                self.characterPrintView.character = character;
                 self.characterPrintView.render();
                 $.mobile.changePage("#printable-sheet", {reverse: false, changeHash: false});
             }).fail(PromiseFailReport);
