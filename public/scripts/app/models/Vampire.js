@@ -715,13 +715,8 @@ define([
             var c = this.clone();
             theRelation.parent = null;
             var description = {
-                trait: {
-                    changed: [],
-                    removed: [],
-                },
-                core: {
-                    changed: [],
-                }
+                trait: [],
+                core: [],
             }
 
             _.each(changes, function(change) {
@@ -743,38 +738,43 @@ define([
                     });
                     if (change.get("type") == "update") {
                         c.set(category, _.xor(c.get(category), [current, trait]));
-                        description.trait.changed.push({
+                        description.trait.push({
                             category: category,
                             name: trait.get("name"),
-                            fake: trait
+                            fake: trait,
+                            type: "changed",
                         });
                     } else if (change.get("type") == "define") {
                         c.set(category, _.without(c.get(category), current));
-                        description.trait.changed.push({
+                        description.trait.push({
                             category: category,
                             name: trait.get("name"),
-                            fake: undefined
+                            fake: undefined,
+                            type: "define",
                         });
                     } else if (change.get("type") == "remove") {
                         c.set(category, _.union(c.get(category), [trait]));
-                        description.trait.removed.push({
+                        description.trait.push({
                             category: category,
                             name: trait.get("name"),
-                            fake: current
+                            fake: current,
+                            type: "removed",
                         });
                     }
                 } else {
                     if (change.get("type") == "core_define") {
                         c.set(change.get("name"), undefined);
-                        description.core.changed.push({
+                        description.core.push({
                             name: change.get("name"),
-                            old_text: undefined
+                            old_text: undefined,
+                            type: "define"
                         });
                     } else if (change.get("type") == "core_update") {
                         c.set(change.get("name"), change.get("old_text"));
-                        description.core.changed.push({
+                        description.core.push({
                             name: change.get("name"),
-                            old_text: change.get("old_text")
+                            old_text: change.get("old_text"),
+                            type: "update"
                         });
                     }
 

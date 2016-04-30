@@ -6,6 +6,21 @@ define([
 
     var Mixin = {
         format_simpletext: function(attrname) {
+            if (this.transform_description) {
+                if (_.find(this.transform_description.core, {name: attrname})) {
+                    var updates = _(this.transform_description.core)
+                        .select({name: attrname})
+                        .reject({old_text: undefined})
+                        .reverse()
+                        .map("old_text")
+                        .map(function (t) {
+                            return "<span style='color: indianred'><i class='fa fa-minus'></i>" + t + "</span>";
+                        })
+                        .value();
+                    updates.push("<i class='fa fa-plus'></i>" + this.character.get(attrname));
+                    return updates.join(" ");
+                }
+            }
             return this.character.get(attrname);
         },
 
@@ -21,7 +36,7 @@ define([
             return focusNames.join(" ");
         },
 
-        format_skill: function(skill, style) {
+        _format_skill_string: function(skill, style) {
             var dot = "O";
             if (_.isUndefined(style)) {
                 style = 2;
@@ -87,7 +102,12 @@ define([
             }
             if (10 == style) {
                 return skill.get_specialization();
-            }
+            }           
+        },
+        
+        format_skill: function(skill, style) {
+            var output = this._format_skill_string(skill, style);
+            return output;
         },
 
         format_specializations: function(name) {
