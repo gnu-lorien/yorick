@@ -153,9 +153,6 @@ define([
                 _.findLast(self.character.recorded_changes.models, function (model, i) {
                     if (model.id == self.left_approved.get("change").id) {
                         self.left_rc_index = i + 1;
-                        if (self.left_rc_index == self.idForPickedIndex) {
-                            self.left_rc_index = i;
-                        }
                         return true;
                     }
                     return false;
@@ -164,8 +161,8 @@ define([
                 self.left_rc_index = 0;
             }
 
-            self.$("#slider").val(selectedIndex).slider('refresh');
             self.$("#sliderbaserange").val(self.left_rc_index).slider('refresh');
+            self.$("#slider").val(selectedIndex).slider('refresh');
 
             return change || _.last(self.character.recorded_changes.models);
         },
@@ -202,7 +199,7 @@ define([
         _update_transform_description: function(selectedIndex) {
             var self = this;
             var changesToApply = _.chain(self.character.recorded_changes.models)
-                .slice(selectedIndex, self.idForPickedIndex)
+                .slice(selectedIndex, self.idForPickedIndex + 1)
                 .reverse()
                 .value();
             var c = self.character.get_transformed(changesToApply);
