@@ -25,6 +25,21 @@ define([
         },
 
         format_attribute_value: function(attribute) {
+            if (this.transform_description) {
+                var change = _.find(this.transform_description.trait, {name: attribute.get("name")});
+                if (change) {
+                    var updates = _(this.transform_description.trait)
+                        .select({name: attribute.get("name")})
+                        .reject({fake: undefined})
+                        .map("fake")
+                        .map(function (fake) {
+                            return "<span style='color: indianred'><i class='fa fa-minus'></i>" + fake.get("value") + "</span>";
+                        })
+                        .value();
+                    updates.push("<span style='color: darkseagreen'><i class='fa fa-plus'></i>" + attribute.get("value") + "</span>");
+                    return updates.join(" ");
+                }
+            }
             return attribute.get("value");
         },
 
