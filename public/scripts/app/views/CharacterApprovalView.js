@@ -125,9 +125,9 @@ define([
             return sub;
         },
 
-        _update_approval_selected: function (selectedIndex) {
+        _update_approval_selected: function (approval_index) {
             var self = this;
-            self.approval_index = selectedIndex;
+            self.approval_index = approval_index;
             self.approved = self.approvals.models[self.approval_index];
             self.left_approval_index = self.approval_index - 1
             if (self.left_approval_index >= 0) {
@@ -153,6 +153,9 @@ define([
                 _.findLast(self.character.recorded_changes.models, function (model, i) {
                     if (model.id == self.left_approved.get("change").id) {
                         self.left_rc_index = i + 1;
+                        if (self.left_rc_index == self.idForPickedIndex) {
+                            self.left_rc_index = i;
+                        }
                         return true;
                     }
                     return false;
@@ -171,6 +174,7 @@ define([
             var self = this;
             var selectedIndex = _.parseInt(this.$(e.target).val());
             var change = self._update_approval_selected(selectedIndex);
+            self._update_transform_description(self.left_rc_index);
 
             self._render_viewing(true);
 
@@ -197,9 +201,10 @@ define([
 
         _update_transform_description: function(selectedIndex) {
             var self = this;
-            var changesToApply = _.chain(self.character.recorded_changes.models).takeRightWhile(function (model, i) {
-                return i != selectedIndex;
-            }).reverse().value();
+            var changesToApply = _.chain(self.character.recorded_changes.models)
+                .slice(selectedIndex, self.idForPickedIndex)
+                .reverse()
+                .value();
             var c = self.character.get_transformed(changesToApply);
             self.transform_description = c.transform_description;
         },
@@ -208,7 +213,7 @@ define([
             var self = this;
             var selectedIndex = _.parseInt(this.$(e.target).val());
             self.left_rc_index = selectedIndex;
-            self._update_transform_description();
+            self._update_transform_description(self.left_rc_index);
             self._render_viewing(true);
             self._render_sheet();
         },
