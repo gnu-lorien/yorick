@@ -27,9 +27,6 @@ define([
                 style = 2;
             }
             var name = skill.get("name");
-            if (_.startsWith(name, "Retainers")) {
-                console.log("break");
-            }
             if (0 == style) {
                 return name;
             }
