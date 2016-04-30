@@ -11,6 +11,7 @@ define([
     "../collections/Approvals",
     "../models/Approval",
     "text!../templates/character-approval-selected-view.html",
+    "../helpers/VampirePrintHelper"
 ], function( $,
              Backbone,
              moment,
@@ -18,7 +19,8 @@ define([
              character_approval_view_html,
              Approvals,
              Approval,
-             character_approval_selected_view_html) {
+             character_approval_selected_view_html,
+             VampirePrintHelper) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
@@ -27,7 +29,15 @@ define([
         initialize: function() {
             var self = this;
 
-            _.bindAll(this, "render");
+            _.bindAll(this,
+                "render",
+                "format_simpletext",
+                "format_attribute_value",
+                "format_attribute_focus",
+                "format_skill",
+                "format_specializations"
+            );
+
 
             self.sheetTemplate = _.template(character_print_view_html);
             self.approvalSelectedTemplate = _.template(character_approval_selected_view_html);
@@ -230,7 +240,12 @@ define([
                 "character": c,
                 "skills": sortedSkills,
                 "groupedSkills": groupedSkills,
-                "transform_description": self.transform_description
+                "transform_description": self.transform_description,
+                format_simpletext: this.format_simpletext,
+                format_attribute_value: this.format_attribute_value,
+                format_attribute_focus: this.format_attribute_focus,
+                format_skill: this.format_skill,
+                format_specializations: this.format_specializations,
             }));
             if (enhance) {
                 this.$el.find("#approval-sheet").enhanceWithin();
@@ -284,6 +299,8 @@ define([
         }
 
     } );
+
+    _.extend(View.prototype, VampirePrintHelper);
 
     // Returns the View class
     return View;
