@@ -90,13 +90,17 @@ define([
         approve_change: function() {
             var self = this;
             var change = self.character.recorded_changes.at(self.idForPickedIndex);
-            var approval = new Approval({
+            var a = new Approval({
                 approved: true,
                 change: change,
                 approver: Parse.User.current(),
                 owner: self.character
             });
-            return approval.save();
+            a.save().then(function (approval) {
+                self.approvals.add(approval);
+                self.approval_index = self.approvals.length;
+                return self.render();
+            });
         },
 
         format_entry: function(log, entry) {
