@@ -54,8 +54,41 @@ define([
         },
 
         format_attribute_focus: function(name) {
-            var character = this.character_override || this.character;
+            var self = this;
+            var character = self.character_override || self.character;
             var focusName = "focus_" + name.toLowerCase() + "s";
+            if (this.transform_description) {
+                var matcher = {
+                    category: focusName,
+                }
+                var change = _.find(self.transform_description, matcher);
+                if (change) {
+                    return _.map(character.get(focusName), function (skill) {
+                        var matcher = {
+                            category: focusName,
+                            name: skill.get("name")
+                        }
+                        var change = _.find(self.transform_description, matcher);
+                        if (change) {
+                            var updates = _(self.transform_description)
+                                .select(matcher)
+                                .reject({fake: undefined})
+                                .reverse()
+                                .map("fake")
+                                .map(function (fake) {
+                                    return "<span style='color: indianred'><i class='fa fa-minus'></i>" + skill.get("name") + "</span>";
+                                })
+                                .value();
+                            if (!skill.is_deleted) {
+                                updates.push("<span style='color: darkseagreen'><i class='fa fa-plus'></i>" + skill.get("name") + "</span>");
+                            }
+                            return updates.join(" ");
+                        } else {
+                            return skill.get("name");
+                        }
+                    })
+                }
+            }
             var focusNames = _.map(character.get(focusName), function (focus) {
                 return focus.get("name");
             });
