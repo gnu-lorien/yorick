@@ -63,7 +63,7 @@ define([
                 }
                 var change = _.find(self.transform_description, matcher);
                 if (change) {
-                    return _.map(character.get(focusName), function (skill) {
+                    var outputs = _.map(character.get(focusName), function (skill) {
                         var matcher = {
                             category: focusName,
                             name: skill.get("name")
@@ -86,7 +86,8 @@ define([
                         } else {
                             return skill.get("name");
                         }
-                    })
+                    });
+                    return outputs.join(" ");
                 }
             }
             var focusNames = _.map(character.get(focusName), function (focus) {
