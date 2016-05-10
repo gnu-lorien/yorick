@@ -169,6 +169,10 @@ define([
                 self.left_rc_index = 0;
             }
 
+            if (self.left_rc_index >= self.character.recorded_changes.models.length) {
+                self.no_changes_remaining = true;
+            }
+
             self.$("#slider").val(selectedIndex).slider('refresh');
             self.$("#sliderbaserange").val(self.left_rc_index).slider('refresh');
 
@@ -258,7 +262,8 @@ define([
                 left_rc_index: self.left_rc_index,
                 approval_index: self.approval_index,
                 approvals: self.approvals.models,
-                approval: self.approvals.models[self.approval_index]
+                approval: self.approvals.models[self.approval_index],
+                no_changes_remaining: self.no_changes_remaining
             }));
             if (enhance) {
                 this.$el.find("#approval-edit").enhanceWithin();
@@ -312,6 +317,7 @@ define([
         // Renders all of the Category models on the UI
         render: function() {
             var self = this;
+            self.no_changes_remaining = false;
 
             var sendId = self.indexForPickedChange;
             if (_.isUndefined(sendId)) {

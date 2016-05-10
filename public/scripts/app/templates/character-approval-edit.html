@@ -1,5 +1,9 @@
 <% if (approval_index > approvals.length - 1) { %>
+<% if (no_changes_remaining) { %>
+<span>No unapproved changes</span>
+<% } else { %>
 <button class="approve-change">Approve changes up to <%= indexForPickedChange %></button>
+<% } %>
 <% } else { %>
 <% var headers = ["createdAt", "approved", "change", "approver", "owner"]; %>
 <table data-role="table" id="table-column-toggle" class="ui-responsive table-stroke">
