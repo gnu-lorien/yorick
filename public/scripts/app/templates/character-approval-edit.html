@@ -1,0 +1,25 @@
+<% if (approval_index > approvals.length - 1) { %>
+<button class="approve-change">Approve changes up to <%= idForPickedIndex %></button>
+<% } else { %>
+<% var headers = ["createdAt", "approved", "change", "approver", "owner"]; %>
+<table data-role="table" id="table-column-toggle" class="ui-responsive table-stroke">
+    <thead>
+    <tr>
+        <% _.each(headers, function (h, i) { %>
+        <th data-priority="<%= i + 1 %>"><%= h %></th>
+        <% }); %>
+    </tr>
+    </thead>
+    <tbody>
+    <% var approval = approvals[approval_index]; %>
+    <% if (approval) { %>
+    <tr>
+        <% _.each(headers, function (h) { %>
+        <td><%= format_approval(approval, h) %></td>
+        <% }); %>
+    </tr>
+    <% } %>
+    </tbody>
+</table>
+
+<% } %>

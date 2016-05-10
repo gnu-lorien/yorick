@@ -11,7 +11,8 @@ define([
     "../collections/Approvals",
     "../models/Approval",
     "text!../templates/character-approval-selected-view.html",
-    "../helpers/VampirePrintHelper"
+    "../helpers/VampirePrintHelper",
+    "text!../templates/character-approval-edit.html"
 ], function( $,
              Backbone,
              moment,
@@ -20,7 +21,8 @@ define([
              Approvals,
              Approval,
              character_approval_selected_view_html,
-             VampirePrintHelper) {
+             VampirePrintHelper,
+             character_approval_edit_html) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
@@ -41,6 +43,7 @@ define([
 
             self.sheetTemplate = _.template(character_print_view_html);
             self.approvalSelectedTemplate = _.template(character_approval_selected_view_html);
+            self.editTemplate = _.template(character_approval_edit_html);
         },
 
         register: function(character) {
@@ -195,6 +198,7 @@ define([
             self._update_transform_description(self.left_rc_index);
 
             self._render_viewing(true);
+            self._render_edit(true);
 
             var c = self._get_display_character(change.id);
             self._render_sheet(c, true);
@@ -206,6 +210,7 @@ define([
             self.idForPickedIndex = selectedIndex;
             self._update_transform_description(self.left_rc_index);
             self._render_viewing(true);
+            self._render_edit(true);
 
             var selectedId = this.$("#history-changes-" + selectedIndex).val();
             var c = self._get_display_character(selectedId);
@@ -230,12 +235,34 @@ define([
             self.left_rc_index = selectedIndex;
             self._update_transform_description(self.left_rc_index);
             self._render_viewing(true);
+            self._render_edit(true);
 
             var selectedId = this.$("#history-changes-" + self.idForPickedIndex).val();
             var c = self._get_display_character(selectedId);
             self._render_sheet(c);
         },
 
+        _render_edit: function(enhance) {
+            var self = this;
+            var sendId = self.idForPickedIndex;
+            if (_.isUndefined(sendId)) {
+                sendId = self.character.recorded_changes.models.length - 1;
+            }
+            this.$el.find("#approval-edit").html(this.editTemplate({
+                "character": this.character,
+                "logs": self.character.recorded_changes.models,
+                "format_entry": this.format_entry,
+                "format_approval": this.format_approval,
+                idForPickedIndex: sendId,
+                left_rc_index: self.left_rc_index,
+                approval_index: self.approval_index,
+                approvals: self.approvals.models,
+                approval: self.approvals.models[self.approval_index]
+            }));
+            if (enhance) {
+                this.$el.find("#approval-edit").enhanceWithin();
+            }
+        },
 
         _render_viewing: function(enhance) {
             var self = this;
@@ -318,6 +345,7 @@ define([
             this.$el.find("#approval-main").html(this.template);
 
             this._render_viewing();
+            this._render_edit();
 
             var selectedId = this.$("#history-changes-" + self.idForPickedIndex).val();
             var c = self._get_display_character(selectedId);
