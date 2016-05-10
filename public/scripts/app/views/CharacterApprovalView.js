@@ -102,6 +102,7 @@ define([
             a.save().then(function (approval) {
                 self.approvals.add(approval);
                 self.approval_index = self.approvals.length;
+                self.idForPickedIndex = self.character.recorded_changes.models.length - 1;
                 return self.render();
             });
         },
