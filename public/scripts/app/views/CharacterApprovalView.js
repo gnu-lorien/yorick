@@ -169,8 +169,8 @@ define([
                 self.left_rc_index = 0;
             }
 
-            self.$("#sliderbaserange").val(self.left_rc_index).slider('refresh');
             self.$("#slider").val(selectedIndex).slider('refresh');
+            self.$("#sliderbaserange").val(self.left_rc_index).slider('refresh');
 
             return change || _.last(self.character.recorded_changes.models);
         },
