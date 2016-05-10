@@ -2,7 +2,7 @@
     <label for="slider">Changes to Character:</label>
     <div data-role="rangeslider">
         <input type="range" name="historyBaseRange" id="sliderbaserange" value="<%= left_rc_index %>" min="0" max="<%= logs.length - 1 %>">
-        <input type="range" name="historyChangePicker" id="slider" value="<%= idForPickedIndex %>" min="0" max="<%= logs.length - 1 %>">
+        <input type="range" name="historyChangePicker" id="slider" value="<%= indexForPickedChange %>" min="0" max="<%= logs.length - 1 %>">
     </div>
     <label for="approval-slider">Previous Approvals:</label>
     <input type="range" name="approvalChangePicker" id="approval-slider" value="<%= approval_index %>" min="0" max="<%= approvals.length %>">

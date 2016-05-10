@@ -92,7 +92,7 @@ define([
 
         approve_change: function() {
             var self = this;
-            var change = self.character.recorded_changes.at(self.idForPickedIndex);
+            var change = self.character.recorded_changes.at(self.indexForPickedChange);
             var a = new Approval({
                 approved: true,
                 change: change,
@@ -102,7 +102,7 @@ define([
             a.save().then(function (approval) {
                 self.approvals.add(approval);
                 self.approval_index = self.approvals.length;
-                self.idForPickedIndex = self.character.recorded_changes.models.length - 1;
+                self.indexForPickedChange = self.character.recorded_changes.models.length - 1;
                 return self.render();
             });
         },
@@ -156,7 +156,7 @@ define([
             } else {
                 selectedIndex = self.character.recorded_changes.length - 1;
             }
-            self.idForPickedIndex = selectedIndex;
+            self.indexForPickedChange = selectedIndex;
             if (self.left_approval_index >= 0) {
                 _.findLast(self.character.recorded_changes.models, function (model, i) {
                     if (model.id == self.left_approved.get("change").id) {
@@ -208,7 +208,7 @@ define([
         update_selected: function (e) {
             var self = this;
             var selectedIndex = _.parseInt(this.$(e.target).val());
-            self.idForPickedIndex = selectedIndex;
+            self.indexForPickedChange = selectedIndex;
             self._update_transform_description(self.left_rc_index);
             self._render_viewing(true);
             self._render_edit(true);
@@ -227,7 +227,7 @@ define([
                 .reverse()
                 .value();
             var c = self.character.get_transformed(changesToApply);
-            self.transform_description = _.takeRight(c.transform_description, (self.idForPickedIndex + 1) - selectedIndex);
+            self.transform_description = _.takeRight(c.transform_description, (self.indexForPickedChange + 1) - selectedIndex);
         },
 
         update_base_selected: function (e) {
@@ -238,14 +238,14 @@ define([
             self._render_viewing(true);
             self._render_edit(true);
 
-            var selectedId = this.$("#history-changes-" + self.idForPickedIndex).val();
+            var selectedId = this.$("#history-changes-" + self.indexForPickedChange).val();
             var c = self._get_display_character(selectedId);
             self._render_sheet(c);
         },
 
         _render_edit: function(enhance) {
             var self = this;
-            var sendId = self.idForPickedIndex;
+            var sendId = self.indexForPickedChange;
             if (_.isUndefined(sendId)) {
                 sendId = self.character.recorded_changes.models.length - 1;
             }
@@ -254,7 +254,7 @@ define([
                 "logs": self.character.recorded_changes.models,
                 "format_entry": this.format_entry,
                 "format_approval": this.format_approval,
-                idForPickedIndex: sendId,
+                indexForPickedChange: sendId,
                 left_rc_index: self.left_rc_index,
                 approval_index: self.approval_index,
                 approvals: self.approvals.models,
@@ -267,7 +267,7 @@ define([
 
         _render_viewing: function(enhance) {
             var self = this;
-            var sendId = self.idForPickedIndex;
+            var sendId = self.indexForPickedChange;
             if (_.isUndefined(sendId)) {
                 sendId = self.character.recorded_changes.models.length - 1;
             }
@@ -276,7 +276,7 @@ define([
                 "logs": self.character.recorded_changes.models,
                 "format_entry": this.format_entry,
                 "format_approval": this.format_approval,
-                idForPickedIndex: sendId,
+                indexForPickedChange: sendId,
                 left_rc_index: self.left_rc_index,
                 approval_index: self.approval_index,
                 approvals: self.approvals.models,
@@ -313,7 +313,7 @@ define([
         render: function() {
             var self = this;
 
-            var sendId = self.idForPickedIndex;
+            var sendId = self.indexForPickedChange;
             if (_.isUndefined(sendId)) {
                 sendId = self.character.recorded_changes.models.length - 1;
             }
@@ -327,7 +327,7 @@ define([
                     "logs": this.character.recorded_changes.models,
                     "format_entry": this.format_entry,
                     "format_approval": this.format_approval,
-                    idForPickedIndex: sendId,
+                    indexForPickedChange: sendId,
                     left_rc_index: self.left_rc_index,
                     approval_index: self.approval_index,
                     approvals: self.approvals.models,
@@ -348,7 +348,7 @@ define([
             this._render_viewing();
             this._render_edit();
 
-            var selectedId = this.$("#history-changes-" + self.idForPickedIndex).val();
+            var selectedId = this.$("#history-changes-" + self.indexForPickedChange).val();
             var c = self._get_display_character(selectedId);
             self._render_sheet(c);
 
