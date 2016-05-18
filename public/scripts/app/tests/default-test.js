@@ -5,14 +5,19 @@
 
 define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../models/Troupe"], function (_, $, Parse, Vampire, Backbone, Troupe) {
     jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
+    var ParseInit = function() {
+        Parse.$ = $;
+        Parse.initialize("APPLICATION_ID", "yymp8UWnJ7Va32Y2Q4uzvWxfPTYuDvZSA8kdhmdR");
+        Parse.serverURL = "http://localhost:1337/parse";
+    }
+
     describe("A suite", function() {
         it("contains spec with an expectation", function() {
             expect(true).toBe(true);
         });
     });
     var ParseStart = function() {
-        Parse.$ = $;
-        Parse.initialize("rXfLuSWZZs1xxyeX4IzlG1ZCuglbIoDlGHwg68Ru", "yymp8UWnJ7Va32Y2Q4uzvWxfPTYuDvZSA8kdhmdR");
+        ParseInit();
         if (!_.eq(Parse.User.current().get("username"), "devuser")) {
             return Parse.User.logIn("devuser", "thedumbness");
         }
@@ -20,8 +25,7 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
     };
 
     var MemberParseStart = function () {
-        Parse.$ = $;
-        Parse.initialize("rXfLuSWZZs1xxyeX4IzlG1ZCuglbIoDlGHwg68Ru", "yymp8UWnJ7Va32Y2Q4uzvWxfPTYuDvZSA8kdhmdR");
+        ParseInit();
         if (!_.eq(Parse.User.current().get("username"), "sampmem")) {
             return Parse.User.logIn("sampmem", "sampmem");
         }
@@ -29,8 +33,7 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
     };
 
     var ASTParseStart = function () {
-        Parse.$ = $;
-        Parse.initialize("rXfLuSWZZs1xxyeX4IzlG1ZCuglbIoDlGHwg68Ru", "yymp8UWnJ7Va32Y2Q4uzvWxfPTYuDvZSA8kdhmdR");
+        ParseInit();
         if (!_.eq(Parse.User.current().get("username"), "sampast")) {
             return Parse.User.logIn("sampast", "sampast");
         }
@@ -39,8 +42,7 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
 
     describe("Parse", function() {
         beforeAll(function() {
-            Parse.$ = $;
-            Parse.initialize("rXfLuSWZZs1xxyeX4IzlG1ZCuglbIoDlGHwg68Ru", "yymp8UWnJ7Va32Y2Q4uzvWxfPTYuDvZSA8kdhmdR");
+            ParseInit();
             if (Parse.User.current()) {
                 Parse.User.logOut();
             }
@@ -608,8 +610,6 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
             })
         })
 
-        })
-
         it("can add a middle one", function() {
 
         })
@@ -782,7 +782,6 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
             })
         });
     });
-    */
 
     describe("A Troupe Member", function() {
         var vampire;
