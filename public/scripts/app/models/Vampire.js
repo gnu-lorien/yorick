@@ -178,7 +178,7 @@ define([
                     console.log("Finished saving vampire");
                     return Parse.Promise.as(self);
                 }).fail(function (errors) {
-                    console.log("Failing to save vampire because of %o", errors);
+                    console.log("Failing to save vampire because of " + JSON.stringify(errors));
                     PromiseFailReport(errors);
                 })
                 var returnPromise;
