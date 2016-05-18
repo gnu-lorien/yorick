@@ -4667,7 +4667,7 @@
               requests: _.map(batch, function(object) {
                 return {
                   method: "DELETE",
-                  path: "/1/classes/" + object.className + "/" + object.id
+                  path: "/parse/1/classes/" + object.className + "/" + object.id
                 };
               })
             }
@@ -6290,7 +6290,7 @@
                 var json = object._getSaveJSON();
                 var method = "POST";
 
-                var path = "/1/classes/" + object.className;
+                var path = "/parse/1/classes/" + object.className;
                 if (object.id) {
                   path = path + "/" + object.id;
                   method = "PUT";
