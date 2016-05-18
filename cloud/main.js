@@ -1,7 +1,7 @@
-var pretty = require('cloud/prettyprint.js').pretty;
-var _ = require('underscore');
+var _ = require('lodash');
+var pretty = require('./prettyprint').pretty;
 var Vampire = Parse.Object.extend("Vampire");
-var Image = require("parse-image");
+var Image = require("jimp");
 
 // Use Parse.Cloud.define to define as many cloud functions as you want.
 // For example:
@@ -411,89 +411,6 @@ Parse.Cloud.define("get_expected_vampire_ids", function(request, response) {
 
 
 
-Parse.Cloud.job("fixuserownership", function(request, response) {
-    Parse.Cloud.useMasterKey();
-    var q = new Parse.Query(Parse.User);
-    q.each(function (user) {
-        var acl = new Parse.ACL;
-        acl.setPublicReadAccess(true);
-        acl.setPublicWriteAccess(false);
-        acl.setWriteAccess(user, true);
-        user.setACL(acl);
-        return user.save();
-    }).then(function() {
-        response.success();
-    }, function(error) {
-        if (error.code === Parse.Error.AGGREGATE_ERROR) {
-            for (var i = 0; i < error.errors.length; i++) {
-                response.error("Couldn't fix " + error.errors[i].object.id + "due to " + error.errors[i].message);
-            }
-        } else {
-            response.error("Couldn't fix user ownership " + error.message);
-        }
-        console.log(pretty(error));
-    })
-})
-
-Parse.Cloud.job("fixcharacterownerships", function(request, response) {
-    Parse.Cloud.useMasterKey();
-    var allCharacters = new Parse.Query("Vampire");
-    allCharacters.each(function (character) {
-        var acl = new Parse.ACL;
-        acl.setPublicReadAccess(false);
-        acl.setPublicWriteAccess(false);
-        var owner = character.get("owner");
-        if (!_.isUndefined(owner)) {
-            // Archived characters have no owner
-            acl.setWriteAccess(owner, true);
-            acl.setReadAccess(owner, true);
-        }
-        acl.setRoleReadAccess("Administrator", true);
-        acl.setRoleWriteAccess("Administrator", true);
-        character.setACL(acl);
-        return character.save();
-    }).then(function() {
-        response.success();
-    }, function(error) {
-        if (error.code === Parse.Error.AGGREGATE_ERROR) {
-            for (var i = 0; i < error.errors.length; i++) {
-                response.error("Couldn't fix " + error.errors[i].object.id + "due to " + error.errors[i].message);
-            }
-        } else {
-            response.error("Fix character ownership because of " + error.message);
-        }
-        console.log(pretty(error));
-    })
-})
-
-Parse.Cloud.job("fixcharacterchangeownerships", function(request, response) {
-    Parse.Cloud.useMasterKey();
-    var allCharacters = new Parse.Query("Vampire");
-    allCharacters.each(function (character) {
-        var allChanges = new Parse.Query("VampireChange");
-        allChanges.equalTo("owner", character);
-        return allChanges.each(function (change) {
-            var acl = get_vampire_change_acl(character);
-            change.setACL(acl);
-            return change.save();
-        })
-    }).then(function() {
-        response.success();
-    }, function(error) {
-        if (error.code === Parse.Error.AGGREGATE_ERROR) {
-            for (var i = 0; i < error.errors.length; i++) {
-                response.error("Couldn't fix " + error.errors[i].object.id + "due to " + error.errors[i].message);
-            }
-        } else {
-            response.error("Couldn't fix character change ownership " + error.message);
-        }
-        console.log(pretty(error));
-    })
-})
-
-
-
-
 var add_administrator_to_everything = function(model) {
     var acl = model.getACL();
     if (_.isUndefined(acl)) {
@@ -505,67 +422,6 @@ var add_administrator_to_everything = function(model) {
     model.setACL(acl);
     return model.save();
 }
-
-Parse.Cloud.job("add_administrator_to_many_things", function (request, response) {
-    Parse.Cloud.useMasterKey();
-    new Parse.Query("SimpleTrait").each(add_administrator_to_everything).then(function () {
-         return new Parse.Query("VampireCreation").each(add_administrator_to_everything);
-    }).then(function() {
-         return new Parse.Query("ExperienceNotation").each(add_administrator_to_everything);
-    }).then(function() {
-         return new Parse.Query("VampireChange").each(add_administrator_to_everything);
-    }).then(function() {
-        response.success();
-    }).fail(function(error) {
-        if (error.code === Parse.Error.AGGREGATE_ERROR) {
-            for (var i = 0; i < error.errors.length; i++) {
-                response.error("Couldn't delete " + error.errors[i].object.id + "due to " + error.errors[i].message);
-            }
-        } else {
-            response.error("Add administrator broken of " + error.message);
-        }
-        console.log(pretty(error));
-    });
-});
-
-Parse.Cloud.job("deletetestcharacters", function(request, response) {
-    Parse.Cloud.useMasterKey();
-    var allTestCharacters = new Parse.Query("Vampire");
-    var ids = [];
-    var subids = [];
-    allTestCharacters.startsWith("name", "karmacharactertest");
-    allTestCharacters.each(function (v) {
-        ids.push(v);
-    });
-    new Parse.Query("SimpleTrait").containedIn("owner", ids).each(function (vc) {
-        return vc.destroy();
-    }).then(function () {
-         return new Parse.Query("VampireCreation").containedIn("owner", ids).each(function (vc) {
-            return vc.destroy();
-        });
-    }).then(function() {
-         return new Parse.Query("ExperienceNotation").containedIn("owner", ids).each(function (vc) {
-            return vc.destroy();
-        });
-    }).then(function() {
-         return new Parse.Query("VampireChange").containedIn("owner", ids).each(function (vc) {
-            return vc.destroy();
-        });
-    }).then(function() {
-        return Parse.Object.destroyAll(ids);
-    }).then(function() {
-        response.success();
-    }).fail(function(error) {
-        if (error.code === Parse.Error.AGGREGATE_ERROR) {
-            for (var i = 0; i < error.errors.length; i++) {
-                response.error("Couldn't delete " + error.errors[i].object.id + "due to " + error.errors[i].message);
-            }
-        } else {
-            response.error("Delete aborted because of " + error.message);
-        }
-        console.log(pretty(error));
-    });
-});
 
 Parse.Cloud.define("check_user_password", function(request, response)
 {
