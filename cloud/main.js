@@ -304,8 +304,8 @@ Parse.Cloud.beforeDelete("SimpleTrait", function(request, response) {
             "instigator": request.user
         });
 
-        return new Parse.Query("Vampire").get(vc.get("owner").id);
         console.log("beforeDelete SimpleTrait Getting the vampire owner " + vc.get("owner").id);
+        return new Parse.Query("Vampire").get(vc.get("owner").id, {useMasterKey: true});
     }).then(function(vampire) {
         var acl = get_vampire_change_acl(vampire);
         vc.setACL(acl);
