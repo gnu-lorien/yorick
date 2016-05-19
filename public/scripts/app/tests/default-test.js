@@ -350,7 +350,7 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
             vampire.get_trait("attributes", st.id).then(function(physical) {
                 expect(physical.get("name")).toBe("Physical");
                 expect(physical.get("value")).toBe(7);
-                return vampire.unpick_from_creation("attributes", st.id, 7)
+                return vampire.unpick_from_creation("attributes", st.id, 7, true);
             }).then(function () {
                 expect(vampire.get("creation").get("attributes_7_remaining")).toBe(1);
                 expect(vampire.get("creation").get("attributes_7_picks").length).toBe(0);
@@ -418,7 +418,7 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
             vampire.get_trait("focus_physicals", st).then(function(physical) {
                 expect(physical.get("name")).toBe("Stamina");
                 expect(physical.get("value")).toBe(1);
-                return vampire.unpick_from_creation("focus_physicals", physical, 1)
+                return vampire.unpick_from_creation("focus_physicals", physical, 1, true);
             }).then(function () {
                 expect(vampire.get("creation").get("focus_physicals_1_remaining")).toBe(1);
                 expect(vampire.get("creation").get("focus_physicals_1_picks").length).toBe(0);
