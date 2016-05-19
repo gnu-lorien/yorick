@@ -165,36 +165,35 @@ var get_vampire_change_acl = function(vampire) {
 Parse.Cloud.beforeSave("Vampire", function(request, response) {
     var tracked_texts = ["clan", "state", "archetype", "faction", "title", "sect", "antecedence"];
     var v = request.object;
-    var serverData = _.clone(v._serverData);
     var desired_changes = _.intersection(tracked_texts, v.dirtyKeys());
     if (0 === desired_changes.length) {
+        console.log("Saving vampire (" + v.id + ") and there are no desired changes");
         response.success();
         return;
     }
     // TODO: Update the history permissions if troupes has changed
-    Parse.Cloud.useMasterKey();
     var new_values = {};
     _.each(v.dirtyKeys(), function(k) {
         new_values[k] = v.get(k);
     })
     var vToFetch = new Vampire({id: v.id});
-    vToFetch.fetch().then(function(vampire) { 
+    vToFetch.fetch({useMasterKey: true}).then(function(vampire) {
         return Parse.Object.saveAll(_.map(_.pairs(new_values), function(a) {
             var attribute = a[0], val = a[1];
             var vc = new Parse.Object("VampireChange");
             vc.set({
                 "name": attribute,
                 "category": "core",
-                "old_text": serverData[attribute],
+                "old_text": vampire.get(attribute),
                 "new_text": val,
                 "owner": vampire,
-                "type": serverData[attribute] === undefined ? "core_define" : "core_update",
+                "type": vampire.has(attribute) ? "core_update" : "core_define",
                 "instigator": request.user
             });
             var acl = get_vampire_change_acl(vampire);
             vc.setACL(acl);
             return vc;
-        }));
+        }), {useMasterKey: true});
     }).then(function () {
         return response.success();
     }).fail(function (error) {
@@ -225,37 +224,46 @@ var isMeaningfulChange = function (vc) {
 }
 
 Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
-    Parse.Cloud.useMasterKey();
     var vc = new Parse.Object("VampireChange");
     var modified_trait = request.object;
-    var serverData = modified_trait._serverData;
-    vc.set({
-        "name": modified_trait.get("name"),
-        "category": modified_trait.get("category"),
-        "owner": modified_trait.get("owner"),
-        "old_value": serverData.value,
-        "value": modified_trait.get("value"),
-        "type": serverData.value === undefined ? "define" : "update",
-        "old_free_value": serverData.free_value,
-        "free_value": modified_trait.get("free_value"),
-        "old_cost": serverData.cost,
-        "cost": modified_trait.get("cost"),
-        "old_text": serverData.name,
-        "simple_trait_id": modified_trait.id,
-        "instigator": request.user
-    });
-
-    if (!isMeaningfulChange(vc)) {
-        console.log("Update does not actually encode a change");
-        response.success();
-        return;
+    if (_.isUndefined(modified_trait.id)) {
+        var flow_promise = Parse.Promise.as({});
+    } else {
+        var flow_promise = new Parse.Query("SimpleTrait").get(modified_trait.id, {useMasterKey: true});
     }
+    flow_promise.then(function(serverData) {
+        console.log("Setting vc");
+        vc.set({
+            "name": modified_trait.get("name"),
+            "category": modified_trait.get("category"),
+            "owner": modified_trait.get("owner"),
+            "old_value": serverData.value,
+            "value": modified_trait.get("value"),
+            "type": serverData.value === undefined ? "define" : "update",
+            "old_free_value": serverData.free_value,
+            "free_value": modified_trait.get("free_value"),
+            "old_cost": serverData.cost,
+            "cost": modified_trait.get("cost"),
+            "old_text": serverData.name,
+            "simple_trait_id": modified_trait.id,
+            "instigator": request.user
+        });
 
-    (new Parse.Query("Vampire").get(vc.get("owner").id)).then(function(vampire) {
+        if (!isMeaningfulChange(vc)) {
+            console.log("Update does not actually encode a change");
+            response.success();
+            return;
+        }
+
+        console.log("Sending query for the vampire " + vc.get("owner").id);
+        return new Parse.Query("Vampire").get(vc.get("owner").id, {useMasterKey: true});
+    }).then(function(vampire) {
+        console.log("Getting acl");
         var acl = get_vampire_change_acl(vampire);
         vc.setACL(acl);
 
-        return vc.save();
+        console.log("Sending save acl");
+        return vc.save({useMasterKey: true});
     }).then(function () {
         response.success();
         if (!request.object.id) {
@@ -266,7 +274,7 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
     }, function (error) {
         var failStr;
         if (!request.object.id) {
-            failStr = "Failed to beforeSave new SimpleTrait " + modified_trait.get("name") + " for " + modified_trait.get("owner") + " because of " + error.message;
+            failStr = "Failed to beforeSave new SimpleTrait " + modified_trait.get("name") + " for " + modified_trait.get("owner").get("name") + " because of " + error.message;
         } else {
             failStr = "Failed to beforeSave SimpleTrait " + request.object.id + " " + modified_trait.get("name")  + " for " + modified_trait.get("owner").id + " because of " + error.message;
         }
