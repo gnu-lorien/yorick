@@ -285,27 +285,28 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
 });
 
 Parse.Cloud.beforeDelete("SimpleTrait", function(request, response) {
-    Parse.Cloud.useMasterKey();
     var vc = new Parse.Object("VampireChange");
     var trait = request.object;
-    var serverData = trait._serverData;
-    vc.set({
-        "name": trait.get("name"),
-        "category": trait.get("category"),
-        "owner": trait.get("owner"),
-        "old_value": serverData.value,
-        "value": trait.get("value"),
-        "old_free_value": serverData.free_value,
-        "free_value": trait.get("free_value"),
-        "type": "remove",
-        "old_cost": serverData.cost,
-        "simple_trait_id": trait.id,
-        "instigator": request.user
-    });
-    (new Parse.Query("Vampire").get(vc.get("owner").id)).then(function(vampire) {
+    (new Parse.Query("SimpleTrait").get(trait.id, {useMasterKey: true})).then(function(serverData) {
+        vc.set({
+            "name": trait.get("name"),
+            "category": trait.get("category"),
+            "owner": trait.get("owner"),
+            "old_value": serverData.value,
+            "value": trait.get("value"),
+            "old_free_value": serverData.free_value,
+            "free_value": trait.get("free_value"),
+            "type": "remove",
+            "old_cost": serverData.cost,
+            "simple_trait_id": trait.id,
+            "instigator": request.user
+        });
+
+        return new Parse.Query("Vampire").get(vc.get("owner").id);
+    }).then(function(vampire) {
         var acl = get_vampire_change_acl(vampire);
         vc.setACL(acl);
-        return vc.save();
+        return vc.save({}, {useMasterKey: true});
     }).then(function () {
         response.success();
     }, function (error) {
