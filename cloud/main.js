@@ -167,7 +167,7 @@ Parse.Cloud.beforeSave("Vampire", function(request, response) {
     var v = request.object;
     var desired_changes = _.intersection(tracked_texts, v.dirtyKeys());
     if (0 === desired_changes.length) {
-        console.log("Saving vampire (" + v.id + ") and there are no desired changes");
+        console.log("Saving vampire (" + v.id + ") and there are no changes we track here");
         response.success();
         return;
     }
@@ -267,7 +267,7 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
     }).then(function () {
         response.success();
         if (!request.object.id) {
-            console.log("Successfully beforeSave new SimpleTrait " + modified_trait.get("name") + " for " + modified_trait.get("owner"));
+            console.log("Successfully beforeSave new SimpleTrait " + modified_trait.get("name") + " for " + modified_trait.get("owner").id);
         } else {
             console.log("Successfully beforeSave SimpleTrait " + request.object.id + " " + modified_trait.get("name") + " for " + modified_trait.get("owner").id);
         }
@@ -287,7 +287,9 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
 Parse.Cloud.beforeDelete("SimpleTrait", function(request, response) {
     var vc = new Parse.Object("VampireChange");
     var trait = request.object;
+    console.log("beforeDelete SimpleTrait Getting the server trait data");
     (new Parse.Query("SimpleTrait").get(trait.id, {useMasterKey: true})).then(function(serverData) {
+        console.log("beforeDelete SimpleTrait Received the server trait data");
         vc.set({
             "name": trait.get("name"),
             "category": trait.get("category"),
@@ -303,6 +305,7 @@ Parse.Cloud.beforeDelete("SimpleTrait", function(request, response) {
         });
 
         return new Parse.Query("Vampire").get(vc.get("owner").id);
+        console.log("beforeDelete SimpleTrait Getting the vampire owner " + vc.get("owner").id);
     }).then(function(vampire) {
         var acl = get_vampire_change_acl(vampire);
         vc.setACL(acl);
@@ -310,7 +313,9 @@ Parse.Cloud.beforeDelete("SimpleTrait", function(request, response) {
     }).then(function () {
         response.success();
     }, function (error) {
-        console.log("Failed to save delete for" + request.object.id + "because of" + pretty(error));
+        var failStr = "beforeDelete SimpleTrait Failed to delete for " + request.object.id + " because of " + pretty(error);
+        console.log(failStr);
+        error.message = failStr;
         response.error(error);
     });
 });
