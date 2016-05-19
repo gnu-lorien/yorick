@@ -69,11 +69,13 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
 
     describe("A Vampire's traits", function() {
         var vampire;
+        var expected_change_length;
 
         beforeAll(function (done) {
             ParseStart().then(function () {
                 return Vampire.create_test_character("vampiretraits");
             }).then(function (v) {
+                expected_change_length = 0;
                 return Vampire.get_character(v.id);
             }).then(function (v) {
                 vampire = v;
@@ -85,22 +87,25 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
 
         it("show up in the history", function (done) {
             vampire.get_recorded_changes().done(function (changes) {
-                expect(changes.models.length).toBe(0);
+                expect(changes.models.length).toBe(expected_change_length);
                 return vampire.update_trait("Haven", 1, "backgrounds", 0, true)
             }).done(function (trait) {
+                expected_change_length++;
                 return vampire.get_recorded_changes();
             }).done(function(changes) {
                 expect(changes.models.length).toBe(1);
                 return vampire.update_trait("Haven", 1, "backgrounds", 0, true);
             }).done(function(trait) {
-                return vampire.get_recorded_changes();
-            }).done(function(changes) {
-                expect(changes.models.length).toBe(1);
-                return vampire.update_trait("Haven", 2, "backgrounds", 0, true);
-            }).done(function(trait) {
+                expected_change_length++;
                 return vampire.get_recorded_changes();
             }).done(function(changes) {
                 expect(changes.models.length).toBe(2);
+                return vampire.update_trait("Haven", 2, "backgrounds", 0, true);
+            }).done(function(trait) {
+                expected_change_length++;
+                return vampire.get_recorded_changes();
+            }).done(function(changes) {
+                expect(changes.models.length).toBe(3);
                 done();
             }).fail(function(error) {
                 done.fail(error);
@@ -128,50 +133,58 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
         });
         */
         it("can be renamed", function (done) {
+            var start_check = expected_change_length;
             vampire.update_trait("Retainers", 1, "backgrounds", 0, true).done(function (trait) {
                 trait.set("name", "Retainers: Specialized Now");
                 return vampire.update_trait(trait);
             }).done(function(trait) {
+                expected_change_length++;
                 trait.set("name", "Retainers: Specialized Again");
                 trait.set("value", 4);
                 return vampire.update_trait(trait);
             }).done(function (trait) {
+                expected_change_length++;
                 trait.set("value", 5);
                 return vampire.update_trait(trait);
             }).done(function(){
+                expected_change_length++;
                 return vampire.update_trait("Retainers: Specialized Now", 2, "backgrounds", 0, true);
             }).done(function(){
+                expected_change_length++;
                 return vampire.update_trait("Retainers", 3, "backgrounds", 0, true);
             }).done(function(){
+                expected_change_length++;
                 return vampire.update_trait("Retainers: Specialized Now", 4, "backgrounds", 0, true);
             }).done(function(){
+                expected_change_length++;
                 return vampire.update_trait("Retainers", 4, "backgrounds", 0, true);
             }).done(function(){
+                expected_change_length++;
                 return vampire.get_recorded_changes();
             }).done(function(changes){
-                expect(changes.models.length).toBe(10);
-                changes.each(function(change, i) {
+                expect(changes.models.length).toBe(11);
+                _(changes.models).slice(start_check, changes.length).each(function(change, i) {
                     expect(change.get("name")).not.toBe(undefined);
                     var name = change.get("name");
                     var startsWithRetainers = _.startsWith(name, "Retainers");
                     if (startsWithRetainers) {
-                        if (2 == i) {
+                        if (0 == i) {
                             expect(change.get("type")).toBe("define");
                             expect(change.get("value")).toBe(1);
                             expect(change.get("cost")).toBe(1);
-                        } else if (3 == i) {
+                        } else if (1 == i) {
                             expect(change.get("type")).toBe("update");
                             expect(change.get("value")).toBe(1);
                             expect(change.get("cost")).toBe(1);
                             expect(change.get("name")).toBe("Retainers: Specialized Now");
                             expect(change.get("old_text")).toBe("Retainers");
-                        } else if (4 == i) {
+                        } else if (2 == i) {
                             expect(change.get("type")).toBe("update");
                             expect(change.get("value")).toBe(4);
                             expect(change.get("cost")).toBe(10);
                             expect(change.get("name")).toBe("Retainers: Specialized Again");
                             expect(change.get("old_text")).toBe("Retainers: Specialized Now");
-                        } else if (5 == i) {
+                        } else if (3 == i) {
                             expect(change.get("type")).toBe("update");
                             expect(change.get("old_value")).toBe(4);
                             expect(change.get("value")).toBe(5);
@@ -179,17 +192,17 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
                             expect(change.get("cost")).toBe(15);
                             expect(change.get("name")).toBe("Retainers: Specialized Again");
                             expect(change.get("old_text")).toBe("Retainers: Specialized Again");
-                        } else if (6 == i) {
+                        } else if (4 == i) {
                             expect(change.get("type")).toBe("define");
                             expect(change.get("value")).toBe(2);
                             expect(change.get("cost")).toBe(3);
                             expect(change.get("name")).toBe("Retainers: Specialized Now");
-                        } else if (7 == i) {
+                        } else if (5 == i) {
                             expect(change.get("type")).toBe("define");
                             expect(change.get("value")).toBe(3);
                             expect(change.get("cost")).toBe(6);
                             expect(change.get("name")).toBe("Retainers");
-                        } else if (8 == i) {
+                        } else if (6 == i) {
                             expect(change.get("type")).toBe("update");
                             expect(change.get("value")).toBe(4);
                             expect(change.get("old_value")).toBe(2);
@@ -197,7 +210,7 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
                             expect(change.get("cost")).toBe(10);
                             expect(change.get("name")).toBe("Retainers: Specialized Now");
                             expect(change.get("old_text")).toBe("Retainers: Specialized Now");
-                        } else if (9 == i) {
+                        } else if (7 == i) {
                             expect(change.get("type")).toBe("update");
                             expect(change.get("value")).toBe(4);
                             expect(change.get("old_value")).toBe(3);
