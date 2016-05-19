@@ -263,7 +263,7 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
         vc.setACL(acl);
 
         console.log("Sending save acl");
-        return vc.save({useMasterKey: true});
+        return vc.save({}, {useMasterKey: true});
     }).then(function () {
         response.success();
         if (!request.object.id) {
