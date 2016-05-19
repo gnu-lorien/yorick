@@ -3,7 +3,7 @@
  * Created by Andrew on 11/7/2015.
  */
 
-define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../models/Troupe"], function (_, $, Parse, Vampire, Backbone, Troupe) {
+define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../models/Troupe", "../models/SimpleTrait"], function (_, $, Parse, Vampire, Backbone, Troupe, SimpleTrait) {
     jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
     var ParseInit = function() {
         Parse.$ = $;
@@ -244,6 +244,48 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
                 expect(not_classic_trait.get("name")).toBe("Retainers: Not Classic");
                 done();
             })
+        });
+
+        it("can fail to be removed", function (done) {
+            // Change the prototype of simpletrait to make destroy fail
+            var old_destroy = SimpleTrait.prototype.destroy;
+            SimpleTrait.prototype.destroy = function () {
+                //var e = new Parse.Error(Parse.Error.INVALID_LINKED_SESSION, "Forcing SimpleTrait destroy to fail");
+                return Parse.Promise.error({});
+            };
+
+            // Remove the thing
+            vampire.get_trait_by_name("backgrounds", "Haven").then(function (st) {
+                return vampire.remove_trait(st).then(function () {
+                    SimpleTrait.prototype.destroy = old_destroy;
+                    done.fail("Successfully removed a trait while destroy was broken");
+                }, function (error) {
+                    SimpleTrait.prototype.destroy = old_destroy;
+                    // Make sure we didn't remove the thing
+                    vampire.get_trait_by_name("backgrounds", "Haven").then(function (fa) {
+                        expect(fa.get("value")).toBe(2);
+                        expect(fa.get("free_value")).toBe(0);
+                        done();
+                    }, function(error) {
+                        done.fail(error);
+                    });
+                });
+            });
+        });
+        
+        it("can be removed", function (done) {
+            vampire.get_trait_by_name("backgrounds", "Haven").then(function (st) {
+                expect(st).toBeDefined();
+                expect(st.id).toBeDefined();
+                return vampire.remove_trait(st);
+            }).then(function () {
+                return vampire.get_trait_by_name("backgrounds", "Haven");
+            }).then(function (fa) {
+                expect(fa).toBeUndefined();
+                done();
+            }).fail(function (error) {
+                done.fail("Failed to remove the trait " + JSON.stringify(error));
+            });
         });
     });
 
