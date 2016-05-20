@@ -2,6 +2,8 @@ var _ = require('lodash');
 var pretty = require('./prettyprint').pretty;
 var Vampire = Parse.Object.extend("Vampire");
 var Image = require("jimp");
+var request = require("request");
+var Promise = global.Promise;
 
 // Use Parse.Cloud.define to define as many cloud functions as you want.
 // For example:
@@ -10,30 +12,49 @@ Parse.Cloud.define("hello", function(request, response) {
 });
 
 var create_thumbnail = function(portrait, input_image, size) {
-    return input_image.data().then(function (data) {
-        var image = new Image;
-        return image.setData(data);
+    var promise = new Promise(
+        function(resolve, reject) {
+            cb = function(err, buffer) {
+                    if (err) reject(err);
+                    else resolve(buffer);
+                }
+            var img = input_image.getBuffer(Image.MIME_JPEG, cb);
+        }
+    );
+    return promise.then(function (buffer) {
+        return Image.read(buffer);
     }).then(function(image) {
-        return image.scale({
-            width: size,
-            height: size
-        });
-    }).then(function(image) {
-        return image.setFormat("JPEG");
-    }).then(function(image) {
-        return image.data();
-    }).then(function(buffer) {
+        return new Promise(
+            function(resolve, reject) {
+                cb = function(err, unused) {
+                    if (err) reject(err);
+                    else resolve(image);
+                }
+                var img = image.scaleToFit(size, size, cb);
+            }
+        );
+    }).then(function (image) {
+        return new Promise(
+            function (resolve, reject) {
+                cb = function (err, buffer) {
+                    if (err) reject(err);
+                    else resolve(buffer);
+                }
+                var img = image.getBuffer(Image.MIME_JPEG, cb);
+            }
+        );
+    }).then(function (buffer) {
         var base64 = buffer.toString("base64");
-        var cropped = new Parse.File("thumbnail_" + size + ".jpg", { base64: base64 });
+        var cropped = new Parse.File("thumbnail_" + size + ".jpg", {base64: base64});
         return cropped.save();
     }).then(function(cropped) {
         portrait.set("thumb_" + size, cropped);
     });
 }
 
-var crop_and_thumb = function(request, response) {
-    var portrait = request.object;
-    var THUMBNAIL_SIZES = [32, 64,128, 256];
+var crop_and_thumb = function(req, res) {
+    var portrait = req.object;
+    var THUMBNAIL_SIZES = [32, 64, 128, 256];
     var needed_sizes = [];
 
     if (portrait.dirty("original")) {
@@ -49,34 +70,29 @@ var crop_and_thumb = function(request, response) {
     })
 
     if (0 == needed_sizes.length) {
-        response.success();
+        res.success();
         return;
     }
 
-    Parse.Cloud.httpRequest({
-        url: portrait.get("original").url()
-    }).then(function(response) {
-        var image = new Image();
-        return image.setData(response.buffer);
-    }).then(function(image) {
+    Image.read(portrait.get("original").url()).then(function (image) {
         // Crop the image to the smaller of width or height.
-        var size = Math.min(image.width(), image.height());
-        return image.crop({
-            left: (image.width() - size) / 2,
-            top: (image.height() - size) / 2,
-            width: size,
-            height: size
-        });
-    }).then(function(image) {
+        var size = Math.min(image.bitmap.width, image.bitmap.height);
+        return image.crop(
+            (image.bitmap.width - size) / 2,
+            (image.bitmap.height - size) / 2,
+            size,
+            size
+        );
+    }).then(function (image) {
         var promises = [];
-        _.each(THUMBNAIL_SIZES, function(size) {
+        _.each(THUMBNAIL_SIZES, function (size) {
             promises.push(create_thumbnail(portrait, image, size))
         })
         return Parse.Promise.when(promises);
-    }).then(function() {
-        response.success();
-    }, function(error) {
-        response.error(error);
+    }).then(function () {
+        res.success();
+    }, function (error) {
+        res.error(error);
     });
 };
 
@@ -85,52 +101,7 @@ Parse.Cloud.beforeSave("TroupePortrait", function(request, response) {
 });
 
 Parse.Cloud.beforeSave("CharacterPortrait", function(request, response) {
-    var portrait = request.object;
-    var THUMBNAIL_SIZES = [32, 64,128, 256];
-    var needed_sizes = [];
-
-    if (portrait.dirty("original")) {
-        _.each(THUMBNAIL_SIZES, function (size) {
-            portrait.set("thumb_" + size, undefined);
-        });
-    }
-
-    _.each(THUMBNAIL_SIZES, function (size) {
-        if (!portrait.get("thumb_" + size)) {
-            needed_sizes.push(size);
-        }
-    })
-
-    if (0 == needed_sizes.length) {
-        response.success();
-        return;
-    }
-
-    Parse.Cloud.httpRequest({
-        url: portrait.get("original").url()
-    }).then(function(response) {
-        var image = new Image();
-        return image.setData(response.buffer);
-    }).then(function(image) {
-        // Crop the image to the smaller of width or height.
-        var size = Math.min(image.width(), image.height());
-        return image.crop({
-            left: (image.width() - size) / 2,
-            top: (image.height() - size) / 2,
-            width: size,
-            height: size
-        });
-    }).then(function(image) {
-        var promises = [];
-        _.each(THUMBNAIL_SIZES, function(size) {
-            promises.push(create_thumbnail(portrait, image, size))
-        })
-        return Parse.Promise.when(promises);
-    }).then(function() {
-        response.success();
-    }, function(error) {
-        response.error(error);
-    });
+    crop_and_thumb(request, response);
 });
 
 var get_vampire_change_acl = function(vampire) {

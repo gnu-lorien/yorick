@@ -14,6 +14,7 @@
   "dependencies": {
     "jimp": "^0.2.24",
     "lodash": "^4.12.0",
+    "request": "^2.72.0",
     "require": "*"
   },
   "devDependencies": {
