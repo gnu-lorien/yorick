@@ -8,4 +8,4 @@ var app = express()
 
 app.use(serveStatic(process.env.PUBLIC_BASE));
 
-http.createServer(app).listen(8000, '0.0.0.0');
+http.createServer(app).listen(8080, '0.0.0.0');
