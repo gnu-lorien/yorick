@@ -632,28 +632,6 @@
 </div>
 
 
-<script type="text/javascript">
-    // Listen to signin requests
-    hello.on('auth.login', function(r) {
-        // Get Profile
-        hello( "facebook" ).api( '/me' ).then( function(p) {
-            console.log(JSON.stringify(p));
-            console.log(JSON.stringify(hello("facebook").getAuthResponse()));
-            return hello("facebook").logout();
-        }).then(function(p) {
-            console.log(JSON.stringify(p));
-            console.log(JSON.stringify(hello("facebook").getAuthResponse()));
-        });
-    });
-    // Intiate App credentials
-    hello.init({
-        facebook : "1607159299598020",
-    },{
-        scope : 'email',
-        redirect_uri: "http://localhost:63342/yorick/public/index.html"
-    });
-</script>
-
 <script type="text/template" id="login-template">
     <div class="login">
         <img class="max-yorick-sizing" src="yorick_256.png"/>

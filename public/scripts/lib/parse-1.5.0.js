@@ -7295,6 +7295,8 @@
               error: options.error
             }).then(function() {
               promise.resolve(self);
+            }, function(error) {
+              console.log("Error linking authData for user " + JSON.stringify(error));
             });
           },
           error: function(provider, error) {
@@ -8973,13 +8975,37 @@
   var provider = {
     authenticate: function(options) {
       var self = this;
-      hello('facebook').login({scope: requestedPermissions}).then(function() {
+      var response;
+      /*
+      hello.on('auth.login', function(auth) {
+        // Call user information, for the given network
+        hello(auth.network).api('/me').then(function(r) {
+          console.log("r.email = "+r.email);
+          console.log("r.name== = "+r.name);
+          console.log(JSON.stringify(r));
+          if (options.success) {
+            options.success(self, {
+              id: r.id,
+              access_token: response.authResponse.access_token,
+              expiration_date: new Date(response.authResponse.expires_in * 1000 +
+                  (new Date()).getTime()).toJSON()
+            });
+          }
+        }, function(error) {
+          console.log(JSON.stringify(error));
+        });
+      });
+      */
+      hello('facebook').login().then(function(r) {
+        response = r;
+        return hello('facebook').api('/me');
+      }).then(function (r) {
+        console.log(JSON.stringify(r));
         if (options.success) {
-          response = hello('facebook').getAuthResponse();
           options.success(self, {
-            id: response.client_id,
-            access_token: response.access_token,
-            expiration_date: new Date(response.expires_in * 1000 +
+            id: r.id,
+            access_token: response.authResponse.access_token,
+            expiration_date: new Date(response.authResponse.expires_in * 1000 +
                 (new Date()).getTime()).toJSON()
           });
         }
@@ -9048,7 +9074,10 @@
     init: function(options) {
       if (typeof(hello) === 'undefined') {
         throw "Must have hello, wherever you are";
-      } 
+      }
+      if (initialized) {
+        throw "Can't initialize hello twice";
+      }
       initOptions = _.clone(options) || {};
       if (initOptions.status && typeof(console) !== "undefined") {
         var warn = console.warn || console.log || function() {};
@@ -9057,7 +9086,10 @@
           " integration, so it has been suppressed. Please call" +
           " FB.getLoginStatus() explicitly if you require this behavior.");
       }
-      hello(initOptions);
+      hello.init(initOptions, {
+                scope : 'email',
+                redirect_uri: "http://localhost:63342/yorick/public/index.html?_ijt=bd0ffbfruto38rvj2ua7ts83qi"
+            });
       requestedPermissions = "email";
       Parse.User._registerAuthenticationProvider(provider);
       initialized = true;
