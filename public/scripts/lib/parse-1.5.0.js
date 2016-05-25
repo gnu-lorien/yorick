@@ -8973,23 +8973,18 @@
   var provider = {
     authenticate: function(options) {
       var self = this;
-      FB.login(function(response) {
-        if (response.authResponse) {
-          if (options.success) {
-            options.success(self, {
-              id: response.authResponse.userID,
-              access_token: response.authResponse.accessToken,
-              expiration_date: new Date(response.authResponse.expiresIn * 1000 +
-                  (new Date()).getTime()).toJSON()
-            });
-          }
-        } else {
-          if (options.error) {
-            options.error(self, response);
-          }
+      hello('facebook').login({scope: requestedPermissions}).then(function() {
+        if (options.success) {
+          response = hello('facebook').getAuthResponse();
+          options.success(self, {
+            id: response.client_id,
+            access_token: response.access_token,
+            expiration_date: new Date(response.expires_in * 1000 +
+                (new Date()).getTime()).toJSON()
+          });
         }
-      }, {
-        scope: requestedPermissions
+      }, function(error) {
+        options.error(self, error);
       });
     },
     restoreAuthentication: function(authData) {
@@ -9010,13 +9005,13 @@
         // Most of the time, the users will match -- it's only in cases where
         // the FB SDK knows of a different user than the one being restored
         // from a Parse User that logged in with username/password.
-        var existingResponse = FB.getAuthResponse();
+        var existingResponse = hello('facebook').getAuthResponse();
         if (existingResponse &&
-            existingResponse.userID !== authResponse.userID) {
-          FB.logout();
+            existingResponse.client_id !== authResponse.client_id) {
+          hello('facebook').logout();
         }
 
-        FB.init(newOptions);
+        //hello(newOptions);
       }
       return true;
     },
@@ -9051,8 +9046,8 @@
      *   explicitly if this behavior is required by your application.
      */
     init: function(options) {
-      if (typeof(FB) === 'undefined') {
-        throw "The Facebook JavaScript SDK must be loaded before calling init.";
+      if (typeof(hello) === 'undefined') {
+        throw "Must have hello, wherever you are";
       } 
       initOptions = _.clone(options) || {};
       if (initOptions.status && typeof(console) !== "undefined") {
@@ -9062,8 +9057,8 @@
           " integration, so it has been suppressed. Please call" +
           " FB.getLoginStatus() explicitly if you require this behavior.");
       }
-      initOptions.status = false;
-      FB.init(initOptions);
+      hello(initOptions);
+      requestedPermissions = "email";
       Parse.User._registerAuthenticationProvider(provider);
       initialized = true;
     },
