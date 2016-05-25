@@ -31,9 +31,6 @@
             token: '8c029fff54d841498640d86379af7316',
             enabled: !(window.location.host.indexOf('localhost') >= 0)
         };
-        if (window.location.protocol != "https:") {
-            window.location.href = "https:" + window.location.href.substring(window.location.protocol.length);
-        }
         // Add a script element as a child of the body
         function downloadJSAtOnload() {
             var element = document.createElement("script");
@@ -162,11 +159,24 @@
 </div>
 
 <script id="characterView" type="text/template">
+    <div id="insertheader"></div>
     <div class="ui-grid-b ui-responsive">
         <div class="ui-block-a">
             <ul data-role="listview" data-inset="true"
                 class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-                <li><a href="#character/<%= character.id %>/print">Show</a></li>
+                <li><a href="#character/<%= character.id %>/print">Show Latest</a></li>
+            </ul>
+        </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true"
+                class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/approved">Show Approved</a></li>
+            </ul>
+        </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true"
+                class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/approval">Show Approval</a></li>
             </ul>
         </div>
         <div class="ui-block-b">
@@ -177,7 +187,13 @@
         <div class="ui-block-b">
             <ul data-role="listview" data-inset="true"
                 class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-                <li><a href="#character/<%= character.id %>/print">Print</a></li>
+                <li><a href="#character/<%= character.id %>/print">Print Latest</a></li>
+            </ul>
+        </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true"
+                class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/approved">Print Approved</a></li>
             </ul>
         </div>
     </div>
@@ -699,6 +715,23 @@
         <div id="history-main"></div>
         <div id="history-viewing"></div>
         <div id="history-sheet"></div>
+    </div>
+</div>
+
+<div id="character-approval" data-role="page" data-title="Character Approval">
+    <div role="main" class="ui-content">
+        <div id="approval-main"></div>
+        <div id="approval-edit"></div>
+        <div data-role="tabs" id="approval-tabs">
+            <div data-role="navbar">
+                <ul>
+                    <li><a href="#approval-sheet" data-ajax="false" class="ui-btn-active">Show Sheet</a></li>
+                    <li><a href="#approval-viewing" data-ajax="false">Show Individual Changes</a></li>
+                </ul>
+            </div>
+            <div id="approval-sheet"></div>
+            <div id="approval-viewing"></div>
+        </div>
     </div>
 </div>
 

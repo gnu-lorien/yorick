@@ -16,13 +16,21 @@ define([
                     window.location.reload();
             } else {
                 console.info("Error in promise " + JSON.stringify(error));
-                if (trackJs)
-                    trackJs.console.error("Error in promise", JSON.stringify(error));
+                try {
+                    if (!_.isUndefined(trackJs))
+                        trackJs.console.error("Error in promise", JSON.stringify(error));
+                } catch (e) {
+                    throw JSON.stringify(error);
+                }
             }
         } else {
             console.info("Error in promise " + JSON.stringify(error));
-            if (trackJs)
-                trackJs.console.error("Error in promise", JSON.stringify(error));
+            try {
+                if (!_.isUndefined(trackJs))
+                    trackJs.console.error("Error in promise", JSON.stringify(error));
+            } catch (e) {
+                throw JSON.stringify(error);
+            }
         }
     };
 

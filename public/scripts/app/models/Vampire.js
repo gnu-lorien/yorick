@@ -20,14 +20,15 @@ define([
     var Model = Parse.Object.extend( "Vampire", {
         remove_trait: function (trait) {
             var self = this;
-            var en_options = {
-                alteration_spent: (trait.get("cost") || 0) * -1,
-                reason: "Removed " + trait.get("name"),
-            };
-            self.remove(trait.get("category"), trait);
-            self.increment("change_count");
-            trait.destroy();
-            return self.add_experience_notation(en_options);
+            return trait.destroy().then(function () {
+                var en_options = {
+                    alteration_spent: (trait.get("cost") || 0) * -1,
+                    reason: "Removed " + trait.get("name"),
+                };
+                self.remove(trait.get("category"), trait);
+                self.increment("change_count");
+                return self.add_experience_notation(en_options);
+            });
         },
 
         ensure_category: function(category) {
@@ -178,7 +179,7 @@ define([
                     console.log("Finished saving vampire");
                     return Parse.Promise.as(self);
                 }).fail(function (errors) {
-                    console.log("Failing to save vampire because of %o", errors);
+                    console.log("Failing to save vampire because of " + JSON.stringify(errors));
                     PromiseFailReport(errors);
                 })
                 var returnPromise;
@@ -208,11 +209,17 @@ define([
                         return Parse.Promise.as(self);
                     });
                 });
-            }).fail(function (error) {
-                console.log("Error received when updating text" + error.message);
-            })
+            }).fail(PromiseFailReport)
         },
 
+        get_trait_by_name: function(category, name) {
+            var self = this;
+            var models = self.get(category);
+            name = "" + name;
+            var st = _.find(models, "attributes.name", name);
+            return Parse.Promise.as(st, self);
+        },
+        
         get_trait: function(category, id) {
             var self = this;
             var models = self.get(category);
@@ -617,7 +624,13 @@ define([
             var self = this;
 
             if (!_.isUndefined(self.recorded_changes)) {
-                return self.update_recorded_changes();
+                var p = self.update_recorded_changes();
+                if (register) {
+                    p.then(function (rc) {
+                        register(rc);
+                    });
+                }
+                return p;
             }
 
             self.recorded_changes = new VampireChangeCollection;
@@ -701,15 +714,13 @@ define([
 
         get_transformed: function(changes) {
             // do not define self to prevent self-modification
-            if (0 == changes.length) {
-                return null;
-            }
             // Work around oddness due to cloning relationships
             // I have to change the parent and hope nothing is still set on them
             // Relations aren't cloned properly so it's the *same* damned relation
             var theRelation = this.relation("troupes");
             var c = this.clone();
             theRelation.parent = null;
+            var description = [];
 
             _.each(changes, function(change) {
                 if (change.get("category") != "core") {
@@ -727,22 +738,55 @@ define([
                         "free_value": change.get("free_value"),
                         "value": change.get("old_value") || change.get("value"),
                         "cost": change.get("old_cost") || change.get("cost"),
+                        "category": change.get("category")
                     });
                     if (change.get("type") == "update") {
                         c.set(category, _.xor(c.get(category), [current, trait]));
+                        description.push({
+                            category: category,
+                            name: change.get("name"),
+                            fake: trait,
+                            type: "changed",
+                        });
                     } else if (change.get("type") == "define") {
                         c.set(category, _.without(c.get(category), current));
+                        description.push({
+                            category: category,
+                            name: trait.get("name"),
+                            fake: undefined,
+                            type: "define",
+                        });
                     } else if (change.get("type") == "remove") {
                         c.set(category, _.union(c.get(category), [trait]));
+                        description.push({
+                            category: category,
+                            name: trait.get("name"),
+                            fake: trait,
+                            type: "removed",
+                        });
                     }
                 } else {
                     if (change.get("type") == "core_define") {
                         c.set(change.get("name"), undefined);
+                        description.push({
+                            category: change.get("category"),
+                            name: change.get("name"),
+                            old_text: undefined,
+                            type: "define"
+                        });
                     } else if (change.get("type") == "core_update") {
                         c.set(change.get("name"), change.get("old_text"));
+                        description.push({
+                            category: change.get("category"),
+                            name: change.get("name"),
+                            old_text: change.get("old_text"),
+                            type: "update"
+                        });
                     }
+
                 }
             })
+            c.transform_description = description;
             return c;
         },
 
@@ -759,16 +803,6 @@ define([
             var self = this;
             var sortedSkills = self.get("skills");
             sortedSkills = _.sortBy(sortedSkills, "attributes.name");
-            sortedSkills = _.map(sortedSkills, function (skill) {
-                var name = skill.get("name");
-                if (-1 == name.indexOf(":")) {
-                    return name + " x" + skill.get("value");
-                } else {
-                    var rootName = name.slice(0, name.indexOf(':'));
-                    var rightName = name.slice(name.indexOf(':'));
-                    return rootName + " x" + skill.get("value") + rightName;
-                }
-            });
             return sortedSkills;
         },
 
@@ -991,6 +1025,7 @@ define([
             var q = new Parse.Query(Model);
             //q.equalTo("owner", Parse.User.current());
             q.include("portrait");
+            q.include("owner");
             q.include("backgrounds");
             q.include("extra_in_clan_disciplines");
             return q.get(id).then(function(m) {

@@ -10,7 +10,8 @@ require([
 
         Parse.$ = $;
 
-        Parse.initialize("rXfLuSWZZs1xxyeX4IzlG1ZCuglbIoDlGHwg68Ru", "yymp8UWnJ7Va32Y2Q4uzvWxfPTYuDvZSA8kdhmdR");
+        Parse.initialize("APPLICATION_ID", "yymp8UWnJ7Va32Y2Q4uzvWxfPTYuDvZSA8kdhmdR");
+        Parse.serverURL = "http://localhost:1337/parse"
 
         // Instantiates a new Backbone.js Mobile Router
         this.router = new Mobile();

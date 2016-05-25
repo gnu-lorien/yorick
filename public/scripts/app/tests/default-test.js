@@ -3,16 +3,21 @@
  * Created by Andrew on 11/7/2015.
  */
 
-define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../models/Troupe"], function (_, $, Parse, Vampire, Backbone, Troupe) {
+define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../models/Troupe", "../models/SimpleTrait"], function (_, $, Parse, Vampire, Backbone, Troupe, SimpleTrait) {
     jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
+    var ParseInit = function() {
+        Parse.$ = $;
+        Parse.initialize("APPLICATION_ID", "yymp8UWnJ7Va32Y2Q4uzvWxfPTYuDvZSA8kdhmdR");
+        Parse.serverURL = "http://localhost:1337/parse";
+    }
+
     describe("A suite", function() {
         it("contains spec with an expectation", function() {
             expect(true).toBe(true);
         });
     });
     var ParseStart = function() {
-        Parse.$ = $;
-        Parse.initialize("rXfLuSWZZs1xxyeX4IzlG1ZCuglbIoDlGHwg68Ru", "yymp8UWnJ7Va32Y2Q4uzvWxfPTYuDvZSA8kdhmdR");
+        ParseInit();
         if (!_.eq(Parse.User.current().get("username"), "devuser")) {
             return Parse.User.logIn("devuser", "thedumbness");
         }
@@ -20,8 +25,7 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
     };
 
     var MemberParseStart = function () {
-        Parse.$ = $;
-        Parse.initialize("rXfLuSWZZs1xxyeX4IzlG1ZCuglbIoDlGHwg68Ru", "yymp8UWnJ7Va32Y2Q4uzvWxfPTYuDvZSA8kdhmdR");
+        ParseInit();
         if (!_.eq(Parse.User.current().get("username"), "sampmem")) {
             return Parse.User.logIn("sampmem", "sampmem");
         }
@@ -29,8 +33,7 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
     };
 
     var ASTParseStart = function () {
-        Parse.$ = $;
-        Parse.initialize("rXfLuSWZZs1xxyeX4IzlG1ZCuglbIoDlGHwg68Ru", "yymp8UWnJ7Va32Y2Q4uzvWxfPTYuDvZSA8kdhmdR");
+        ParseInit();
         if (!_.eq(Parse.User.current().get("username"), "sampast")) {
             return Parse.User.logIn("sampast", "sampast");
         }
@@ -39,8 +42,7 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
 
     describe("Parse", function() {
         beforeAll(function() {
-            Parse.$ = $;
-            Parse.initialize("rXfLuSWZZs1xxyeX4IzlG1ZCuglbIoDlGHwg68Ru", "yymp8UWnJ7Va32Y2Q4uzvWxfPTYuDvZSA8kdhmdR");
+            ParseInit();
             if (Parse.User.current()) {
                 Parse.User.logOut();
             }
@@ -67,11 +69,13 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
 
     describe("A Vampire's traits", function() {
         var vampire;
+        var expected_change_length;
 
         beforeAll(function (done) {
             ParseStart().then(function () {
                 return Vampire.create_test_character("vampiretraits");
             }).then(function (v) {
+                expected_change_length = 0;
                 return Vampire.get_character(v.id);
             }).then(function (v) {
                 vampire = v;
@@ -83,22 +87,25 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
 
         it("show up in the history", function (done) {
             vampire.get_recorded_changes().done(function (changes) {
-                expect(changes.models.length).toBe(0);
+                expect(changes.models.length).toBe(expected_change_length);
                 return vampire.update_trait("Haven", 1, "backgrounds", 0, true)
             }).done(function (trait) {
+                expected_change_length++;
                 return vampire.get_recorded_changes();
             }).done(function(changes) {
                 expect(changes.models.length).toBe(1);
                 return vampire.update_trait("Haven", 1, "backgrounds", 0, true);
             }).done(function(trait) {
-                return vampire.get_recorded_changes();
-            }).done(function(changes) {
-                expect(changes.models.length).toBe(1);
-                return vampire.update_trait("Haven", 2, "backgrounds", 0, true);
-            }).done(function(trait) {
+                expected_change_length++;
                 return vampire.get_recorded_changes();
             }).done(function(changes) {
                 expect(changes.models.length).toBe(2);
+                return vampire.update_trait("Haven", 2, "backgrounds", 0, true);
+            }).done(function(trait) {
+                expected_change_length++;
+                return vampire.get_recorded_changes();
+            }).done(function(changes) {
+                expect(changes.models.length).toBe(3);
                 done();
             }).fail(function(error) {
                 done.fail(error);
@@ -126,50 +133,58 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
         });
         */
         it("can be renamed", function (done) {
+            var start_check = expected_change_length;
             vampire.update_trait("Retainers", 1, "backgrounds", 0, true).done(function (trait) {
                 trait.set("name", "Retainers: Specialized Now");
                 return vampire.update_trait(trait);
             }).done(function(trait) {
+                expected_change_length++;
                 trait.set("name", "Retainers: Specialized Again");
                 trait.set("value", 4);
                 return vampire.update_trait(trait);
             }).done(function (trait) {
+                expected_change_length++;
                 trait.set("value", 5);
                 return vampire.update_trait(trait);
             }).done(function(){
+                expected_change_length++;
                 return vampire.update_trait("Retainers: Specialized Now", 2, "backgrounds", 0, true);
             }).done(function(){
+                expected_change_length++;
                 return vampire.update_trait("Retainers", 3, "backgrounds", 0, true);
             }).done(function(){
+                expected_change_length++;
                 return vampire.update_trait("Retainers: Specialized Now", 4, "backgrounds", 0, true);
             }).done(function(){
+                expected_change_length++;
                 return vampire.update_trait("Retainers", 4, "backgrounds", 0, true);
             }).done(function(){
+                expected_change_length++;
                 return vampire.get_recorded_changes();
             }).done(function(changes){
-                expect(changes.models.length).toBe(10);
-                changes.each(function(change, i) {
+                expect(changes.models.length).toBe(11);
+                _(changes.models).slice(start_check, changes.length).each(function(change, i) {
                     expect(change.get("name")).not.toBe(undefined);
                     var name = change.get("name");
                     var startsWithRetainers = _.startsWith(name, "Retainers");
                     if (startsWithRetainers) {
-                        if (2 == i) {
+                        if (0 == i) {
                             expect(change.get("type")).toBe("define");
                             expect(change.get("value")).toBe(1);
                             expect(change.get("cost")).toBe(1);
-                        } else if (3 == i) {
+                        } else if (1 == i) {
                             expect(change.get("type")).toBe("update");
                             expect(change.get("value")).toBe(1);
                             expect(change.get("cost")).toBe(1);
                             expect(change.get("name")).toBe("Retainers: Specialized Now");
                             expect(change.get("old_text")).toBe("Retainers");
-                        } else if (4 == i) {
+                        } else if (2 == i) {
                             expect(change.get("type")).toBe("update");
                             expect(change.get("value")).toBe(4);
                             expect(change.get("cost")).toBe(10);
                             expect(change.get("name")).toBe("Retainers: Specialized Again");
                             expect(change.get("old_text")).toBe("Retainers: Specialized Now");
-                        } else if (5 == i) {
+                        } else if (3 == i) {
                             expect(change.get("type")).toBe("update");
                             expect(change.get("old_value")).toBe(4);
                             expect(change.get("value")).toBe(5);
@@ -177,17 +192,17 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
                             expect(change.get("cost")).toBe(15);
                             expect(change.get("name")).toBe("Retainers: Specialized Again");
                             expect(change.get("old_text")).toBe("Retainers: Specialized Again");
-                        } else if (6 == i) {
+                        } else if (4 == i) {
                             expect(change.get("type")).toBe("define");
                             expect(change.get("value")).toBe(2);
                             expect(change.get("cost")).toBe(3);
                             expect(change.get("name")).toBe("Retainers: Specialized Now");
-                        } else if (7 == i) {
+                        } else if (5 == i) {
                             expect(change.get("type")).toBe("define");
                             expect(change.get("value")).toBe(3);
                             expect(change.get("cost")).toBe(6);
                             expect(change.get("name")).toBe("Retainers");
-                        } else if (8 == i) {
+                        } else if (6 == i) {
                             expect(change.get("type")).toBe("update");
                             expect(change.get("value")).toBe(4);
                             expect(change.get("old_value")).toBe(2);
@@ -195,7 +210,7 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
                             expect(change.get("cost")).toBe(10);
                             expect(change.get("name")).toBe("Retainers: Specialized Now");
                             expect(change.get("old_text")).toBe("Retainers: Specialized Now");
-                        } else if (9 == i) {
+                        } else if (7 == i) {
                             expect(change.get("type")).toBe("update");
                             expect(change.get("value")).toBe(4);
                             expect(change.get("old_value")).toBe(3);
@@ -229,6 +244,48 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
                 expect(not_classic_trait.get("name")).toBe("Retainers: Not Classic");
                 done();
             })
+        });
+
+        it("can fail to be removed", function (done) {
+            // Change the prototype of simpletrait to make destroy fail
+            var old_destroy = SimpleTrait.prototype.destroy;
+            SimpleTrait.prototype.destroy = function () {
+                //var e = new Parse.Error(Parse.Error.INVALID_LINKED_SESSION, "Forcing SimpleTrait destroy to fail");
+                return Parse.Promise.error({});
+            };
+
+            // Remove the thing
+            vampire.get_trait_by_name("backgrounds", "Haven").then(function (st) {
+                return vampire.remove_trait(st).then(function () {
+                    SimpleTrait.prototype.destroy = old_destroy;
+                    done.fail("Successfully removed a trait while destroy was broken");
+                }, function (error) {
+                    SimpleTrait.prototype.destroy = old_destroy;
+                    // Make sure we didn't remove the thing
+                    vampire.get_trait_by_name("backgrounds", "Haven").then(function (fa) {
+                        expect(fa.get("value")).toBe(2);
+                        expect(fa.get("free_value")).toBe(0);
+                        done();
+                    }, function(error) {
+                        done.fail(error);
+                    });
+                });
+            });
+        });
+        
+        it("can be removed", function (done) {
+            vampire.get_trait_by_name("backgrounds", "Haven").then(function (st) {
+                expect(st).toBeDefined();
+                expect(st.id).toBeDefined();
+                return vampire.remove_trait(st);
+            }).then(function () {
+                return vampire.get_trait_by_name("backgrounds", "Haven");
+            }).then(function (fa) {
+                expect(fa).toBeUndefined();
+                done();
+            }).fail(function (error) {
+                done.fail("Failed to remove the trait " + JSON.stringify(error));
+            });
         });
     });
 
@@ -293,7 +350,7 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
             vampire.get_trait("attributes", st.id).then(function(physical) {
                 expect(physical.get("name")).toBe("Physical");
                 expect(physical.get("value")).toBe(7);
-                return vampire.unpick_from_creation("attributes", st.id, 7)
+                return vampire.unpick_from_creation("attributes", st.id, 7, true);
             }).then(function () {
                 expect(vampire.get("creation").get("attributes_7_remaining")).toBe(1);
                 expect(vampire.get("creation").get("attributes_7_picks").length).toBe(0);
@@ -361,7 +418,7 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
             vampire.get_trait("focus_physicals", st).then(function(physical) {
                 expect(physical.get("name")).toBe("Stamina");
                 expect(physical.get("value")).toBe(1);
-                return vampire.unpick_from_creation("focus_physicals", physical, 1)
+                return vampire.unpick_from_creation("focus_physicals", physical, 1, true);
             }).then(function () {
                 expect(vampire.get("creation").get("focus_physicals_1_remaining")).toBe(1);
                 expect(vampire.get("creation").get("focus_physicals_1_picks").length).toBe(0);
@@ -608,8 +665,6 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
             })
         })
 
-        })
-
         it("can add a middle one", function() {
 
         })
@@ -782,7 +837,6 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
             })
         });
     });
-    */
 
     describe("A Troupe Member", function() {
         var vampire;

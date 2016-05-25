@@ -12,30 +12,22 @@
     "icon": "rsrc/img/logo.ico"
   },
   "dependencies": {
-    "grunt": "*",
-    "grunt-bake": "*",
-    "grunt-cdnify": "*",
-    "grunt-contrib-clean": "*",
-    "grunt-contrib-concat": "*",
-    "grunt-contrib-connect": "^0.8.0",
-    "grunt-contrib-copy": "*",
-    "grunt-contrib-cssmin": "*",
-    "grunt-contrib-jshint": "*",
-    "grunt-contrib-uglify": "*",
-    "grunt-contrib-watch": "*",
-    "grunt-contrib-yuidoc": "*",
-    "grunt-node-webkit-builder": "*",
-    "grunt-replace": "*",
-    "grunt-usemin": "2.0.x",
+    "express": "^4.13.4",
+    "jimp": "^0.2.24",
+    "lodash": "^4.12.0",
+    "request": "^2.72.0",
     "require": "*",
-    "grunt-contrib-requirejs": "^0.4.4"
+    "serve-static": "^1.10.2"
   },
   "devDependencies": {
-    "grunt-exec": "^0.4.6",
     "jasmine-core": "^2.3.4",
     "karma": "^0.13.15",
     "karma-chrome-launcher": "^0.2.1",
     "karma-jasmine": "^0.3.6",
-    "nodefy": "^0.2.2"
+    "karma-phantomjs-launcher": "^1.0.0",
+    "karma-requirejs": "^1.0.0",
+    "nodefy": "^0.2.2",
+    "phantomjs-prebuilt": "^2.1.7",
+    "requirejs": "^2.2.0"
   }
 }

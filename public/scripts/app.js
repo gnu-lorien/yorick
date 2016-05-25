@@ -14,7 +14,7 @@ requirejs.config( {
 		underscore: "//cdn.jsdelivr.net/lodash/3.10.0/lodash",
 		backbone: "//cdnjs.cloudflare.com/ajax/libs/backbone.js/1.1.2/backbone",
 		//parse: "//www.parsecdn.com/js/parse-1.5.0.min",
-		parse: "parse-1.5.0.min",
+		parse: "parse-1.5.0",
 		pretty: "prettyprint",
 		moment: "moment",
 		vis: "vis.min",

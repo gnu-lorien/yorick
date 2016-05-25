@@ -4,8 +4,9 @@
 // Includes file dependencies
 define([
 	"jquery",
-	"backbone"
-], function( $, Backbone) {
+	"backbone",
+    "../views/CharacterListItem"
+], function( $, Backbone, CharacterListItem) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
@@ -33,6 +34,9 @@ define([
 
             // Renders the view's template inside of the current listview element
             this.$el.find("div[role='main']").html(this.template);
+            this.subview = this.subview || new CharacterListItem(this.model);
+            this.subview.character = this.model;
+            this.$el.find("div#insertheader").append(this.subview.render().el);
             this.$el.enhanceWithin();
 
             // Maintains chainability

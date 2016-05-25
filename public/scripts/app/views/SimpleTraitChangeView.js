@@ -53,13 +53,16 @@ define([
             "click .save": "save_clicked"
         },
 
-        remove: function(a, b, c) {
+        remove: function(e) {
             var self = this;
+            e.preventDefault();
+            self.undelegateEvents();
             $.mobile.loading("show");
             console.log("remove value", self.category, self.simpletrait);
-            self.character.remove_trait(self.simpletrait).done(function() {
+            self.character.remove_trait(self.simpletrait).fail(PromiseFailReport).always(function() {
                 window.location.hash = "#simpletraits/" + self.category + "/" + self.character.id + "/all";
-            })
+                self.delegateEvents();
+            });
 
             return false;
         },

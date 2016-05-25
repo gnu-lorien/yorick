@@ -1,0 +1,6 @@
+{"_id":"CkXmZEtjOX","name":"subtract","_created_at":{"$date":"2015-07-21T04:14:33.247Z"},"_updated_at":{"$date":"2015-07-21T04:16:30.499Z"},"description":"Subtracts from a value and a cost. May be a negative cost"}
+{"_id":"EFyH04IP37","name":"remove","_created_at":{"$date":"2015-07-21T04:14:45.234Z"},"_updated_at":{"$date":"2015-07-21T04:15:27.035Z"},"description":"Remove a value from the sheet. Can have no cost, so all cost must be removed"}
+{"_id":"UuBiheHzaR","name":"define","_created_at":{"$date":"2015-07-21T04:14:44.237Z"},"_updated_at":{"$date":"2015-07-21T04:15:39.009Z"},"description":"Define a value on this sheet. Must be done to guarantee a trait exists. Has no cost, so any cost must be added next"}
+{"_id":"ojqoc0yMpF","name":"comment","_created_at":{"$date":"2015-07-21T04:16:36.133Z"},"_updated_at":{"$date":"2015-07-21T04:16:52.701Z"},"description":"Semantically equivalent to a set with 0, 0, and a note"}
+{"_id":"vvvqpY262s","name":"add","_created_at":{"$date":"2015-07-21T04:14:31.762Z"},"_updated_at":{"$date":"2015-07-21T04:16:22.705Z"},"description":"Adds to a value and a cost"}
+{"_id":"wDwNXFPKhT","name":"set","_created_at":{"$date":"2015-07-21T04:14:29.768Z"},"_updated_at":{"$date":"2015-07-21T04:16:16.329Z"},"description":"Sets an existing value to something and dictates the cost."}
