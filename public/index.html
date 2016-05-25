@@ -47,6 +47,7 @@
         else window.onload = downloadJSAtOnload;
     </script>
     <script type="text/javascript" src="https://d2zah9y47r7bi2.cloudfront.net/releases/current/tracker.js"></script>
+    <script type="text/javascript" src="scripts/lib/hello.js"></script>
     <!-- END TRACKJS -->
 </head>
 
@@ -631,6 +632,27 @@
 </div>
 
 
+<script type="text/javascript">
+    // Listen to signin requests
+    hello.on('auth.login', function(r) {
+        // Get Profile
+        hello( "facebook" ).api( '/me' ).then( function(p) {
+            console.log(JSON.stringify(p));
+            console.log(JSON.stringify(hello("facebook").getAuthResponse()));
+            return hello("facebook").logout();
+        }).then(function(p) {
+            console.log(JSON.stringify(p));
+            console.log(JSON.stringify(hello("facebook").getAuthResponse()));
+        });
+    });
+    // Intiate App credentials
+    hello.init({
+        facebook : "1607159299598020",
+    },{
+        scope : 'email',
+        redirect_uri: "http://localhost:63342/yorick/public/index.html"
+    });
+</script>
 
 <script type="text/template" id="login-template">
     <div class="login">
@@ -647,6 +669,7 @@
         </form>
         <a href="#signup">Need an account? Sign up!</a>
         <a href="#reset">Forgot your password?</a>
+        <button onclick="hello('facebook').login(); return false;">Log in with Facebook</button>
     </div>
 </script>
 
