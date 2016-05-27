@@ -41,7 +41,8 @@ define([
                 }
                 return Parse.Promise.as([]);
             }).then(function () {
-                window.location.reload();
+                var b = $.mobile.changePage(window.location.hash, {allowSamePageTransition: true, changeHash: false});
+                var a = Parse.history.loadUrl();
             }, function (error) {
                 console.log(JSON.stringify(error));
                 self.$(".login-form .error").html(_.escape(error.message)).show();
