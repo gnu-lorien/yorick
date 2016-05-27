@@ -749,14 +749,24 @@
 
 <div id="user-settings-profile" data-role="page" data-title="Profile">
     <div role="main" class="ui-content">
-        <form class="profile-form">
-
-        </form>
+        <div class="ui-body ui-body-a ui-corner-all">
+            <h3>Profile</h3>
+            <form class="profile-form">
+            </form>
+        </div>
+        <hr>
+        <div class="ui-body ui-body-a ui-corner-all">
+            <h3>Facebook</h3>
+            <p>Link account</p>
+            <p>Unlink account</p>
+            <form class="facebook-form">
+            </form>
+        </div>
     </div>
 </div>
 
 <script id="userSettingsProfileView" type="text/template">
-    <h1><%= user.get("name") %></h1>
+    <h3><%= user.get("name") %></h3>
     <form class="profile-form">
         <div class="error" style="display:none"></div>
         <label for="input-name">Name</label>
@@ -765,6 +775,7 @@
         <input type="text" name="input-email" id="input-email" value="<%= user.get('email') %>">
         <button class="ui-shadow ui-btn ui-corner-all ui-icon-action ui-btn-icon-right update" disabled="">Update</button>
     </form>
+    </div>
 </script>
 
 <div id="administration-user-view" data-role="page" data-title="Profile">
