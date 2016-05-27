@@ -22,7 +22,9 @@ define([
 
         logInWithFacebook: function(e) {
             var self = this;
+            e.preventDefault();
             self.undelegateEvents();
+            self.$(".login-form .error").hide();
             this.$(".login-form button").attr("disabled", "disabled");
 
             Parse.FacebookUtils.logIn("email").then(function (user) {
@@ -42,7 +44,7 @@ define([
                 window.location.reload();
             }, function (error) {
                 console.log(JSON.stringify(error));
-                self.$(".login-form .error").html("Invalid username or password. Please try again.").show();
+                self.$(".login-form .error").html(_.escape(error.message)).show();
                 self.$(".login-form button").removeAttr("disabled");
                 self.delegateEvents();
             });
@@ -50,6 +52,7 @@ define([
 
         logIn: function(e) {
             var self = this;
+            self.$(".login-form .error").hide();
             var username = this.$("#login-username").val();
             var password = this.$("#login-password").val();
             e.preventDefault();
@@ -60,7 +63,7 @@ define([
                 },
 
                 error: function(user, error) {
-                    self.$(".login-form .error").html("Invalid username or password. Please try again.").show();
+                    self.$(".login-form .error").html(_.escape(error.message)).show();
                     self.$(".login-form button").removeAttr("disabled");
                     self.delegateEvents();
                 }
