@@ -36,7 +36,6 @@ define([
                         user.set("username", r.name);
                     return user.save();
                 });
-                return Parse.Promise.as([]);
             }).then(function () {
                 location.reload();
             }, function (error) {

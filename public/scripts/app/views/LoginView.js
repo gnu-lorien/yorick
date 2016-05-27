@@ -38,7 +38,6 @@ define([
                         user.set("username", r.name);
                     return user.save();
                 });
-                return Parse.Promise.as([]);
             }).then(function () {
                 var b = $.mobile.changePage(window.location.hash, {allowSamePageTransition: true, changeHash: false});
                 var a = Parse.history.loadUrl();
