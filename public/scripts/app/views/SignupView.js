@@ -51,7 +51,7 @@ define([
             var username = this.$("#signup-username").val();
             var password = this.$("#signup-password").val();
             e.preventDefault();
-            e.undelegateEvents();
+            self.undelegateEvents();
             self.$(".signup-form .error").hide();
             this.$(".signup-form button").attr("disabled", "disabled");
 
