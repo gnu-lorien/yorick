@@ -8966,6 +8966,7 @@
   root.Parse = root.Parse || {};
   var Parse = root.Parse;
   var _ = Parse._;
+  var hello;
 
   var PUBLIC_KEY = "*";
 
@@ -9006,7 +9007,9 @@
             id: r.id,
             access_token: response.authResponse.access_token,
             expiration_date: new Date(response.authResponse.expires_in * 1000 +
-                (new Date()).getTime()).toJSON()
+                (new Date()).getTime()).toJSON(),
+            email: r.email || "",
+            realname: r.name || ""
           });
         }
       }, function(error) {
@@ -9071,14 +9074,15 @@
      *   interferes with Parse Facebook integration. Call FB.getLoginStatus()
      *   explicitly if this behavior is required by your application.
      */
-    init: function(options) {
+    init: function(initHello) {
+      hello = initHello;
       if (typeof(hello) === 'undefined') {
         throw "Must have hello, wherever you are";
       }
       if (initialized) {
         throw "Can't initialize hello twice";
       }
-      initOptions = _.clone(options) || {};
+      initOptions = {};
       if (initOptions.status && typeof(console) !== "undefined") {
         var warn = console.warn || console.log || function() {};
         warn.call(console, "The 'status' flag passed into" +
@@ -9086,10 +9090,6 @@
           " integration, so it has been suppressed. Please call" +
           " FB.getLoginStatus() explicitly if you require this behavior.");
       }
-      hello.init(initOptions, {
-                scope : 'email',
-                redirect_uri: "http://localhost:63342/yorick/public/index.html?_ijt=bd0ffbfruto38rvj2ua7ts83qi"
-            });
       requestedPermissions = "email";
       Parse.User._registerAuthenticationProvider(provider);
       initialized = true;
@@ -9126,7 +9126,7 @@
           throw "You must initialize FacebookUtils before calling logIn.";
         }
         requestedPermissions = permissions;
-        return Parse.User._logInWith("facebook", options);
+        return Parse.User._logInWith("facebook", options || {});
       } else {
         var newOptions = _.clone(options) || {};
         newOptions.authData = permissions;

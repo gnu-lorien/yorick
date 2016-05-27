@@ -2,8 +2,9 @@
 define([
     "jquery",
     "backbone",
-    "parse"
-], function( $, Backbone, Parse ) {
+    "parse",
+    "hello"
+], function( $, Backbone, Parse, hello ) {
 
     // Extends Backbone.View
     var LoginView = Backbone.View.extend( {
@@ -15,9 +16,6 @@ define([
 
         initialize: function() {
             _.bindAll(this, "logIn");
-            Parse.FacebookUtils.init({
-                facebook : "1607159299598020",
-            })
             this.render();
         },
 
@@ -25,17 +23,29 @@ define([
             var self = this;
             var username = this.$("#login-username").val();
             var password = this.$("#login-password").val();
+            self.undelegateEvents();
+            this.$(".login-form button").attr("disabled", "disabled");
 
-            Parse.FacebookUtils.logIn("", {
-                scope : 'email',
-                redirect_uri: "http://localhost:63342/yorick/public/index.html"
-            }).then(function(user) {
-                location.reload();
-                self.undelegateEvents();
-            }, function(error) {
+            Parse.FacebookUtils.logIn("email").then(function (user) {
+                hello('facebook').api('/me').then(function (r) {
+                    console.log(JSON.stringify(r));
+                }, function (error) {
+                    console.log(JSON.stringify(error));
+                });
+                if (!user.has("email") || !user.has("realname")) {
+                    console.log("Missing email or realname");
+                    user.set("email", user.get("authData").facebook.email);
+                    user.set("realname", user.get("authData").facebook.realname);
+                    return user.save();
+                }
+                return Parse.Promise.as([]);
+            }).then(function () {
+                window.location.reload();
+            }, function (error) {
                 console.log(JSON.stringify(error));
                 self.$(".login-form .error").html("Invalid username or password. Please try again.").show();
                 self.$(".login-form button").removeAttr("disabled");
+                self.delegateEvents();
             });
             /*
             Parse.User.logIn(username, password, {
@@ -51,7 +61,6 @@ define([
             });
             */
 
-            this.$(".login-form button").attr("disabled", "disabled");
 
             return false;
         },

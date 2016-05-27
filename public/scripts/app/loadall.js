@@ -4,14 +4,24 @@ require([
     "parse",
     "app/routers/mobileRouter",
     "app/collections/BNSMETV1_ClanRules",
-    "nprogress"
-], function ( $, Parse, Mobile, ClanRules, nprogress ) {
+    "nprogress",
+    "hello"
+], function ( $, Parse, Mobile, ClanRules, nprogress, hello ) {
     require( [ "jquerymobile" ], function () {
 
         Parse.$ = $;
 
         Parse.initialize("APPLICATION_ID", "yymp8UWnJ7Va32Y2Q4uzvWxfPTYuDvZSA8kdhmdR");
         Parse.serverURL = "http://localhost:1337/parse"
+        
+        hello.init({
+            facebook : "1607159299598020",
+        },{
+            scope : 'email',
+            redirect_uri: "http://localhost:63342/yorick/public/index.html?_ijt=bd0ffbfruto38rvj2ua7ts83qi"
+        });
+
+        Parse.FacebookUtils.init(hello);
 
         // Instantiates a new Backbone.js Mobile Router
         this.router = new Mobile();
