@@ -8997,7 +8997,7 @@
         });
       });
       */
-      hello('facebook').login().then(function(r) {
+      hello('facebook').login({force: false}).then(function(r) {
         response = r;
         return hello('facebook').api('/me');
       }).then(function (r) {
@@ -9030,17 +9030,7 @@
         // Suppress checks for login status from the browser.
         newOptions.status = false;
 
-        // If the user doesn't match the one known by the FB SDK, log out.
-        // Most of the time, the users will match -- it's only in cases where
-        // the FB SDK knows of a different user than the one being restored
-        // from a Parse User that logged in with username/password.
-        var existingResponse = hello('facebook').getAuthResponse();
-        if (existingResponse &&
-            existingResponse.client_id !== authResponse.client_id) {
-          hello('facebook').logout();
-        }
-
-        //hello(newOptions);
+        this.authenticate();
       }
       return true;
     },
@@ -9093,6 +9083,15 @@
       requestedPermissions = "email";
       Parse.User._registerAuthenticationProvider(provider);
       initialized = true;
+    },
+
+    testmyhello: function() {
+      console.log(JSON.stringify(hello('facebook').getAuthResponse()));
+      return hello('facebook').api('/me').then(function (r) {
+        console.log("testmyhello " + JSON.stringify(r));
+      }, function(error) {
+        console.log("testmyhello " + JSON.stringify(error));
+      });
     },
 
     /**
