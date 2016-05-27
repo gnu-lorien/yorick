@@ -10,6 +10,7 @@ define([
     var LoginView = Backbone.View.extend( {
         events: {
             "submit form.login-form": "logIn",
+            "click #login-with-facebook": "logInWithFacebook",
         },
 
         el: "#login",
@@ -19,10 +20,8 @@ define([
             this.render();
         },
 
-        logIn: function(e) {
+        logInWithFacebook: function(e) {
             var self = this;
-            var username = this.$("#login-username").val();
-            var password = this.$("#login-password").val();
             self.undelegateEvents();
             this.$(".login-form button").attr("disabled", "disabled");
 
@@ -47,20 +46,25 @@ define([
                 self.$(".login-form button").removeAttr("disabled");
                 self.delegateEvents();
             });
-            /*
+        },
+
+        logIn: function(e) {
+            var self = this;
+            var username = this.$("#login-username").val();
+            var password = this.$("#login-password").val();
+            e.preventDefault();
+            self.undelegateEvents();
             Parse.User.logIn(username, password, {
                 success: function(user) {
                     location.reload();
-                    self.undelegateEvents();
                 },
 
                 error: function(user, error) {
                     self.$(".login-form .error").html("Invalid username or password. Please try again.").show();
                     self.$(".login-form button").removeAttr("disabled");
+                    self.delegateEvents();
                 }
             });
-            */
-
 
             return false;
         },
