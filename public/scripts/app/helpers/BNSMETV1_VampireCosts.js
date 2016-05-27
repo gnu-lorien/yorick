@@ -8,8 +8,17 @@ define([
     var VampireCosts = Parse.Object.extend("VampireCosts", {
         initialize: function() {
             var self = this;
+
             self.ClanRules = new BNSMETV1_ClanRules;
             return self.ClanRules.fetch();
+        },
+
+        get_in_clan_disciplines: function(character) {
+            var self = this;
+            var icds = self.ClanRules.get_in_clan_disciplines(character);
+            var eicds = _.map(character.get('extra_in_clan_disciplines'), "attributes.name");
+            icds = [].concat(icds, eicds);
+            return icds;
         },
 
         discipline_is_in_clan: function(character, trait) {
