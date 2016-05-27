@@ -9001,15 +9001,12 @@
         response = r;
         return hello('facebook').api('/me');
       }).then(function (r) {
-        console.log(JSON.stringify(r));
         if (options.success) {
           options.success(self, {
             id: r.id,
             access_token: response.authResponse.access_token,
             expiration_date: new Date(response.authResponse.expires_in * 1000 +
                 (new Date()).getTime()).toJSON(),
-            email: r.email || "",
-            realname: r.name || ""
           });
         }
       }, function(error) {

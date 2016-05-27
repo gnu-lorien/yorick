@@ -3,8 +3,9 @@ define([
     "jquery",
     "backbone",
     "parse",
-    "hello"
-], function( $, Backbone, Parse, hello ) {
+    "hello",
+    "../helpers/PromiseFailReport"
+], function( $, Backbone, Parse, hello, PromiseFailReport ) {
 
     // Extends Backbone.View
     var LoginView = Backbone.View.extend( {
@@ -28,16 +29,13 @@ define([
             this.$(".login-form button").attr("disabled", "disabled");
 
             Parse.FacebookUtils.logIn("email").then(function (user) {
-                hello('facebook').api('/me').then(function (r) {
-                    console.log(JSON.stringify(r));
-                }, function (error) {
-                    console.log(JSON.stringify(error));
-                });
                 if (!user.has("email") || !user.has("realname")) {
-                    console.log("Missing email or realname");
-                    user.set("email", user.get("authData").facebook.email);
-                    user.set("realname", user.get("authData").facebook.realname);
-                    return user.save();
+                    return hello('facebook').api('/me').then(function (r) {
+                        console.log("Missing email or realname");
+                        user.set("email", r.email);
+                        user.set("realname", r.name);
+                        return user.save();
+                    });
                 }
                 return Parse.Promise.as([]);
             }).then(function () {
@@ -45,6 +43,8 @@ define([
                 var a = Parse.history.loadUrl();
             }, function (error) {
                 console.log(JSON.stringify(error));
+                if (!_.isUndefined(trackJs))
+                    trackJs.console.error("Error in promise", JSON.stringify(error));
                 self.$(".login-form .error").html(_.escape(error.message)).show();
                 self.$(".login-form button").removeAttr("disabled");
                 self.delegateEvents();
