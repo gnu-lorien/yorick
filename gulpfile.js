@@ -39,14 +39,22 @@ gulp.task('minify-js', ['clean'], function () {
 gulp.task('images', ['clean'], function () {
     return gulp.src(['./public/**/*.{png,jpg,gif,svg}'])
         .pipe(gulp.dest('dist'));
-})
+});
 
 gulp.task('siteconfig-pubstorm', ['minify-js'], function () {
     return gulp.src('./public/scripts/app/siteconfig.js')
         .pipe(replace('return ConfigGnuLorienDev;', 'return ConfigPubstorm;'))
         .pipe(uglify({outSourceMap: true}))
         .pipe(gulp.dest('dist/scripts/app'));
+});
+
+gulp.task('siteconfig-patron', ['minify-js'], function () {
+    return gulp.src('./public/scripts/app/siteconfig.js')
+        .pipe(replace('return ConfigGnuLorienDev;', 'return ConfigPatron;'))
+        .pipe(uglify({outSourceMap: true}))
+        .pipe(gulp.dest('dist/scripts/app'));
 })
 
 gulp.task('pubstorm', ['minify-html', 'copy-html-templates', 'minify-css', 'images', 'siteconfig-pubstorm']);
 
+gulp.task('patron', ['minify-html', 'copy-html-templates', 'minify-css', 'images', 'siteconfig-patron']);
