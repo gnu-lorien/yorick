@@ -4,13 +4,17 @@ define([
     "backbone",
     "parse",
     "backform",
-    "../forms/UserForm"
-], function ($, Backbone, Parse, Backform, UserForm) {
+    "../forms/UserForm",
+    "text!../templates/profile-facebook-account.html",
+    "../helpers/PromiseFailReport"
+], function ($, Backbone, Parse, Backform, UserForm, profile_facebook_account, PromiseFailReport) {
 
     // Extends Backbone.View
     var UserSettingsProfileView = Backbone.View.extend({
         initialize: function () {
             var view = this;
+            view.facebookTemplate = _.template(profile_facebook_account);
+
             view.errorModel = new Backbone.Model();
             this.form = new UserForm({
                 errorModel: view.errorModel,
@@ -54,6 +58,22 @@ define([
             view.form.fields.add(new Backform.Field({name: "submit", label: "Update", control: "button", disabled: true, id: "submit"}));
         },
 
+        events: {
+            "click #facebook-unlink": "unlink",
+        },
+
+        unlink: function(e) {
+            var view = this;
+            e.preventDefault();
+            view.undelegateEvents();
+
+            Parse.User.current().set("authData", null);
+            Parse.User.current().save().then(function () {
+                view.delegateEvents();
+                view.render();
+            }).fail(PromiseFailReport);
+        },
+
         render: function () {
             var view = this;
 
@@ -64,6 +84,9 @@ define([
             }
             this.form.setElement(this.$el.find("form.profile-form"));
             this.form.render();
+
+            this.$el.find(".facebook-account-linking").html(this.facebookTemplate());
+
             this.$el.enhanceWithin();
         }
     });
