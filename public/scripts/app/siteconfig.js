@@ -11,7 +11,7 @@ define([
     var ConfigPatron = {
         serverURL: "https://api.undergroundtheater.org/parse",
         facebookAppId: "1606746326305984",
-        redirect_uri: "https://yorick.pubstorm.site/index.html"
+        redirect_uri: "https://patron.undergroundtheater.org"
     };
 
     var ConfigLocalhost = {
