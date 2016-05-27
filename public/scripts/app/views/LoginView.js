@@ -37,8 +37,7 @@ define([
                     return user.save();
                 });
             }).then(function () {
-                var b = $.mobile.changePage(window.location.hash, {allowSamePageTransition: true, changeHash: false});
-                var a = Parse.history.loadUrl();
+                location.reload();
             }, function (error) {
                 console.log(JSON.stringify(error));
                 if (!_.isUndefined(trackJs))
