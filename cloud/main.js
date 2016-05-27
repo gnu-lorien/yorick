@@ -387,7 +387,6 @@ Parse.Cloud.define("get_expected_vampire_ids", function(request, response) {
              results[class_name].push(t.id);
          })
     })).then(function () {
-        console.log("About to return results " + results);
         response.success(results);
     }).fail(function (error) {
         response.error(error);

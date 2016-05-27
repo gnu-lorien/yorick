@@ -830,6 +830,11 @@ define([
             }
             return Parse.Promise.as(self);
         },
+        
+        get_in_clan_disciplines: function() {
+            var self = this;
+            return self.VampireCosts.get_in_clan_disciplines(self);
+        },
 
         get_thumbnail: function (size) {
             var self = this;

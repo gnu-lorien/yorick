@@ -246,9 +246,12 @@ define([
         },
 
         logout: function() {
-            Parse.User.logOut();
-            window.location.hash = "";
-            this.home();
+            Parse.User.logOut().always(function () {
+                return hello('facebook').logout();
+            }).always(function() {
+                window.location.hash = "";
+                window.location.reload();
+            });
         },
 
         signup: function() {

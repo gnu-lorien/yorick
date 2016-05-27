@@ -4,13 +4,17 @@ define([
     "backbone",
     "parse",
     "backform",
-    "../forms/UserForm"
-], function ($, Backbone, Parse, Backform, UserForm) {
+    "../forms/UserForm",
+    "text!../templates/profile-facebook-account.html",
+    "../helpers/PromiseFailReport"
+], function ($, Backbone, Parse, Backform, UserForm, profile_facebook_account, PromiseFailReport) {
 
     // Extends Backbone.View
     var UserSettingsProfileView = Backbone.View.extend({
         initialize: function () {
             var view = this;
+            view.facebookTemplate = _.template(profile_facebook_account);
+
             view.errorModel = new Backbone.Model();
             this.form = new UserForm({
                 errorModel: view.errorModel,
@@ -54,16 +58,55 @@ define([
             view.form.fields.add(new Backform.Field({name: "submit", label: "Update", control: "button", disabled: true, id: "submit"}));
         },
 
+        events: {
+            "click #facebook-unlink": "unlink",
+            "click #facebook-link": "link",
+        },
+
+        unlink: function(e) {
+            var view = this;
+            e.preventDefault();
+            view.undelegateEvents();
+
+            Parse.User.current().set("authData", {"facebook": null});
+            Parse.User.current().save().then(function () {
+                view.delegateEvents();
+                view.render();
+            }).fail(PromiseFailReport);
+        },
+
+        link: function(e) {
+            var view = this;
+            e.preventDefault();
+            view.undelegateEvents();
+
+            Parse.FacebookUtils.link(Parse.User.current(), "email").then(function (user) {
+                return hello('facebook').api('/me');
+            }).then(function (r) {
+                view.delegateEvents();
+                view.render();
+                var user = Parse.User.current();
+                if (!user.has("email"))
+                    user.set("email", r.email);
+                if (!user.has("realname"))
+                    user.set("realname", r.name);
+                return user.save();
+            }).fail(PromiseFailReport);
+        },
+
         render: function () {
             var view = this;
 
             if (this.form.model !== Parse.User.current()) {
-                var errorModel = this.form.errorModel;
+                var errorModel = this.form.model.errorModel;
                 this.form.model = Parse.User.current();
                 this.form.model.errorModel = errorModel;
             }
             this.form.setElement(this.$el.find("form.profile-form"));
             this.form.render();
+
+            this.$el.find(".facebook-account-linking").html(this.facebookTemplate());
+
             this.$el.enhanceWithin();
         }
     });

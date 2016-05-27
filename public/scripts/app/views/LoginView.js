@@ -2,13 +2,16 @@
 define([
     "jquery",
     "backbone",
-    "parse"
-], function( $, Backbone, Parse ) {
+    "parse",
+    "hello",
+    "../helpers/PromiseFailReport"
+], function( $, Backbone, Parse, hello, PromiseFailReport ) {
 
     // Extends Backbone.View
     var LoginView = Backbone.View.extend( {
         events: {
             "submit form.login-form": "logIn",
+            "click #login-with-facebook": "logInWithFacebook",
         },
 
         el: "#login",
@@ -18,24 +21,52 @@ define([
             this.render();
         },
 
+        logInWithFacebook: function(e) {
+            var self = this;
+            e.preventDefault();
+            self.undelegateEvents();
+            self.$(".login-form .error").hide();
+            this.$(".login-form button").attr("disabled", "disabled");
+
+            Parse.FacebookUtils.logIn("email").then(function (user) {
+                return hello('facebook').api('/me').then(function (r) {
+                    if (!user.has("email"))
+                        user.set("email", r.email);
+                    if (!user.has("realname"))
+                        user.set("realname", r.name);
+                    return user.save();
+                });
+            }).then(function () {
+                var b = $.mobile.changePage(window.location.hash, {allowSamePageTransition: true, changeHash: false});
+                var a = Parse.history.loadUrl();
+            }, function (error) {
+                console.log(JSON.stringify(error));
+                if (!_.isUndefined(trackJs))
+                    trackJs.console.error("Error in promise", JSON.stringify(error));
+                self.$(".login-form .error").html(_.escape(error.message)).show();
+                self.$(".login-form button").removeAttr("disabled");
+                self.delegateEvents();
+            });
+        },
+
         logIn: function(e) {
             var self = this;
+            self.$(".login-form .error").hide();
             var username = this.$("#login-username").val();
             var password = this.$("#login-password").val();
-
+            e.preventDefault();
+            self.undelegateEvents();
             Parse.User.logIn(username, password, {
                 success: function(user) {
                     location.reload();
-                    self.undelegateEvents();
                 },
 
                 error: function(user, error) {
-                    self.$(".login-form .error").html("Invalid username or password. Please try again.").show();
+                    self.$(".login-form .error").html(_.escape(error.message)).show();
                     self.$(".login-form button").removeAttr("disabled");
+                    self.delegateEvents();
                 }
             });
-
-            this.$(".login-form button").attr("disabled", "disabled");
 
             return false;
         },

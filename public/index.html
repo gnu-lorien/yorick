@@ -47,6 +47,7 @@
         else window.onload = downloadJSAtOnload;
     </script>
     <script type="text/javascript" src="https://d2zah9y47r7bi2.cloudfront.net/releases/current/tracker.js"></script>
+    <!-- <script type="text/javascript" src="scripts/lib/hello.js"></script> -->
     <!-- END TRACKJS -->
 </head>
 
@@ -631,7 +632,6 @@
 </div>
 
 
-
 <script type="text/template" id="login-template">
     <div class="login">
         <img class="max-yorick-sizing" src="yorick_256.png"/>
@@ -643,10 +643,17 @@
             <div class="error" style="display:none"></div>
             <input type="text" id="login-username" placeholder="Username" />
             <input type="password" id="login-password" placeholder="Password" />
-            <button>Log In</button>
+            <button>Log in with Username and Password</button>
         </form>
-        <a href="#signup">Need an account? Sign up!</a>
-        <a href="#reset">Forgot your password?</a>
+        <div>
+            <a href="#" id="login-with-facebook"><img src="log_in_with_facebook.png" /></a>
+        </div>
+        <div>
+            <a href="#signup">Need an account? Sign up!</a>
+        </div>
+        <div>
+            <a href="#reset">Forgot your password?</a>
+        </div>
     </div>
 </script>
 
@@ -661,6 +668,10 @@
             <input type="password" id="signup-password" placeholder="Create a Password" />
             <button>Sign Up</button>
         </form>
+        <div>
+            or
+        </div>
+        <button id="signup-with-facebook">Sign up with Facebook</button>
     </div>
 </script>
 
@@ -738,23 +749,18 @@
 
 <div id="user-settings-profile" data-role="page" data-title="Profile">
     <div role="main" class="ui-content">
-        <form class="profile-form">
-
-        </form>
+        <div class="ui-body ui-body-a ui-corner-all">
+            <h3>Profile</h3>
+            <form class="profile-form">
+            </form>
+        </div>
+        <hr>
+        <div class="ui-body ui-body-a ui-corner-all">
+            <h3>Facebook</h3>
+            <div class="facebook-account-linking"></div>
+        </div>
     </div>
 </div>
-
-<script id="userSettingsProfileView" type="text/template">
-    <h1><%= user.get("name") %></h1>
-    <form class="profile-form">
-        <div class="error" style="display:none"></div>
-        <label for="input-name">Name</label>
-        <input type="text" name="input-name" id="input-name" value="<%= user.get('realname') %>">
-        <label for="input-email">Email</label>
-        <input type="text" name="input-email" id="input-email" value="<%= user.get('email') %>">
-        <button class="ui-shadow ui-btn ui-corner-all ui-icon-action ui-btn-icon-right update" disabled="">Update</button>
-    </form>
-</script>
 
 <div id="administration-user-view" data-role="page" data-title="Profile">
     <div role="main" class="ui-content">

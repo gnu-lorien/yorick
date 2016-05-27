@@ -20,6 +20,7 @@ requirejs.config( {
 		vis: "vis.min",
 		backform: "backform",
 		nprogress: "nprogress",
+		hello: "hello",
 
 		app: "../app"
 	},

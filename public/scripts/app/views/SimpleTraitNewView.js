@@ -19,9 +19,6 @@ define([
         initialize: function() {
 
             _.bindAll(this, "register", "update_collection_query_and_fetch");
-
-            this.clanRules = new ClanRules;
-            this.clanRules.fetch();
         },
 
         switch_character_category_listening: function() {
@@ -115,7 +112,7 @@ define([
                 .value();
 
             if ("in clan disciplines" == self.filterRule) {
-                var icd = _.without(self.clanRules.get_in_clan_disciplines(self.character), undefined);
+                var icd = _.without(self.character.get_in_clan_disciplines(), undefined);
                 descriptionItems = _.chain(self.collection.models);
                 if (0 != icd.length) {
                     descriptionItems = descriptionItems.select(function (model) {

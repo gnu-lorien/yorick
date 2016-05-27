@@ -8,7 +8,8 @@ define([
     // Extends Backbone.View
     var SignupView = Backbone.View.extend( {
         events: {
-            "submit form.signup-form": "signUp"
+            "submit form.signup-form": "signUp",
+            "click #signup-with-facebook": "signUpWithFacebook"
         },
 
         el: "#signup",
@@ -18,10 +19,39 @@ define([
             this.render();
         },
 
+        signUpWithFacebook: function(e) {
+            var self = this;
+            e.preventDefault();
+            self.undelegateEvents();
+            self.$(".signup-form .error").hide();
+            this.$(".signup-form button").attr("disabled", "disabled");
+
+            Parse.FacebookUtils.logIn("email").then(function (user) {
+                return hello('facebook').api('/me').then(function (r) {
+                    if (!user.has("email"))
+                        user.set("email", r.email);
+                    if (!user.has("realname"))
+                        user.set("realname", r.name);
+                    return user.save();
+                });
+            }).then(function () {
+                location.reload();
+            }, function (error) {
+                console.log(JSON.stringify(error));
+                self.$(".signup-form .error").html(_.escape(error.message)).show();
+                self.$(".signup-form button").removeAttr("disabled");
+                self.delegateEvents();
+            });
+        },
+
         signUp: function(e) {
             var self = this;
             var username = this.$("#signup-username").val();
             var password = this.$("#signup-password").val();
+            e.preventDefault();
+            self.undelegateEvents();
+            self.$(".signup-form .error").hide();
+            this.$(".signup-form button").attr("disabled", "disabled");
 
             Parse.User.signUp(username, password, { }, {
                 success: function(user) {
@@ -32,10 +62,9 @@ define([
                 error: function(user, error) {
                     self.$(".signup-form .error").html(_.escape(error.message)).show();
                     self.$(".signup-form button").removeAttr("disabled");
+                    e.delegateEvents();
                 }
             });
-
-            this.$(".signup-form button").attr("disabled", "disabled");
 
             return false;
         },
