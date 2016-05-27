@@ -27,13 +27,15 @@ define([
             this.$(".signup-form button").attr("disabled", "disabled");
 
             Parse.FacebookUtils.logIn("email").then(function (user) {
-                if (!user.has("email") || !user.has("realname")) {
-                    return hello('facebook').api('/me').then(function (r) {
+                return hello('facebook').api('/me').then(function (r) {
+                    if (!user.has("email"))
                         user.set("email", r.email);
+                    if (!user.has("realname"))
                         user.set("realname", r.name);
-                        return user.save();
-                    });
-                }
+                    if (!user.has("username"))
+                        user.set("username", r.name);
+                    return user.save();
+                });
                 return Parse.Promise.as([]);
             }).then(function () {
                 location.reload();

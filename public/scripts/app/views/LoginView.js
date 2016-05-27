@@ -29,14 +29,15 @@ define([
             this.$(".login-form button").attr("disabled", "disabled");
 
             Parse.FacebookUtils.logIn("email").then(function (user) {
-                if (!user.has("email") || !user.has("realname")) {
-                    return hello('facebook').api('/me').then(function (r) {
-                        console.log("Missing email or realname");
+                return hello('facebook').api('/me').then(function (r) {
+                    if (!user.has("email"))
                         user.set("email", r.email);
+                    if (!user.has("realname"))
                         user.set("realname", r.name);
-                        return user.save();
-                    });
-                }
+                    if (!user.has("username"))
+                        user.set("username", r.name);
+                    return user.save();
+                });
                 return Parse.Promise.as([]);
             }).then(function () {
                 var b = $.mobile.changePage(window.location.hash, {allowSamePageTransition: true, changeHash: false});
