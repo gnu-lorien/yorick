@@ -9151,7 +9151,7 @@
           throw "You must initialize FacebookUtils before calling link.";
         }
         requestedPermissions = permissions;
-        return user._linkWith("facebook", options);
+        return user._linkWith("facebook", options || {});
       } else {
         var newOptions = _.clone(options) || {};
         newOptions.authData = permissions;

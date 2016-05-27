@@ -32,8 +32,6 @@ define([
                         user.set("email", r.email);
                     if (!user.has("realname"))
                         user.set("realname", r.name);
-                    if (!user.has("username"))
-                        user.set("username", r.name);
                     return user.save();
                 });
             }).then(function () {
