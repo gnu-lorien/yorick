@@ -5,20 +5,21 @@ require([
     "app/routers/mobileRouter",
     "app/collections/BNSMETV1_ClanRules",
     "nprogress",
-    "hello"
-], function ( $, Parse, Mobile, ClanRules, nprogress, hello ) {
+    "hello",
+    "app/siteconfig"
+], function ( $, Parse, Mobile, ClanRules, nprogress, hello, siteconfig ) {
     require( [ "jquerymobile" ], function () {
 
         Parse.$ = $;
 
         Parse.initialize("APPLICATION_ID", "yymp8UWnJ7Va32Y2Q4uzvWxfPTYuDvZSA8kdhmdR");
-        Parse.serverURL = "http://localhost:1337/parse"
+        Parse.serverURL = siteconfig.serverURL;
         
         hello.init({
-            facebook : "1607159299598020",
+            facebook : siteconfig.facebookAppId,
         },{
             scope : 'email',
-            redirect_uri: "http://localhost:63342/yorick/public/index.html?_ijt=bd0ffbfruto38rvj2ua7ts83qi"
+            redirect_uri: siteconfig.redirect_uri
         });
 
         Parse.FacebookUtils.init(hello);
