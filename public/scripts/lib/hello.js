@@ -3314,8 +3314,8 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 				}
 
 				// The facebook login window is a different size.
-				p.options.popup.width = 580;
-				p.options.popup.height = 400;
+				p.options.popup.width = 620;
+				p.options.popup.height = 500;
 			},
 
 			logout: function(callback, options) {
