@@ -7283,7 +7283,10 @@
             options.success.apply(this, arguments);
           }
         };
-        return this.save({'authData': authData}, newOptions);
+        console.log(authData.facebook.access_token);
+        return this.save({'authData': authData}, newOptions).always(function (a, b, c) {
+          console.log("What really happened with this user?");
+        });
       } else {
         var self = this;
         var promise = new Parse.Promise();
@@ -9026,8 +9029,6 @@
 
         // Suppress checks for login status from the browser.
         newOptions.status = false;
-
-        this.authenticate();
       }
       return true;
     },

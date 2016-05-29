@@ -1,15 +1,21 @@
 // Includes file dependencies
 define([
     "underscore",
-    "parse"
-], function( _, Parse ) {
+    "parse",
+    "../collections/BNSMETV1_ClanRules"
+], function( _, Parse, FallbackClanRules ) {
 
     var VampireCosts = Parse.Object.extend("VampireCosts", {
         initialize: function() {
             var self = this;
 
-            self.ClanRules = BNSMETV1_ClanRules;
-            return Parse.Promise.as(self.ClanRules);
+            try {
+                self.ClanRules = BNSMETV1_ClanRules;
+                return Parse.Promise.as(self.ClanRules);
+            } catch (e) {
+                self.ClanRules = new FallbackClanRules;
+                return self.ClanRules.fetch();
+            }
         },
 
         get_in_clan_disciplines: function(character) {
