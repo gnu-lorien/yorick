@@ -28,7 +28,10 @@ define([
             self.$(".login-form .error").hide();
             this.$(".login-form button").attr("disabled", "disabled");
 
-            Parse.FacebookUtils.logIn("email").then(function (user) {
+            Parse.FacebookUtils.logIn("email").then(function(user) {
+                return Parse.User._currentAsync();
+            }).then(function (user) {
+                /*
                 return hello('facebook').api('/me').then(function (r) {
                     if (!user.has("email"))
                         user.set("email", r.email);
@@ -36,6 +39,10 @@ define([
                         user.set("realname", r.name);
                     return user.save();
                 });
+                */
+                console.log("Login claims to be successful");
+                console.log(user.get("authData").facebook.access_token);
+                console.log(hello('facebook').getAuthResponse().access_token);
             }).then(function () {
                 var b = $.mobile.changePage(window.location.hash, {allowSamePageTransition: true, changeHash: false});
                 var a = Parse.history.loadUrl();
