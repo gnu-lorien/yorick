@@ -4,8 +4,9 @@ define([
     "backbone",
     "parse",
     "hello",
-    "../helpers/PromiseFailReport"
-], function( $, Backbone, Parse, hello, PromiseFailReport ) {
+    "../helpers/PromiseFailReport",
+    "../helpers/InjectAuthData"
+], function( $, Backbone, Parse, hello, PromiseFailReport, InjectAuthData ) {
 
     // Extends Backbone.View
     var LoginView = Backbone.View.extend( {
@@ -31,18 +32,20 @@ define([
             Parse.FacebookUtils.logIn("email").then(function(user) {
                 return Parse.User._currentAsync();
             }).then(function (user) {
-                /*
-                return hello('facebook').api('/me').then(function (r) {
-                    if (!user.has("email"))
-                        user.set("email", r.email);
-                    if (!user.has("realname"))
-                        user.set("realname", r.name);
-                    return user.save();
-                });
-                */
+                return hello('facebook').api('/me');
+            }).then(function (r) {
                 console.log("Login claims to be successful");
+                var user = Parse.User.current();
+                console.log(user.get("authData").facebook.access_token);
+                if (!user.has("email"))
+                    user.set("email", r.email);
+                if (!user.has("realname"))
+                    user.set("realname", r.name);
+                InjectAuthData(user);
+
                 console.log(user.get("authData").facebook.access_token);
                 console.log(hello('facebook').getAuthResponse().access_token);
+                return user.save();
             }).then(function () {
                 var b = $.mobile.changePage(window.location.hash, {allowSamePageTransition: true, changeHash: false});
                 var a = Parse.history.loadUrl();
