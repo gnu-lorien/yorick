@@ -47,7 +47,8 @@ define([
     "text!../templates/footer.html",
     "../views/AdministrationUserView",
     "../views/PasswordReset",
-    "../views/CharacterApprovalView"
+    "../views/CharacterApprovalView",
+    "../helpers/InjectAuthData"
 ], function ($,
              Parse,
              pretty,
@@ -92,7 +93,8 @@ define([
              footer_html,
              AdministrationUserView,
              PasswordResetView,
-             CharacterApprovalView
+             CharacterApprovalView,
+             InjectAuthData
 ) {
 
     // Extends Backbone.Router
@@ -234,12 +236,15 @@ define([
                 var q = (new Parse.Query(Parse.Role)).equalTo("users", Parse.User.current());
                 return q.count();
             }).then(function (count) {
+                var user = Parse.User.current();
                 if (0 < count) {
-                    Parse.User.current().set("storytellerinterface", true);
+                    user.set("storytellerinterface", true);
                 } else {
-                    Parse.User.current().set("storytellerinterface", false);
+                    user.set("storytellerinterface", false);
                 }
-                Parse.User.current().save();
+                InjectAuthData(user);
+                return user.save();
+            }).then(function () {
                 self.playerOptionsView = self.playerOptionsView || new PlayerOptionsView({el: "#player-options"}).render();
                 $.mobile.changePage("#player-options", {reverse: false, changeHash: false});
             }).fail(PromiseFailReport);
@@ -643,10 +648,11 @@ define([
             var q = Parse.Query.or(adminq, siteadminq);
             return q.count().then(function (count) {
                 var isadministrator = count ? true : false;
-                var u = Parse.User.current();
-                if (u.get("admininterface") != isadministrator) {
-                    u.set("admininterface", isadministrator);
-                    return Parse.User.current().save();
+                var user = Parse.User.current();
+                if (user.get("admininterface") != isadministrator) {
+                    user.set("admininterface", isadministrator);
+                    InjectAuthData(user);
+                    return user.save();
                 }
                 return Parse.Promise.as(Parse.User.current());
             });

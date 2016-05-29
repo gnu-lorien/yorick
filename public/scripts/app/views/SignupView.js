@@ -2,8 +2,9 @@
 define([
     "jquery",
     "backbone",
-    "parse"
-], function( $, Backbone, Parse ) {
+    "parse",
+    "../helpers/InjectAuthData"
+], function( $, Backbone, Parse, InjectAuthData ) {
 
     // Extends Backbone.View
     var SignupView = Backbone.View.extend( {
@@ -32,6 +33,7 @@ define([
                         user.set("email", r.email);
                     if (!user.has("realname"))
                         user.set("realname", r.name);
+                    InjectAuthData(user);
                     return user.save();
                 });
             }).then(function () {

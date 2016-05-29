@@ -6,8 +6,9 @@ define([
     "backform",
     "../forms/UserForm",
     "text!../templates/profile-facebook-account.html",
-    "../helpers/PromiseFailReport"
-], function ($, Backbone, Parse, Backform, UserForm, profile_facebook_account, PromiseFailReport) {
+    "../helpers/PromiseFailReport",
+    "../helpers/InjectAuthData"
+], function ($, Backbone, Parse, Backform, UserForm, profile_facebook_account, PromiseFailReport, InjectAuthData) {
 
     // Extends Backbone.View
     var UserSettingsProfileView = Backbone.View.extend({
@@ -39,6 +40,8 @@ define([
                         /*
                         self.model.errorModel.set({"realname": "Refusing any real name whatsoever"});
                         */
+
+                        InjectAuthData(self.model);
 
                         self.model.save().then(function () {
                             self.fields.get("submit").set({status: "success", message: "Successfully Updated", disabled: true});
@@ -90,6 +93,7 @@ define([
                     user.set("email", r.email);
                 if (!user.has("realname"))
                     user.set("realname", r.name);
+                InjectAuthData(user);
                 return user.save();
             }).fail(PromiseFailReport);
         },

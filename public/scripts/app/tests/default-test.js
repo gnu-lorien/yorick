@@ -3,12 +3,12 @@
  * Created by Andrew on 11/7/2015.
  */
 
-define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../models/Troupe", "../models/SimpleTrait"], function (_, $, Parse, Vampire, Backbone, Troupe, SimpleTrait) {
+define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../models/Troupe", "../models/SimpleTrait", "../siteconfig"], function (_, $, Parse, Vampire, Backbone, Troupe, SimpleTrait, siteconfig) {
     jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
     var ParseInit = function() {
         Parse.$ = $;
         Parse.initialize("APPLICATION_ID", "yymp8UWnJ7Va32Y2Q4uzvWxfPTYuDvZSA8kdhmdR");
-        Parse.serverURL = "http://localhost:1337/parse";
+        Parse.serverURL = siteconfig.serverURL;
     }
 
     describe("A suite", function() {

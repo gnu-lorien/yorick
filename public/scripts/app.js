@@ -9,7 +9,7 @@ requirejs.config( {
 
 		// Core Libraries
 		jquery: "//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery",
-		jquerymobile: "jquery.mobile-1.4.5.min",
+		jquerymobile: "jquery.mobile-1.4.5",
 		jscookie: "js.cookie",
 		underscore: "//cdn.jsdelivr.net/lodash/3.10.0/lodash",
 		backbone: "//cdnjs.cloudflare.com/ajax/libs/backbone.js/1.1.2/backbone",
@@ -17,7 +17,7 @@ requirejs.config( {
 		parse: "parse-1.5.0",
 		pretty: "prettyprint",
 		moment: "moment",
-		vis: "vis.min",
+		vis: "vis",
 		backform: "backform",
 		nprogress: "nprogress",
 		hello: "hello",
