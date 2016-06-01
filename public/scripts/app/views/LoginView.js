@@ -5,8 +5,9 @@ define([
     "parse",
     "hello",
     "../helpers/PromiseFailReport",
-    "../helpers/InjectAuthData"
-], function( $, Backbone, Parse, hello, PromiseFailReport, InjectAuthData ) {
+    "../helpers/InjectAuthData",
+    "../helpers/FacebookLogin"
+], function( $, Backbone, Parse, hello, PromiseFailReport, InjectAuthData, FacebookLogin ) {
 
     // Extends Backbone.View
     var LoginView = Backbone.View.extend( {
@@ -29,28 +30,7 @@ define([
             self.$(".login-form .error").hide();
             this.$(".login-form button").attr("disabled", "disabled");
 
-            Parse.FacebookUtils.logIn("email").then(function (user) {
-                return Parse.User._currentAsync();
-            }).then(function (user) {
-                return hello('facebook').api('/me');
-            }).then(function (r) {
-                return Parse.Cloud.run("submit_facebook_profile_data", r);
-            }).then(function (id) {
-                return new Parse.Query("UserFacebookData").get(id);
-            }).then(function (storage) {
-                var r = storage.attributes;
-                var user = Parse.User.current();
-                console.log(user.get("authData").facebook.access_token);
-                if (!user.has("email"))
-                    user.set("email", r.email);
-                if (!user.has("realname"))
-                    user.set("realname", r.name);
-                InjectAuthData(user);
-
-                console.log(user.get("authData").facebook.access_token);
-                console.log(hello('facebook').getAuthResponse().access_token);
-                return user.save();
-            }).then(function () {
+            FacebookLogin().then(function () {
                 var b = $.mobile.changePage(window.location.hash, {allowSamePageTransition: true, changeHash: false});
                 var a = Parse.history.loadUrl();
             }, function (error) {
