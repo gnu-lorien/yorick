@@ -3,8 +3,9 @@ define([
     "jquery",
     "backbone",
     "parse",
-    "../helpers/InjectAuthData"
-], function( $, Backbone, Parse, InjectAuthData ) {
+    "../helpers/InjectAuthData",
+    "../helpers/FacebookLogin"
+], function( $, Backbone, Parse, InjectAuthData, FacebookLogin ) {
 
     // Extends Backbone.View
     var SignupView = Backbone.View.extend( {
@@ -27,16 +28,7 @@ define([
             self.$(".signup-form .error").hide();
             this.$(".signup-form button").attr("disabled", "disabled");
 
-            Parse.FacebookUtils.logIn("email").then(function (user) {
-                return hello('facebook').api('/me').then(function (r) {
-                    if (!user.has("email"))
-                        user.set("email", r.email);
-                    if (!user.has("realname"))
-                        user.set("realname", r.name);
-                    InjectAuthData(user);
-                    return user.save();
-                });
-            }).then(function () {
+            FacebookLogin().then(function () {
                 location.reload();
             }, function (error) {
                 console.log(JSON.stringify(error));
