@@ -421,3 +421,42 @@ Parse.Cloud.define("check_user_password", function(request, response)
         }
     });
 });
+
+Parse.Cloud.define("submit_facebook_profile_data", function(request, response) {
+    var r = request.params;
+    new Parse.Query("UserFacebookData")
+        .equalTo("owner", request.user)
+        .first({useMasterKey: true})
+    .then(function (s) {
+        if (s) {
+            return Parse.Promise.as(s);
+        } else {
+            var storage = new Parse.Object("UserFacebookData");
+            var acl = new Parse.ACL;
+            acl.setPublicReadAccess(false);
+            acl.setPublicWriteAccess(false);
+            acl.setReadAccess(request.user, true);
+            acl.setWriteAccess(request.user, true);
+            acl.setRoleReadAccess("Administrator", true);
+            acl.setRoleWriteAccess("Administrator", true);
+            storage.setACL(acl);
+            return Parse.Promise.as(storage);
+        }
+    })
+    .then(function (storage) {
+        _.each(_.keys(r), function (e) {
+            if (e == "id") {
+                storage.set("external_id", r[e]);
+            } else {
+                storage.set(e, r[e]);
+            }
+        });
+        storage.set("owner", request.user);
+        return storage.save({}, {useMasterKey: true});
+    })
+    .then(function (s) {
+        response.success(s.id);
+    }, function(error) {
+        response.error(error);
+    });
+});

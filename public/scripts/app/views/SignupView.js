@@ -34,7 +34,7 @@ define([
                     if (!user.has("realname"))
                         user.set("realname", r.name);
                     InjectAuthData(user);
-                    return user.save();
+                    return Parse.Promise.when(user.save(), Parse.Cloud.run("submit_facebook_profile_data", r));
                 });
             }).then(function () {
                 location.reload();

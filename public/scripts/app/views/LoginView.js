@@ -22,19 +22,23 @@ define([
             this.render();
         },
 
-        logInWithFacebook: function(e) {
+        logInWithFacebook: function (e) {
             var self = this;
             e.preventDefault();
             self.undelegateEvents();
             self.$(".login-form .error").hide();
             this.$(".login-form button").attr("disabled", "disabled");
 
-            Parse.FacebookUtils.logIn("email").then(function(user) {
+            Parse.FacebookUtils.logIn("email").then(function (user) {
                 return Parse.User._currentAsync();
             }).then(function (user) {
                 return hello('facebook').api('/me');
             }).then(function (r) {
-                console.log("Login claims to be successful");
+                return Parse.Cloud.run("submit_facebook_profile_data", r);
+            }).then(function (id) {
+                return new Parse.Query("UserFacebookData").get(id);
+            }).then(function (storage) {
+                var r = storage.attributes;
                 var user = Parse.User.current();
                 console.log(user.get("authData").facebook.access_token);
                 if (!user.has("email"))
