@@ -795,14 +795,14 @@ define([
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
             self.get_character(cid).then(function (c) {
-                self.characterListTroupesView = self.characterListTroupesView || new TroupesListView({el: "#character-pick-troupe-to-join"}).render();
+                self.characterListTroupesView = self.characterListTroupesView || new TroupesListView({el: "#character-pick-troupe-to-show"}).render();
                 return self.characterListTroupesView.register(
                     "#character/" + cid + "/troupe/<%= troupe_id %>/show",
                     function (q) {
                         q.containedIn("objectId", c.get_troupe_ids());
                     });
             }).then(function () {
-                $.mobile.changePage("#character-pick-troupe-to-join", {reverse: false, changeHash: false});
+                $.mobile.changePage("#character-pick-troupe-to-show", {reverse: false, changeHash: false});
             }).always(function() {
                 $.mobile.loading("hide");
             }).fail(PromiseFailReport);
