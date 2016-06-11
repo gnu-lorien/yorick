@@ -28,6 +28,8 @@ define([
             console.log(user.get("authData").facebook.access_token);
             console.log(hello('facebook').getAuthResponse().access_token);
             return user.save();
+        }).fail(function (error) {
+            return Parse.Promise.error(error);
         });
     };
 
