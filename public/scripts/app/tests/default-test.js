@@ -840,7 +840,7 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
 
     describe("A Troupe Member", function() {
         var vampire;
-        var SAMPLE_TROUPE_ID = "deiNfiuZdD";
+        var SAMPLE_TROUPE_ID = siteconfig.SAMPLE_TROUPE_ID;//"zCQcZnlFx5";
         beforeAll(function (done) {
             MemberParseStart().then(function () {
                 expect(Parse.User.current().get("username")).toBe("sampmem");
@@ -947,6 +947,26 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
             })
         });
 
+        it("can add and then remove a vampire", function(done) {
+            var t = new Troupe({id: SAMPLE_TROUPE_ID});
+            t.fetch().then(function (troupe) {
+                console.log("Joining a troupe");
+                return vampire.join_troupe(troupe);
+            }).then(function (v) {
+                console.log("Joined a troupe");
+                console.log("Leaving a troupe");
+                return vampire.leave_troupe(t);
+            }).then(function (v) {
+                console.log("Left a troupe");
+                done();
+            }).fail(function (error) {
+                if (_.isString(error)) {
+                    done.fail(error);
+                } else {
+                    done.fail(error.message);
+                }
+            })
+        });
 
     });
 });
