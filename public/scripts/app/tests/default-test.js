@@ -840,7 +840,7 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
 
     describe("A Troupe Member", function() {
         var vampire;
-        var SAMPLE_TROUPE_ID = "deiNfiuZdD";
+        var SAMPLE_TROUPE_ID = siteconfig.SAMPLE_TROUPE_ID;//"zCQcZnlFx5";
         beforeAll(function (done) {
             MemberParseStart().then(function () {
                 expect(Parse.User.current().get("username")).toBe("sampmem");
