@@ -312,20 +312,19 @@ Parse.Cloud.define("removeRedundantHistory", function(request, response) {
 
 var fix_all_vampire_change_acl_for_character = function(v) {
     var acl = get_vampire_change_acl(v);
-    Parse.Cloud.useMasterKey();
     var batch = [];
     return new Parse.Query("VampireChange").equalTo("owner", v).each(function (vc) {
         vc.setACL(acl);
         batch.push(vc);
-    }).then(function () {
-        return Parse.Object.saveAll(batch);
+    }, {useMasterKey: true}).then(function () {
+        return Parse.Object.saveAll(batch, {useMasterKey: true});
     });
 };
 
 
 Parse.Cloud.define("update_vampire_change_permissions_for", function(request, response) {
     var character_id = request.params.character;
-    (new Parse.Query("Vampire").get(character_id)).then(function (v) {
+    (new Parse.Query("Vampire").get(character_id, {useMasterKey: true})).then(function (v) {
         return fix_all_vampire_change_acl_for_character(v);
     }).then(function() {
         response.success("Successfully updated permissions.");
@@ -343,11 +342,10 @@ Parse.Cloud.define("update_vampire_change_permissions_for", function(request, re
 
 
 Parse.Cloud.define("update_indv_vc_permissions_for", function(request, response) {
-    Parse.Cloud.useMasterKey();
     var character_id = request.params.character;
     var vc_id = request.params.change;
     var acl;
-    (new Parse.Query("Vampire").get(character_id)).then(function (v) {
+    (new Parse.Query("Vampire").get(character_id, {useMasterKey: true})).then(function (v) {
         console.log("Got vamp. Getting the ACL");
         acl = get_vampire_change_acl(v);
         var q = new Parse.Query("VampireChange");
@@ -371,7 +369,6 @@ Parse.Cloud.define("update_indv_vc_permissions_for", function(request, response)
 
 
 Parse.Cloud.define("get_expected_vampire_ids", function(request, response) {
-    Parse.Cloud.useMasterKey();
     var character_id = request.params.character;
     var results = {
         SimpleTrait: [],
@@ -385,7 +382,7 @@ Parse.Cloud.define("get_expected_vampire_ids", function(request, response) {
             .select("id");
          return q.each(function (t) {
              results[class_name].push(t.id);
-         })
+         }, {useMasterKey: true});
     })).then(function () {
         response.success(results);
     }).fail(function (error) {
