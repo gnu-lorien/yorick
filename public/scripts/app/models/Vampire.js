@@ -870,9 +870,12 @@ define([
         initialize_troupe_membership: function() {
             var self = this;
             self.troupe_ids = [];
-            var troupes = self.relation("troupes");
-            var q = troupes.query();
-            return q.each(function(troupe) {
+            if (_.isUndefined(self.troupes)) {
+                self.troupes = self.relation("troupes");
+                self.troupes.targetClassName = "Troupe";
+            }
+            var q = self.troupes.query();
+            return q.each(function (troupe) {
                 self.troupe_ids.push(troupe.id);
             }).then(function () {
                 return Parse.Promise.as(self);
@@ -930,6 +933,10 @@ define([
             self.setACL(newACL);
             return self.save().then(function () {
                 self.progress("Updating trait permissions");
+                delete self.attributes.troupes;
+                delete self.troupes;
+                delete self._previousAttributes.troupes;
+                delete self._serverData.troupes;
                 var q = new Parse.Query("SimpleTrait");
                 q.equalTo("owner", self);
                 return q.each(function (st) {
@@ -952,22 +959,27 @@ define([
                 self.progress("Updating server side change log");
                 return Parse.Cloud.run("update_vampire_change_permissions_for", {character: self.id});
             }).then(function () {
+                self.progress("Finishing up!");
                 return Parse.Promise.as(self);
             });
         },
 
         join_troupe: function(troupe) {
             var self = this;
-            self.relation("troupes").add(troupe);
-            self.troupe_ids.push(troupe.id);
-            return self.update_troupe_acls();
+            return self.initialize_troupe_membership().then(function () {
+                self.troupes.add(troupe);
+                self.troupe_ids.push(troupe.id);
+                return self.update_troupe_acls();
+            });
         },
 
         leave_troupe: function(troupe) {
             var self = this;
-            self.relation("troupes").remove(troupe);
-            self.troupe_ids = _.remove(self.troupe_ids, troupe.id);
-            return self.update_troupe_acls();
+            return self.initialize_troupe_membership().then(function () {
+                self.troupes.remove(troupe);
+                self.troupe_ids = _.remove(self.troupe_ids, troupe.id);
+                return self.update_troupe_acls();
+            });
         },
 
         get_owned_ids: function () {
