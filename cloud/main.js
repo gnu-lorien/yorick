@@ -1,6 +1,7 @@
 var _ = require('lodash');
 var pretty = require('./prettyprint').pretty;
 var Vampire = Parse.Object.extend("Vampire");
+var SimpleTrait = Parse.Object.extend("SimpleTrait");
 var Image = require("jimp");
 var request = require("request");
 var Promise = global.Promise;
@@ -201,9 +202,17 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
         var flow_promise = Parse.Promise.as({});
     } else {
         var flow_promise = new Parse.Query("SimpleTrait").get(modified_trait.id, {useMasterKey: true});
+        /*
+        var st = new SimpleTrait({id: modified_trait.id});
+        var flow_promise = st.fetch({useMasterKey: true});
+        var flow_promise = st.fetch({useMasterKey: true});
+        */
+        console.log("beforeSave SimpleTrait trying to fetch " + modified_trait.id);
     }
     flow_promise.then(function(serverData) {
-        console.log("Setting vc");
+        console.log("beforeSave SimpleTrait Setting vc " + modified_trait.id ? modified_trait.get("name") : modified_trait.id);
+        console.log(pretty(serverData));
+        //console.log("beforeSave SimpleTrait serverData name " + serverData.get("name"));
         vc.set({
             "name": modified_trait.get("name"),
             "category": modified_trait.get("category"),
@@ -221,19 +230,19 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
         });
 
         if (!isMeaningfulChange(vc)) {
-            console.log("Update does not actually encode a change");
+            console.log("Update does not actually encode a change for trait " + modified_trait.id ? modified_trait.get("name") : modified_trait.id);
             response.success();
             return;
         }
 
-        console.log("Sending query for the vampire " + vc.get("owner").id);
+        console.log("beforeSave SimpleTrait Sending query for the vampire " + vc.get("owner").id + " because " + modified_trait.id ? modified_trait.get("name") : modified_trait.id);
         return new Parse.Query("Vampire").get(vc.get("owner").id, {useMasterKey: true});
     }).then(function(vampire) {
-        console.log("Getting acl");
+        console.log("beforeSave SimpleTrait Getting acl vampire " + vampire.id);
         var acl = get_vampire_change_acl(vampire);
         vc.setACL(acl);
 
-        console.log("Sending save acl");
+        console.log("beforeSave SimpleTrait Sending save acl vampire " + vampire.id);
         return vc.save({}, {useMasterKey: true});
     }).then(function () {
         response.success();
@@ -258,9 +267,9 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
 Parse.Cloud.beforeDelete("SimpleTrait", function(request, response) {
     var vc = new Parse.Object("VampireChange");
     var trait = request.object;
-    console.log("beforeDelete SimpleTrait Getting the server trait data");
+    console.log("beforeDelete SimpleTrait Getting the server trait data " + trait.id);
     (new Parse.Query("SimpleTrait").get(trait.id, {useMasterKey: true})).then(function(serverData) {
-        console.log("beforeDelete SimpleTrait Received the server trait data");
+        console.log(pretty(serverData));
         vc.set({
             "name": trait.get("name"),
             "category": trait.get("category"),
@@ -275,16 +284,17 @@ Parse.Cloud.beforeDelete("SimpleTrait", function(request, response) {
             "instigator": request.user
         });
 
-        console.log("beforeDelete SimpleTrait Getting the vampire owner " + vc.get("owner").id);
+        console.log("beforeDelete SimpleTrait Getting the vampire owner " + vc.get("owner").id + " for trait " + trait.id);
         return new Parse.Query("Vampire").get(vc.get("owner").id, {useMasterKey: true});
     }).then(function(vampire) {
         var acl = get_vampire_change_acl(vampire);
         vc.setACL(acl);
         return vc.save({}, {useMasterKey: true});
     }).then(function () {
+        console.log("beforeDelete SimpleTrait saved trait " + trait.id + " for " + vc.get("owner").id);
         response.success();
     }, function (error) {
-        var failStr = "beforeDelete SimpleTrait Failed to delete for " + request.object.id + " because of " + pretty(error);
+        var failStr = "beforeDelete SimpleTrait Failed to delete for trait " + request.object.id + " because of " + pretty(error);
         console.log(failStr);
         error.message = failStr;
         response.error(error);
@@ -292,7 +302,6 @@ Parse.Cloud.beforeDelete("SimpleTrait", function(request, response) {
 });
 
 Parse.Cloud.define("removeRedundantHistory", function(request, response) {
-    Parse.Cloud.useMasterKey();
     var allHistory = new Parse.Query("VampireChange");
     var redundant = [];
     allHistory.each(function (vc) {
