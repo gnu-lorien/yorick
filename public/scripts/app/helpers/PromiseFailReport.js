@@ -11,6 +11,7 @@ define([
             }
             if (Parse.Error.INVALID_LINKED_SESSION == error.code ||
                 Parse.Error.INVALID_SESSION_TOKEN == error.code ||
+                Parse.Error.SESSION_MISSING == error.code ||
                 _.startsWith(error.message, "Facebook auth is invalid for this user")) {
                 Parse.User.logOut();
                 if (window)
