@@ -1,7 +1,6 @@
 var _ = require('lodash');
 var pretty = require('./prettyprint').pretty;
 var Vampire = Parse.Object.extend("Vampire");
-var SimpleTrait = Parse.Object.extend("SimpleTrait");
 var Image = require("jimp");
 var request = require("request");
 var Promise = global.Promise;
@@ -201,18 +200,13 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
     if (_.isUndefined(modified_trait.id)) {
         var flow_promise = Parse.Promise.as({});
     } else {
-        var flow_promise = new Parse.Query("SimpleTrait").get(modified_trait.id, {useMasterKey: true});
-        /*
-        var st = new SimpleTrait({id: modified_trait.id});
-        var flow_promise = st.fetch({useMasterKey: true});
-        var flow_promise = st.fetch({useMasterKey: true});
-        */
-        console.log("beforeSave SimpleTrait trying to fetch " + modified_trait.id);
+        var flow_promise = new Parse.Query("SimpleTrait").get(modified_trait.id, {useMasterKey: true}).then(function (st) {
+            return st._getServerData();
+        });
     }
     flow_promise.then(function(serverData) {
         console.log("beforeSave SimpleTrait Setting vc " + modified_trait.id ? modified_trait.get("name") : modified_trait.id);
         console.log(pretty(serverData));
-        //console.log("beforeSave SimpleTrait serverData name " + serverData.get("name"));
         vc.set({
             "name": modified_trait.get("name"),
             "category": modified_trait.get("category"),
@@ -268,7 +262,9 @@ Parse.Cloud.beforeDelete("SimpleTrait", function(request, response) {
     var vc = new Parse.Object("VampireChange");
     var trait = request.object;
     console.log("beforeDelete SimpleTrait Getting the server trait data " + trait.id);
-    (new Parse.Query("SimpleTrait").get(trait.id, {useMasterKey: true})).then(function(serverData) {
+    (new Parse.Query("SimpleTrait").get(trait.id, {useMasterKey: true})).then(function(st) {
+        return st._getServerData();
+    }).then(function(serverData) {
         console.log(pretty(serverData));
         vc.set({
             "name": trait.get("name"),
