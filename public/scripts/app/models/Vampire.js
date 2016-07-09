@@ -1111,16 +1111,9 @@ define([
     };
 
     Model.create_test_character = function(nameappend) {
-        var v = new Model;
         var nameappend = nameappend || "";
         var name = "karmacharactertest" + nameappend + Math.random().toString(36).slice(2);
-        var acl = new Parse.ACL;
-        acl.setPublicReadAccess(false);
-        acl.setPublicWriteAccess(false);
-        acl.setWriteAccess(Parse.User.current(), true);
-        acl.setReadAccess(Parse.User.current(), true);
-        v.setACL(acl);
-        return v.save({name: name, owner: Parse.User.current(), change_count: 0});
+        return Model.create(name);
     };
 
     // Returns the Model class
