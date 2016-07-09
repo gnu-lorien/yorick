@@ -17,8 +17,9 @@ define([
             var momentFormat = 'MM/DD/YYYY';
             var datepickerFormat = 'mm/dd/yyyy';
             var backmodel = view.model.clone();
-            backmodel.set("paidOn", moment(backmodel.get("paidOn")).format(momentFormat))
-            backmodel.set("expiresOn", moment(backmodel.get("expiresOn")).format(momentFormat))
+            backmodel.set("owner", backmodel.get("owner").id);
+            backmodel.set("paidOn", moment(backmodel.get("paidOn")).format(momentFormat));
+            backmodel.set("expiresOn", moment(backmodel.get("expiresOn")).format(momentFormat));
             var ownerOptions = options.users.map(function (u) {
                 return {
                     label: "" + u.get("username") + " " + u.get("realname") + " " + u.get("email"),
@@ -30,7 +31,7 @@ define([
                 model: backmodel,
                 fields: [
                     {
-                        name: "owner.objectId",
+                        name: "owner",
                         label: "Owner",
                         control: "select",
                         options: ownerOptions
@@ -65,12 +66,18 @@ define([
                     "submit": function (e) {
                         var self = this;
                         e.preventDefault();
+                        var oid = self.model.get("owner");
+                        var dau = view.options.users.get(oid);
                         view.model.set({
                             "paidOn": moment(self.model.get("paidOn"), momentFormat).toDate(),
-                            "expiresOn": moment(self.model.get("expiresOn"), momentFormat).toDate()
+                            "expiresOn": moment(self.model.get("expiresOn"), momentFormat).toDate(),
+                            "owner": new Parse.User({id: self.model.get("owner")})
                         })
                         view.model.save().then(function () {
                             self.fields.at(3).set({status: "success", message: "Save completed"});
+                            _.defer(function () {
+                                $("body").enhanceWithin();
+                            });
                         }).fail(function(error) {
                             self.model.errorModel.set("owner", _.escape(error.message));
                         })
