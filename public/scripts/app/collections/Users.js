@@ -5,7 +5,7 @@ define([
 	"parse",
     "backbone" ], function( $, _, Parse, Backbone ) {
 
-    var Collection = Backbone.Collection.extend( {
+    var Collection = Parse.Collection.extend( {
         model: Parse.User,
         
         initialize: function() {
@@ -52,10 +52,7 @@ define([
             }).then(function () {
                 if (options.add) {
                     _.each(latest, function(l) {
-                        var res = self.add(l);
-                        res.set('id', l.id);
-                        self._removeReference(res);
-                        self._addReference(res);
+                        self.add(l);
                     })
                 } else {
                     self.reset(latest);

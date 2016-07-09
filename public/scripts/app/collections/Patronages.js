@@ -9,7 +9,7 @@ define([
     "backbone",
 	"../models/Patronage" ], function( $, _, Parse, Backbone, Patronage ) {
 
-    var Collection = Backbone.Collection.extend( {
+    var Collection = Parse.Collection.extend( {
         model: Patronage,
         
         initialize: function() {
@@ -51,10 +51,7 @@ define([
             }).then(function () {
                 if (options.add) {
                     _.each(latest, function(l) {
-                        var res = self.add(l);
-                        res.set('id', l.id);
-                        self._removeReference(res);
-                        self._addReference(res);
+                        self.add(l);
                     })
                 } else {
                     self.reset(latest);
