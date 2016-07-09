@@ -53,6 +53,8 @@ define([
                     _.each(latest, function(l) {
                         var res = self.add(l);
                         res.set('id', l.id);
+                        self._removeReference(res);
+                        self._addReference(res);
                     })
                 } else {
                     self.reset(latest);
