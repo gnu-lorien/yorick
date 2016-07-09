@@ -12,22 +12,8 @@ define([
         template: function(serialized_model) {
             return _.template(patronage_html)(serialized_model);
         },
-        ui: {
-            "button": ".test-you-like"
-        },
-        events: {
-            "click @ui.button": "clicked",
-        },
         modelEvents: {
             "change": "render",
-        },
-        clicked: function(e) {
-            var self = this;
-            e.preventDefault();
-            var t = self.$(e.currentTarget);
-            var id = t.data('id');
-            console.log(id);
-            self.model.set('everClicked', true);
         },
         onRender: function () {
             this.$el.enhanceWithin();

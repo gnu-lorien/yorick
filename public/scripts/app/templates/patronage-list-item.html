@@ -1,7 +1,1 @@
-<p>
-id: <%= objectId %> Owner: <%= owner.objectId %> paidOn: <%= paidOn.iso %> expiresOn: <%= expiresOn.iso %>
-<% if (typeof everClicked !== "undefined") { %>
-    everClicked!
-<% } %>
-</p>
-<button class="test-you-like" data-id="<%= objectId %>">Diz Buttons</button>
+<a href="#administration/patronage/<%= objectId %>">id: <%= objectId %> Owner: <%= owner.objectId %> paidOn: <%= paidOn.iso %> expiresOn: <%= expiresOn.iso %></a>

@@ -53,6 +53,7 @@ define([
     "../views/AdministrationUserView",
     "../collections/Patronages",
     "../views/PatronagesView",
+    "../views/PatronageView",
 ], function ($,
              Parse,
              pretty,
@@ -101,7 +102,8 @@ define([
              InjectAuthData,
              AdministrationUserPatronagesView,
              Patronages,
-             PatronagesView
+             PatronagesView,
+             PatronageView
 ) {
 
     // Extends Backbone.Router
@@ -234,7 +236,8 @@ define([
             "administration/users/all": "administration_users",
             "administration/user/:id": "administration_user",
             "administration/patronages/user/:id": "administration_user_patronages",
-            "administration/patronages": "administration_patronages"
+            "administration/patronages": "administration_patronages",
+            "administration/patronage/:id": "administration_patronage"
 
         },
 
@@ -566,13 +569,35 @@ define([
             self.enforce_logged_in().then(function () {
                 return self.get_patronages();
             }).then(function (patronages) {
-                self.administrationPatronagesView = self.administrationPatronagesView || new PatronagesView({el: "#administration-patronages-view-list", collection: patronages});
-                self.administrationPatronagesView.render();
+                if (!_.has(self, "administrationPatronagesView")) {
+                    self.administrationPatronagesView = new PatronagesView({el: "#administration-patronages-view-list", collection: patronages});
+                    self.administrationPatronagesView.render();
+                }
                 $.mobile.changePage("#administration-patronages-view", {reverse: false, changeHash: false});
             }).fail(PromiseFailReport).fail(function () {
                 $.mobile.loading("hide");
             });
         },
+
+        administration_patronage: function(id) {
+            var self = this;
+            self.set_back_button("#administration/patronages");
+            $.mobile.loading("show");
+            self.enforce_logged_in().then(function () {
+                return self.get_patronage(id);
+            }).then(function (patronage) {
+                if (self.administrationPatronageView) {
+                    self.administrationPatronageView.remove();
+                }
+                self.administrationPatronageView = new PatronageView({model: patronage});
+                self.administrationPatronageView.render();
+                $("#administration-patronage-view").find("div[role='main']").append(self.administrationPatronageView.el);
+                $.mobile.changePage("#administration-patronage-view", {reverse: false, changeHash: false});
+            }).fail(PromiseFailReport).fail(function () {
+                $.mobile.loading("hide");
+            });
+        },
+
 
         characterdelete: function(cid) {
             var self = this;
@@ -655,6 +680,20 @@ define([
             _.defaults(options, {update: true});
             self.patronages = self.patronages || new Patronages;
             return self.patronages.fetch();
+        },
+
+        get_patronage: function(id) {
+            var self = this;
+            if (!id) {
+                return Parse.Promise.as(new Patronage);
+            }
+            if (_.has(self, "patronages")) {
+                var have = self.patronages.get(id);
+                if (have) {
+                    return Parse.Promise.as(have);
+                }
+            }
+            return new Parse.Query("Patronage").get(id);
         },
 
         characters: function(type) {
