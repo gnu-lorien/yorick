@@ -54,6 +54,7 @@ define([
     "../collections/Patronages",
     "../views/PatronagesView",
     "../views/PatronageView",
+    "../collections/Users"
 ], function ($,
              Parse,
              pretty,
@@ -103,7 +104,8 @@ define([
              AdministrationUserPatronagesView,
              Patronages,
              PatronagesView,
-             PatronageView
+             PatronageView,
+             Users
 ) {
 
     // Extends Backbone.Router
@@ -584,12 +586,14 @@ define([
             self.set_back_button("#administration/patronages");
             $.mobile.loading("show");
             self.enforce_logged_in().then(function () {
-                return self.get_patronage(id);
-            }).then(function (patronage) {
+                return Parse.Promise.when(
+                    self.get_patronage(id),
+                    self.get_users());
+            }).then(function (patronage, users) {
                 if (self.administrationPatronageView) {
                     self.administrationPatronageView.remove();
                 }
-                self.administrationPatronageView = new PatronageView({model: patronage});
+                self.administrationPatronageView = new PatronageView({model: patronage, users: users});
                 self.administrationPatronageView.render();
                 $("#administration-patronage-view").find("div[role='main']").append(self.administrationPatronageView.el);
                 $.mobile.changePage("#administration-patronage-view", {reverse: false, changeHash: false});
@@ -694,6 +698,14 @@ define([
                 }
             }
             return new Parse.Query("Patronage").get(id);
+        },
+
+        get_users: function() {
+            var self = this;
+            var options = options || {};
+            _.defaults(options, {update: true});
+            self.users = self.users || new Users;
+            return self.users.fetch();
         },
 
         characters: function(type) {
