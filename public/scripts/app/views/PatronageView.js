@@ -17,15 +17,25 @@ define([
             var momentFormat = 'MM/DD/YYYY';
             var datepickerFormat = 'mm/dd/yyyy';
             var backmodel = view.model.clone();
-            backmodel.set("owner", backmodel.get("owner").id);
-            backmodel.set("paidOn", moment(backmodel.get("paidOn")).format(momentFormat));
-            backmodel.set("expiresOn", moment(backmodel.get("expiresOn")).format(momentFormat));
+            if (backmodel.has("owner")) {
+                backmodel.set("owner", backmodel.get("owner").id);
+            } else {
+                view.isNew = true;
+            }
+            if (backmodel.has("paidOn")) {
+                backmodel.set("paidOn", moment(backmodel.get("paidOn")).format(momentFormat));
+            }
+            if (backmodel.has("expiresOn")) {
+                backmodel.set("expiresOn", moment(backmodel.get("expiresOn")).format(momentFormat));
+            }
             var ownerOptions = options.users.map(function (u) {
                 return {
                     label: "" + u.get("username") + " " + u.get("realname") + " " + u.get("email"),
                     value: u.id
                 }
             });
+            ownerOptions.unshift({label: "Invalid", value: ""});
+
             view.form = new Backform.Form({
                 el: view.$el,
                 model: backmodel,
@@ -66,6 +76,8 @@ define([
                     "submit": function (e) {
                         var self = this;
                         e.preventDefault();
+                        self.fields.at(3).set({status: "", message: ""});
+                        self.model.errorModel.clear();
                         var oid = self.model.get("owner");
                         var dau = view.options.users.get(oid);
                         view.model.set({

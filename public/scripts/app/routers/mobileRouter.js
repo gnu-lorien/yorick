@@ -54,7 +54,8 @@ define([
     "../collections/Patronages",
     "../views/PatronagesView",
     "../views/PatronageView",
-    "../collections/Users"
+    "../collections/Users",
+    "../models/Patronage",
 ], function ($,
              Parse,
              pretty,
@@ -105,7 +106,8 @@ define([
              Patronages,
              PatronagesView,
              PatronageView,
-             Users
+             Users,
+             Patronage
 ) {
 
     // Extends Backbone.Router
@@ -239,7 +241,8 @@ define([
             "administration/user/:id": "administration_user",
             "administration/patronages/user/:id": "administration_user_patronages",
             "administration/patronages": "administration_patronages",
-            "administration/patronage/:id": "administration_patronage"
+            "administration/patronage/:id": "administration_patronage",
+            "administration/patronages/new": "administration_patronage_new",
 
         },
 
@@ -602,6 +605,26 @@ define([
             });
         },
 
+        administration_patronage_new: function() {
+            var self = this;
+            self.set_back_button("#administration/patronages");
+            $.mobile.loading("show");
+            self.enforce_logged_in().then(function () {
+                return Parse.Promise.when(
+                    new Patronage,
+                    self.get_users());
+            }).then(function (patronage, users) {
+                if (self.administrationPatronageView) {
+                    self.administrationPatronageView.remove();
+                }
+                self.administrationPatronageView = new PatronageView({model: patronage, users: users});
+                self.administrationPatronageView.render();
+                $("#administration-patronage-view").find("div[role='main']").append(self.administrationPatronageView.el);
+                $.mobile.changePage("#administration-patronage-view", {reverse: false, changeHash: false});
+            }).fail(PromiseFailReport).fail(function () {
+                $.mobile.loading("hide");
+            });
+        },
 
         characterdelete: function(cid) {
             var self = this;
