@@ -75,7 +75,7 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
             ParseStart().then(function () {
                 return Vampire.create_test_character("vampiretraits");
             }).then(function (v) {
-                expected_change_length = 0;
+                expected_change_length = 5;
                 return Vampire.get_character(v.id);
             }).then(function (v) {
                 vampire = v;
@@ -93,48 +93,28 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
                 expected_change_length++;
                 return vampire.get_recorded_changes();
             }).done(function(changes) {
-                expect(changes.models.length).toBe(1);
+                expect(changes.models.length).toBe(expected_change_length);
                 return vampire.update_trait("Haven", 1, "backgrounds", 0, true);
             }).done(function(trait) {
-                expected_change_length++;
                 return vampire.get_recorded_changes();
             }).done(function(changes) {
-                expect(changes.models.length).toBe(2);
+                expect(changes.models.length).toBe(expected_change_length);
                 return vampire.update_trait("Haven", 2, "backgrounds", 0, true);
             }).done(function(trait) {
                 expected_change_length++;
                 return vampire.get_recorded_changes();
             }).done(function(changes) {
-                expect(changes.models.length).toBe(3);
+                expect(changes.models.length).toBe(expected_change_length);
                 done();
             }).fail(function(error) {
                 done.fail(error);
             })
         });
 
-        /*
-        // FIXME: Won't work until server side cost calculation works
-        it("can be renamed", function (done) {
-            vampire.update_trait("Retainers", 1, "backgrounds", 0, true).done(function (trait) {
-                trait.set("name", "Retainers: Specialized Now");
-                return trait.save();
-            }).done(function(trait) {
-                trait.set("name", "Retainers: Specialized Again");
-                trait.set("value", 4);
-                return trait.save();
-            }).done(function (trait) {
-                trait.set("value", 5);
-                return trait.save();
-            }).done(function(){
-                done();
-            }).fail(function(error) {
-                done.fail(error);
-            })
-        });
-        */
         it("can be renamed", function (done) {
             var start_check = expected_change_length;
             vampire.update_trait("Retainers", 1, "backgrounds", 0, true).done(function (trait) {
+                expected_change_length++;
                 trait.set("name", "Retainers: Specialized Now");
                 return vampire.update_trait(trait);
             }).done(function(trait) {
@@ -162,7 +142,7 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
                 expected_change_length++;
                 return vampire.get_recorded_changes();
             }).done(function(changes){
-                expect(changes.models.length).toBe(11);
+                expect(changes.models.length).toBe(expected_change_length);
                 _(changes.models).slice(start_check, changes.length).each(function(change, i) {
                     expect(change.get("name")).not.toBe(undefined);
                     var name = change.get("name");
