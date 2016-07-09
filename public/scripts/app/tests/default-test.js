@@ -857,9 +857,13 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
 
         it("can add a vampire", function(done) {
             var t = new Troupe({id: SAMPLE_TROUPE_ID});
+            console.log("Created the troupe object with id " + SAMPLE_TROUPE_ID);
             t.fetch().then(function (troupe) {
+                console.log("Found the troupe. Making the vampire join the troupe.");
                 return vampire.join_troupe(troupe).then(function () {
+                    console.log("Joined the troupe. Getting the ACL");
                     var acl = vampire.get_me_acl();
+                    console.log("Checking the ACLs");
                     expect(acl.getRoleWriteAccess("LST_" + SAMPLE_TROUPE_ID)).toBe(true);
                     expect(acl.getRoleReadAccess("LST_" + SAMPLE_TROUPE_ID)).toBe(true);
                     expect(acl.getRoleWriteAccess("AST_" + SAMPLE_TROUPE_ID)).toBe(true);
