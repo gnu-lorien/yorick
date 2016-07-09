@@ -21,6 +21,7 @@ requirejs.config( {
 		backform: "backform",
 		nprogress: "nprogress",
 		hello: "hello",
+		marionette: "backbone.marionette",
 
 		app: "../app"
 	},
