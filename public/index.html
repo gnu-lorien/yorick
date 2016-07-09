@@ -94,6 +94,7 @@
             <li><a href="#troupes">Troupes</a></li>
             <li><a href="#administration/characters/all">Characters</a></li>
             <li><a href="#administration/users/all">Users</a></li>
+            <li><a href="#administration/patronages/all">Patronages</a></li>
         </ul>
     </div><!-- /content -->
 </div>
@@ -767,12 +768,33 @@
     </div>
 </div>
 
-<div id="administration-user-view" data-role="page" data-title="Profile">
+<div id="administration-user-view" data-role="page" data-title="User View">
     <div role="main" class="ui-content">
         <form class="profile-form">
 
         </form>
     </div>
+</div>
+
+<div id="administration-user-patronages-view" data-role="page" data-title="Patronages">
+    <div role="main" class="ui-content">
+        <form class="profile-form">
+
+        </form>
+    </div>
+</div>
+
+<div id="administration-patronages-view" data-role="page" data-title="Patronages">
+    <div role="main" class="ui-content">
+        <ul>
+            <li><a href="#patronages/new">Add New Patronage</a></li>
+        </ul>
+        <form class="ui-filterable">
+            <input id="patronages-filter" data-type="search">
+        </form>
+        <ul id="administration-patronages-view-list" data-role="listview" data-inset="true" data-filter="true" data-input="#patronages-filter">
+        </ul>
+    </div><!-- /content -->
 </div>
 
 <div id="user-reset-password" data-role="page" data-title="Reset Password">
