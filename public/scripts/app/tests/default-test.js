@@ -952,14 +952,17 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
         });
 
         it("can add and then remove a vampire", function(done) {
-            var t = new Troupe({id: SAMPLE_TROUPE_ID});
-            t.fetch().then(function (troupe) {
+            var troupe;
+            MemberParseStart().then(function () {
+                return new Troupe({id: SAMPLE_TROUPE_ID}).fetch();
+            }).then(function (t) {
+                troupe = t;
                 console.log("Joining a troupe");
                 return vampire.join_troupe(troupe);
             }).then(function (v) {
                 console.log("Joined a troupe");
                 console.log("Leaving a troupe");
-                return vampire.leave_troupe(t);
+                return vampire.leave_troupe(troupe);
             }).then(function (v) {
                 console.log("Left a troupe");
                 done();
