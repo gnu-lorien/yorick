@@ -19,6 +19,12 @@ define([
             var backmodel = view.model.clone();
             backmodel.set("paidOn", moment(backmodel.get("paidOn")).format(momentFormat))
             backmodel.set("expiresOn", moment(backmodel.get("expiresOn")).format(momentFormat))
+            var ownerOptions = options.users.map(function (u) {
+                return {
+                    label: "" + u.get("username") + " " + u.get("realname") + " " + u.get("email"),
+                    value: u.id
+                }
+            });
             view.form = new Backform.Form({
                 el: view.$el,
                 model: backmodel,
@@ -26,11 +32,12 @@ define([
                     {
                         name: "owner.objectId",
                         label: "Owner",
-                        control: "input",
-                        disabled: true
+                        control: "select",
+                        options: ownerOptions
                     },
                     {
                         name: "paidOn",
+                        label: "Paid on",
                         control: "datepicker",
                         type: "text",
                         options: {
@@ -40,6 +47,7 @@ define([
                     },
                     {
                         name: "expiresOn",
+                        label: "Expires on",
                         control: "datepicker",
                         type: "text",
                         options: {
