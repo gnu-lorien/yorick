@@ -15,10 +15,16 @@ define([
             var self = this;
             return _.template(patronage_html)(serialized_model);
         },
-        templateHelpers: {
-            moment: moment,
-            user: function() {
-                return UserChannel.reqres.request("get", this.owner.objectId);
+        templateHelpers: function () {
+            var self = this;
+            return {
+                moment: moment,
+                user: function () {
+                    return UserChannel.reqres.request("get", this.owner.objectId);
+                },
+                status: function () {
+                    return self.model.status();
+                }
             }
         },
         modelEvents: {

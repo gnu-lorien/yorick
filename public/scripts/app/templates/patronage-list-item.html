@@ -6,5 +6,6 @@
     <h2><%= owner.objectId %> User object missing</h2>
     <% } %>
     <p>paidOn: <%= moment(paidOn.iso).format('MM/DD/YYYY') %></p>
-    <p>expiresOn: <%= moment(expiresOn).format('MM/DD/YYYY') %></p>
+    <p>expiresOn: <%= moment(expiresOn.iso).format('MM/DD/YYYY') %></p>
+    <p><%= status() %></p>
 </a>
