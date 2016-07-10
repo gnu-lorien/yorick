@@ -18,24 +18,6 @@ define([
                 errorModel: view.errorModel,
                 model: new Backbone.Model,
                 events: {
-                    "click .reset-user-password": function (e) {
-                        e.preventDefault();
-                        var self = this;
-                        var email = self.model.get("email");
-                        $.mobile.loading("show");
-                        self.undelegateEvents();
-                        self.$(".reset-password-button").attr("disabled", true);
-                        Parse.User.requestPasswordReset(email, function () {
-                            self.fields.get("reset").set({status: "success", message: "Password Reset Email Sent"});
-                        }, function (error) {
-                            self.fields.get("reset").set({status: "error", message: _.escape(error.message)});
-                        }).always(function() {
-                            self.$el.enhanceWithin();
-                            self.$(".reset-password-button").removeAttr("disabled");
-                            $.mobile.loading("hide");
-                            self.delegateEvents();
-                        })
-                    },
                     "submit": function (e) {
                         var self = this;
                         e.preventDefault();
@@ -72,7 +54,6 @@ define([
                 field.set("disabled", true);
             });
             view.form.fields.add(new Backform.Field({name: "admininterface", label: "Administrator", control: "checkbox"}));
-            view.form.fields.add(new Backform.Field({name: "reset", label: "Reset Password", control: "button", id: "reset", extraClasses: ["reset-user-password"], type: "reset"}));
             view.form.fields.add(new Backform.Field({name: "submit", label: "Update", control: "button", id: "submit"}));
         },
 
@@ -107,7 +88,29 @@ define([
     var ResetButtonView = Marionette.ItemView.extend({
         tagName: 'div',
         template: function(data) {
-            return _.template("<button>Reset Password</button>")(data);
+            return _.template("<button>Reset Password</button><p class='message'></p>")(data);
+        },
+        events: {
+            "click": function (e) {
+                e.preventDefault();
+                var self = this;
+                var email = self.model.get("email");
+                var button = self.$("button");
+                var message = self.$(".message");
+                $.mobile.loading("show");
+                self.undelegateEvents();
+                button.attr("disabled", true);
+                Parse.User.requestPasswordReset(email).then(function () {
+                    message.text("Password Reset Email Sent");
+                }, function (error) {
+                    message.text(_.escape(error.message));
+                }).always(function () {
+                    self.$el.enhanceWithin();
+                    self.$("button").removeAttr("disabled");
+                    $.mobile.loading("hide");
+                    self.delegateEvents();
+                })
+            },
         },
     });
 
@@ -123,9 +126,10 @@ define([
             self.showChildView('profile', new View(), options);
             self.showChildView('password', new ResetButtonView(), options);
         },
-        register: function() {
+        register: function(user) {
             var self = this;
             self.profile.currentView.register.apply(self.profile.currentView, arguments);
+            self.password.currentView.model = user;
         }
     });
 
