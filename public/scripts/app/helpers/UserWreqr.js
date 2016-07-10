@@ -2,8 +2,9 @@ define([
     "jquery",
     "underscore",
     "parse",
-    "backbone"
-], function( $, _, Parse, Backbone ) {
+    "backbone",
+    "marionette"
+], function( $, _, Parse, Backbone, Marionette ) {
 
     var userChannel = Backbone.Wreqr.radio.channel('user');
 
