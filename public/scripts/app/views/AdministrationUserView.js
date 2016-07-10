@@ -120,15 +120,14 @@ define([
         regions: {
             profile: "#abs-form",
             password: "#reset-password-view",
-            patronage: "#patronage-list"
+            patronage: "#patronage-list-region"
         },
         initialize: function(options) {
             var self = this;
             self.showChildView('profile', new View(), options);
             self.showChildView('password', new ResetButtonView(), options);
             self.showChildView('patronage', new PatronagesView({
-                tagName: 'ul',
-                template: _.template('<ul data-role="listview" data-inset="true" data-filter="true" data-input="#patronage-list-filter"></ul>'),
+                el: "#patronage-list",
                 collection: options.patronages,
             }))
         },
