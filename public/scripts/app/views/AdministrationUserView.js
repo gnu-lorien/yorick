@@ -115,13 +115,24 @@ define([
             },
         },
     });
+    
+    var NewPatronButtonView = Marionette.ItemView.extend({
+        tagName: 'div',
+        template: function(data) {
+            return _.template("<a href='#administration/patronages/new/<%= userid %>'>Add New Patronage</a>")(data);
+        },
+        modelEvents: {
+            "change": "render"
+        }
+    });
 
     var LayoutView = Marionette.LayoutView.extend({
         el: "#administration-user-view",
         regions: {
             profile: "#abs-form",
             password: "#reset-password-view",
-            patronage: "#patronage-list-region"
+            patronage: "#patronage-list-region",
+            patronage_new: "#patronage-new-for-user-button"
         },
         initialize: function(options) {
             var self = this;
@@ -132,12 +143,16 @@ define([
                 el: "#patronage-list",
                 collection: self.patronages,
             }))
+            self.showChildView('patronage_new', new NewPatronButtonView({
+                model: new Backbone.Model({userid: ""})
+            }));
         },
         register: function(user) {
             var self = this;
             self.profile.currentView.register.apply(self.profile.currentView, arguments);
             self.password.currentView.model = user;
             self.patronage.currentView.render();
+            self.patronage_new.currentView.model.set("userid", user.id);
         }
     });
 
