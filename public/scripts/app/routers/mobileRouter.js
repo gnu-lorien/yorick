@@ -543,10 +543,15 @@ define([
             $.mobile.loading("show");
             self.enforce_logged_in().then(function() {
                 self.set_back_button("#administration/users/all");
-                return new Parse.Query("User").get(id);
-            }).then(function (user) {
-                self.administrationUserView = self.administrationUserView || new AdministrationUserView({el: "#administration-user-view"});
+                return Parse.Promise.when(
+                    new Parse.Query("User").get(id),
+                    self.get_patronages(),
+                    self.get_users());
+            }).then(function (user, patronages, users) {
+                var my_patronages = _.select(patronages.models, "attributes.owner.id", id);
+                self.administrationUserView = self.administrationUserView || new AdministrationUserView({patronages: patronages});
                 self.administrationUserView.register(user);
+                self.administrationUserView.patronages.reset(my_patronages);
                 $.mobile.changePage("#administration-user-view", {reverse: false, changeHash: false});
             }).always(function() {
                 $.mobile.loading("hide");
