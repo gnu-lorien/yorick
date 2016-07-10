@@ -3,14 +3,23 @@ define([
 	"jquery",
 	"backbone",
     "marionette",
-    "text!../templates/patronage-list-item.html"
-], function( $, Backbone, Marionette, patronage_html ) {
+    "text!../templates/patronage-list-item.html",
+    "moment",
+    "../helpers/UserWreqr"
+], function( $, Backbone, Marionette, patronage_html, moment, UserChannel ) {
 
     // Extends Backbone.View
     var View = Marionette.ItemView.extend( {
         tagName: 'li',
         template: function(serialized_model) {
+            var self = this;
             return _.template(patronage_html)(serialized_model);
+        },
+        templateHelpers: {
+            moment: moment,
+            user: function() {
+                return UserChannel.reqres.request("get", this.owner.objectId);
+            }
         },
         modelEvents: {
             "change": "render",

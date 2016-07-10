@@ -6,8 +6,9 @@ define([
     "text!../templates/patronage-list-item.html",
     "backform",
     "bootstrap-datepicker",
-    "moment"
-], function( $, Backbone, Marionette, patronage_html, Backform, datepicker, moment ) {
+    "moment",
+    "../helpers/UserWreqr"
+], function( $, Backbone, Marionette, patronage_html, Backform, datepicker, moment, UserChannel ) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
@@ -28,7 +29,7 @@ define([
             if (backmodel.has("expiresOn")) {
                 backmodel.set("expiresOn", moment(backmodel.get("expiresOn")).format(momentFormat));
             }
-            var ownerOptions = options.users.map(function (u) {
+            var ownerOptions = UserChannel.reqres.request('all').map(function (u) {
                 return {
                     label: "" + u.get("username") + " " + u.get("realname") + " " + u.get("email"),
                     value: u.id
@@ -78,8 +79,6 @@ define([
                         e.preventDefault();
                         self.fields.at(3).set({status: "", message: ""});
                         self.model.errorModel.clear();
-                        var oid = self.model.get("owner");
-                        var dau = view.options.users.get(oid);
                         view.model.set({
                             "paidOn": moment(self.model.get("paidOn"), momentFormat).toDate(),
                             "expiresOn": moment(self.model.get("expiresOn"), momentFormat).toDate(),

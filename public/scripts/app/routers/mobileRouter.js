@@ -572,8 +572,10 @@ define([
             self.set_back_button("#administration");
             $.mobile.loading("show");
             self.enforce_logged_in().then(function () {
-                return self.get_patronages();
-            }).then(function (patronages) {
+                return Parse.Promise.when(
+                    self.get_patronages(),
+                    self.get_users());
+            }).then(function (patronages, users) {
                 if (!_.has(self, "administrationPatronagesView")) {
                     self.administrationPatronagesView = new PatronagesView({el: "#administration-patronages-view-list", collection: patronages});
                     self.administrationPatronagesView.render();
@@ -596,7 +598,7 @@ define([
                 if (self.administrationPatronageView) {
                     self.administrationPatronageView.remove();
                 }
-                self.administrationPatronageView = new PatronageView({model: patronage, users: users});
+                self.administrationPatronageView = new PatronageView({model: patronage});
                 self.administrationPatronageView.render();
                 $("#administration-patronage-view").find("div[role='main']").append(self.administrationPatronageView.el);
                 $.mobile.changePage("#administration-patronage-view", {reverse: false, changeHash: false});
@@ -727,7 +729,15 @@ define([
             var self = this;
             var options = options || {};
             _.defaults(options, {update: true});
-            self.users = self.users || new Users;
+            if (!self.users) {
+                self.users = new Users;
+                Backbone.Wreqr.radio.reqres.setHandler("user", "get", function (id) {
+                    return self.users.get(id);
+                })
+                Backbone.Wreqr.radio.reqres.setHandler("user", "all", function () {
+                    return self.users;
+                })
+            }
             return self.users.fetch();
         },
 
