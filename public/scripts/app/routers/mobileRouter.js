@@ -243,6 +243,7 @@ define([
             "administration/patronages": "administration_patronages",
             "administration/patronage/:id": "administration_patronage",
             "administration/patronages/new": "administration_patronage_new",
+            "administration/patronages/new/:userid": "administration_patronage_new",
 
         },
 
@@ -607,7 +608,7 @@ define([
             });
         },
 
-        administration_patronage_new: function() {
+        administration_patronage_new: function(userid) {
             var self = this;
             self.set_back_button("#administration/patronages");
             $.mobile.loading("show");
@@ -619,7 +620,8 @@ define([
                 if (self.administrationPatronageView) {
                     self.administrationPatronageView.remove();
                 }
-                self.administrationPatronageView = new PatronageView({model: patronage, users: users});
+                patronage.set("owner", users.get(userid));
+                self.administrationPatronageView = new PatronageView({model: patronage});
                 self.administrationPatronageView.render();
                 $("#administration-patronage-view").find("div[role='main']").append(self.administrationPatronageView.el);
                 $.mobile.changePage("#administration-patronage-view", {reverse: false, changeHash: false});
