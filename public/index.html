@@ -771,9 +771,29 @@
 
 <div id="administration-user-view" data-role="page" data-title="User View">
     <div role="main" class="ui-content">
-        <form class="profile-form">
-
-        </form>
+        <div class="ui-body ui-body-a ui-corner-all">
+            <h3>Profile</h3>
+            <div id="abs-form"></div>
+        </div>
+        <hr>
+        <div class="ui-body ui-body-a ui-corner-all">
+            <h3>Reset Password</h3>
+            <div id="reset-password-view"></div>
+        </div>
+        <hr>
+        <div class="ui-body ui-body-a ui-corner-all">
+            <h3>Patronage</h3>
+            <ul>
+                <li><a href="#administration/patronages/new/<%= userid %>">Add New Patronage</a></li>
+            </ul>
+            <form class="ui-filterable">
+                <input id="patronage-list-filter" data-type="search">
+            </form>
+            <div id="patronage-list-region">
+                <ul id="patronage-list" data-role="listview" data-inset="true" data-filter="true" data-input="#patronages-filter">
+                </ul>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -788,7 +808,7 @@
 <div id="administration-patronages-view" data-role="page" data-title="Patronages">
     <div role="main" class="ui-content">
         <ul>
-            <li><a href="#patronages/new">Add New Patronage</a></li>
+            <li><a href="#administration/patronages/new">Add New Patronage</a></li>
         </ul>
         <form class="ui-filterable">
             <input id="patronages-filter" data-type="search">
