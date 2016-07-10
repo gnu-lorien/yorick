@@ -24,8 +24,8 @@ define([
                 l = right.createdAt;
                 r = left.createdAt;
             } else {
-                l = left.get("paidOn");
-                r = right.get("paidOn");
+                l = right.get("expiresOn");
+                r = left.get("expiresOn");
             }
             if (_.gt(l, r)) {
                 return 1;
