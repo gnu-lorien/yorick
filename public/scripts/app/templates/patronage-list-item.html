@@ -1,1 +1,6 @@
-<a href="#administration/patronage/<%= objectId %>" class="ui-btn ui-btn-icon-right ui-icon-carat-r" >id: <%= objectId %> Owner: <%= owner.objectId %> paidOn: <%= paidOn.iso %> expiresOn: <%= expiresOn.iso %></a>
+<% var u = user() %>
+<a href="#administration/patronage/<%= objectId %>" class="ui-btn ui-btn-icon-right ui-icon-carat-r" >
+    <h2><%= owner.objectId %> <%= u.get("username") %> <%= u.get("realname") %> <%= u.get("email") %></h2>
+    <p>paidOn: <%= moment(paidOn.iso).format('MM/DD/YYYY') %></p>
+    <p>expiresOn: <%= moment(expiresOn).format('MM/DD/YYYY') %></p>
+</a>
