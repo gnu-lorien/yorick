@@ -6,7 +6,8 @@ define([
     "backform",
     "../forms/UserForm",
     "marionette",
-], function ($, Backbone, Parse, Backform, UserForm, Marionette) {
+    "../views/PatronagesView"
+], function ($, Backbone, Parse, Backform, UserForm, Marionette, PatronagesView) {
     // Extends Backbone.View
     var View = Marionette.ItemView.extend({
         tagName: 'form',
@@ -119,17 +120,23 @@ define([
         regions: {
             profile: "#abs-form",
             password: "#reset-password-view",
-            patronage: "#patronage-view"
+            patronage: "#patronage-list"
         },
         initialize: function(options) {
             var self = this;
             self.showChildView('profile', new View(), options);
             self.showChildView('password', new ResetButtonView(), options);
+            self.showChildView('patronage', new PatronagesView({
+                tagName: 'ul',
+                template: _.template('<ul data-role="listview" data-inset="true" data-filter="true" data-input="#patronage-list-filter"></ul>'),
+                collection: options.patronages,
+            }))
         },
         register: function(user) {
             var self = this;
             self.profile.currentView.register.apply(self.profile.currentView, arguments);
             self.password.currentView.model = user;
+            self.patronage.currentView.render();
         }
     });
 
