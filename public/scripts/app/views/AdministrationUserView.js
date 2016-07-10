@@ -4,11 +4,13 @@ define([
     "backbone",
     "parse",
     "backform",
-    "../forms/UserForm"
-], function ($, Backbone, Parse, Backform, UserForm) {
-
+    "../forms/UserForm",
+    "marionette",
+], function ($, Backbone, Parse, Backform, UserForm, Marionette) {
     // Extends Backbone.View
-    var View = Backbone.View.extend({
+    var View = Marionette.ItemView.extend({
+        tagName: 'form',
+        template: _.template(""),
         initialize: function () {
             var view = this;
             view.errorModel = new Backbone.Model();
@@ -92,19 +94,42 @@ define([
                 });
             }
         },
-        
-        render: function () {
-            var view = this;
 
-            this.form.setElement(this.$el.find("form.profile-form"));
+        onRender: function() {
+            this.form.setElement(this.$el);
             this.form.render();
             this.$el.enhanceWithin();
-            
+
             return this;
+        },
+    });
+
+    var ResetButtonView = Marionette.ItemView.extend({
+        tagName: 'div',
+        template: function(data) {
+            return _.template("<button>Reset Password</button>")(data);
+        },
+    });
+
+    var LayoutView = Marionette.LayoutView.extend({
+        el: "#administration-user-view",
+        regions: {
+            profile: "#abs-form",
+            password: "#reset-password-view",
+            patronage: "#patronage-view"
+        },
+        initialize: function(options) {
+            var self = this;
+            self.showChildView('profile', new View(), options);
+            self.showChildView('password', new ResetButtonView(), options);
+        },
+        register: function() {
+            var self = this;
+            self.profile.currentView.register.apply(self.profile.currentView, arguments);
         }
     });
 
     // Returns the View class
-    return View;
+    return LayoutView;
 
 });
