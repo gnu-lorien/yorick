@@ -783,14 +783,12 @@
         <hr>
         <div class="ui-body ui-body-a ui-corner-all">
             <h3>Patronage</h3>
-            <ul>
-                <li><a href="#administration/patronages/new/<%= userid %>">Add New Patronage</a></li>
-            </ul>
+            <div id="patronage-new-for-user-button"></div>
             <form class="ui-filterable">
                 <input id="patronage-list-filter" data-type="search">
             </form>
             <div id="patronage-list-region">
-                <ul id="patronage-list" data-role="listview" data-inset="true" data-filter="true" data-input="#patronages-filter">
+                <ul id="patronage-list" data-role="listview" data-inset="true" data-filter="true" data-input="#patronage-list-filter">
                 </ul>
             </div>
         </div>
