@@ -139,8 +139,7 @@ Parse.Cloud.beforeSave("Vampire", function(request, response) {
     var desired_changes = _.intersection(tracked_texts, v.dirtyKeys());
     if (0 === desired_changes.length) {
         console.log("Saving vampire (" + v.id + ") and there are no changes we track here");
-        response.success();
-        return;
+        return response.success();
     }
     // TODO: Update the history permissions if troupes has changed
     var new_values = {};
@@ -298,29 +297,25 @@ Parse.Cloud.beforeDelete("SimpleTrait", function(request, response) {
 });
 
 Parse.Cloud.afterSave("Patronage", function(request) {
-    var user = request.object.get("owner");
+    var patronage = request.object;
+    var user = patronage.get("owner");
     console.log("afterSave Patronage Input user is " + JSON.stringify(user));
     console.log("afterSave Patronage Input user is " + user.id);
-    var new_expiration = request.object.get("expiresOn");
+    var new_expiration = patronage.get("expiresOn");
     console.log("afterSave Patronage new expiration" + JSON.stringify(new_expiration));
-    var q = new Parse.Query("Vampire").equalTo("owner", user);//.select(["owner", "expiresOn"]);
+    var q = new Parse.Query("Vampire").equalTo("owner", user).select(["owner", "expiresOn"]);
     var updated = [];
     q.each(function (vampire) {
-        console.log("afterSave Patronage Found vampire " + vampire.id);
-        if (new_expiration > vampire.get("expiresOn")) {
-            console.log("afterSave Patronage Updating expiration on " + vampire.id);
-            vampire.set("expiresOn", new_expiration);
-            return vampire.save();
-        } else {
-            console.log("afterSave Patronage Skipping expiration on " + vampire.id);
-        }
-    }).fail(function (error) {
+        console.log("afterSave Patronage Updating vampire " + vampire.id + " expiresOn " + new_expiration);
+        vampire.set("expiresOn", new_expiration);
+        return vampire.save({}, {useMasterKey: true});
+    }, {useMasterKey: true}).fail(function (error) {
         if (_.isArray(error)) {
             _.each(error, function (e) {
-                console.error("afterSave Patronage" + e.message);
+                console.error("afterSave Patronage " + e.message);
             })
         } else {
-            console.error("afterSave Patronage" + error.message);
+            console.error("afterSave Patronage " + error.message);
         }
     });
 });
