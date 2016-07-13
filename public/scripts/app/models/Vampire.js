@@ -18,7 +18,7 @@ define([
 ], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSMETV1_VampireCosts, PromiseFailReport, ExpirationMixin ) {
 
     // The Model constructor
-    var Model = Parse.Object.extend( "Vampire", {
+    var instance_methods = _.extend({
         remove_trait: function (trait) {
             var self = this;
             return trait.destroy().then(function () {
@@ -1028,8 +1028,10 @@ define([
                 return this.update_server_client_permissions_mismatch();
             }
             return Parse.Promise.as(this);
-        },
-    } );
+        }
+    }, ExpirationMixin );
+
+    var Model = Parse.Object.extend("Vampire", instance_methods);
 
     Model.get_character = function(id, categories, character_cache) {
         if (_.isUndefined(character_cache)) {
@@ -1117,7 +1119,6 @@ define([
         return Model.create(name);
     };
 
-    _.extend(Model.prototype, ExpirationMixin);
 
     // Returns the Model class
     return Model;
