@@ -84,6 +84,12 @@ define([
                             "expiresOn": moment(self.model.get("expiresOn"), momentFormat).toDate(),
                             "owner": new Parse.User({id: self.model.get("owner")})
                         })
+                        var acl = new Parse.ACL;
+                        acl.setPublicReadAccess(true);
+                        acl.setPublicWriteAccess(false);
+                        acl.setRoleReadAccess("Administrator", true);
+                        acl.setRoleWriteAccess("Administrator", true);
+                        view.model.setACL(acl);
                         view.model.save().then(function () {
                             self.fields.at(3).set({status: "success", message: "Save completed"});
                             _.defer(function () {
