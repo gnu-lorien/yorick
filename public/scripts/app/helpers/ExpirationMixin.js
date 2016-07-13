@@ -4,10 +4,16 @@ define([
 
     var Mixin = {
         isActive: function() {
-            return this.get("expiresOn") > Date.now();
+            if (this.has("expiresOn")) {
+                return this.get("expiresOn") > Date.now();
+            }
+            return false;
         },
         isExpired: function() {
-            return this.get("expiresOn") < Date.now();
+            if (this.has("expiresOn")) {
+                return this.get("expiresOn") < Date.now();
+            }
+            return false;
         },
         status: function() {
             if (this.isActive()) {
