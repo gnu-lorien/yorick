@@ -297,6 +297,34 @@ Parse.Cloud.beforeDelete("SimpleTrait", function(request, response) {
     });
 });
 
+Parse.Cloud.afterSave("Patronage", function(request) {
+    var user = request.object.get("owner");
+    console.log("afterSave Patronage Input user is " + JSON.stringify(user));
+    console.log("afterSave Patronage Input user is " + user.id);
+    var new_expiration = request.object.get("expiresOn");
+    console.log("afterSave Patronage new expiration" + JSON.stringify(new_expiration));
+    var q = new Parse.Query("Vampire").equalTo("owner", user);//.select(["owner", "expiresOn"]);
+    var updated = [];
+    q.each(function (vampire) {
+        console.log("afterSave Patronage Found vampire " + vampire.id);
+        if (new_expiration > vampire.get("expiresOn")) {
+            console.log("afterSave Patronage Updating expiration on " + vampire.id);
+            vampire.set("expiresOn", new_expiration);
+            return vampire.save();
+        } else {
+            console.log("afterSave Patronage Skipping expiration on " + vampire.id);
+        }
+    }).fail(function (error) {
+        if (_.isArray(error)) {
+            _.each(error, function (e) {
+                console.error("afterSave Patronage" + e.message);
+            })
+        } else {
+            console.error("afterSave Patronage" + error.message);
+        }
+    });
+});
+
 Parse.Cloud.define("removeRedundantHistory", function(request, response) {
     var allHistory = new Parse.Query("VampireChange");
     var redundant = [];
