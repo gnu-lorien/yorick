@@ -13,8 +13,9 @@ define([
     "../collections/ExperienceNotationCollection",
     "../models/ExperienceNotation",
     "../helpers/BNSMETV1_VampireCosts",
-    "../helpers/PromiseFailReport"
-], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSMETV1_VampireCosts, PromiseFailReport ) {
+    "../helpers/PromiseFailReport",
+    "../helpers/ExpirationMixin"
+], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSMETV1_VampireCosts, PromiseFailReport, ExpirationMixin ) {
 
     // The Model constructor
     var Model = Parse.Object.extend( "Vampire", {
@@ -1115,6 +1116,8 @@ define([
         var name = "karmacharactertest" + nameappend + Math.random().toString(36).slice(2);
         return Model.create(name);
     };
+
+    _.extend(Model.prototype, ExpirationMixin);
 
     // Returns the Model class
     return Model;

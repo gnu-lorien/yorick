@@ -4,25 +4,12 @@
 // Includes file dependencies
 define([
 	"jquery",
-	"parse"
-], function( $, Parse ) {
+	"parse",
+    "../helpers/ExpirationMixin"
+], function( $, Parse, ExpirationMixin ) {
 
     // The Model constructor
-    var Model = Parse.Object.extend("Patronage", {
-        isActive: function() {
-            return this.get("expiresOn") > Date.now();
-        },
-        isExpired: function() {
-            return this.get("expiresOn") < Date.now();
-        },
-        status: function() {
-            if (this.isActive()) {
-                return "Active";
-            } else {
-                return "Expired";
-            }
-        }
-    });
+    var Model = Parse.Object.extend("Patronage", ExpirationMixin);
 
     // Returns the Model class
     return Model;
