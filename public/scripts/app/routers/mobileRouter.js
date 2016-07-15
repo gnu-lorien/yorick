@@ -56,6 +56,7 @@ define([
     "../views/PatronageView",
     "../collections/Users",
     "../models/Patronage",
+    "../helpers/UserWreqr",
 ], function ($,
              Parse,
              pretty,
@@ -107,7 +108,8 @@ define([
              PatronagesView,
              PatronageView,
              Users,
-             Patronage
+             Patronage,
+             UserChannel
 ) {
 
     // Extends Backbone.Router
@@ -546,7 +548,7 @@ define([
                 return Parse.Promise.when(
                     new Parse.Query("User").get(id),
                     self.get_patronages(),
-                    self.get_users());
+                    UserChannel.get_users());
             }).then(function (user, patronages, users) {
                 var my_patronages = _.select(patronages.models, "attributes.owner.id", id);
                 self.administrationUserView = self.administrationUserView || new AdministrationUserView({patronages: patronages});
@@ -580,7 +582,7 @@ define([
             self.enforce_logged_in().then(function () {
                 return Parse.Promise.when(
                     self.get_patronages(),
-                    self.get_users());
+                    UserChannel.get_users());
             }).then(function (patronages, users) {
                 if (!_.has(self, "administrationPatronagesView")) {
                     self.administrationPatronagesView = new PatronagesView({el: "#administration-patronages-view-list", collection: patronages});
@@ -599,7 +601,7 @@ define([
             self.enforce_logged_in().then(function () {
                 return Parse.Promise.when(
                     self.get_patronage(id),
-                    self.get_users());
+                    UserChannel.get_users());
             }).then(function (patronage, users) {
                 if (self.administrationPatronageView) {
                     self.administrationPatronageView.remove();
@@ -620,7 +622,7 @@ define([
             self.enforce_logged_in().then(function () {
                 return Parse.Promise.when(
                     new Patronage,
-                    self.get_users());
+                    UserChannel.get_users());
             }).then(function (patronage, users) {
                 if (self.administrationPatronageView) {
                     self.administrationPatronageView.remove();
@@ -730,22 +732,6 @@ define([
                 }
             }
             return new Parse.Query("Patronage").get(id);
-        },
-
-        get_users: function() {
-            var self = this;
-            var options = options || {};
-            _.defaults(options, {update: true});
-            if (!self.users) {
-                self.users = new Users;
-                Backbone.Wreqr.radio.reqres.setHandler("user", "get", function (id) {
-                    return self.users.get(id);
-                })
-                Backbone.Wreqr.radio.reqres.setHandler("user", "all", function () {
-                    return self.users;
-                })
-            }
-            return self.users.fetch();
         },
 
         characters: function(type) {

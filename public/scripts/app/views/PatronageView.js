@@ -29,7 +29,7 @@ define([
             if (backmodel.has("expiresOn")) {
                 backmodel.set("expiresOn", moment(backmodel.get("expiresOn")).format(momentFormat));
             }
-            var ownerOptions = UserChannel.reqres.request('all').map(function (u) {
+            var ownerOptions = UserChannel.channel.reqres.request('all').map(function (u) {
                 return {
                     label: "" + u.get("username") + " " + u.get("realname") + " " + u.get("email"),
                     value: u.id

@@ -14,8 +14,9 @@ define([
     "../models/ExperienceNotation",
     "../helpers/BNSMETV1_VampireCosts",
     "../helpers/PromiseFailReport",
-    "../helpers/ExpirationMixin"
-], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSMETV1_VampireCosts, PromiseFailReport, ExpirationMixin ) {
+    "../helpers/ExpirationMixin",
+    "../helpers/UserWreqr"
+], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSMETV1_VampireCosts, PromiseFailReport, ExpirationMixin, UserChannel ) {
 
     // The Model constructor
     var instance_methods = _.extend({
@@ -1095,7 +1096,17 @@ define([
         acl.setRoleReadAccess("Administrator", true);
         acl.setRoleWriteAccess("Administrator", true);
         v.setACL(acl);
-        return v.save({name: name, owner: Parse.User.current(), change_count: 0}).then(function () {
+        return UserChannel.get_latest_patronage(Parse.User.current()).then(function (patronage) {
+            var changes = {
+                name: name,
+                owner: Parse.User.current(),
+                change_count: 0
+            };
+            if (patronage) {
+                _.extend(changes, {expiresOn: patronage.get("expiresOn")});
+            }
+            return v.save(changes);
+        }).then(function () {
             return Model.get_character(v.id);
         }).then(function (vampire) {
             populated_character = vampire;
