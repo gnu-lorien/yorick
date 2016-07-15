@@ -75,7 +75,7 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
             ParseStart().then(function () {
                 return Vampire.create_test_character("vampiretraits");
             }).then(function (v) {
-                expected_change_length = 0;
+                expected_change_length = 5;
                 return Vampire.get_character(v.id);
             }).then(function (v) {
                 vampire = v;
@@ -93,48 +93,28 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
                 expected_change_length++;
                 return vampire.get_recorded_changes();
             }).done(function(changes) {
-                expect(changes.models.length).toBe(1);
+                expect(changes.models.length).toBe(expected_change_length);
                 return vampire.update_trait("Haven", 1, "backgrounds", 0, true);
             }).done(function(trait) {
-                expected_change_length++;
                 return vampire.get_recorded_changes();
             }).done(function(changes) {
-                expect(changes.models.length).toBe(2);
+                expect(changes.models.length).toBe(expected_change_length);
                 return vampire.update_trait("Haven", 2, "backgrounds", 0, true);
             }).done(function(trait) {
                 expected_change_length++;
                 return vampire.get_recorded_changes();
             }).done(function(changes) {
-                expect(changes.models.length).toBe(3);
+                expect(changes.models.length).toBe(expected_change_length);
                 done();
             }).fail(function(error) {
                 done.fail(error);
             })
         });
 
-        /*
-        // FIXME: Won't work until server side cost calculation works
-        it("can be renamed", function (done) {
-            vampire.update_trait("Retainers", 1, "backgrounds", 0, true).done(function (trait) {
-                trait.set("name", "Retainers: Specialized Now");
-                return trait.save();
-            }).done(function(trait) {
-                trait.set("name", "Retainers: Specialized Again");
-                trait.set("value", 4);
-                return trait.save();
-            }).done(function (trait) {
-                trait.set("value", 5);
-                return trait.save();
-            }).done(function(){
-                done();
-            }).fail(function(error) {
-                done.fail(error);
-            })
-        });
-        */
         it("can be renamed", function (done) {
             var start_check = expected_change_length;
             vampire.update_trait("Retainers", 1, "backgrounds", 0, true).done(function (trait) {
+                expected_change_length++;
                 trait.set("name", "Retainers: Specialized Now");
                 return vampire.update_trait(trait);
             }).done(function(trait) {
@@ -162,7 +142,7 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
                 expected_change_length++;
                 return vampire.get_recorded_changes();
             }).done(function(changes){
-                expect(changes.models.length).toBe(11);
+                expect(changes.models.length).toBe(expected_change_length);
                 _(changes.models).slice(start_check, changes.length).each(function(change, i) {
                     expect(change.get("name")).not.toBe(undefined);
                     var name = change.get("name");
@@ -857,9 +837,13 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
 
         it("can add a vampire", function(done) {
             var t = new Troupe({id: SAMPLE_TROUPE_ID});
+            console.log("Created the troupe object with id " + SAMPLE_TROUPE_ID);
             t.fetch().then(function (troupe) {
+                console.log("Found the troupe. Making the vampire join the troupe.");
                 return vampire.join_troupe(troupe).then(function () {
+                    console.log("Joined the troupe. Getting the ACL");
                     var acl = vampire.get_me_acl();
+                    console.log("Checking the ACLs");
                     expect(acl.getRoleWriteAccess("LST_" + SAMPLE_TROUPE_ID)).toBe(true);
                     expect(acl.getRoleReadAccess("LST_" + SAMPLE_TROUPE_ID)).toBe(true);
                     expect(acl.getRoleWriteAccess("AST_" + SAMPLE_TROUPE_ID)).toBe(true);
@@ -948,14 +932,17 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
         });
 
         it("can add and then remove a vampire", function(done) {
-            var t = new Troupe({id: SAMPLE_TROUPE_ID});
-            t.fetch().then(function (troupe) {
+            var troupe;
+            MemberParseStart().then(function () {
+                return new Troupe({id: SAMPLE_TROUPE_ID}).fetch();
+            }).then(function (t) {
+                troupe = t;
                 console.log("Joining a troupe");
                 return vampire.join_troupe(troupe);
             }).then(function (v) {
                 console.log("Joined a troupe");
                 console.log("Leaving a troupe");
-                return vampire.leave_troupe(t);
+                return vampire.leave_troupe(troupe);
             }).then(function (v) {
                 console.log("Left a troupe");
                 done();

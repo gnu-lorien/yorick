@@ -9,6 +9,7 @@
     <!-- <link rel="stylesheet" href="css/themes/default/jquery.mobile.css"> -->
     <link rel="stylesheet" href="css/themes/default/jquery.mobile-1.4.5.min.css">
     <link rel="stylesheet" href="css/bootstrap-forms.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.6.1/css/bootstrap-datepicker.standalone.css">
     <link rel="stylesheet" href="css/printable_sheet.css" media="print">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
     <link rel="stylesheet" href="css/vis.min.css">
@@ -94,6 +95,7 @@
             <li><a href="#troupes">Troupes</a></li>
             <li><a href="#administration/characters/all">Characters</a></li>
             <li><a href="#administration/users/all">Users</a></li>
+            <li><a href="#administration/patronages">Patronages</a></li>
         </ul>
     </div><!-- /content -->
 </div>
@@ -767,13 +769,58 @@
     </div>
 </div>
 
-<div id="administration-user-view" data-role="page" data-title="Profile">
+<div id="administration-user-view" data-role="page" data-title="User View">
+    <div role="main" class="ui-content">
+        <div class="ui-body ui-body-a ui-corner-all">
+            <h3>Reset Password</h3>
+            <div id="reset-password-view"></div>
+        </div>
+        <hr>
+        <div class="ui-body ui-body-a ui-corner-all">
+            <h3>Patronage</h3>
+            <div id="patronage-new-for-user-button"></div>
+            <form class="ui-filterable">
+                <input id="patronage-list-filter" data-type="search">
+            </form>
+            <div id="patronage-list-region">
+                <ul id="patronage-list" data-role="listview" data-inset="true" data-filter="true" data-input="#patronage-list-filter">
+                </ul>
+            </div>
+        </div>
+        <hr>
+        <div class="ui-body ui-body-a ui-corner-all">
+            <h3>Profile</h3>
+            <div id="abs-form"></div>
+        </div>
+    </div>
+</div>
+
+<div id="administration-user-patronages-view" data-role="page" data-title="Patronages">
     <div role="main" class="ui-content">
         <form class="profile-form">
 
         </form>
     </div>
 </div>
+
+<div id="administration-patronages-view" data-role="page" data-title="Patronages">
+    <div role="main" class="ui-content">
+        <ul>
+            <li><a href="#administration/patronages/new">Add New Patronage</a></li>
+        </ul>
+        <form class="ui-filterable">
+            <input id="patronages-filter" data-type="search">
+        </form>
+        <ul id="administration-patronages-view-list" data-role="listview" data-inset="true" data-filter="true" data-input="#patronages-filter">
+        </ul>
+    </div><!-- /content -->
+</div>
+
+<div id="administration-patronage-view" data-role="page" data-title="Patronage">
+    <div role="main" class="ui-content">
+    </div>
+</div>
+
 
 <div id="user-reset-password" data-role="page" data-title="Reset Password">
     <div role="main" class="ui-content">

