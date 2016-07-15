@@ -1085,6 +1085,14 @@ define([
         });
     };
 
+    var progress = function(text) {
+        if (_.isUndefined($) || _.isUndefined($.mobile) || _.isUndefined($.mobile.loading)) {
+            console.log("Progress: " + text);
+        } else {
+            $.mobile.loading("show", {text: text, textVisible: true});
+        }
+    };
+
     Model.create = function(name) {
         var populated_character;
         var v = new Model;
@@ -1096,6 +1104,7 @@ define([
         acl.setRoleReadAccess("Administrator", true);
         acl.setRoleWriteAccess("Administrator", true);
         v.setACL(acl);
+        progress("Fetching patronage status");
         return UserChannel.get_latest_patronage(Parse.User.current()).then(function (patronage) {
             var changes = {
                 name: name,
@@ -1105,21 +1114,29 @@ define([
             if (patronage) {
                 _.extend(changes, {expiresOn: patronage.get("expiresOn")});
             }
+            progress("Saving base character");
             return v.save(changes);
         }).then(function () {
+            progress("Fetching character from server");
             return Model.get_character(v.id);
         }).then(function (vampire) {
             populated_character = vampire;
+            progress("Adding Humanity");
             return populated_character.update_trait("Humanity", 5, "paths", 5, true);
         }).then(function () {
+            progress("Adding Healthy");
             return populated_character.update_trait("Healthy", 3, "health_levels", 3, true);
         }).then(function () {
+            progress("Adding Injured");
             return populated_character.update_trait("Injured", 3, "health_levels", 3, true);
         }).then(function () {
+            progress("Adding Incapacitated");
             return populated_character.update_trait("Incapacitated", 3, "health_levels", 3, true);
         }).then(function () {
+            progress("Adding Willpower");
             return populated_character.update_trait("Willpower", 6, "willpower_sources", 6, true);
         }).then(function () {
+            progress("Done!");
             return Parse.Promise.as(populated_character);
         });
     };
