@@ -21,6 +21,8 @@ requirejs.config( {
 		backform: "backform",
 		nprogress: "nprogress",
 		hello: "hello",
+		marionette: "backbone.marionette",
+		"bootstrap-datepicker": "//cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.6.1/js/bootstrap-datepicker",
 
 		app: "../app"
 	},
