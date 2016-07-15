@@ -29,6 +29,7 @@ require.config({
         parse: "parse-1.5.0",
         pretty: "prettyprint",
         moment: "moment",
+        marionette: "backbone.marionette",
 
         app: "../app"
     },
