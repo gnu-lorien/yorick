@@ -157,8 +157,6 @@ define([
             this.loginView = new LoginView();
             this.signupView = new SignupView();
 
-            this.userSettingsProfileView = new UserSettingsProfileView({el: "#user-settings-profile"});
-
             this.troupeCharacterRelationshipsNetworkView = new TroupeCharacterRelationshipsNetworkView({el: "#troupe-character-relationships-network"});
 
             /*
@@ -298,8 +296,10 @@ define([
         profile: function() {
             var self = this;
             self.enforce_logged_in().then(function() {
+                return UserChannel.get_users();
+            }).then(function() {
                 self.set_back_button("#");
-                self.userSettingsProfileView.render();
+                self.userSettingsProfileView = self.userSettingsProfileView || new UserSettingsProfileView().setup();
                 $.mobile.changePage("#user-settings-profile", {reverse: false, changeHash: false});
             })
         },
