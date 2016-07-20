@@ -39,7 +39,7 @@ define([
             var self = this;
             var options = options || {};
             _.defaults(options, {add: true, update: true});
-            var q = new Parse.Query(self.model);
+            var q = self.query;
             if (options.update && 0 != self.models.length) {
                 var allCreateds = _.map(self.models, "createdAt");
                 allCreateds = _.sortBy(allCreateds);
