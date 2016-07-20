@@ -11,8 +11,9 @@ define([
     "marionette",
     "../views/PatronagesView",
     "../collections/Patronages",
-    "text!../templates/user-settings-profile.html"
-], function ($, Backbone, Parse, Backform, UserForm, profile_facebook_account_html, PromiseFailReport, InjectAuthData, Marionette, PatronagesView, Patronages, user_settings_profile_html) {
+    "text!../templates/user-settings-profile.html",
+    "text!../templates/paypal-button.html"
+], function ($, Backbone, Parse, Backform, UserForm, profile_facebook_account_html, PromiseFailReport, InjectAuthData, Marionette, PatronagesView, Patronages, user_settings_profile_html, paypal_button_html) {
 
     var View = Marionette.ItemView.extend({
         tagName: 'form',
@@ -126,13 +127,24 @@ define([
         }
     });
 
+    var PaypalButton = Marionette.ItemView.extend({
+        tagName: 'div',
+        template: _.template(paypal_button_html),
+        templateHelpers: {
+            userid: function () {
+                return Parse.User.current().id;
+            },
+        },
+    })
+
     var LayoutView = Marionette.LayoutView.extend({
         el: "#user-settings-profile",
         template: _.template(user_settings_profile_html),
         regions: {
             profile: "#user-settings-profile-abs-form",
             facebook: "#facebook-account-linking",
-            patronage: "#usp-patronage-list-region"
+            patronage: "#usp-patronage-list-region",
+            paypal: "#usp-paypal-button"
         },
         initialize: function(options) {
             var self = this;
@@ -144,6 +156,7 @@ define([
             self.render();
             self.showChildView('profile', new View(), options);
             self.showChildView('facebook', new FacebookLinkButtonView(), options);
+            self.showChildView('paypal', new PaypalButton(), options);
             self.showChildView('patronage', new PatronagesView({
                 el: "#usp-patronage-list",
                 collection: self.patronages,
