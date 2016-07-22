@@ -1,9 +1,11 @@
 var _ = require('lodash');
 var pretty = require('./prettyprint').pretty;
 var Vampire = Parse.Object.extend("Vampire");
+var Patronage = Parse.Object.extend("Patronage");
 var Image = require("jimp");
 var request = require("request");
 var Promise = global.Promise;
+var moment = require("moment");
 
 // Use Parse.Cloud.define to define as many cloud functions as you want.
 // For example:
@@ -319,6 +321,42 @@ Parse.Cloud.afterSave("Patronage", function(request) {
         }
     });
 });
+
+Parse.Cloud.afterSave("PaymentPaypal", function (request) {
+    var payment = request.object;
+    var item_name = payment.get("item_name");
+    console.log("afterSave PaymentPaypal Received a paypal payment");
+    if (!_.eq(payment.get("payment_status"), "Completed")) {
+        console.log("afterSave PaymentPaypal Payment status isn't completed");
+        return;
+    }
+    if (!_.eq(item_name, "Underground Theater Yearly Yorick")) {
+        console.log("afterSave PaymentPaypal Item name doesn't match");
+        return;
+    }
+
+    var patronage = new Patronage;
+    console.log("afterSave PaymentPaypal Parsing date");
+    var paidOn = moment(payment.get("payment_date"), "HH:mm:ss MMM DD, YYYY z");
+    console.log("afterSave PaymentPaypal Adding a year");
+    var expiresOn = moment(paidOn).add(1, 'year');
+    console.log(paidOn.format());
+    console.log(expiresOn.format());
+    patronage.set({
+        paidOn: paidOn.toDate(),
+        expiresOn: expiresOn.toDate(),
+        owner: new Parse.User({id: payment.get("custom")})
+    });
+    var acl = new Parse.ACL;
+    acl.setPublicReadAccess(true);
+    acl.setPublicWriteAccess(false);
+    acl.setRoleReadAccess("Administrator", true);
+    acl.setRoleWriteAccess("Administrator", true);
+    patronage.setACL(acl);
+    patronage.save({}, {useMasterKey: true}).fail(function (error) {
+        console.log("afterSave PaymentPaypal Failed to save patronage " + error.message);
+    });
+})
 
 Parse.Cloud.define("removeRedundantHistory", function(request, response) {
     var allHistory = new Parse.Query("VampireChange");
