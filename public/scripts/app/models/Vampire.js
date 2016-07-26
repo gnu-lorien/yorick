@@ -719,9 +719,11 @@ define([
             // Work around oddness due to cloning relationships
             // I have to change the parent and hope nothing is still set on them
             // Relations aren't cloned properly so it's the *same* damned relation
-            var theRelation = this.relation("troupes");
+            var mustFixBrokenRelation = !_.isUndefined(this.troupes);
             var c = this.clone();
-            theRelation.parent = null;
+            if (mustFixBrokenRelation) {
+                this.troupes.parent = null;
+            }
             var description = [];
 
             _.each(changes, function(change) {
@@ -873,8 +875,12 @@ define([
             var self = this;
             self.troupe_ids = [];
             if (_.isUndefined(self.troupes)) {
+                // Never been set up in the first place
                 self.troupes = self.relation("troupes");
                 self.troupes.targetClassName = "Troupe";
+            } else if (_.isNull(self.troupes.parent)) {
+                // Was trickily overwritten for the sake of get_transformed
+                self.troupes.parent = self;
             }
             var q = self.troupes.query();
             return q.each(function (troupe) {
