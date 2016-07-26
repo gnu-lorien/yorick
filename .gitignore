@@ -101,3 +101,4 @@ node_modules
 .parse.exe.old
 .parse.local
 .parse.project
+/statusview/
