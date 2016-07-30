@@ -44,6 +44,21 @@ define([
             return self;
         },
 
+        validate: function(attr, options) {
+            var self = this;
+            var failures = {};
+            _.each(["value", "free_value"], function (name) {
+                if (_.has(attr, name)) {
+                    if (!_.isFinite(attr[name])) {
+                        failures[name] = {message: "" + name + " must be a number. Trying to save as " + attr[name]};
+                    }
+                }
+            });
+            if (0 != _.keys(failures).length) {
+                return failures;
+            }
+        },
+
         _findUnsavedChildren: function(object, children, files) {
             console.log("Before " + this.get("name") + ": " + children.length);
             Parse.Object._findUnsavedChildren.apply(this, object, children, files);
