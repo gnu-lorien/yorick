@@ -156,7 +156,7 @@ define([
                         "value": freeValue || value,
                         "category": category,
                         "owner": new TempVampire({id: self.id}),
-                        "free_value": freeValue
+                        "free_value": freeValue || 0
                     });
                 }
                 var cost = self.calculate_trait_cost(modified_trait);
