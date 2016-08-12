@@ -1,0 +1,66 @@
+{"gitdown": "contents"}
+
+# Players
+## Can you add more validation and rules from the book?
+There are a series of feature requests that I've been labelling "Rules Enforcement." Most of these I'm avoiding implementing because we don't have any sort of license from the copyright holders. I want to avoid as many mechanics as I can while still making the tool useful. In particular, I am avoiding these two things:
+
+1. Being able to use this tool without having access to a copy of the book
+2. Emulating elements of the Settings described in the book
+
+The first is to avoid copyright issues.
+
+The second is for similar reasons, but also because these elements are the most flexible. For example, the names of factions within the Camarilla is specified in the book, but those sections are also intended to be changed by local storytellers. Adding a bunch of rules that masks these things makes that harder for storytellers running odd combinations and other things I didn't foresee. 
+
+## I was a little confused by the ability to add a "Specialize Name" under skills vs the option on the main screen for "Lore specializations" for example. Are they the same or different?
+
+Different.
+
+Specialize Name is used for individual entries that have extra names associated with them where the value of that specialization takes the dot value. For example, when you specialize performance, you purchase the trait multiple times for each type of Performance to reflect each individual skill.
+
+In contrast, Lores are a global rating with individual specializations that give you availability. Therefor they have a list of names associated with one dot rating.
+
+## I'm playing a Pander. Why is that clan not listed?
+
+BNS is divided between base mechanics and setting. Pander is technically a social distinction in the Sabbat setting. Pick Caitiff as your clan and just punch (in-character) anybody that calls you by the wrong name.
+
+## Auspicious Merit
+
+It may seem counter-intuitive, but in order to take this merit properly your character must be temporarily out of compliance. Despite what it implies, you can trick the character creation mode into letting you take essentially whatever amount of merit points you want. It's up to you and your storyteller to resolve this correctly by the rules of your setting.
+
+Take Auspicious as the Merit during character creation. As your last merit, take whichever merit it is that you're using Auspicious to pay for. When you're done with character creation, go to the Merits section of your sheet. Click on Auspicious, then change the Specialize Name to match the name of the Merit that you purchased. Save your changes. Then click on the Merit that you reduced the cost of. Set the free value to match the value of the Merit. Save your changes.
+
+This will refund you the cost of the Merit and show a pointer on Auspicious to what you bought.
+
+## Vestiges of Greatness
+
+When you're done with character creation, go to the Merits section of your sheet. Click on Vestiges of Greatness, then change the Specialize Name to match the name of the Discipline you've picked as your new in-clan discipline. Save your changes and go back to the main page.
+
+Select "Extra in clan disciplines." Add all of the disciplines for your character to this list at rating 1. Now the costs should be calculated correctly going forward.
+
+## Caitiff and variable in-clan disciplines?
+
+Caitiff have no default in-clan disciplines, so you have to select them. At the main page for your character, click on "Extra in clan disciplines." Add all of the disciplines for your character to this list at rating 1. Now the costs should be calculated correctly going forward.
+
+## Paths of Enlightenment
+
+Go ahead and purchase the Merit for them while still doing character creation, but you'll have to do modifications afterwards no matter what.
+
+Go to the main page and select Merits. Find the Merit for your Path of Enlightenment, and change the value to match whatever your setting document says the value should actually be.
+
+Go to the main page and select Paths of Enlightenment/Humanity. Click on Humanity and Remove it. Add a new Path that matches what you want. Set your Path to the starting value (usually 4), and set the free value to match. Save your changes.
+
+## Magical Expertise Merits (Thaumaturgical Expertise and Necromantic Expertise)
+
+In order to take a merit with the same name multiple times you have to specialize it. I suggest adding the merits individually, then setting a specialize name, then adding another.
+
+In settings where these merits only cost 1 xp, your storytellers may also allow you to simply take them once and then increase the value for each path you're going to add. For the purpose of cost calculations this is identical.
+
+# Storytellers
+## How do I create my Troupe?
+Currently an administrator has to do it for you. Contact the admins with your troupe information and they'll try to get things set up for you.
+
+## Should my ST account need to be separate from my player account?
+
+Nope. Just make one account that matches to your name, not to any particular role in a troupe. Some people have multiple roles and different troupes and you use the same account for all of those.
+
+# Administrators
