@@ -212,9 +212,7 @@
     </ul>
     <% } %>
 
-    <% var sorted = _.sortBy(character.all_simpletrait_categories(), function(n) { %>
-        <% return n[2]; %>
-    <% }) %>
+    <% var sorted = character.all_simpletrait_categories() %>
     <% var heading = null; %>
     <div class="ui-grid-b ui-responsive">
     <% _.each(sorted, function(grouping) { %>
