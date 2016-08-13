@@ -18,7 +18,7 @@ npm install -g parse-server parse-dashboard pm2
 cat > process.yaml << EOF
 apps:
   - script: /home/ubuntu/workspace/c9-parse-server.js
-    mode: cluster
+    exec_mode: cluster
     watch: true
     env:
       DEBUG: express:*
