@@ -168,6 +168,11 @@
 
 <script id="characterView" type="text/template">
     <div id="insertheader"></div>
+    <div>
+        Earned XP: <%= character.get("experience_earned") %><br/>
+        Spent XP: <%= character.get("experience_spent") %><br/>
+        Available XP: <%= character.experience_available() %><br/>
+    </div>
     <div class="ui-grid-b ui-responsive">
         <div class="ui-block-a">
             <ul data-role="listview" data-inset="true"
