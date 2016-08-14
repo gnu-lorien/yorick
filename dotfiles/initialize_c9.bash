@@ -13,17 +13,13 @@ export NVM_DIR="/home/ubuntu/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" # This loads nvm
 
 nvm install v4.4.5
-npm install -g parse-server parse-dashboard pm2
+npm install -g parse-server parse-dashboard
 
-cat > process.yaml << EOF
-apps:
-  - script: /home/ubuntu/workspace/c9-parse-server.js
-    exec_mode: cluster
-    watch: true
-    env:
-      DEBUG: express:*
-      CONFIG_FILE: /home/ubuntu/workspace/parse-server-config.json
-      PUBLIC_BASE: /home/ubuntu/workspace/public
+cat > run.bash << EOF
+export DEBUG=express:*
+export CONFIG_FILE=/home/ubuntu/workspace/parse-server-config.json
+export PUBLIC_BASE=/home/ubuntu/workspace/public
+node /home/ubuntu/workspace/c9-parse-server.js
 EOF
 
 cat > parse-dashboard-config.json << EOF
@@ -70,6 +66,7 @@ else
   npm install
 fi
 
+pushd public/scripts/app
 cat > siteconfig.js << EOF
 // Includes file dependencies
 define([
@@ -88,6 +85,7 @@ define([
     return Config;
 });
 EOF
+popd
 
 pushd database_seed
 mongoimport -h localhost -d anotherstore -c "_Cardinality" _Cardinality.json
@@ -130,5 +128,4 @@ mongoimport -h localhost -d anotherstore -c "VampireCreation" VampireCreation.js
 popd
 popd
 
-pm2 start process.yaml
-
+bash run.bash
