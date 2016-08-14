@@ -230,6 +230,7 @@ define([
             "troupe/:id/staff/add": "troupeaddstaff",
             "troupe/:id/staff/edit/:uid": "troupeeditstaff",
             "troupe/:id/characters/:type": "troupecharacters",
+            "troupe/:id/characters/summarize/:type": "troupesummarizecharacters",
             "troupe/:id/characters/relationships/network": "troupe_relationship_network",
             "troupe/:id/character/:cid": "troupe_character",
             "troupe/:id/portrait": "troupe_portrait",
@@ -669,8 +670,11 @@ define([
             })
         },
 
-        get_troupe_characters: function(troupe) {
+        get_troupe_characters: function(troupe, options) {
             var self = this;
+            options = _.defaults({}, options, {
+                includedeleted: false
+            });
             var c = [];
             if (Parse.User.current().get("username") == "devuser") {
                 c.sortbycreated = true;
@@ -681,7 +685,16 @@ define([
             q.include("portrait");
             q.include("owner");
             p = q.each(function (character) {
-                c.push(character);
+                var shouldinclude = true;
+                console.log(JSON.stringify(options));
+                if (!options.includedeleted) {
+                    if (!character.has("owner")) {
+                        shouldinclude = false;
+                    }
+                }
+                if (shouldinclude) {
+                    c.push(character);
+                }
             }).then(function () {
                 self.troupeCharacters.collection.reset(c);
             })
@@ -1031,6 +1044,24 @@ define([
         },
 
         troupecharacters: function(id, type) {
+            var self = this;
+            $.mobile.loading("show");
+            self.enforce_logged_in().then(function() {
+                self.set_back_button("#troupe/" + id);
+                var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
+                return get_troupe;
+            }).then(function (troupe, user) {
+                return self.get_troupe_characters(troupe);
+            }).then(function() {
+                self.troupeCharacters = self.troupeCharacters || new CharactersListView({el: "#troupe-characters-all", collection: new Vampires});
+                self.troupeCharacters.register("#troupe/" + id + "/character/<%= character_id %>");
+                $.mobile.changePage("#troupe-characters-all", {reverse: false, changeHash: false});
+            }).always(function() {
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
+        },
+        
+        troupesummarizecharacters: function(id, type) {
             var self = this;
             $.mobile.loading("show");
             self.enforce_logged_in().then(function() {
