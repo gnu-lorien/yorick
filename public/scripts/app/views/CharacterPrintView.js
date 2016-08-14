@@ -6,12 +6,27 @@ define([
 	"jquery",
 	"backbone",
     "text!../templates/character-print-view.html",
-    "../helpers/VampirePrintHelper"
-], function( $, Backbone, character_print_view_html, VampirePrintHelper) {
+    "../helpers/VampirePrintHelper",
+    "marionette"
+], function( $, Backbone, character_print_view_html, VampirePrintHelper, Marionette) {
 
     // Extends Backbone.View
-    var View = Backbone.View.extend( {
-
+    var View = Marionette.LayouView.extend( {
+        template: _.template(character_print_view_html),
+        templateHelpers: function () {
+            var self = this;
+            return {
+                "character": self.character,
+                "skills": self.character.get_sorted_skills(),
+                "groupedSkills": self.character.get_grouped_skills(self.character.get_sorted_skills() 3),
+                format_simpletext: self.format_simpletext,
+                format_attribute_value: self.format_attribute_value,
+                format_attribute_focus: self.format_attribute_focus,
+                format_skill: self.format_skill,
+                format_specializations: self.format_specializations,
+            }
+        },
+        
         // The View Constructor
         initialize: function() {
             var self = this;
