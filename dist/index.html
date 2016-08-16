@@ -14,7 +14,7 @@
         // Add a script element as a child of the body
         function downloadJSAtOnload() {
             var element = document.createElement("script");
-            element.src = "scripts/lib/require.js";
+            element.src = "scripts/lib/require.js?bust=0.7.6";
             element.setAttribute("data-main", "scripts/app");
             document.body.appendChild(element);
         }
@@ -300,4 +300,4 @@
             <legend>Characters to display:</legend> <% _.each(characters, function (character, i) { %> <% var n = "checkbox-" + character.id || character.cid; %> <input type="checkbox" name="<%= n %>" id="<%= n %>">
             <label for="<%= n %>"><%= character.get("name") %></label> <% }) %> </fieldset>
     </div></script><div id="character-delete" data-role="page" data-title="Delete Character"><div role="main" class="ui-content"></div></div><script id="characterDeleteView" type="text/template"><h1>Are you sure you want to delete <%= character.get("name") %>?</h1>
-    <button class="delete-character">Delete <%= character.get("name") %></button></script><!-- <script data-main="scripts/app" src="scripts/lib/require.js?bust=4"></script> --></body></html>
+    <button class="delete-character">Delete <%= character.get("name") %></button></script></body></html>
