@@ -669,8 +669,11 @@ define([
             })
         },
 
-        get_troupe_characters: function(troupe) {
+        get_troupe_characters: function(troupe, options) {
             var self = this;
+            options = _.defaults({}, options, {
+                includedeleted: false
+            });
             var c = [];
             if (Parse.User.current().get("username") == "devuser") {
                 c.sortbycreated = true;
@@ -681,7 +684,16 @@ define([
             q.include("portrait");
             q.include("owner");
             p = q.each(function (character) {
-                c.push(character);
+                var shouldinclude = true;
+                console.log(JSON.stringify(options));
+                if (!options.includedeleted) {
+                    if (!character.has("owner")) {
+                        shouldinclude = false;
+                    }
+                }
+                if (shouldinclude) {
+                    c.push(character);
+                }
             }).then(function () {
                 self.troupeCharacters.collection.reset(c);
             })
