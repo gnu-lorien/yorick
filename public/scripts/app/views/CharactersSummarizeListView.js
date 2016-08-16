@@ -16,7 +16,8 @@ define([
         className: "ul-li-has-thumb",
         template: _.template(character_summarize_list_item_html),
         initialize: function(options) {
-            this.mode = options.mode
+            this.mode = options.mode;
+            this.name = options.name;
         },
         
         templateHelpers: function () {
@@ -24,6 +25,7 @@ define([
             return {
                 e: self.model,
                 mode: self.mode,
+                name: self.name
             };
         },
         
@@ -52,7 +54,8 @@ define([
         childViewOptions: function(model, index) {
             var self = this;
             return {
-                mode: self.mode
+                mode: self.mode,
+                name: self.name
             }
         },
         
@@ -98,7 +101,7 @@ define([
             "click": "filterwith"
         },
         filterwith: function () {
-            this.triggerMethod("filterwith", this.model.get("mode"));
+            this.triggerMethod("filterwith", this.model);
         }
     });
     
@@ -125,8 +128,9 @@ define([
             "filterwith": "filterwith",
         },
         filterwith: function (childView, mode) {
-            var self = this;
-            self.list.currentView.mode = mode;
+            var self = this
+            self.list.currentView.mode = mode.get("mode");
+            self.list.currentView.name = mode.get("name");
             self.collection.reset(_.map(self.collection.models));
             /*
             var options = self.options || {};
