@@ -3,11 +3,12 @@
 
 // Includes file dependencies
 define([
+    "underscore",
 	"jquery",
 	"backbone",
     "text!../templates/character-summarize-list-item.html",
     "marionette"
-], function( $, Backbone, character_summarize_list_item_html, Marionette ) {
+], function( _, $, Backbone, character_summarize_list_item_html, Marionette ) {
 
     var SummaryView = Marionette.ItemView.extend({
         tagName: "li",
@@ -96,12 +97,15 @@ define([
         doomclicked: function () {
             var self = this;
             console.log("Doom was definitely clicked");
+            self.collection.reset(_.map(self.collection.models));
+            /*
             var options = self.options || {};
             self.showChildView(
                 'list',
                 new CharactersView({
                     collection: self.collection}),
                 options);
+            */
         },
         setup: function() {
             var self = this;
