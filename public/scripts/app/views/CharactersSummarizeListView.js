@@ -7,8 +7,9 @@ define([
 	"jquery",
 	"backbone",
     "text!../templates/character-summarize-list-item.html",
-    "marionette"
-], function( _, $, Backbone, character_summarize_list_item_html, Marionette ) {
+    "marionette",
+    "../models/Vampire"
+], function( _, $, Backbone, character_summarize_list_item_html, Marionette, Vampire ) {
 
     var SummaryView = Marionette.ItemView.extend({
         tagName: "li",
@@ -88,11 +89,28 @@ define([
         
     } );
     
-    var ButtonView = Marionette.ItemView.extend({
-        template: _.template("<button>Click me for doom</button>"),
-        triggers: {
-            "click": "doom:clicked"
+    var FilterButton = Marionette.ItemView.extend({
+        template: function (serialized_model) {
+            return _.template("<button><%= name %></button>")(serialized_model);
         },
+        events: {
+            "click": "filterwith"
+        },
+        filterwith: function () {
+            this.triggerMethod("filterwith", this.model.get("mode"));
+        }
+    });
+    
+    var FiltersView = Marionette.CollectionView.extend({
+        childView: FilterButton
+    })
+    
+    var Mode = Backbone.Model.extend({
+        
+    });
+    
+    var Modes = Backbone.Collection.extend({
+        model: Mode
     })
     
     var View = Marionette.LayoutView.extend({
@@ -102,12 +120,11 @@ define([
             list: "#troupe-summarize-characters-list"
         },
         childEvents: {
-            "doom:clicked": "doomclicked",
+            "filterwith": "filterwith",
         },
-        doomclicked: function () {
+        filterwith: function (childView, mode) {
             var self = this;
-            console.log("Doom was definitely clicked");
-            self.list.currentView.mode = "backgrounds";
+            self.list.currentView.mode = mode;
             self.collection.reset(_.map(self.collection.models));
             /*
             var options = self.options || {};
@@ -122,10 +139,16 @@ define([
         setup: function() {
             var self = this;
             var options = self.options || {};
+            var modes = new Modes;
             self.showChildView(
                 'sections',
-                new ButtonView(),
+                new FiltersView({
+                    collection: modes
+                }),
                 options);
+            _.each(Vampire.all_simpletrait_categories(), function (e) {
+                modes.add(new Mode({mode: e[0], name: e[1], category: e[2]}));
+            });
             self.showChildView(
                 'list',
                 new CharactersView({
