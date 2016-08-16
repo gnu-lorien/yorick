@@ -13,7 +13,7 @@
         <p>DELETED</p>
     <% } %>
     <p>Patronage: <%= e.status() %></p>
-    <% if (mode) { %>
+    <% if (mode && e.get(mode) && e.get(mode).length != 0) { %>
     <h2><%= name %></h2>
     <ul>
         <% _.each(e.get(mode), function (st) { %>
