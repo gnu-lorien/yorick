@@ -13,4 +13,11 @@
         <p>DELETED</p>
     <% } %>
     <p>Patronage: <%= e.status() %></p>
+    <% if (mode) { %>
+    <ul>
+        <% _.each(e.get(mode), function (st) { %>
+        <li><%= st.get("name")%> x<%= st.get("value") %></li>
+        <% }) %>
+    </ul>
+    <% } %>
 </a>

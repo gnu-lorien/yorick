@@ -14,11 +14,15 @@ define([
         tagName: "li",
         className: "ul-li-has-thumb",
         template: _.template(character_summarize_list_item_html),
+        initialize: function(options) {
+            this.mode = options.mode
+        },
         
         templateHelpers: function () {
             var self = this;
             return {
-                e: self.model
+                e: self.model,
+                mode: self.mode,
             };
         },
         
@@ -44,6 +48,12 @@ define([
     var CharactersView = Marionette.CollectionView.extend( {
         tagName: 'ul',
         childView: SummaryView,
+        childViewOptions: function(model, index) {
+            var self = this;
+            return {
+                mode: self.mode
+            }
+        },
         
         onRender: function () {
             var self = this;
@@ -97,14 +107,16 @@ define([
         doomclicked: function () {
             var self = this;
             console.log("Doom was definitely clicked");
+            self.list.currentView.mode = "backgrounds";
             self.collection.reset(_.map(self.collection.models));
             /*
             var options = self.options || {};
             self.showChildView(
                 'list',
-                new CharactersView({
+                new BackgroundsView({
                     collection: self.collection}),
                 options);
+            self.$el.enhanceWithin();
             */
         },
         setup: function() {
