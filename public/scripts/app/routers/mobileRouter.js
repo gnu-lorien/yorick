@@ -1,6 +1,7 @@
 // Mobile Router
 // =============
 
+/* global _ */
 // Includes file dependencies
 define([
 	"jquery",
@@ -719,6 +720,9 @@ define([
             q.equalTo("troupes", troupe);
             q.include("portrait");
             q.include("owner");
+            _.each(Vampire.all_simpletrait_categories(), function (e) {
+                q.include(e[0]);
+            })
             p = q.each(function (character) {
                 var shouldinclude = true;
                 console.log(JSON.stringify(options));
