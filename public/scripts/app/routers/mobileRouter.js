@@ -57,6 +57,7 @@ define([
     "../collections/Users",
     "../models/Patronage",
     "../helpers/UserWreqr",
+    "../views/CharactersSummarizeListView",
 ], function ($,
              Parse,
              pretty,
@@ -109,7 +110,8 @@ define([
              PatronageView,
              Users,
              Patronage,
-             UserChannel
+             UserChannel,
+             CharactersSummarizeListView
 ) {
 
     // Extends Backbone.Router
@@ -702,6 +704,40 @@ define([
                 return Parse.Promise.as(self.troupeCharacters.collection);
             })
         },
+        
+        get_troupe_summarize_characters: function(troupe, collection, options) {
+            var self = this;
+            options = _.defaults({}, options, {
+                includedeleted: false,
+            });
+            var c = [];
+            if (Parse.User.current().get("username") == "devuser") {
+                c.sortbycreated = true;
+            }
+            var p = Parse.Promise.as([]);
+            var q = new Parse.Query(Vampire);
+            q.equalTo("troupes", troupe);
+            q.include("portrait");
+            q.include("owner");
+            p = q.each(function (character) {
+                var shouldinclude = true;
+                console.log(JSON.stringify(options));
+                if (!options.includedeleted) {
+                    if (!character.has("owner")) {
+                        shouldinclude = false;
+                    }
+                }
+                if (shouldinclude) {
+                    c.push(character);
+                }
+            }).then(function () {
+                console.log(JSON.stringify(c));
+                collection.reset(c);
+            })
+            return p.done(function () {
+                return Parse.Promise.as(collection);
+            })
+        },
 
         get_administrator_characters: function() {
             var self = this;
@@ -1069,11 +1105,11 @@ define([
                 var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
                 return get_troupe;
             }).then(function (troupe, user) {
-                return self.get_troupe_characters(troupe);
-            }).then(function() {
-                self.troupeCharacters = self.troupeCharacters || new CharactersListView({el: "#troupe-characters-all", collection: new Vampires});
+                self.troupeSummarizeCharacters = self.troupeSummarizeCharacters || new CharactersSummarizeListView({el: "div#troupe-summarize-characters-all >> ul[data-role='listview']", collection: new Vampires}).render();
                 self.troupeCharacters.register("#troupe/" + id + "/character/<%= character_id %>");
-                $.mobile.changePage("#troupe-characters-all", {reverse: false, changeHash: false});
+                return self.get_troupe_summarize_characters(troupe, self.troupeSummarizeCharacters.collection);
+            }).then(function() {
+                $.mobile.changePage("#troupe-summarize-characters-all", {reverse: false, changeHash: false});
             }).always(function() {
                 $.mobile.loading("hide");
             }).fail(PromiseFailReport);
