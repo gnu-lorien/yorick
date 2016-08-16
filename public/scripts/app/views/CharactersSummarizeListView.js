@@ -40,10 +40,38 @@ define([
         }
     });
     
-    // Extends Backbone.View
-    var View = Marionette.CollectionView.extend( {
+    var CharactersView = Marionette.CollectionView.extend( {
+        tagName: 'ul',
         childView: SummaryView,
+        
+        onRender: function () {
+            var self = this;
+            self.$el.attr('data-role', 'listview');
+            self.$el.attr('data-inset', 'true');
+            self.$el.attr('data-filter', 'true');
+            self.$el.attr('data-input', '#troupes-characters-filter');
+            self.$el.enhanceWithin();
+        }
     } );
+    
+    var View = Marionette.LayoutView.extend({
+        el: "#troupe-summarize-characters-all > div[data-role='main']", 
+        regions: {
+            sections: "#sections",
+            list: "#troupe-summarize-characters-list"
+        },
+        setup: function() {
+            var self = this;
+            var options = self.options || {};
+            self.showChildView(
+                'list',
+                new CharactersView({
+                    collection: self.collection}),
+                options);
+            this.$el.enhanceWithin();
+            return self;
+        }
+    });
 
     // Returns the View class
     return View;

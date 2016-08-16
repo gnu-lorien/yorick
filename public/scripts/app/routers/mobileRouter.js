@@ -1105,7 +1105,7 @@ define([
                 var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
                 return get_troupe;
             }).then(function (troupe, user) {
-                self.troupeSummarizeCharacters = self.troupeSummarizeCharacters || new CharactersSummarizeListView({el: "div#troupe-summarize-characters-all >> ul[data-role='listview']", collection: new Vampires}).render();
+                self.troupeSummarizeCharacters = self.troupeSummarizeCharacters || new CharactersSummarizeListView({collection: new Vampires}).setup();
                 self.troupeCharacters.register("#troupe/" + id + "/character/<%= character_id %>");
                 return self.get_troupe_summarize_characters(troupe, self.troupeSummarizeCharacters.collection);
             }).then(function() {
