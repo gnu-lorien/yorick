@@ -90,6 +90,7 @@ define([
     } );
     
     var FilterButton = Marionette.ItemView.extend({
+        className: "ui-block-b",
         template: function (serialized_model) {
             return _.template("<button><%= name %></button>")(serialized_model);
         },
@@ -102,6 +103,7 @@ define([
     });
     
     var FiltersView = Marionette.CollectionView.extend({
+        className: "ui-grid-b ui-responsive",
         childView: FilterButton
     })
     
