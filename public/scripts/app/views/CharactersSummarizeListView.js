@@ -46,13 +46,43 @@ define([
         
         onRender: function () {
             var self = this;
+            /*
+            self.$el.filterable({
+                input: "#troupes-characters-filter"
+            });
+            self.$el.filterable("enable");
+            */
             self.$el.attr('data-role', 'listview');
             self.$el.attr('data-inset', 'true');
             self.$el.attr('data-filter', 'true');
-            self.$el.attr('data-input', '#troupes-characters-filter');
+            self.$el.attr('data-input', '#troupes-summarize-characters-filter');
+            /*
             self.$el.enhanceWithin();
+            */
+        },
+        
+        /*
+        onAddChild: function() {
+            var self = this;
+            self.$el.filterable("refresh");
+        },
+        */
+        onDomRefresh: function() {
+            var self = this;
+            /*
+            self.$el.filterable("refresh");           
+            self.$el.filterable("enable");
+            */
         }
+        
     } );
+    
+    var ButtonView = Marionette.ItemView.extend({
+        template: _.template("<button>Click me for doom</button>"),
+        triggers: {
+            "click": "doom:clicked"
+        },
+    })
     
     var View = Marionette.LayoutView.extend({
         el: "#troupe-summarize-characters-all > div[data-role='main']", 
@@ -60,9 +90,26 @@ define([
             sections: "#sections",
             list: "#troupe-summarize-characters-list"
         },
+        childEvents: {
+            "doom:clicked": "doomclicked",
+        },
+        doomclicked: function () {
+            var self = this;
+            console.log("Doom was definitely clicked");
+            var options = self.options || {};
+            self.showChildView(
+                'list',
+                new CharactersView({
+                    collection: self.collection}),
+                options);
+        },
         setup: function() {
             var self = this;
             var options = self.options || {};
+            self.showChildView(
+                'sections',
+                new ButtonView(),
+                options);
             self.showChildView(
                 'list',
                 new CharactersView({
