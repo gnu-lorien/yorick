@@ -1,0 +1,12 @@
+<form class="ui-filterable">
+    <input id="filter-choose-user" data-type="search">
+</form>
+<ul data-role="listview" data-filter="true" data-input="#filter-choose-user">
+    <% _.each(collection, function(e) { %>
+    <li>
+        <a name="<%= e.get('name') %>" backendId="<%= e.id %>" href="#" class="ui-btn ui-btn-icon-right ui-icon-carat-r user-listing">
+            <%= e.get("username") %> <%= e.get("email") %> <%= e.get("realname") %>
+        </a>
+    </li>
+    <% }); %>
+</ul>

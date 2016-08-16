@@ -1,0 +1,1 @@
+define(["jquery","backbone","../models/CategoryModel"],function(e,t,i){var n=t.View.extend({initialize:function(){this.collection.on("added",this.render,this)},render:function(){return this.template=_.template(e("script#categoryItems").html())({collection:this.collection}),this.$el.find("ul").html(this.template),this}});return n});
