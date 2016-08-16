@@ -1,0 +1,1 @@
+define(["jquery","backbone","marionette","../views/PatronageListView"],function(e,i,n,t){var o=n.CollectionView.extend({childView:t});return o});

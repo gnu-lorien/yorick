@@ -1,0 +1,7 @@
+<p>
+    <label for="slider">Point it time:</label>
+    <input type="range" name="historyChangePicker" id="slider" value="<%= idForPickedIndex %>" min="0" max="<%= logs.length - 1 %>">
+    <% _.each(logs, function (log, i) { %>
+    <input type="hidden" value="<%= log.id %>" id="history-changes-<%= i %>" />
+    <% }); %>
+</p>

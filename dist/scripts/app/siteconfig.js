@@ -1,0 +1,1 @@
+define([],function(){var r={serverURL:"https://api.undergroundtheater.org/parse",redirect_uri:"https://patron.undergroundtheater.org"};return r});

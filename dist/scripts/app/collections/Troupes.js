@@ -1,0 +1,1 @@
+define(["jquery","underscore","parse","../models/Troupe"],function(e,r,n,t){var o=n.Collection.extend({model:t,comparator:function(e,n){var t,o;return t=e.get("name"),o=n.get("name"),r.gt(t,o)?1:r.lt(t,o)?-1:0}});return o});
