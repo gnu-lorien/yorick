@@ -1,0 +1,1 @@
+define(["jquery","parse"],function(e,i){var n=i.Object.extend("VampireCreation",{remaining_picks:function(e){var i=this,n=0,r={skills:4,disciplines:2,backgrounds:3,attributes:7,merits:0,flaws:0},t=r[e]||1;return _.each(_.range(t,-1,-1),function(r){var t=e+"_"+r+"_remaining",a=i.get(t);_.isNumber(a)&&(n+=a)}),n}});return n});

@@ -7,7 +7,6 @@
 .parse-windows-2.0.7.exe.old
 .idea/modules.xml
 .idea/workspace.xml
-dist
 ### JetBrains template
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio
 
@@ -101,3 +100,4 @@ node_modules
 .parse.exe.old
 .parse.local
 .parse.project
+/statusview/
