@@ -11,7 +11,8 @@ define([
     "../models/Vampire",
     "backform",
     "text!../templates/character-summarize-list-item-csv.html",
-], function( _, $, Backbone, character_summarize_list_item_html, Marionette, Vampire, Backform, character_summarize_list_item_csv_html ) {
+    "text!../templates/character-summarize-list-item-csv-header-grouped.html",
+], function( _, $, Backbone, character_summarize_list_item_html, Marionette, Vampire, Backform, character_summarize_list_item_csv_html, character_summarize_list_item_csv_header_grouped_html ) {
 
     var PrettyView = Marionette.ItemView.extend({
         tagName: "li",
@@ -56,6 +57,7 @@ define([
         initialize: function(options) {
             this.mode = options.mode;
             this.name = options.name;
+            this.columnNames = options.columnNames;
         },
         
         templateHelpers: function () {
@@ -63,7 +65,28 @@ define([
             return {
                 e: self.model,
                 mode: self.mode,
-                name: self.name
+                name: self.name,
+            };
+        },
+
+    });
+    
+    var CSVHeaderGroupedView = Marionette.ItemView.extend({
+        tagName: "li",
+        template: _.template(character_summarize_list_item_csv_header_grouped_html),
+        initialize: function(options) {
+            this.mode = options.mode;
+            this.name = options.name;
+            this.columnNames = options.columnNames;
+        },
+        
+        templateHelpers: function () {
+            var self = this;
+            return {
+                e: self.model,
+                mode: self.mode,
+                name: self.name,
+                columnNames: self.columnNames
             };
         },
 
@@ -76,7 +99,8 @@ define([
             var self = this;
             return {
                 mode: self.mode,
-                name: self.name
+                name: self.name,
+                columnNames: self.columnNames
             }
         },
         
@@ -179,7 +203,8 @@ define([
                 control: "select",
                 options: [
                     {label: "Pretty", value: "pretty"},
-                    {label: "CSV", value: "csv"}
+                    {label: "CSV", value: "csv"},
+                    {label: "CSV with Trait Grouping", value: "csvtraitgrouping"}
                 ]
             }
         ]
@@ -212,10 +237,13 @@ define([
                 return false;
             })
             self.list.currentView.name = entry[1];
+            self.list.currentView.columnNames = self.getColumnNames(formvalues.get("category"));
             
             var desiredFormat = formvalues.get("format");
             if (_.startsWith(desiredFormat, "pretty")) {
                 self.list.currentView.childView = PrettyView;
+            } else if (_.startsWith(desiredFormat, "csvtraitgrouping")) {
+                self.list.currentView.childView = CSVHeaderGroupedView;
             } else {
                 self.list.currentView.childView = CSVView;
             }
@@ -266,6 +294,18 @@ define([
             self.list.currentView.filter = newfilter;
             self.collection.reset(_.map(self.collection.models));
         },
+        getColumnNames: function(category) {
+            var self = this;
+            return _(self.collection.models)
+                .map("attributes." + category)
+                .flatten()
+                .map("attributes.name")
+                .without(undefined)
+                .sortBy()
+                .uniq(true)
+                .value();
+        },
+ 
         setup: function() {
             var self = this;
             var options = self.options || {};
