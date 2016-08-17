@@ -709,7 +709,7 @@ define([
         get_troupe_summarize_characters: function(troupe, collection, options) {
             var self = this;
             options = _.defaults({}, options, {
-                includedeleted: false,
+                includedeleted: true,
             });
             var c = [];
             if (Parse.User.current().get("username") == "devuser") {
@@ -725,7 +725,6 @@ define([
             })
             p = q.each(function (character) {
                 var shouldinclude = true;
-                console.log(JSON.stringify(options));
                 if (!options.includedeleted) {
                     if (!character.has("owner")) {
                         shouldinclude = false;
@@ -735,7 +734,6 @@ define([
                     c.push(character);
                 }
             }).then(function () {
-                console.log(JSON.stringify(c));
                 collection.reset(c);
             })
             return p.done(function () {

@@ -8,8 +8,9 @@ define([
 	"backbone",
     "text!../templates/character-summarize-list-item.html",
     "marionette",
-    "../models/Vampire"
-], function( _, $, Backbone, character_summarize_list_item_html, Marionette, Vampire ) {
+    "../models/Vampire",
+    "backform"
+], function( _, $, Backbone, character_summarize_list_item_html, Marionette, Vampire, Backform ) {
 
     var SummaryView = Marionette.ItemView.extend({
         tagName: "li",
@@ -108,7 +109,52 @@ define([
     var FiltersView = Marionette.CollectionView.extend({
         className: "ui-grid-b ui-responsive",
         childView: FilterButton
-    })
+    });
+    
+    var category_options = _.map(Vampire.all_simpletrait_categories(), function (info) {
+        return {
+            label: info[1],
+            value: info[0]
+        };
+    }); 
+    
+    var Form = Backform.Form.extend({
+        fields: [
+            {
+                name: "category",
+                label: "Category",
+                control: "select",
+                options: category_options
+            },
+            {
+                name: "antecedence",
+                label: "NPC, PC, Primary, or Secondary",
+                control: "select",
+                options: [
+                    {label: "All", value: "All"},
+                    {label: "NPC", value: "NPC"},
+                    {label: "PC of any type", value: "PC"},
+                    {label: "Primary PC", value: "Primary"},
+                    {label: "Secondary PC", value: "Secondary"},
+                ]
+            },
+            {
+                name: "resulttype",
+                label: "Which sort of results to show?",
+                control: "select",
+                options: [
+                    {label: "Only those with values in the category", value: "onlycat"},
+                    {label: "Only those with no values in the category", value: "nocat"},
+                    {label: "All", value: "all"}
+                ]
+            },
+            {
+                name: "playable",
+                label: "Only show playable characters",
+                control: "checkbox"
+            }
+        ]
+    });
     
     var Mode = Backbone.Model.extend({
         
@@ -127,10 +173,61 @@ define([
         childEvents: {
             "filterwith": "filterwith",
         },
-        filterwith: function (childView, mode) {
+        filterwith: function (formvalues) {
             var self = this
-            self.list.currentView.mode = mode.get("mode");
-            self.list.currentView.name = mode.get("name");
+            self.list.currentView.mode = formvalues.get("category");
+            var entry = _.find(Vampire.all_simpletrait_categories(), function(e) {
+                if (e[0] == formvalues.get("category")) {
+                    return true;
+                };
+                return false;
+            })
+            self.list.currentView.name = entry[1];
+            
+            var newfilter = function(child, index, collection) {
+                var a = child.get("antecedence");
+                if (_.isUndefined(a)) {
+                    a = "Primary";
+                }
+                var ina = formvalues.get("antecedence");
+                if (!_.startsWith(ina, "All")) {
+                    if (_.startsWith(ina, "NPC")) {
+                        if (!_.startsWith(a, "NPC")) {
+                            return false;
+                        }
+                    } else if (_.startsWith(ina, "PC")) {
+                        if (_.startsWith(a, "NPC")) {
+                            return false;
+                        }
+                    } else {
+                        if (!_.startsWith(a, ina)) {
+                            return false;
+                        }
+                    }
+                }
+                var rt = formvalues.get("resulttype");
+                if (_.startsWith(rt, "onlycat")) {
+                    if (!child.has(formvalues.get("category"))) {
+                        return false;
+                    }
+                    if (child.get(formvalues.get("category")).length == 0) {
+                        return false;
+                    }
+                } else if (_.startsWith(rt, "nocat")) {
+                     if (child.has(formvalues.get("category"))) {
+                        return false;
+                    }                   
+                }
+                
+                if (formvalues.get("playable")) {
+                    if (!child.has("owner")) {
+                        return false;
+                    }
+                }
+                
+                return true;
+            };
+            self.list.currentView.filter = newfilter;
             self.collection.reset(_.map(self.collection.models));
             /*
             var options = self.options || {};
@@ -146,6 +243,7 @@ define([
             var self = this;
             var options = self.options || {};
             var modes = new Modes;
+            /*
             self.showChildView(
                 'sections',
                 new FiltersView({
@@ -155,6 +253,20 @@ define([
             _.each(Vampire.all_simpletrait_categories(), function (e) {
                 modes.add(new Mode({mode: e[0], name: e[1], category: e[2]}));
             });
+            */
+            self.filterOptions = new Backbone.Model({
+                playable: true,
+                category: "attributes",
+                antecedence: "PC",
+                resulttype: "onlycat"
+            });
+            self.listenTo(self.filterOptions, 'change', self.filterwith);
+            self.showChildView(
+                'sections',
+                new Form({
+                    model: self.filterOptions
+                }),
+                options);
             self.showChildView(
                 'list',
                 new CharactersView({
