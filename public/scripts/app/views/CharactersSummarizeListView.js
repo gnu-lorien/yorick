@@ -9,10 +9,11 @@ define([
     "text!../templates/character-summarize-list-item.html",
     "marionette",
     "../models/Vampire",
-    "backform"
-], function( _, $, Backbone, character_summarize_list_item_html, Marionette, Vampire, Backform ) {
+    "backform",
+    "text!../templates/character-summarize-list-item-csv.html",
+], function( _, $, Backbone, character_summarize_list_item_html, Marionette, Vampire, Backform, character_summarize_list_item_csv_html ) {
 
-    var SummaryView = Marionette.ItemView.extend({
+    var PrettyView = Marionette.ItemView.extend({
         tagName: "li",
         className: "ul-li-has-thumb",
         template: _.template(character_summarize_list_item_html),
@@ -49,9 +50,28 @@ define([
         }
     });
     
+    var CSVView = Marionette.ItemView.extend({
+        tagName: "li",
+        template: _.template(character_summarize_list_item_csv_html),
+        initialize: function(options) {
+            this.mode = options.mode;
+            this.name = options.name;
+        },
+        
+        templateHelpers: function () {
+            var self = this;
+            return {
+                e: self.model,
+                mode: self.mode,
+                name: self.name
+            };
+        },
+
+    });
+    
     var CharactersView = Marionette.CollectionView.extend( {
         tagName: 'ul',
-        childView: SummaryView,
+        childView: PrettyView,
         childViewOptions: function(model, index) {
             var self = this;
             return {
@@ -152,6 +172,15 @@ define([
                 name: "playable",
                 label: "Only show playable characters",
                 control: "checkbox"
+            },
+            {
+                name: "format",
+                label: "Format",
+                control: "select",
+                options: [
+                    {label: "Pretty", value: "pretty"},
+                    {label: "CSV", value: "csv"}
+                ]
             }
         ]
     });
@@ -183,6 +212,13 @@ define([
                 return false;
             })
             self.list.currentView.name = entry[1];
+            
+            var desiredFormat = formvalues.get("format");
+            if (_.startsWith(desiredFormat, "pretty")) {
+                self.list.currentView.childView = PrettyView;
+            } else {
+                self.list.currentView.childView = CSVView;
+            }
             
             var newfilter = function(child, index, collection) {
                 var a = child.get("antecedence");
@@ -229,15 +265,6 @@ define([
             };
             self.list.currentView.filter = newfilter;
             self.collection.reset(_.map(self.collection.models));
-            /*
-            var options = self.options || {};
-            self.showChildView(
-                'list',
-                new BackgroundsView({
-                    collection: self.collection}),
-                options);
-            self.$el.enhanceWithin();
-            */
         },
         setup: function() {
             var self = this;
@@ -258,7 +285,8 @@ define([
                 playable: true,
                 category: "attributes",
                 antecedence: "PC",
-                resulttype: "onlycat"
+                resulttype: "onlycat",
+                format: "pretty"
             });
             self.listenTo(self.filterOptions, 'change', self.filterwith);
             self.showChildView(
