@@ -1,0 +1,303 @@
+<!doctype html><html class="no-js ui-mobile-rendering" lang="en"><head><title>Yorick</title><meta name="description" content="A Character Database for Underground Theater"><meta property="og:title" content="Yorick"><meta property="og:image" content="https://patron.undergroundtheater.org/yorick_max.png"><meta name="viewport" content="width=device-width,initial-scale=1"><!-- <link rel="stylesheet" href="css/themes/default/jquery.mobile.css"> --><link rel="stylesheet" href="css/themes/default/jquery.mobile-1.4.5.min.css"><link rel="stylesheet" href="css/bootstrap-forms.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.6.1/css/bootstrap-datepicker.standalone.css"><link rel="stylesheet" href="css/printable_sheet.css" media="print"><link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css"><link rel="stylesheet" href="css/vis.min.css"><link rel="stylesheet" href="css/nprogress.css"><style>#relationships-network {
+            width: 640px;
+            height: 480px;
+            border: 1px solid lightgray;
+            background-color:#333333;
+        }
+        .max-yorick-sizing {
+            max-width: 100%;
+            max-height: 90vh;
+        }</style><!-- BEGIN TRACKJS --><script type="text/javascript">window._trackJs = {
+            token: '8c029fff54d841498640d86379af7316',
+            enabled: !(window.location.host.indexOf('localhost') >= 0)
+        };
+        // Add a script element as a child of the body
+        function downloadJSAtOnload() {
+            var element = document.createElement("script");
+            element.src = "scripts/lib/require.js?bust=0.7.6";
+            element.setAttribute("data-main", "scripts/app");
+            document.body.appendChild(element);
+        }
+
+        // Check for browser support of event handling capability
+        if (window.addEventListener)
+            window.addEventListener("load", downloadJSAtOnload, false);
+        else if (window.attachEvent)
+            window.attachEvent("onload", downloadJSAtOnload);
+        else window.onload = downloadJSAtOnload;</script><script type="text/javascript" src="https://d2zah9y47r7bi2.cloudfront.net/releases/current/tracker.js"></script><!-- <script type="text/javascript" src="scripts/lib/hello.js"></script> --><!-- END TRACKJS --></head><body><div id="splashscreen"><p style="visibility: visible">Loading...</p><img src="yorick_max.png" style="visibility: visible" class="max-yorick-sizing"></div><div data-role="header" data-position="fixed" data-theme="a"><a href="javascript:window.history.back()" data-icon="arrow-l" data-iconpos="left" data-rel="back" data-transition="slide" data-direction="reverse" id="header-back-button">Back</a> <a href="#logout" data-icon="minus" data-iconpos="right" data-transition="slide" data-direction="reverse" id="header-logout-button">Log Out</a><h1>Default Title</h1></div><!-- /header --><div id="splashscreen" data-role="page" data-title="Yorick Splash Screen"><div role="main" class="ui-content"><p>Loading...</p><img class="max-yorick-sizing" src="yorick_max.png"></div></div><div id="login" data-role="page" data-title="Log In"><div role="main" class="ui-content"><img class="max-yorick-sizing" src="yorick_256.png"></div><!-- /content --></div><div id="signup" data-role="page" data-title="Sign Up"><div role="main" class="ui-content"><img class="max-yorick-sizing" src="yorick_256.png"></div><!-- /content --></div><div id="player-options" data-role="page" data-title="Player Options"><div role="main" class="ui-content"></div><!-- /content --></div><div id="administration" data-role="page" data-title="Administration"><div role="main" class="ui-content"><ul><li><a href="#troupes">Troupes</a></li><li><a href="#administration/characters/all">Characters</a></li><li><a href="#administration/users/all">Users</a></li><li><a href="#administration/patronages">Patronages</a></li></ul></div><!-- /content --></div><div id="troupe-new" data-role="page" data-title="New Troupe"><div role="main" class="ui-content"><form id="troupe-new-form"></form></div><!-- /content --></div><div id="troupes-list" data-role="page" data-title="Troupes"><div role="main" class="ui-content"><ul><li><a href="#troupe/new">Create Troupe</a></li></ul><div role="troupe-list"></div></div></div><div id="character-pick-troupe-to-leave" data-role="page" data-title="Leave Troupe"><div role="main" class="ui-content"><div role="troupe-list"></div></div></div><div id="character-pick-troupe-to-join" data-role="page" data-title="Join Troupe"><div role="main" class="ui-content"><div role="troupe-list"></div></div></div><div id="character-pick-troupe-to-show" data-role="page" data-title="Show Troupe"><div role="main" class="ui-content"><div role="troupe-list"></div></div></div><div id="troupe" data-role="page" data-title="Troupe"><div role="main" class="ui-content"></div></div><div id="troupe-add-staff" data-role="page" data-title="Add Staff"><div role="main" class="ui-content"></div></div><div id="troupe-edit-staff" data-role="page" data-title="Edit Staff"><div role="main" class="ui-content"><h1>Edit Staff</h1><form id="troupe-edit-staff-form"></form></div></div><div data-role="footer" data-position="fixed" data-theme="a"><div data-role="navbar"><ul><li><a href="#" data-transition="fade">Top</a></li><li><a href="#characters?all" data-transition="fade">Characters</a></li><li><a href="#profile" data-transition="flip">Profile</a></li></ul></div></div><div id="character" data-role="page" data-title="Character"><div role="main" class="ui-content"></div></div><script id="characterView" type="text/template"><div id="insertheader"></div>
+    <div>
+        Earned XP: <%= character.get("experience_earned") %><br/>
+        Spent XP: <%= character.get("experience_spent") %><br/>
+        Available XP: <%= character.experience_available() %><br/>
+    </div>
+    <div class="ui-grid-b ui-responsive">
+        <div class="ui-block-a">
+            <ul data-role="listview" data-inset="true"
+                class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/print">Show Latest</a></li>
+            </ul>
+        </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true"
+                class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/approved">Show Approved</a></li>
+            </ul>
+        </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true"
+                class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/approval">Show Approval</a></li>
+            </ul>
+        </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/portrait">Character Portrait</a></li>
+            </ul>
+        </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true"
+                class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/print">Print Latest</a></li>
+            </ul>
+        </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true"
+                class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/approved">Print Approved</a></li>
+            </ul>
+        </div>
+    </div> <% if (character.is_being_created()) { %> <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+        <li><a href="#charactercreate/<%= character.id %>">Character Creation</a></li>
+    </ul> <% } %> <% var sorted = character.all_simpletrait_categories() %> <% var heading = null; %> <div class="ui-grid-b ui-responsive"> <% _.each(sorted, function(grouping) { %> <% var description = grouping[1]; %> <% var category = grouping[0]; %> <% if (heading != grouping[2]) { %> <% heading = grouping[2]; %> <h3 class="ui-bar ui-bar-a"><%= heading %></h3> <% } %> <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#simpletraits/<%= category %>/<%= character.id %>/all"><%= description %></a></li>
+            </ul>
+        </div> <% }) %> <% if (!character.is_being_created()) { %> <h3 class="ui-bar ui-bar-a">Information</h3>
+        <div class="ui-grid-b ui-responsive"> <% _.each(["clan", "archetype", "sect", "faction", "title", "antecedence"], function (st) { %> <% var ust = st[0].toUpperCase() + st.substr(1); %> <div class="ui-block-b">
+                <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow"> <% if (character.get(st)) { %> <li data-role="list-divider"><%= ust %><p><%= character.get(st) %></p></li>
+                    <li><a href="#simpletext/<%= st %>s/<%= st %>/<%= character.id %>/pick">Repick <%= ust %></a></li> <% } else { %> <li><a href="#simpletext/<%= st %>s/<%= st %>/<%= character.id %>/pick">Pick <%= ust %></a></li> <% } %> </ul>
+            </div> <% }) %> </div> <% } %> </div>
+
+    <h3 class="ui-bar ui-bar-a">Progression</h3>
+    <div class="ui-grid-b ui-responsive">
+        <div class="ui-block-a">
+            <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/history/0">History</a></li>
+            </ul>
+        </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/experience/0/10">Experience Points</a></li>
+            </ul>
+        </div>
+
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true"
+                class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/costs">Costs</a></li>
+            </ul>
+        </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true"
+                class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/log/0/10">Log</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <h3 class="ui-bar ui-bar-a">Troupes</h3>
+    <div class="ui-grid-b ui-responsive">
+        <div class="ui-block-a">
+            <ul data-role="listview" data-inset="true"
+                class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/troupes">Show My Troupes</a></li>
+            </ul>
+        </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/troupes/join">Join Troupe</a></li>
+            </ul>
+        </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/troupes/leave">Leave Troupe</a></li>
+            </ul>
+        </div>
+    </div>
+    <h3 class="ui-bar ui-bar-a">Final Death</h3>
+    <div class="ui-grid-b ui-responsive">
+        <div class="ui-block-a">
+            <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/delete">Delete Character</a></li>
+            </ul>
+        </div>
+    </div></script><div id="character-create" data-role="page" data-title="Create Character"><div role="main" class="ui-content">createodapage</div></div><div id="characters-all" data-role="page" data-title="Characters"><div role="main" class="ui-content"><ul><li><a href="#characternew">Add New Vampire</a></li></ul><form class="ui-filterable"><input id="characters-filter" data-type="search"></form><ul data-role="listview" data-inset="true" data-filter="true" data-input="#characters-filter"></ul></div><!-- /content --></div><div id="troupe-characters-all" data-role="page" data-title="Troupe Characters"><div role="main" class="ui-content"><form class="ui-filterable"><input id="troupes-characters-filter" data-type="search"></form><ul data-role="listview" data-inset="true" data-filter="true" data-input="#troupes-characters-filter"></ul></div><!-- /content --></div><div id="simpletraitcategory-all" data-role="page" data-title="SimpleTraitCategoryAll"><div role="main" class="ui-content"></div></div><script id="simpleTraitCategoryView" type="text/template"><ul>
+        <li><a href="#simpletraits/<%= category %>/<%= character.id %>/new">Add New <%= category %></a></li>
+    </ul>
+    <ul> <% if (character.has(category)) { _.each(character.get(category), function(e) { %> <li>
+            <a href="#simpletrait/<%= category %>/<%= character.id %>/<%= e.id %>" class="ui-btn ui-btn-icon-right ui-icon-carat-r"><%= e.get("name") %> x<%= e.get("value") %></a>
+        </li> <% }); } %> </ul></script><div id="simpletrait-change" data-role="page" data-title="SimpleTraitChange"><div role="main" class="ui-content"><!-- <div id="simpletrait-main"></div> --><div id="simpletrait-viewing"></div><div id="simpletrait-changing"></div></div></div><script id="simpleTraitChangeView" type="text/template"><p><%= c.get("name") %> <%= b.get("name") %> <%= b.get("value") %></p> <% var cost = character.calculate_trait_to_spend(trait); %> <p>Cost: <%= cost %></p>
+    <p>Available XP: <%= character.experience_available() %></p>
+    <p>Final: <%= character.experience_available() - cost %></p></script><script id="simpleTraitChangeChange" type="text/template"><p>
+        <label for="value-slider">Slider:</label>
+        <input type="range" name="simpleTraitValue" id="value-slider" class="value-slider" value="<%= b.get('value') %>" min="1" max="<%= traitmax %>">
+    </p>
+    <p>
+        <button class="remove ui-btn">Remove</button>
+        <button class="save ui-btn">Save Changes</button>
+    </p>
+    <p>
+        <h2>Advanced Options</h2>
+        <label for="specialize-name">Specialize Name</label>
+        <input type="text" id="specialize-name" name="specialize-name" value="<%= b.get_specialization() %>">
+        <label for="free-slider">Free Value:</label>
+        <input type="range" name="free-slider" id="free-slider" class="free-slider" value="<%= b.get('free_value') || 0 %>" min="0" max="<%= traitmax %>">
+    </p></script><div id="victims-all" data-role="page" data-title="VictimsAll"><div role="main" class="ui-content"><ul><li>All</li><li>Idle</li><li>Occupied</li></ul></div></div><div id="experience-notations-all" data-role="page" data-role="Experience Notations"><div role="main" class="ui-content"></div></div><script id="experienceNotationsAllView" type="text/template"><p>Earned: <%= character.get("experience_earned") %></p>
+    <p>Spent: <%= character.get("experience_spent") %></p>
+    <p>Available: <%= character.experience_available() %></p>
+    <button class="add ui-btn ui-btn-icon-plus">Add New Notation</button>
+    <!--
+    <button class="previous ui-btn ui-btn-icon-left">View Previous</button>
+    <button class="next ui-btn ui-btn-icon-left">View Next</button>
+    --> <% var headers = ["entered", "reason", "alteration_earned", "alteration_spent", "earned", "spent"]; %> <% var editable = ["entered", "reason", "alteration_earned", "alteration_spent"]; %> <table data-role="table" id="table-column-toggle" class="ui-responsive table-stroke">
+        <thead>
+        <tr> <% _.each(headers, function (h, i) { %> <th data-priority="<%= i + 1 %>"><%= h %></th> <% }); %> <th></th>
+        </tr>
+        </thead>
+        <tbody> <% _.each(logs, function (log, i) { %> <tr> <% _.each(headers, function (h) { %> <td> <% if (_.contains(editable, h)) { %> <a href="#" class="experience-notation-edit ui-btn ui-icon-edit ui-btn-icon-notext ui-corner-all ui-btn-inline" header="<%= h %>" notation-id="<%= log.cid %>">Edit</a> <% } %> <%= format_entry(log, h) %> </td> <% }); %> <td><a href="#" class="experience-notation-delete ui-btn ui-icon-delete ui-btn-icon-notext ui-corner-all ui-btn-inline" notation-id="<%= log.cid %>">Delete</a></td>
+                </tr> <% }); %> </tbody>
+    </table>
+    <div data-role="popup" id="popupEditEntered" data-theme="a" class="ui-corner-all">
+        <form id="edit-entered-popup-form">
+            <div style="padding:10px 20px;">
+                <input type="text" id="date-input" data-inline="true" data-role="date">
+                <button type="submit" class="ui-btn ui-corner-all ui-shadow ui-btn-b ui-btn-icon-left ui-icon-check">
+                    Update Date Entered
+                </button>
+                <input type="hidden" id="date-id"/>
+            </div>
+        </form>
+    </div>
+    <div data-role="popup" id="popupEditReason" data-theme="a" class="ui-corner-all">
+        <form id="edit-reason-popup-form">
+            <div style="padding:10px 20px;">
+                <textarea id="reason-input"></textarea>
+                <button type="submit" class="ui-btn ui-corner-all ui-shadow ui-btn-b ui-btn-icon-left ui-icon-check">
+                    Update Reason
+                </button>
+                <input type="hidden" id="reason-id"/>
+            </div>
+        </form>
+    </div>
+    <div data-role="popup" id="alterationpopupEdit" data-theme="a" class="ui-corner-all">
+        <form id="edit-alteration-popup-form">
+            <div style="padding:10px 20px;">
+                <input type="number" id="alteration-input"></input>
+                <button type="submit" class="ui-btn ui-corner-all ui-shadow ui-btn-b ui-btn-icon-left ui-icon-check">
+                    Update Alteration Value
+                </button>
+                <input type="hidden" id="alteration-id"/>
+                <input type="hidden" id="alteration-type"/>
+            </div>
+        </form>
+    </div>
+    <div data-role="popup" id="popupEditLogin" data-theme="a" class="ui-corner-all">
+        <form>
+            <div style="padding:10px 20px;">
+                <h3>Please sign in</h3>
+                <label for="un" class="ui-hidden-accessible">Username:</label>
+                <input type="text" name="user" id="un" value="" placeholder="username" data-theme="a">
+                <label for="pw" class="ui-hidden-accessible">Password:</label>
+                <input type="password" name="pass" id="pw" value="" placeholder="password" data-theme="a">
+                <button type="submit" class="ui-btn ui-corner-all ui-shadow ui-btn-b ui-btn-icon-left ui-icon-check">
+                    Sign in
+                </button>
+            </div>
+        </form>
+    </div></script><div id="experience-notation-change" data-role="page" data-role="Change Experience Notation"><div role="main" class="ui-content"></div></div><script></script><div id="animals" data-role="page" data-title="Animals"><div data-role="header"><h1>Animals</h1></div><!-- /header --><div role="main" class="ui-content"><ul data-role="listview" data-inset="true"></ul></div><!-- /content --></div><div id="colors" data-role="page" data-title="Colors"><div data-role="header"><h1>Colors</h1></div><!-- /header --><div role="main" class="ui-content"><ul data-role="listview" data-inset="true"></ul></div><!-- /content --></div><div id="vehicles" data-role="page" data-title="Vehicles"><div data-role="header"><h1>Vehicles</h1></div><!-- /header --><div role="main" class="ui-content"><ul data-role="listview" data-inset="true"></ul></div><!-- /content --></div><div id="character-new" data-role="page" data-title="New Character"><div role="main" class="ui-content"></div></div><script id="characterNewView" type="text/template"><form>
+        <label for="characterName">Name:</label>
+        <input type="text" name="characterName" id="characterName" value="New Character Name">
+    </form>
+    <p>
+        <button class="cancel ui-btn">Cancel</button>
+        <button class="save ui-btn">Save Changes</button>
+    </p></script><div id="simpletrait-new" data-role="page" data-title="New Simple Trait"><div role="main" class="ui-content"></div></div><script id="simpletraitcategoryDescriptionItems" type="text/template"> <% if (freeValue) { %> <p>Pick one for value <%= freeValue %></p> <% } %> <form class="ui-filterable">
+        <input id="filterBasic-input" data-type="search">
+    </form>
+    <ul data-role="listview" data-filter="true" data-input="#filterBasic-input"> <% _.each(collection, function(e) { %> <li>
+            <a name="<%= e.get('name') %>" backendId="<%= e.id %>" href="#" class="ui-btn ui-btn-icon-right ui-icon-carat-r simpletrait"> <% if (e.has("value")) { %> <%= e.get("name") %> x<%= e.get("value") %> <% } else { %> <%= e.get("name") %> <% } %> </a>
+        </li> <% }); %> </ul></script><div id="simpletext-new" data-role="page" data-title="New Simple Text"><div role="main" class="ui-content"></div></div><script id="simpletextcategoryDescriptionItems" type="text/template"><ul data-role="listview" data-inset="true" data-filter="true"> <% collection.each(function(e) { %> <li>
+            <a name="<%= e.get('name') %>"  href="#" class="ui-btn ui-btn-icon-right ui-icon-carat-r simpletext"><%= e.get("name") %></a>
+        </li> <% }); %> </ul></script><!-- Underscore Template that is used to display all of the Category Models --><script id="categoryItems" type="text/template"> <% _.each( collection.toJSON(), function( category, id ) { %> <li class="ui-li-static"> <%= category.type %> </li> <% }); %> </script><div id="character-costs" data-role="page" data-title="Character Costs"><div role="main" class="ui-content"></div></div><script id="characterCostsView" type="text/template"><h1><%= character.get("name") %></h1> <% if (!character.has_generation()) { %> <p>Warning: Values are just a guess without a generation set</p> <% } %> <ul> <% _.each(_.values(costs), function(cost) { %> <li><%= cost.trait.get("name") %>: <%= cost.cost %></li> <% }); %> </ul></script><div id="printable-sheet" data-role="page" data-title="Printable Sheet"><div role="main" class="ui-content"></div></div><script type="text/template" id="login-template"><div class="login">
+        <img class="max-yorick-sizing" src="yorick_256.png"/>
+        <p>
+        Welcome to Yorick, a character management system for <a href="http://www.undergroundtheater.org/">Underground Theater</a>.
+        </p>
+        <form class="login-form">
+            <h2>Log In</h2>
+            <div class="error" style="display:none"></div>
+            <input type="text" id="login-username" placeholder="Username" />
+            <input type="password" id="login-password" placeholder="Password" />
+            <button>Log in with Username and Password</button>
+        </form>
+        <div>
+            <a href="#" id="login-with-facebook"><img src="log_in_with_facebook.png" /></a>
+        </div>
+        <div>
+            <a href="#signup">Need an account? Sign up!</a>
+        </div>
+        <div>
+            <a href="#reset">Forgot your password?</a>
+        </div>
+    </div></script><script type="text/template" id="signup-template"><div class="signup">
+        <img class="max-yorick-sizing" src="yorick_256.png"/>
+        Sign up for Yorick.
+        <form class="signup-form">
+            <h2>Sign Up</h2>
+            <div class="error" style="display:none"></div>
+            <input type="text" id="signup-username" placeholder="Username" />
+            <input type="password" id="signup-password" placeholder="Create a Password" />
+            <button>Sign Up</button>
+        </form>
+        <div>
+            or
+        </div>
+        <button id="signup-with-facebook">Sign up with Facebook</button>
+    </div></script><div id="simpletrait-specialization" data-role="page" data-title="Simple Trait Specialization"><div role="main" class="ui-content"></div></div><script id="simpleTraitSpecialization" type="text/template"><form>
+        <label for="specialization">Specialization for <%= name %>:</label>
+        <input type="text" name="specialization" id="specialization" value="<%= specialization %>">
+    </form>
+    <p>
+        <button class="cancel ui-btn">Cancel</button>
+        <button class="save ui-btn">Save Changes</button>
+    </p></script><div id="character-log" data-role="page" data-title="Character Log"><div role="main" class="ui-content"></div></div><script id="characterLogView" type="text/template"><h1><%= character.get("name") %></h1>
+    <button class="previous ui-btn ui-btn-icon-left">Previous</button>
+    <button class="next ui-btn ui-btn-icon-left">Next</button>
+    <!--
+    <button class="hackupdateowner ui-btn ui-btn-icon-left">HackUpdateOwner</button>
+    <button class="hackdeleteoriginal ui-btn ui-btn-icon-left">HackDeleteOriginal</button>
+    --> <% var headers = ["createdAt", "category", "name", "type", "old_value", "value", "old_free_value", "free_value", "old_cost", "cost", "old_text", "new_text"]; %> <table data-role="table" id="table-column-toggle" class="ui-responsive table-stroke">
+        <thead>
+        <tr> <% _.each(headers, function (h, i) { %> <th data-priority="<%= i + 1 %>"><%= h %></th> <% }); %> </tr>
+        </thead>
+        <tbody> <% _.each(logs, function (log, i) { %> <tr> <% _.each(headers, function (h) { %> <td><%= format_entry(log, h) %></td> <% }); %> </tr> <% }); %> </tbody>
+    </table></script><div id="character-history" data-role="page" data-title="Character History"><div role="main" class="ui-content"><div id="history-main"></div><div id="history-viewing"></div><div id="history-sheet"></div></div></div><div id="character-approval" data-role="page" data-title="Character Approval"><div role="main" class="ui-content"><div id="approval-main"></div><div id="approval-edit"></div><div data-role="tabs" id="approval-tabs"><div data-role="navbar"><ul><li><a href="#approval-sheet" data-ajax="false" class="ui-btn-active">Show Sheet</a></li><li><a href="#approval-viewing" data-ajax="false">Show Individual Changes</a></li></ul></div><div id="approval-sheet"></div><div id="approval-viewing"></div></div></div></div><div id="user-settings-profile" data-role="page" data-title="Profile"></div><div id="administration-user-view" data-role="page" data-title="User View"><div role="main" class="ui-content"><div class="ui-body ui-body-a ui-corner-all"><h3>Reset Password</h3><div id="reset-password-view"></div></div><hr><div class="ui-body ui-body-a ui-corner-all"><h3>Patronage</h3><div id="patronage-new-for-user-button"></div><form class="ui-filterable"><input id="patronage-list-filter" data-type="search"></form><div id="patronage-list-region"><ul id="patronage-list" data-role="listview" data-inset="true" data-filter="true" data-input="#patronage-list-filter"></ul></div></div><hr><div class="ui-body ui-body-a ui-corner-all"><h3>Profile</h3><div id="abs-form"></div></div></div></div><div id="administration-user-patronages-view" data-role="page" data-title="Patronages"><div role="main" class="ui-content"><form class="profile-form"></form></div></div><div id="administration-patronages-view" data-role="page" data-title="Patronages"><div role="main" class="ui-content"><ul><li><a href="#administration/patronages/new">Add New Patronage</a></li></ul><form class="ui-filterable"><input id="patronages-filter" data-type="search"></form><ul id="administration-patronages-view-list" data-role="listview" data-inset="true" data-filter="true" data-input="#patronages-filter"></ul></div><!-- /content --></div><div id="administration-patronage-view" data-role="page" data-title="Patronage"><div role="main" class="ui-content"></div></div><div id="user-reset-password" data-role="page" data-title="Reset Password"><div role="main" class="ui-content"><form class="profile-form"></form></div></div><div id="character-portrait" data-role="page" data-title="Profile"><div role="main" class="ui-content"></div></div><script id="characterPortraitView" type="text/template"><h1><%= character.get("name") %></h1> <% if (character.get('portrait')) { %> <img src="<%= character.get('portrait').get('original').url() %>"/> <% } %> <form class="portrait-form">
+        <div class="error" style="display:none"></div>
+        <label for="input-portrait">Portrait</label>
+        <input type="file" name="input-portrait" id="input-portrait">
+        <button class="ui-shadow ui-btn ui-corner-all ui-icon-action ui-btn-icon-right update">Upload</button>
+    </form></script><div id="troupe-portrait" data-role="page" data-title="Profile"><div role="main" class="ui-content"></div></div><script id="troupePortraitView" type="text/template"><h1><%= troupe.get("name") %></h1> <% if (troupe.get('portrait')) { %> <img src="<%= troupe.get('portrait').get('original').url() %>"/> <% } %> <form class="portrait-form">
+        <div class="error" style="display:none"></div>
+        <label for="input-portrait">Portrait</label>
+        <input type="file" name="input-portrait" id="troupe-input-portrait">
+        <button class="ui-shadow ui-btn ui-corner-all ui-icon-action ui-btn-icon-right update">Upload</button>
+    </form></script><div id="troupe-character-relationships-network" data-role="page" data-title="Relationships Network"><div role="main" class="ui-content"></div></div><script id="troupeCharacterRelationshipsNetworkView" type="text/template"><div id="relationships-network"></div>
+    <div id="relationships-network-data-display">
+        <button class="ui-shadow ui-btn ui-corner-all ui-icon-action ui-btn-icon-right make-relationship" disabled="">Create Relationship</button>
+    </div>
+    <div id="relationships-network-select-characters">
+        <fieldset data-role="controlgroup">
+            <legend>Characters to display:</legend> <% _.each(characters, function (character, i) { %> <% var n = "checkbox-" + character.id || character.cid; %> <input type="checkbox" name="<%= n %>" id="<%= n %>">
+            <label for="<%= n %>"><%= character.get("name") %></label> <% }) %> </fieldset>
+    </div></script><div id="character-delete" data-role="page" data-title="Delete Character"><div role="main" class="ui-content"></div></div><script id="characterDeleteView" type="text/template"><h1>Are you sure you want to delete <%= character.get("name") %>?</h1>
+    <button class="delete-character">Delete <%= character.get("name") %></button></script></body></html>

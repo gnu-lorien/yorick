@@ -1,0 +1,191 @@
+<h1 class="ui-bar ui-bar-a"><%= format_simpletext("name") %></h1>
+<div class="ui-grid-b ui-responsive">
+    <div class="ui-block-a">
+        <h2 class="ui-bar ui-bar-a">Clan: <%= format_simpletext("clan") %></h2>
+    </div>
+    <div class="ui-block-b">
+        <h2 class="ui-bar ui-bar-a">Archetype: <%= format_simpletext("archetype") %></h2>
+    </div>
+    <% if (character.get("antecedence")) { %>
+    <div class="ui-block-c">
+        <h2 class="ui-bar ui-bar-a">Antecedence: <%= format_simpletext("antecedence") %></h2>
+    </div>
+    <% } %>
+</div>
+<div class="ui-grid-b ui-responsive">
+    <div class="ui-block-a">
+        <h2 class="ui-bar ui-bar-a">Sect: <%= format_simpletext("sect") %></h2>
+    </div>
+    <div class="ui-block-b">
+        <h2 class="ui-bar ui-bar-a">Faction: <%= format_simpletext("faction") %></h2>
+    </div>
+    <div class="ui-block-c">
+        <h2 class="ui-bar ui-bar-a">Title: <%= format_simpletext("title") %></h2>
+    </div>
+</div>
+<% var cl = {0: "a", 1: "b", 2: "c" }; %>
+<div class="ui-grid-b ui-responsive">
+    <% _.each(character.get("attributes"), function (attribute, i) { %>
+    <% var name = attribute.get("name") || ""; %>
+    <div class="ui-block-<%= cl[i] %>">
+        <h4 class="ui-bar ui-bar-a ui-corner-all"><%= name %></h4>
+        <div class="ui-body">
+            <%= format_attribute_value(attribute) %>
+            <br/>
+            <%= format_attribute_focus(name) %>
+        </div>
+    </div>
+    <% }); %>
+</div>
+<% var bptLookup = {1: 10, 2: 12, 3: 15, 4: 20, 5: 30 } %>
+<div class="ui-grid-b ui-responsive">
+    <div class="ui-block-a">
+        <h4 class="ui-bar ui-bar-a ui-corner-all">Blood</h4>
+        <% _.each(_.range(1, 31), function(i) { %>
+        <i class="fa fa-square-o"></i>
+        <% if (0 == i % 5) { %>
+        &nbsp;
+        <% } %>
+        <% if (0 == i % 10) { %>
+        <br/>
+        <% } %>
+        <% }); %>
+        <% _.each(_.range(character.generation()), function(i) { %>
+        <i class="fa fa-circle"></i>
+        <% }); %>
+        <%= bptLookup[character.generation()] %> / <%= character.generation() %>
+    </div>
+    <div class="ui-block-b">
+        <h4 class="ui-bar ui-bar-a ui-corner-all">Willpower</h4>
+        <% _.each(_.range(0, character.get_willpower_total()), function (i) { %>
+        <i class="fa fa-square-o"></i>
+        <% if (0 == (i + 1) % 5) { %>
+        &nbsp;
+        <% } %>
+        <% }); %>
+        <h4 class="ui-bar ui-bar-a ui-corner-all">Morality</h4>
+        <%= character.morality().get("name") %><br/>
+        <% _.each(_.range(1, _.parseInt(character.morality().get("value")) + 1), function(i) { %>
+        <i class="fa fa-square-o"></i>
+        <% if (0 == i % 5) { %>
+        &nbsp;
+        <% } %>
+        <% }); %>
+    </div>
+    <div class="ui-block-c">
+        <h4 class="ui-bar ui-bar-a ui-corner-all">Health Levels</h4>
+        <% _.forIn(character.health_levels(), function (args) { %>
+        <% _.each(_.range(_.parseInt(args[1])), function(i) { %>
+        <i class="fa fa-square-o"></i>
+        <% }); %>
+        <%= args[0] %>
+        <br/>
+        <% }); %>
+    </div>
+</div>
+<h4 class="ui-bar ui-bar-a">Skills</h4>
+<div class="ui-grid-b ui-responsive">
+    <% _.each(groupedSkills, function(three_group) { %>
+    <% _.each(three_group, function(skill, i) { %>
+    <% if (skill) { %>
+    <div class="ui-block-<%= cl[i % 3] %>">
+        <div class="ui-body" style="overflow: hidden; white-space:nowrap">
+            <%= format_skill(skill, 1) %>
+        </div>
+    </div>
+    <% } %>
+    <% }); %>
+    <% }); %>
+</div>
+<div class="ui-grid-b ui-responsive">
+    <div class="ui-block-a">
+        <h4 class="ui-bar ui-bar-a ui-corner-all">Backgrounds</h4>
+        <% _.each(character.get("backgrounds"), function(background) { %>
+        <%= format_skill(background, 1) %>
+        <% if (background.get("name") == "Haven") { %>
+        <br/>&nbsp;&nbsp;<%= format_specializations("haven_specializations").join("<br/>&nbsp;&nbsp;") %>
+        <% } else if (background.get("name") == "Influences: The Elite") { %>
+        <br/>&nbsp;&nbsp;<%= format_specializations("influence_elite_specializations").join("<br/>&nbsp;&nbsp;") %>
+        <% } else if (background.get("name") == "Influences: The Underworld") { %>
+        <br/>&nbsp;&nbsp;<%= format_specializations("influence_underworld_specializations").join("<br/>&nbsp;&nbsp;") %>
+        <% } else if (background.get("name") == "Contacts") { %>
+        <br/>&nbsp;&nbsp;<%= format_specializations("contacts_specializations").join("<br/>&nbsp;&nbsp;") %>
+        <% } else if (background.get("name") == "Rituals") { %>
+        <br/>&nbsp;&nbsp;<%= format_specializations("sabbat_rituals").join("<br/>&nbsp;&nbsp;") %>
+        <% } else if (background.get("name") == "Allies") { %>
+        <br/>&nbsp;&nbsp;<%= format_specializations("allies_specializations").join("<br/>&nbsp;&nbsp;") %>
+        <% } %>
+        <br/>
+        <% }); %>
+    </div>
+    <div class="ui-block-b">
+        <h4 class="ui-bar ui-bar-a ui-corner-all">Disciplines</h4>
+        <% _.each(_.chain(character.get("disciplines")).sortBy("attributes.name").value(), function(d) { %>
+        <%= format_skill(d, 1) %><br/>
+        <% }); %>
+        <% if (character.has("techniques")) { %>
+        <h4 class="ui-bar ui-bar-a ui-corner-all">Techniques</h4>
+        <% _.each(_.chain(character.get("techniques")).sortBy("attributes.name").value(), function(d) { %>
+        <%= format_skill(d, 0) %><br/>
+        <% }); %>
+        <% } %>
+        <% if (character.has("elder_disciplines")) { %>
+        <h4 class="ui-bar ui-bar-a ui-corner-all">Elder Disciplines</h4>
+        <% _.each(_.chain(character.get("elder_disciplines")).sortBy("attributes.name").value(), function(d) { %>
+        <%= format_skill(d, 0) %><br/>
+        <% }); %>
+        <% } %>
+    </div>
+    <div class="ui-block-c">
+        <% if (character.has("merits")) { %>
+        <h4 class="ui-bar ui-bar-a ui-corner-all">Merits</h4>
+        <% _.each(character.get("merits"), function(d) { %>
+        <%= format_skill(d, 4) %><br/>
+        <% }); %>
+        <% } %>
+        <% if (character.has("flaws")) { %>
+        <h4 class="ui-bar ui-bar-a ui-corner-all">Flaws</h4>
+        <% _.each(character.get("flaws"), function(d) { %>
+        <%= format_skill(d, 4) %><br/>
+        <% }); %>
+        <% } %>
+        <% if (character.has("status_traits")) { %>
+        <h4 class="ui-bar ui-bar-a ui-corner-all">Status</h4>
+        <% _.each(character.get("status_traits"), function(d) { %>
+        <%= format_skill(d, 4) %><br/>
+        <% }); %>
+        <% } %>
+    </div>
+</div>
+<div class="ui-grid-b ui-responsive">
+    <div class="ui-block-a">
+        <% if (character.has("lore_specializations")) { %>
+        <h4 class="ui-bar ui-bar-a ui-corner-all">Lores</h4>
+        <%= format_specializations("lore_specializations").join("<br/>") %>
+        <% } %>
+        <% if (character.has("academics_specializations")) { %>
+        <h4 class="ui-bar ui-bar-a ui-corner-all">Academics</h4>
+        <%= format_specializations("academics_specializations").join("<br/>") %>
+        <% } %>
+    </div>
+    <div class="ui-block-b">
+        <% if (character.has("rituals")) { %>
+        <h4 class="ui-bar ui-bar-a ui-corner-all">Rituals</h4>
+        <%= format_specializations("rituals").join("<br/>") %>
+        <% } %>
+    </div>
+    <div class="ui-block-c">
+        <% if (character.has("linguistics_specializations")) { %>
+        <h4 class="ui-bar ui-bar-a ui-corner-all">Languages</h4>
+        <%= format_specializations("linguistics_specializations").join("<br/>") %>
+        <% } %>
+        <% if (character.has("drive_specializations")) { %>
+        <h4 class="ui-bar ui-bar-a ui-corner-all">Drive</h4>
+        <%= format_specializations("drive_specializations").join("<br/>") %>
+        <% } %>
+        <% if (character.has("vampiric_texts") && 0 != character.get("vampiric_texts").length) { %>
+        <h4 class="ui-bar ui-bar-a ui-corner-all">Texts</h4>
+        <%= format_specializations("vampiric_texts").join("<br/>") %>
+        <% } %>
+    </div>
+</div>

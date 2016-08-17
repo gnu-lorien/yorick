@@ -35,7 +35,7 @@
         // Add a script element as a child of the body
         function downloadJSAtOnload() {
             var element = document.createElement("script");
-            element.src = "scripts/lib/require.js";
+            element.src = "scripts/lib/require.js?bust=010101";
             element.setAttribute("data-main", "scripts/app");
             document.body.appendChild(element);
         }
@@ -905,6 +905,5 @@
     <button class="delete-character">Delete <%= character.get("name") %></button>
 </script>
 
-<!-- <script data-main="scripts/app" src="scripts/lib/require.js?bust=4"></script> -->
 </body>
 </html>

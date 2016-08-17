@@ -1,0 +1,1 @@
+define(["jquery","parse"],function(e,n){var r=n.Object.extend("VampireChange",{});return r});
