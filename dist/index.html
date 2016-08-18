@@ -14,7 +14,7 @@
         // Add a script element as a child of the body
         function downloadJSAtOnload() {
             var element = document.createElement("script");
-            element.src = "scripts/lib/require.js";
+            element.src = "scripts/lib/require.js?bust=0.7.7";
             element.setAttribute("data-main", "scripts/app");
             document.body.appendChild(element);
         }
@@ -131,7 +131,7 @@
                 <li><a href="#character/<%= character.id %>/delete">Delete Character</a></li>
             </ul>
         </div>
-    </div></script><div id="character-create" data-role="page" data-title="Create Character"><div role="main" class="ui-content">createodapage</div></div><div id="characters-all" data-role="page" data-title="Characters"><div role="main" class="ui-content"><ul><li><a href="#characternew">Add New Vampire</a></li></ul><form class="ui-filterable"><input id="characters-filter" data-type="search"></form><ul data-role="listview" data-inset="true" data-filter="true" data-input="#characters-filter"></ul></div><!-- /content --></div><div id="troupe-characters-all" data-role="page" data-title="Troupe Characters"><div role="main" class="ui-content"><form class="ui-filterable"><input id="troupes-characters-filter" data-type="search"></form><ul data-role="listview" data-inset="true" data-filter="true" data-input="#troupes-characters-filter"></ul></div><!-- /content --></div><div id="simpletraitcategory-all" data-role="page" data-title="SimpleTraitCategoryAll"><div role="main" class="ui-content"></div></div><script id="simpleTraitCategoryView" type="text/template"><ul>
+    </div></script><div id="character-create" data-role="page" data-title="Create Character"><div role="main" class="ui-content">createodapage</div></div><div id="characters-all" data-role="page" data-title="Characters"><div role="main" class="ui-content"><ul><li><a href="#characternew">Add New Vampire</a></li></ul><form class="ui-filterable"><input id="characters-filter" data-type="search"></form><ul data-role="listview" data-inset="true" data-filter="true" data-input="#characters-filter"></ul></div><!-- /content --></div><div id="troupe-characters-all" data-role="page" data-title="Troupe Characters"><div role="main" class="ui-content"><form class="ui-filterable"><input id="troupes-characters-filter" data-type="search"></form><ul data-role="listview" data-inset="true" data-filter="true" data-input="#troupes-characters-filter"></ul></div><!-- /content --></div><div id="troupe-summarize-characters-all" data-role="page" data-title="Troupe Characters"><div role="main" class="ui-content"><div id="sections"></div><form class="ui-filterable"><input id="troupes-summarize-characters-filter" data-type="search"></form><div id="troupe-summarize-characters-list"></div></div><!-- /content --></div><div id="simpletraitcategory-all" data-role="page" data-title="SimpleTraitCategoryAll"><div role="main" class="ui-content"></div></div><script id="simpleTraitCategoryView" type="text/template"><ul>
         <li><a href="#simpletraits/<%= category %>/<%= character.id %>/new">Add New <%= category %></a></li>
     </ul>
     <ul> <% if (character.has(category)) { _.each(character.get(category), function(e) { %> <li>
@@ -300,4 +300,4 @@
             <legend>Characters to display:</legend> <% _.each(characters, function (character, i) { %> <% var n = "checkbox-" + character.id || character.cid; %> <input type="checkbox" name="<%= n %>" id="<%= n %>">
             <label for="<%= n %>"><%= character.get("name") %></label> <% }) %> </fieldset>
     </div></script><div id="character-delete" data-role="page" data-title="Delete Character"><div role="main" class="ui-content"></div></div><script id="characterDeleteView" type="text/template"><h1>Are you sure you want to delete <%= character.get("name") %>?</h1>
-    <button class="delete-character">Delete <%= character.get("name") %></button></script><!-- <script data-main="scripts/app" src="scripts/lib/require.js?bust=4"></script> --></body></html>
+    <button class="delete-character">Delete <%= character.get("name") %></button></script></body></html>

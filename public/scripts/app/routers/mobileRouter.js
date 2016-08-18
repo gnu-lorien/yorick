@@ -1,6 +1,7 @@
 // Mobile Router
 // =============
 
+/* global _ */
 // Includes file dependencies
 define([
 	"jquery",
@@ -57,6 +58,7 @@ define([
     "../collections/Users",
     "../models/Patronage",
     "../helpers/UserWreqr",
+    "../views/CharactersSummarizeListView",
 ], function ($,
              Parse,
              pretty,
@@ -109,7 +111,8 @@ define([
              PatronageView,
              Users,
              Patronage,
-             UserChannel
+             UserChannel,
+             CharactersSummarizeListView
 ) {
 
     // Extends Backbone.Router
@@ -230,6 +233,7 @@ define([
             "troupe/:id/staff/add": "troupeaddstaff",
             "troupe/:id/staff/edit/:uid": "troupeeditstaff",
             "troupe/:id/characters/:type": "troupecharacters",
+            "troupe/:id/characters/summarize/:type": "troupesummarizecharacters",
             "troupe/:id/characters/relationships/network": "troupe_relationship_network",
             "troupe/:id/character/:cid": "troupe_character",
             "troupe/:id/portrait": "troupe_portrait",
@@ -701,6 +705,33 @@ define([
                 return Parse.Promise.as(self.troupeCharacters.collection);
             })
         },
+        
+        get_troupe_summarize_characters: function(troupe, collection) {
+            var self = this;
+            var c = [];
+            if (Parse.User.current().get("username") == "devuser") {
+                c.sortbycreated = true;
+            }
+            var p = Parse.Promise.as([]);
+            var q = new Parse.Query(Vampire);
+            q.equalTo("troupes", troupe);
+            q.include("portrait");
+            q.include("owner");
+            _.each(Vampire.all_simpletrait_categories(), function (e) {
+                q.include(e[0]);
+            });
+            $.mobile.loading("show", {text: "Fetching all characters", textVisible: true});
+            p = q.each(function (character) {
+                c.push(character);
+            }).then(function () {
+                $.mobile.loading("show", {text: "Updating local character list", textVisible: true});
+                collection.reset(c);
+            })
+            return p.done(function () {
+                $.mobile.loading("show", {text: "Transitioning", textVisible: true});
+                return Parse.Promise.as(collection);
+            })
+        },
 
         get_administrator_characters: function() {
             var self = this;
@@ -1055,6 +1086,24 @@ define([
                 self.troupeCharacters = self.troupeCharacters || new CharactersListView({el: "#troupe-characters-all", collection: new Vampires});
                 self.troupeCharacters.register("#troupe/" + id + "/character/<%= character_id %>");
                 $.mobile.changePage("#troupe-characters-all", {reverse: false, changeHash: false});
+            }).always(function() {
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
+        },
+        
+        troupesummarizecharacters: function(id, type) {
+            var self = this;
+            $.mobile.loading("show");
+            self.enforce_logged_in().then(function() {
+                self.set_back_button("#troupe/" + id);
+                var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
+                return get_troupe;
+            }).then(function (troupe, user) {
+                self.troupeSummarizeCharacters = self.troupeSummarizeCharacters || new CharactersSummarizeListView({collection: new Vampires}).setup();
+                self.troupeCharacters.register("#troupe/" + id + "/character/<%= character_id %>");
+                return self.get_troupe_summarize_characters(troupe, self.troupeSummarizeCharacters.collection);
+            }).then(function() {
+                $.mobile.changePage("#troupe-summarize-characters-all", {reverse: false, changeHash: false});
             }).always(function() {
                 $.mobile.loading("hide");
             }).fail(PromiseFailReport);
