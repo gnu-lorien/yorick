@@ -61,6 +61,7 @@ define([
             "click .troupe-add-staff": "addstaff",
             "click .troupe-view-characters": "viewcharacters",
             "click .troupe-view-character-relationships": "viewrelationships",
+            "click .troupe-view-summarize-characters": "viewsummarizecharacters",
         },
 
         addstaff: function (e) {
@@ -73,6 +74,12 @@ define([
             var self = this;
             e.preventDefault();
             window.location.hash = "#troupe/" + self.troupe.id + "/characters/all";
+        },
+        
+        viewsummarizecharacters: function (e) {
+            var self = this;
+            e.preventDefault();
+            window.location.hash = "#troupe/" + self.troupe.id + "/characters/summarize/all";
         },
 
         viewrelationships: function (e) {

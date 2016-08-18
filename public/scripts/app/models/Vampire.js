@@ -1152,6 +1152,38 @@ define([
         var name = "karmacharactertest" + nameappend + Math.random().toString(36).slice(2);
         return Model.create(name);
     };
+    
+    Model.all_simpletrait_categories = function () {
+        return [
+            ["attributes", "Attributes", "Attributes"],
+            ["focus_physicals", "Physical Focus", "Attributes"],
+            ["focus_mentals", "Mental Focus", "Attributes"],
+            ["focus_socials", "Social Focus", "Attributes"],
+            ["health_levels", "Health Levels", "Expended"],
+            ["willpower_sources", "Willpower", "Expended"],
+            ["skills", "Skills", "Skills"],
+            ["lore_specializations", "Lore Specializations", "Skills"],
+            ["academics_specializations", "Academics Specializations", "Skills"],
+            ["drive_specializations", "Drive Specializations", "Skills"],
+            ["linguistics_specializations", "Languages", "Skills"],
+            ["disciplines", "Disciplines", "Disciplines"],
+            ["techniques", "Techniques", "Disciplines"],
+            ["elder_disciplines", "Elder Disciplines", "Disciplines"],
+            ["rituals", "Rituals", "Disciplines"],
+            ["extra_in_clan_disciplines", "Extra In Clan Disciplines", "Disciplines"],
+            ["paths", "Path of Enlightenment/Humanity", "Morality"],
+            ["backgrounds", "Backgrounds", "Backgrounds"],
+            ["haven_specializations", "Haven Specializations", "Backgrounds"],
+            ["contacts_specializations", "Contacts Specializations", "Backgrounds"],
+            ["allies_specializations", "Allies Specializations", "Backgrounds"],
+            ["sabbat_rituals", "Sabbat Ritae", "Backgrounds"],
+            ["vampiric_texts", "Vampiric Texts", "Backgrounds"],
+            ["influence_elite_specializations", "Influence: Elite", "Backgrounds"],
+            ["influence_underworld_specializations", "Influence: Underworld", "Backgrounds"],
+            ["status_traits", "Sect Status", "Backgrounds"],
+            ["merits", "Merits", "Merits and Flaws"],
+            ["flaws", "Flaws", "Merits and Flaws"]];
+    };
 
 
     // Returns the Model class
