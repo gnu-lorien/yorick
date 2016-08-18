@@ -719,14 +719,16 @@ define([
             q.include("owner");
             _.each(Vampire.all_simpletrait_categories(), function (e) {
                 q.include(e[0]);
-            })
+            });
+            $.mobile.loading("show", {text: "Fetching all characters", textVisible: true});
             p = q.each(function (character) {
                 c.push(character);
-                }
             }).then(function () {
+                $.mobile.loading("show", {text: "Updating local character list", textVisible: true});
                 collection.reset(c);
             })
             return p.done(function () {
+                $.mobile.loading("show", {text: "Transitioning", textVisible: true});
                 return Parse.Promise.as(collection);
             })
         },
