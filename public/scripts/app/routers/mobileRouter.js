@@ -706,11 +706,8 @@ define([
             })
         },
         
-        get_troupe_summarize_characters: function(troupe, collection, options) {
+        get_troupe_summarize_characters: function(troupe, collection) {
             var self = this;
-            options = _.defaults({}, options, {
-                includedeleted: true,
-            });
             var c = [];
             if (Parse.User.current().get("username") == "devuser") {
                 c.sortbycreated = true;
@@ -724,14 +721,7 @@ define([
                 q.include(e[0]);
             })
             p = q.each(function (character) {
-                var shouldinclude = true;
-                if (!options.includedeleted) {
-                    if (!character.has("owner")) {
-                        shouldinclude = false;
-                    }
-                }
-                if (shouldinclude) {
-                    c.push(character);
+                c.push(character);
                 }
             }).then(function () {
                 collection.reset(c);
