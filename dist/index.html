@@ -14,7 +14,7 @@
         // Add a script element as a child of the body
         function downloadJSAtOnload() {
             var element = document.createElement("script");
-            element.src = "scripts/lib/require.js?bust=0.7.7";
+            element.src = "scripts/lib/require.js?bust=0.7.8";
             element.setAttribute("data-main", "scripts/app");
             document.body.appendChild(element);
         }
@@ -263,7 +263,8 @@
             or
         </div>
         <button id="signup-with-facebook">Sign up with Facebook</button>
-    </div></script><div id="simpletrait-specialization" data-role="page" data-title="Simple Trait Specialization"><div role="main" class="ui-content"></div></div><script id="simpleTraitSpecialization" type="text/template"><form>
+    </div></script><div id="simpletrait-specialization" data-role="page" data-title="Simple Trait Specialization"><div role="main" class="ui-content"></div></div><script id="simpleTraitSpecialization" type="text/template"><p><%= description.attributes.help_specialization %></p>
+    <form>
         <label for="specialization">Specialization for <%= name %>:</label>
         <input type="text" name="specialization" id="specialization" value="<%= specialization %>">
     </form>
