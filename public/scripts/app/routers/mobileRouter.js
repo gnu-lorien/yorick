@@ -1205,7 +1205,7 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.enforce_logged_in().then(function() {
-                self.set_back_button("#administration");
+                self.set_back_button("#");
                 self.troupesListView = self.troupesListView || new TroupesListView({el: "#troupes-list"}).render();
                 return self.troupesListView.register();
             }).then(function () {
