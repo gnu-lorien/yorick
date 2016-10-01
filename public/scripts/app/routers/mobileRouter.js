@@ -441,13 +441,14 @@ define([
             self.get_character(cid, [category]).then(function (character) {
                 return character.get_trait(category, stid);
             }).then(function (trait, character) {
-                self.simpleTraitSpecializationView.register(
+                return self.simpleTraitSpecializationView.register(
                     character,
                     trait,
                     category,
                     window.location.hash,
                     "#charactercreate/" + character.id
                 );
+            }).then(function () {
                 $.mobile.changePage("#simpletrait-specialization", {reverse: false, changeHash: false});
             }).fail(function(error) {
                 console.log(error.message);
@@ -879,13 +880,14 @@ define([
                 character = c;
                 return character.get_trait(category, bid);
             }).then(function (trait, character) {
-                self.simpleTraitSpecializationView.register(
+                return self.simpleTraitSpecializationView.register(
                     character,
                     trait,
                     category,
                     "#simpletraits/<%= self.category %>/<%= self.character.id %>/all",
                     "#simpletraits/<%= self.category %>/<%= self.character.id %>/all"
                 );
+            }).then(function () {
                 $.mobile.changePage("#simpletrait-specialization", {reverse: false, changeHash: false});
             }).fail(function(error) {
                 console.log(error.message);
