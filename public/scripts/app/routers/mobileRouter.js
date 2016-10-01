@@ -806,10 +806,14 @@ define([
             $("#header-logout-button").text("Log Out " + u.get("username"));
             self.footerTemplate = _.template(footer_html)();
             $('div[data-role="footer"] > div[data-role="navbar"]').html(self.footerTemplate).trigger('create');
-            trackJs.configure({
-                userId: u.get("username"),
-                sessionId: u.getSessionToken(),
-            })
+            if (typeof trackJs !== "undefined") {
+                trackJs.configure({
+                    userId: u.get("username"),
+                    sessionId: u.getSessionToken(),
+                });
+            } else {
+                console.log("Something is blocking trackJs. No user debugging available.");
+            }
             var adminq = (new Parse.Query(Parse.Role)).equalTo("users", Parse.User.current()).equalTo("name", "Administrator");
             var siteadminq = (new Parse.Query(Parse.Role)).equalTo("users", Parse.User.current()).equalTo("name", "SiteAdministrator");
             var q = Parse.Query.or(adminq, siteadminq);
