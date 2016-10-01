@@ -24,9 +24,10 @@ define([
         serverURL: "http://localhost:1337/parse",
         facebookAppId: "1607159299598020",
         redirect_uri: "http://localhost:63342/yorick/public/index.html",
-        SAMPLE_TROUPE_ID: "zCQcZnlFx5"
+        SAMPLE_TROUPE_ID: "k7zf9B7bwV"
     };
 
-    return ConfigGnuLorienDev;
+    //return ConfigGnuLorienDev;
+    return ConfigPatron;
 
 });

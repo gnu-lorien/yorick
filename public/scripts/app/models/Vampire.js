@@ -156,7 +156,7 @@ define([
                         "value": freeValue || value,
                         "category": category,
                         "owner": new TempVampire({id: self.id}),
-                        "free_value": freeValue
+                        "free_value": freeValue || 0
                     });
                 }
                 var cost = self.calculate_trait_cost(modified_trait);
@@ -325,33 +325,33 @@ define([
         all_simpletrait_categories: function () {
             return [
                 ["attributes", "Attributes", "Attributes"],
-                ["paths", "Path of Enlightenment/Humanity", "Morality"],
+                ["focus_physicals", "Physical Focus", "Attributes"],
+                ["focus_mentals", "Mental Focus", "Attributes"],
+                ["focus_socials", "Social Focus", "Attributes"],
                 ["health_levels", "Health Levels", "Expended"],
                 ["willpower_sources", "Willpower", "Expended"],
                 ["skills", "Skills", "Skills"],
-                ["focus_mentals", "Mental Focus", "Attributes"],
-                ["focus_physicals", "Physical Focus", "Attributes"],
-                ["focus_socials", "Social Focus", "Attributes"],
-                ["backgrounds", "Backgrounds", "Backgrounds"],
-                ["disciplines", "Disciplines", "Disciplines"],
-                ["techniques", "Techniques", "Disciplines"],
-                ["elder_disciplines", "Elder Disciplines", "Disciplines"],
-                ["flaws", "Flaws", "Merits and Flaws"],
-                ["merits", "Merits", "Merits and Flaws"],
-                ["haven_specializations", "Haven Specializations", "Backgrounds"],
                 ["lore_specializations", "Lore Specializations", "Skills"],
                 ["academics_specializations", "Academics Specializations", "Skills"],
                 ["drive_specializations", "Drive Specializations", "Skills"],
+                ["linguistics_specializations", "Languages", "Skills"],
+                ["disciplines", "Disciplines", "Disciplines"],
+                ["techniques", "Techniques", "Disciplines"],
+                ["elder_disciplines", "Elder Disciplines", "Disciplines"],
+                ["rituals", "Rituals", "Disciplines"],
+                ["extra_in_clan_disciplines", "Extra In Clan Disciplines", "Disciplines"],
+                ["paths", "Path of Enlightenment/Humanity", "Morality"],
+                ["backgrounds", "Backgrounds", "Backgrounds"],
+                ["haven_specializations", "Haven Specializations", "Backgrounds"],
                 ["contacts_specializations", "Contacts Specializations", "Backgrounds"],
                 ["allies_specializations", "Allies Specializations", "Backgrounds"],
-                ["rituals", "Rituals", "Disciplines"],
                 ["sabbat_rituals", "Sabbat Ritae", "Backgrounds"],
                 ["vampiric_texts", "Vampiric Texts", "Backgrounds"],
-                ["linguistics_specializations", "Languages", "Skills"],
                 ["influence_elite_specializations", "Influence: Elite", "Backgrounds"],
                 ["influence_underworld_specializations", "Influence: Underworld", "Backgrounds"],
                 ["status_traits", "Sect Status", "Backgrounds"],
-                ["extra_in_clan_disciplines", "Extra In Clan Disciplines", "Disciplines"]];
+                ["merits", "Merits", "Merits and Flaws"],
+                ["flaws", "Flaws", "Merits and Flaws"]];
         },
 
         unpick_from_creation: function(category, picked_trait_id, pick_index, wait) {
@@ -719,9 +719,11 @@ define([
             // Work around oddness due to cloning relationships
             // I have to change the parent and hope nothing is still set on them
             // Relations aren't cloned properly so it's the *same* damned relation
-            var theRelation = this.relation("troupes");
+            var mustFixBrokenRelation = !_.isUndefined(this.troupes);
             var c = this.clone();
-            theRelation.parent = null;
+            if (mustFixBrokenRelation) {
+                this.troupes.parent = null;
+            }
             var description = [];
 
             _.each(changes, function(change) {
@@ -873,8 +875,12 @@ define([
             var self = this;
             self.troupe_ids = [];
             if (_.isUndefined(self.troupes)) {
+                // Never been set up in the first place
                 self.troupes = self.relation("troupes");
                 self.troupes.targetClassName = "Troupe";
+            } else if (_.isNull(self.troupes.parent)) {
+                // Was trickily overwritten for the sake of get_transformed
+                self.troupes.parent = self;
             }
             var q = self.troupes.query();
             return q.each(function (troupe) {
@@ -1145,6 +1151,38 @@ define([
         var nameappend = nameappend || "";
         var name = "karmacharactertest" + nameappend + Math.random().toString(36).slice(2);
         return Model.create(name);
+    };
+    
+    Model.all_simpletrait_categories = function () {
+        return [
+            ["attributes", "Attributes", "Attributes"],
+            ["focus_physicals", "Physical Focus", "Attributes"],
+            ["focus_mentals", "Mental Focus", "Attributes"],
+            ["focus_socials", "Social Focus", "Attributes"],
+            ["health_levels", "Health Levels", "Expended"],
+            ["willpower_sources", "Willpower", "Expended"],
+            ["skills", "Skills", "Skills"],
+            ["lore_specializations", "Lore Specializations", "Skills"],
+            ["academics_specializations", "Academics Specializations", "Skills"],
+            ["drive_specializations", "Drive Specializations", "Skills"],
+            ["linguistics_specializations", "Languages", "Skills"],
+            ["disciplines", "Disciplines", "Disciplines"],
+            ["techniques", "Techniques", "Disciplines"],
+            ["elder_disciplines", "Elder Disciplines", "Disciplines"],
+            ["rituals", "Rituals", "Disciplines"],
+            ["extra_in_clan_disciplines", "Extra In Clan Disciplines", "Disciplines"],
+            ["paths", "Path of Enlightenment/Humanity", "Morality"],
+            ["backgrounds", "Backgrounds", "Backgrounds"],
+            ["haven_specializations", "Haven Specializations", "Backgrounds"],
+            ["contacts_specializations", "Contacts Specializations", "Backgrounds"],
+            ["allies_specializations", "Allies Specializations", "Backgrounds"],
+            ["sabbat_rituals", "Sabbat Ritae", "Backgrounds"],
+            ["vampiric_texts", "Vampiric Texts", "Backgrounds"],
+            ["influence_elite_specializations", "Influence: Elite", "Backgrounds"],
+            ["influence_underworld_specializations", "Influence: Underworld", "Backgrounds"],
+            ["status_traits", "Sect Status", "Backgrounds"],
+            ["merits", "Merits", "Merits and Flaws"],
+            ["flaws", "Flaws", "Merits and Flaws"]];
     };
 
 

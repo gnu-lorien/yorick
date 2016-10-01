@@ -7,8 +7,9 @@ define([
 	"backbone",
     "moment",
     "../models/VampireChange",
-    "../collections/VampireChangeCollection"
-], function( $, Backbone, moment, VampireChange, VampireChangeCollection) {
+    "../collections/VampireChangeCollection",
+    "../models/Vampire"
+], function( $, Backbone, moment, VampireChange, VampireChangeCollection, Vampire) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
@@ -57,7 +58,9 @@ define([
 
         events: {
             "click .previous": "previous",
-            "click .next": "next"
+            "click .next": "next",
+            "click .hackupdateowner": "hackupdateowner",
+            "click .hackdeleteoriginal": "hackdeleteoriginal"
         },
 
         previous: function() {
@@ -79,6 +82,61 @@ define([
             this.update_collection_query_and_fetch().then(function() {
                 $.mobile.loading("hide");
             })
+        },
+
+        hackupdateowner: function() {
+            var self = this;
+            var suspects = [];
+            var thisd = moment(new Date("Sat Jun 18 2016 09:27:53 GMT -400 (Eastern Daylight Time)"));
+            _.forEachRight(self.collection.models, function (vc, i) {
+                var ca = moment(vc.createdAt);
+                if (ca.isSame(thisd, 'day')) {
+                    suspects.push(vc);
+                }
+            });
+            self.collection.reset(suspects);
+            Vampire.get_character("RT8FXNL8P2").then(function (newOwner) {
+                _.each(suspects, function (s) {
+                    s.set("owner", newOwner);
+                });
+                return Parse.Object.saveAll(suspects);
+            }).then(function () {
+                console.log("Saved");
+            }).fail(function (error) {
+                console.error(error.message);
+            });
+            /*
+            Parse.Object.saveAll(suspects).then(function () {
+                console.log("Saved");
+            }).fail(function (error) {
+                console.error(error.message);
+            })
+            */
+        },
+
+        hackdeleteoriginal: function() {
+            var self = this;
+            var suspects = [];
+            var thisd = moment(new Date("Sat Jun 18 2016 09:27:53 GMT -400 (Eastern Daylight Time)"));
+            _.forEachRight(self.collection.models, function (vc, i) {
+                var ca = moment(vc.createdAt);
+                if (ca.isSame(thisd, 'day')) {
+                    suspects.push(vc);
+                }
+            });
+            self.collection.reset(suspects);
+            Parse.Object.destroyAll(suspects).then(function () {
+                console.log("Deleted");
+            }).fail(function (error) {
+                console.error(error.message);
+            });
+            /*
+            Parse.Object.saveAll(suspects).then(function () {
+                console.log("Saved");
+            }).fail(function (error) {
+                console.error(error.message);
+            })
+            */
         },
 
         update_collection_query_and_fetch: function () {

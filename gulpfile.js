@@ -5,7 +5,8 @@ var gulp = require('gulp'),
     uglify = require("gulp-uglify"),
     replace = require("gulp-replace"),
     clean = require("gulp-clean"),
-    debug = require("gulp-debug");
+    debug = require("gulp-debug"),
+    pjson = require('./package.json');
 
 gulp.task('clean', function () {
     return gulp.src('dist', {read: false})
@@ -53,8 +54,22 @@ gulp.task('siteconfig-patron', ['minify-js'], function () {
         .pipe(replace('return ConfigGnuLorienDev;', 'return ConfigPatron;'))
         .pipe(uglify({outSourceMap: true}))
         .pipe(gulp.dest('dist/scripts/app'));
+});
+
+gulp.task('appbust', ['minify-js'], function () {
+    return gulp.src('./public/scripts/app.js')
+        .pipe(replace('bust=010101', 'bust=' + pjson.version))
+        .pipe(uglify({outSourceMap: true}))
+        .pipe(gulp.dest('dist/scripts'));
+});
+
+gulp.task('indexbust', ['minify-html'], function () {
+    return gulp.src('./public/index.html')
+        .pipe(replace('require.js?bust=010101', 'require.js?bust=' + pjson.version))
+        .pipe(htmlmin({collapseWhitespace: true}))
+        .pipe(gulp.dest('dist'));
 })
 
-gulp.task('pubstorm', ['minify-html', 'copy-html-templates', 'minify-css', 'images', 'siteconfig-pubstorm']);
+gulp.task('pubstorm', ['minify-html', 'copy-html-templates', 'minify-css', 'images', 'siteconfig-pubstorm', 'appbust', 'indexbust']);
 
-gulp.task('patron', ['minify-html', 'copy-html-templates', 'minify-css', 'images', 'siteconfig-patron']);
+gulp.task('patron', ['minify-html', 'copy-html-templates', 'minify-css', 'images', 'siteconfig-patron', 'appbust', 'indexbust']);

@@ -35,7 +35,7 @@ define([
                 var a = Parse.history.loadUrl();
             }, function (error) {
                 console.log(JSON.stringify(error));
-                if (!_.isUndefined(trackJs))
+                if (typeof trackJs !== "undefined")
                     trackJs.console.error("Error in promise", JSON.stringify(error));
                 self.$(".login-form .error").html(_.escape(error.message)).show();
                 self.$(".login-form button").removeAttr("disabled");

@@ -35,7 +35,7 @@
         // Add a script element as a child of the body
         function downloadJSAtOnload() {
             var element = document.createElement("script");
-            element.src = "scripts/lib/require.js";
+            element.src = "scripts/lib/require.js?bust=010101";
             element.setAttribute("data-main", "scripts/app");
             document.body.appendChild(element);
         }
@@ -168,6 +168,11 @@
 
 <script id="characterView" type="text/template">
     <div id="insertheader"></div>
+    <div>
+        Earned XP: <%= character.get("experience_earned") %><br/>
+        Spent XP: <%= character.get("experience_spent") %><br/>
+        Available XP: <%= character.experience_available() %><br/>
+    </div>
     <div class="ui-grid-b ui-responsive">
         <div class="ui-block-a">
             <ul data-role="listview" data-inset="true"
@@ -212,9 +217,7 @@
     </ul>
     <% } %>
 
-    <% var sorted = _.sortBy(character.all_simpletrait_categories(), function(n) { %>
-        <% return n[2]; %>
-    <% }) %>
+    <% var sorted = character.all_simpletrait_categories() %>
     <% var heading = null; %>
     <div class="ui-grid-b ui-responsive">
     <% _.each(sorted, function(grouping) { %>
@@ -337,6 +340,17 @@
         </ul>
     </div><!-- /content -->
 </div>
+
+<div id="troupe-summarize-characters-all" data-role="page" data-title="Troupe Characters">
+    <div role="main" class="ui-content">
+        <div id="sections"></div>
+        <form class="ui-filterable">
+            <input id="troupes-summarize-characters-filter" data-type="search">
+        </form>
+        <div id="troupe-summarize-characters-list"></div>
+    </div><!-- /content -->
+</div>
+
 
 <div id="simpletraitcategory-all" data-role="page" data-title="SimpleTraitCategoryAll">
 
@@ -688,6 +702,7 @@
 </div>
 
 <script id="simpleTraitSpecialization" type="text/template">
+    <p><%= description.attributes.help_specialization %></p>
     <form>
         <label for="specialization">Specialization for <%= name %>:</label>
         <input type="text" name="specialization" id="specialization" value="<%= specialization %>">
@@ -707,6 +722,10 @@
     <h1><%= character.get("name") %></h1>
     <button class="previous ui-btn ui-btn-icon-left">Previous</button>
     <button class="next ui-btn ui-btn-icon-left">Next</button>
+    <!--
+    <button class="hackupdateowner ui-btn ui-btn-icon-left">HackUpdateOwner</button>
+    <button class="hackdeleteoriginal ui-btn ui-btn-icon-left">HackDeleteOriginal</button>
+    -->
     <% var headers = ["createdAt", "category", "name", "type", "old_value", "value", "old_free_value", "free_value", "old_cost", "cost", "old_text", "new_text"]; %>
     <table data-role="table" id="table-column-toggle" class="ui-responsive table-stroke">
         <thead>
@@ -887,6 +906,5 @@
     <button class="delete-character">Delete <%= character.get("name") %></button>
 </script>
 
-<!-- <script data-main="scripts/app" src="scripts/lib/require.js?bust=4"></script> -->
 </body>
 </html>

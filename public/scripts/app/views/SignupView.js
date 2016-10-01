@@ -56,7 +56,7 @@ define([
                 error: function(user, error) {
                     self.$(".signup-form .error").html(_.escape(error.message)).show();
                     self.$(".signup-form button").removeAttr("disabled");
-                    e.delegateEvents();
+                    self.delegateEvents();
                 }
             });
 

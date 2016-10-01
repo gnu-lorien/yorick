@@ -1,0 +1,23 @@
+"<%= e.get("name") %>","<%= e.get("sect") %>","<%= e.get("archetype") %>","<%= e.get("clan") %>",
+"<%= e.get("antecedence") %>","<%= e.get("faction") %>","<%= e.get("title") %>",
+    <% if (e.has("owner")) { %>
+    <% if (e.get("owner").get("username")) { %>
+        <% var user = e.get("owner"); %>
+"<%= user.get("realname") %>","<%= user.get("email") %>","<%= user.get("username") %>",
+    <% }} else { %>
+"","","",
+    <% } %>
+"<%= e.status() %>",
+    <% if (mode && e.get(mode) && e.get(mode).length != 0) { %>
+        <% var lookup = _(e.get(mode)).map(function (st) { %>
+            <% return [st.get("name"), st]; %>
+        <% }).zipObject().value(); %>
+        <% _.each(columnNames, function (cn) { %>
+            <% if (_.has(lookup, cn)) { %>
+                <% var st = _.get(lookup, cn); %>
+                "<%= st.get("name")%>","<%= st.get("value") %>",
+            <% } else { %>
+                "","",
+            <% } %>
+        <% }) %>
+    <% } %>

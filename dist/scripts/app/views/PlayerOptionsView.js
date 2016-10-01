@@ -1,0 +1,1 @@
+define(["jquery","backbone","text!../templates/player_options.html"],function(e,t,i){var n=t.View.extend({initialize:function(){_.bindAll(this,"render")},render:function(){return this.template=_.template(i)(),this.$el.find("div[role='main']").html(this.template),this.$el.enhanceWithin(),this}});return n});

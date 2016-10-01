@@ -1,0 +1,11 @@
+<% var u = user() %>
+<a href="#administration/patronage/<%= objectId %>" class="ui-btn ui-btn-icon-right ui-icon-carat-r" >
+    <% if (u) {%>
+    <h2><%= owner.objectId %> <%= u.get("username") %> <%= u.get("realname") %> <%= u.get("email") %></h2>
+    <% } else { %>
+    <h2><%= owner.objectId %> User object missing</h2>
+    <% } %>
+    <p>paidOn: <%= moment(paidOn.iso).format('MM/DD/YYYY') %></p>
+    <p>expiresOn: <%= moment(expiresOn.iso).format('MM/DD/YYYY') %></p>
+    <p><%= status() %></p>
+</a>

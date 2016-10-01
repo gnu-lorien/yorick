@@ -1,6 +1,7 @@
 // Mobile Router
 // =============
 
+/* global _ */
 // Includes file dependencies
 define([
 	"jquery",
@@ -57,6 +58,7 @@ define([
     "../collections/Users",
     "../models/Patronage",
     "../helpers/UserWreqr",
+    "../views/CharactersSummarizeListView",
 ], function ($,
              Parse,
              pretty,
@@ -109,7 +111,8 @@ define([
              PatronageView,
              Users,
              Patronage,
-             UserChannel
+             UserChannel,
+             CharactersSummarizeListView
 ) {
 
     // Extends Backbone.Router
@@ -230,6 +233,7 @@ define([
             "troupe/:id/staff/add": "troupeaddstaff",
             "troupe/:id/staff/edit/:uid": "troupeeditstaff",
             "troupe/:id/characters/:type": "troupecharacters",
+            "troupe/:id/characters/summarize/:type": "troupesummarizecharacters",
             "troupe/:id/characters/relationships/network": "troupe_relationship_network",
             "troupe/:id/character/:cid": "troupe_character",
             "troupe/:id/portrait": "troupe_portrait",
@@ -437,13 +441,14 @@ define([
             self.get_character(cid, [category]).then(function (character) {
                 return character.get_trait(category, stid);
             }).then(function (trait, character) {
-                self.simpleTraitSpecializationView.register(
+                return self.simpleTraitSpecializationView.register(
                     character,
                     trait,
                     category,
                     window.location.hash,
                     "#charactercreate/" + character.id
                 );
+            }).then(function () {
                 $.mobile.changePage("#simpletrait-specialization", {reverse: false, changeHash: false});
             }).fail(function(error) {
                 console.log(error.message);
@@ -669,8 +674,11 @@ define([
             })
         },
 
-        get_troupe_characters: function(troupe) {
+        get_troupe_characters: function(troupe, options) {
             var self = this;
+            options = _.defaults({}, options, {
+                includedeleted: false
+            });
             var c = [];
             if (Parse.User.current().get("username") == "devuser") {
                 c.sortbycreated = true;
@@ -681,12 +689,48 @@ define([
             q.include("portrait");
             q.include("owner");
             p = q.each(function (character) {
-                c.push(character);
+                var shouldinclude = true;
+                console.log(JSON.stringify(options));
+                if (!options.includedeleted) {
+                    if (!character.has("owner")) {
+                        shouldinclude = false;
+                    }
+                }
+                if (shouldinclude) {
+                    c.push(character);
+                }
             }).then(function () {
                 self.troupeCharacters.collection.reset(c);
             })
             return p.done(function () {
                 return Parse.Promise.as(self.troupeCharacters.collection);
+            })
+        },
+        
+        get_troupe_summarize_characters: function(troupe, collection) {
+            var self = this;
+            var c = [];
+            if (Parse.User.current().get("username") == "devuser") {
+                c.sortbycreated = true;
+            }
+            var p = Parse.Promise.as([]);
+            var q = new Parse.Query(Vampire);
+            q.equalTo("troupes", troupe);
+            q.include("portrait");
+            q.include("owner");
+            _.each(Vampire.all_simpletrait_categories(), function (e) {
+                q.include(e[0]);
+            });
+            $.mobile.loading("show", {text: "Fetching all characters", textVisible: true});
+            p = q.each(function (character) {
+                c.push(character);
+            }).then(function () {
+                $.mobile.loading("show", {text: "Updating local character list", textVisible: true});
+                collection.reset(c);
+            })
+            return p.done(function () {
+                $.mobile.loading("show", {text: "Transitioning", textVisible: true});
+                return Parse.Promise.as(collection);
             })
         },
 
@@ -763,10 +807,14 @@ define([
             $("#header-logout-button").text("Log Out " + u.get("username"));
             self.footerTemplate = _.template(footer_html)();
             $('div[data-role="footer"] > div[data-role="navbar"]').html(self.footerTemplate).trigger('create');
-            trackJs.configure({
-                userId: u.get("username"),
-                sessionId: u.getSessionToken(),
-            })
+            if (typeof trackJs !== "undefined") {
+                trackJs.configure({
+                    userId: u.get("username"),
+                    sessionId: u.getSessionToken(),
+                });
+            } else {
+                console.log("Something is blocking trackJs. No user debugging available.");
+            }
             var adminq = (new Parse.Query(Parse.Role)).equalTo("users", Parse.User.current()).equalTo("name", "Administrator");
             var siteadminq = (new Parse.Query(Parse.Role)).equalTo("users", Parse.User.current()).equalTo("name", "SiteAdministrator");
             var q = Parse.Query.or(adminq, siteadminq);
@@ -832,7 +880,14 @@ define([
                 character = c;
                 return character.get_trait(category, bid);
             }).then(function (trait, character) {
-                self.simpleTraitSpecializationView.register(character, trait, category);
+                return self.simpleTraitSpecializationView.register(
+                    character,
+                    trait,
+                    category,
+                    "#simpletraits/<%= self.category %>/<%= self.character.id %>/all",
+                    "#simpletraits/<%= self.category %>/<%= self.character.id %>/all"
+                );
+            }).then(function () {
                 $.mobile.changePage("#simpletrait-specialization", {reverse: false, changeHash: false});
             }).fail(function(error) {
                 console.log(error.message);
@@ -1047,6 +1102,24 @@ define([
                 $.mobile.loading("hide");
             }).fail(PromiseFailReport);
         },
+        
+        troupesummarizecharacters: function(id, type) {
+            var self = this;
+            $.mobile.loading("show");
+            self.enforce_logged_in().then(function() {
+                self.set_back_button("#troupe/" + id);
+                var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
+                return get_troupe;
+            }).then(function (troupe, user) {
+                self.troupeSummarizeCharacters = self.troupeSummarizeCharacters || new CharactersSummarizeListView({collection: new Vampires}).setup();
+                self.troupeCharacters.register("#troupe/" + id + "/character/<%= character_id %>");
+                return self.get_troupe_summarize_characters(troupe, self.troupeSummarizeCharacters.collection);
+            }).then(function() {
+                $.mobile.changePage("#troupe-summarize-characters-all", {reverse: false, changeHash: false});
+            }).always(function() {
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
+        },
 
         troupe_portrait: function(id) {
             var self = this;
@@ -1144,7 +1217,7 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.enforce_logged_in().then(function() {
-                self.set_back_button("#administration");
+                self.set_back_button("#");
                 self.troupesListView = self.troupesListView || new TroupesListView({el: "#troupes-list"}).render();
                 return self.troupesListView.register();
             }).then(function () {

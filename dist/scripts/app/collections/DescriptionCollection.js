@@ -1,0 +1,1 @@
+define(["jquery","parse","../models/Description"],function(e,n,o){var r=n.Collection.extend({model:o});return r});

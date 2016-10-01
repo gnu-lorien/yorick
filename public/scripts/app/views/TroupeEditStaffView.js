@@ -59,7 +59,7 @@ define([
                                 {label: "Lead Storyteller", value: "LST"},
                                 {label: "Assistant Storyteller", value: "AST"},
                                 {label: "Narrator", value: "Narrator"},
-                                {label: "Not on Staff", value: undefined}
+                                {label: "Not on Staff", value: "None"}
                             ]
                         },
                         {control: "spacer"},
@@ -88,7 +88,7 @@ define([
             var role = self.user.get("role");
             var roles_to_remove = _.slice(self.troupe.title_options),
                 roles_to_add = [];
-            if (!_.isUndefined(role)) {
+            if (role != "None") {
                 roles_to_add.push(role);
                 roles_to_remove = _.xor(roles_to_remove, roles_to_add);
             }

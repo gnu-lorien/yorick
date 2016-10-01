@@ -654,6 +654,7 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
         // Handles removing the only
     });
 
+    /*
     describe("A Vampire", function() {
         beforeAll(function (done) {
             ParseStart().then(function () {
@@ -817,6 +818,7 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "../mo
             })
         });
     });
+    */
 
     describe("A Troupe Member", function() {
         var vampire;

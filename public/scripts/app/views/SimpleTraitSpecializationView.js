@@ -5,7 +5,9 @@
 define([
 	"jquery",
 	"backbone",
-], function( $, Backbone ) {
+    "../models/Description",
+    "../collections/DescriptionCollection",
+], function( $, Backbone, Description, DescriptionCollection ) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend({
@@ -13,24 +15,15 @@ define([
         // The View Constructor
         initialize: function (options) {
             _.bindAll(this, "remove", "update_value", "save_clicked");
-
-            this.redirectRemove = options.redirectRemove || "#simpletraits/<%= self.category %>/<%= self.character.id %>/all";
-            this.redirectRemove = _.template(this.redirectRemove);
-            this.redirectSave = options.redirectSave || "#simpletraits/<%= self.category %>/<%= self.character.id %>/all";
-            this.redirectSave = _.template(this.redirectSave);
+            this.collection = new DescriptionCollection;
         },
 
         register: function (character, simpletrait, category, redirectRemove, redirectSave) {
             var self = this;
             var changed = false;
 
-            if (redirectRemove) {
-                this.redirectRemove = _.template(redirectRemove);
-            }
-
-            if (redirectSave) {
-                this.redirectSave = _.template(redirectSave);
-            }
+            this.redirectRemove = _.template(redirectRemove);
+            this.redirectSave = _.template(redirectSave);
 
             if (character !== self.character) {
                 if (self.character)
@@ -46,13 +39,21 @@ define([
 
             if (!_.isEqual(category, self.category)) {
                 self.category = category;
-                changed = true;
+                var q = new Parse.Query(Description);
+                q
+                    .equalTo("category", self.category)
+                    .startsWith("name", self.simpletrait.get_base_name())
+                    .addAscending(["order", "name"]);
+                self.collection.query = q;
+                return self.collection.fetch({reset: true}).then(function () {
+                    return self.render();
+                });
             }
 
             if (changed) {
-                return self.render();
+                return Parse.Promise.as(self.render());
             } else {
-                return self;
+                return Parse.Promise.as(self);
             }
         },
 
@@ -99,7 +100,8 @@ define([
             this.template = _.template( $( "script#simpleTraitSpecialization" ).html())({
                 "model": this.simpletrait,
                 "name": this.simpletrait.get_base_name(),
-                "specialization": this.simpletrait.get_specialization()
+                "specialization": this.simpletrait.get_specialization(),
+                "description": this.collection.first()
             } );
 
             // Renders the view's template inside of the current listview element
