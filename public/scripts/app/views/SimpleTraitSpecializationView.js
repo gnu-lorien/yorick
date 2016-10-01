@@ -13,24 +13,14 @@ define([
         // The View Constructor
         initialize: function (options) {
             _.bindAll(this, "remove", "update_value", "save_clicked");
-
-            this.redirectRemove = options.redirectRemove || "#simpletraits/<%= self.category %>/<%= self.character.id %>/all";
-            this.redirectRemove = _.template(this.redirectRemove);
-            this.redirectSave = options.redirectSave || "#simpletraits/<%= self.category %>/<%= self.character.id %>/all";
-            this.redirectSave = _.template(this.redirectSave);
         },
 
         register: function (character, simpletrait, category, redirectRemove, redirectSave) {
             var self = this;
             var changed = false;
 
-            if (redirectRemove) {
-                this.redirectRemove = _.template(redirectRemove);
-            }
-
-            if (redirectSave) {
-                this.redirectSave = _.template(redirectSave);
-            }
+            this.redirectRemove = _.template(redirectRemove);
+            this.redirectSave = _.template(redirectSave);
 
             if (character !== self.character) {
                 if (self.character)

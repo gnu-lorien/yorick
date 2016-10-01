@@ -875,7 +875,13 @@ define([
                 character = c;
                 return character.get_trait(category, bid);
             }).then(function (trait, character) {
-                self.simpleTraitSpecializationView.register(character, trait, category);
+                self.simpleTraitSpecializationView.register(
+                    character,
+                    trait,
+                    category,
+                    "#simpletraits/<%= self.category %>/<%= self.character.id %>/all",
+                    "#simpletraits/<%= self.category %>/<%= self.character.id %>/all"
+                );
                 $.mobile.changePage("#simpletrait-specialization", {reverse: false, changeHash: false});
             }).fail(function(error) {
                 console.log(error.message);
