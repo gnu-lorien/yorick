@@ -98,7 +98,7 @@ define([
             event.preventDefault();
             var id = self.$("#alterationpopupEdit #alteration-id").val();
             var n = _.parseInt(self.$("#alterationpopupEdit #alteration-input").val());
-            n = !_.isFinite(n) ? n : 0;
+            n = _.isFinite(n) ? n : 0;
             var en = self.collection.getByCid(id);
             var type = self.$("#alterationpopupEdit #alteration-type").val();
             en.set("alteration_" + type, n);
