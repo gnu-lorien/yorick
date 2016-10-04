@@ -12,7 +12,7 @@ define([
     "../views/PatronagesView",
     "../collections/Patronages",
     "text!../templates/user-settings-profile.html",
-    "text!../templates/test-paypal-button.html"
+    "text!../templates/paypal-button.html"
 ], function ($, Backbone, Parse, Backform, UserForm, profile_facebook_account_html, PromiseFailReport, InjectAuthData, Marionette, PatronagesView, Patronages, user_settings_profile_html, paypal_button_html) {
 
     var View = Marionette.ItemView.extend({
