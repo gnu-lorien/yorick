@@ -13,6 +13,9 @@
                 <% } %>
             </h2>
             <p><%= e.get("shortdescription") %></p>
+            <% if (_.trim(e.get("staffemail"))) { %>
+            <p><%= e.get("staffemail") %></p>
+            <% } %>
         </a>
     </li>
     <% }); %>
