@@ -136,7 +136,7 @@ var get_vampire_change_acl = function(vampire) {
 }
 
 Parse.Cloud.beforeSave("Vampire", function(request, response) {
-    var tracked_texts = ["clan", "state", "archetype", "faction", "title", "sect", "antecedence"];
+    var tracked_texts = ["name", "clan", "state", "archetype", "faction", "title", "sect", "antecedence"];
     var v = request.object;
     var desired_changes = _.intersection(tracked_texts, v.dirtyKeys());
     if (0 === desired_changes.length) {

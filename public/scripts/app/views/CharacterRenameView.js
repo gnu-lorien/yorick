@@ -15,7 +15,8 @@ define([
         
         initialize: function() {
             var view = this;
-            this.form = new Backform.Form.extend({
+            this.form = new Backform.Form({
+                el: this.$el,
                 model: new Backbone.Model(),
                 fields: [
                     {name: "name", label: "Character Name", control: "input"},
@@ -26,7 +27,8 @@ define([
                         e.preventDefault();
                         this.$('button[name=submit]').removeAttr("disabled");
                         var s = this.fields.get("submit");
-                        if ("success" == s.get("status")) {
+                        var daStatus = s.get("status");
+                        if ("success" == s.get("status") || !s.has("status")) {
                             s.set({status: "", message: "", disabled: false});
                             this.$el.enhanceWithin();
                         }
@@ -38,13 +40,8 @@ define([
                         self.undelegateEvents();
                         self.model.errorModel.clear();
 
-                        /*
-                        self.model.errorModel.set({"realname": "Refusing any real name whatsoever"});
-                        */
-
-                        InjectAuthData(self.model);
-
-                        self.model.save().then(function () {
+                        view.character.set("name", self.model.get("name"));
+                        view.character.save().then(function () {
                             self.fields.get("submit").set({status: "success", message: "Successfully Updated", disabled: true});
                             self.$el.enhanceWithin();
                         }, function (error) {
@@ -62,7 +59,6 @@ define([
         },
         
         onRender: function() {
-            this.form.setElement(this.$el);
             this.form.render();
             
             this.$el.enhanceWithin();
@@ -70,6 +66,7 @@ define([
         },
         
         register: function(character) {
+            this.character = character;
             this.form.model.set("name", character.get("name"));
             return this.render();
         }

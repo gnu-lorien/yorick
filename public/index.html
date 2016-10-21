@@ -30,7 +30,7 @@
     <script type="text/javascript">
         window._trackJs = {
             token: '8c029fff54d841498640d86379af7316',
-            enabled: !(window.location.host.indexOf('localhost') >= 0)
+            enabled: false,//!(window.location.host.indexOf('localhost') >= 0)
         };
         // Add a script element as a child of the body
         function downloadJSAtOnload() {
@@ -207,6 +207,12 @@
             <ul data-role="listview" data-inset="true"
                 class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
                 <li><a href="#character/<%= character.id %>/approved">Print Approved</a></li>
+            </ul>
+        </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true"
+                class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/rename">Rename</a></li>
             </ul>
         </div>
     </div>
@@ -772,6 +778,11 @@
     </div>
 </div>
 
+<div id="character-rename" data-role="page" data-title="Rename Character">
+    <div role="main" class="ui-content">
+        <form id="character-rename-main"></form>
+    </div>
+</div>
 
 <div id="user-settings-profile" data-role="page" data-title="Profile">
 </div>

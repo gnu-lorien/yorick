@@ -59,6 +59,7 @@ define([
     "../models/Patronage",
     "../helpers/UserWreqr",
     "../views/CharactersSummarizeListView",
+    "../views/CharacterRenameView",
 ], function ($,
              Parse,
              pretty,
@@ -112,7 +113,8 @@ define([
              Users,
              Patronage,
              UserChannel,
-             CharactersSummarizeListView
+             CharactersSummarizeListView,
+             CharacterRenameView
 ) {
 
     // Extends Backbone.Router
@@ -224,6 +226,7 @@ define([
             "character/:cid/troupe/:tid/leave": "character_leave_troupe",
             "character/:cid/troupe/:tid/show": "character_show_troupe",
             "character/:cid/approval": "characterapproval",
+            "character/:cid/rename": "characterrename",
 
             "character/:cid/experience/:start/:changeBy": "characterexperience",
 
@@ -374,6 +377,19 @@ define([
             }).fail(PromiseFailReport);
         },
 
+        characterrename: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid, "all").then(function (character) {
+                self.characterRenameView = self.characterRenameView || new CharacterRenameView({el: "#character-rename-main"});
+                return self.characterRenameView.register(character);
+            }).then(function () {
+                $.mobile.changePage("#character-rename", {reverse: false, changeHash: false});
+            }).always(function () {
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
+        },
 
         characterprint: function(cid) {
             var self = this;
