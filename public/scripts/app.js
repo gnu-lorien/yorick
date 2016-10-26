@@ -23,6 +23,7 @@ requirejs.config( {
 		hello: "hello",
 		marionette: "backbone.marionette",
 		"bootstrap-datepicker": "//cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.6.1/js/bootstrap-datepicker",
+		"url-search-params": "url-search-params.max.amd",
 
 		app: "../app"
 	},
