@@ -30,6 +30,13 @@ define([
 
             if (simpletrait !== self.simpletrait) {
                 self.simpletrait = simpletrait;
+                self.fauxtrait = new SimpleTrait({
+                    name: self.simpletrait.get("name"),
+                    value: self.simpletrait.get("value"),
+                    free_value: self.simpletrait.get("free_value"),
+                    cost: self.simpletrait.get("cost"),
+                    category: self.simpletrait.get("category")
+                })
                 changed = true;
             }
 
@@ -70,22 +77,22 @@ define([
         update_value: function(a, b, c) {
             var self = this;
             var v = this.$(a.target).val();
-            console.log("update value", self.category, self.simpletrait, this.$(a.target).val());
-            this.simpletrait.set("value", _.parseInt(this.$(a.target).val()));
+            console.log("update value", self.category, self.fauxtrait, this.$(a.target).val());
+            this.fauxtrait.set("value", _.parseInt(this.$(a.target).val()));
             self.render_view();
         },
 
         update_free_value: function(a, b, c) {
             var self = this;
             var v = this.$(a.target).val();
-            this.simpletrait.set("free_value", _.parseInt(this.$(a.target).val()));
+            this.fauxtrait.set("free_value", _.parseInt(this.$(a.target).val()));
             self.render_view();
         },
 
         update_specialty_name: function(a) {
             var self = this;
             var v = this.$(a.target).val();
-            self.simpletrait.set_specialization(this.$(a.target).val());
+            self.fauxtrait.set_specialization(this.$(a.target).val());
             self.render_view();
         },
 
@@ -94,9 +101,15 @@ define([
             e.preventDefault();
             $.mobile.loading("show");
             _.defer(function () {
-                console.log("save clicked", self.category, self.simpletrait);
-                self.character.update_trait(self.simpletrait).then(function (a, b, c) {
-                    console.log("asaved", self.category, self.simpletrait);
+                console.log("save clicked", self.category, self.fauxtrait);
+                self.character.update_trait(
+                    self.fauxtrait.get("name"),
+                    self.fauxtrait.get("value"),
+                    self.fauxtrait.get("category"),
+                    self.fauxtrait.get("free_value"),
+                    true
+                ).then(function (newtrait) {
+                    console.log("asaved", self.category, newtrait);
                     window.location.hash = "#simpletraits/" + self.category + "/" + self.character.id + "/all";
                 }, PromiseFailReport);
             });
@@ -107,8 +120,8 @@ define([
             this.view_template = _.template($("script#simpleTraitChangeView").html())({
                 "c": this.character,
                 "character": this.character,
-                "b": this.simpletrait,
-                "trait": this.simpletrait,
+                "b": this.fauxtrait,
+                "trait": this.fauxtrait,
             });
 
             this.$el.find("#simpletrait-viewing").html(this.view_template);
@@ -120,9 +133,9 @@ define([
             // Sets the view's template property
             this.template = _.template($("script#simpleTraitChangeChange").html())({
                 "c": this.character,
-                "b": this.simpletrait,
+                "b": this.fauxtrait,
                 "category": this.category,
-                "traitmax": this.character.max_trait_value(this.simpletrait),
+                "traitmax": this.character.max_trait_value(this.fauxtrait),
             });
 
             // Renders the view's template inside of the current listview element
