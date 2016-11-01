@@ -30,11 +30,11 @@ define([
             self.listenTo(self.character, "change:" + self.category, self.render);
         },
 
-        register: function(character, category, freeValue, redirect, filterRule, specializationRedirect) {
+        register: function(character, category, free_value, redirect, filterRule, specializationRedirect) {
             var self = this;
             var changed = false;
-            var redirect = redirect || "#simpletrait/<%= self.category %>/<%= self.character.id %>/<%= b.linkId() %>";
-            var specializationRedirect = specializationRedirect || "#simpletrait/specialize/<%= self.category %>/<%= self.character.id %>/<%= b.linkId() %>";
+            var redirect = redirect || "#simpletrait/spacer/<%= self.category %>/<%= self.character.id %>/<%= b.get('name') %>/<%= b.get('value') %>/<%= b.get('free_value') || 0 %>/new";
+            var specializationRedirect = specializationRedirect || "#simpletrait/specialize/<%= self.category %>/<%= self.character.id %>/<%= b.get('name') %>/<%= b.get('value') %>/<%= b.get('free_value') || 0 %>/new";
 
             if (redirect != _ && redirect != self.redirect) {
                 self.redirect = _.template(redirect);
@@ -50,8 +50,8 @@ define([
                 change = true;
             }
 
-            if (freeValue !== self.freeValue && freeValue != _) {
-                self.freeValue = freeValue;
+            if (free_value !== self.free_value && free_value != _) {
+                self.free_value = free_value;
                 changed = true;
             }
 
@@ -140,7 +140,7 @@ define([
                 "collection": descriptionItems,
                 "character": this.character,
                 "category": this.category,
-                "freeValue": this.freeValue
+                "free_value": this.free_value
             });
 
             // Renders the view's template inside of the current listview element
@@ -175,16 +175,19 @@ define([
             if (valueField) {
                 cost = valueField;
             }
+            
+            var trait = new SimpleTrait({
+                name: $(e.target).attr("name"),
+                value: cost,
+                category: self.category,
+                free_value: self.free_value
+            });
 
-            self.character.update_trait($(e.target).attr("name"), cost, self.category, self.freeValue).done(function(trait) {
-                if (_.contains(self.requireSpecializations, trait.get("name"))) {
-                    window.location.hash = self.specializationRedirect({self: self, b: trait});
-                } else {
-                    window.location.hash = self.redirect({self: self, b: trait});
-                }
-            }).fail(function (error) {
-                console.log(error.message);
-            })
+            if (_.contains(self.requireSpecializations, trait.get("name"))) {
+                window.location.hash = self.specializationRedirect({self: self, b: trait});
+            } else {
+                window.location.hash = self.redirect({self: self, b: trait});
+            }
 
             return false;
         }

@@ -60,6 +60,7 @@ define([
     "../helpers/UserWreqr",
     "../views/CharactersSummarizeListView",
     "../views/CharacterRenameView",
+    "../views/SimpleTraitNewSpecializationView"
 ], function ($,
              Parse,
              pretty,
@@ -114,7 +115,8 @@ define([
              Patronage,
              UserChannel,
              CharactersSummarizeListView,
-             CharacterRenameView
+             CharacterRenameView,
+             SimpleTraitNewSpecializationView
 ) {
 
     // Extends Backbone.Router
@@ -146,6 +148,7 @@ define([
             this.simpleTraitChangeView = new SimpleTraitChangeView({el: "#simpletrait-change"});
             this.simpleTextNewView = new SimpleTextNewView({el: "#simpletext-new"});
             this.simpleTraitSpecializationView = new SimpleTraitSpecializationView({el: "#simpletrait-specialization"});
+            this.simpleTraitNewSpecializationView = new SimpleTraitNewSpecializationView({el: "#simpletrait-new-specialization"});
 
             this.characterCreateView = new CharacterCreateView({el: "#character-create"});
             this.characterNewView = new CharacterNewView({el: "#character-new"});
@@ -200,6 +203,8 @@ define([
 
             "simpletrait/:category/:cid/:bid": "simpletrait",
             "simpletrait/specialize/:category/:cid/:bid": "simpletraitspecialize",
+            "simpletrait/spacer/:category/:cid/:name/:value/:free_value/new": "simpletraitnew",
+            "simpletrait/specialize/:category/:cid/:name/:value/:free_value/new": "simpletrait_new_specialize",
             
             "simpletext/:category/:target/:cid/pick": "simpletextpick",
 
@@ -905,6 +910,45 @@ define([
                 );
             }).then(function () {
                 $.mobile.changePage("#simpletrait-specialization", {reverse: false, changeHash: false});
+            }).fail(function(error) {
+                console.log(error.message);
+            });
+        },
+        
+        simpletraitnew: function(category, cid, name, value, free_value) {
+            var self = this;
+            self.set_back_button("#simpletraits/" + category + "/" + cid + "/all");
+            self.get_character(cid, [category]).then(function (character) {
+                var trait = new SimpleTrait({
+                    name: name,
+                    value: _.parseInt(value),
+                    free_value: _.parseInt(free_value),
+                    category: category,
+                });
+                self.simpleTraitChangeView.register(character, trait, category);
+                $.mobile.changePage("#simpletrait-change", {reverse: false, changeHash: false});
+            }).fail(function(error) {
+                console.log(error.message);
+            });
+        },
+
+        simpletrait_new_specialize: function(category, cid, name, value, free_value) {
+            var self = this;
+            self.set_back_button("#simpletraits/" + category + "/" + cid + "/all");
+            self.get_character(cid, [category]).then(function (character) {
+                var trait = new SimpleTrait({
+                    name: name,
+                    value: _.parseInt(value),
+                    free_value: _.parseInt(free_value)
+                })
+                return self.simpleTraitNewSpecializationView.register(
+                    trait,
+                    category,
+                    "#simpletraits/<%= self.category %>/" + cid + "/all",
+                    "#simpletrait/spacer/<%= self.category %>/" + cid + "/<%= b.get('name') %>/<%= b.get('value') %>/<%= b.get('free_value') %>/new"
+                );
+            }).then(function () {
+                $.mobile.changePage("#simpletrait-new-specialization", {reverse: false, changeHash: false});
             }).fail(function(error) {
                 console.log(error.message);
             });
