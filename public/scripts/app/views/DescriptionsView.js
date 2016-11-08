@@ -249,14 +249,26 @@ define([
             var self = this
             self.data.set("descriptiondata", formvalues.get("category"));
             var descriptions = [];
-            var q = new Parse.Query("Description").equalTo("category", formvalues.get("category"));
+            var q = new Parse.Query("Description");//.equalTo("category", formvalues.get("category"));
             return q.each(function (d) {
                 descriptions.push(_.omit(d.attributes, "ACL"));
             }).then(function () {
                 descriptions = _(descriptions)
                     .sortBy("order", "name")
                     .value();
-                self.data.set("descriptiondata", Papa.unparse(descriptions));
+                var all_fields = _(descriptions)
+                    .map(function (d) {
+                        return _.keys(d);
+                    })
+                    .tap(function(o) {
+                        console.log(o)
+                    })
+                    .flatten()
+                    .uniq()
+                    .value();
+                self.data.set("descriptiondata", Papa.unparse({
+                    fields: all_fields,
+                    data: descriptions}));
             }).fail(PromiseFailReport);
             
             this.$el.enhanceWithin();
