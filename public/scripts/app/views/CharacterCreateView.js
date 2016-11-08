@@ -5,74 +5,41 @@
 define([
 	"jquery",
 	"backbone",
-	"marionette",
-	"backform"
-], function( $, Backbone, Marionette, Backform ) {
+    "text!../templates/character-create-view.html"
+], function( $, Backbone, character_create_view_html ) {
 
-    var View = Marionette.ItemView.extend({
-        tagName: 'form',
-        template: _.template(""),
-        
+    // Extends Backbone.View
+    var View = Backbone.View.extend( {
+
+        // The View Constructor
         initialize: function() {
-            var view = this;
-            this.form = new Backform.Form.extend({
-                model: new Backbone.Model(),
-                fields: [
-                    {name: "name", label: "Character Name", control: "input"},
-                    {name: "submit", label: "Update", control: "button", disabled: true, id: "submit"}
-                ],
-                events: {
-                    "change": function (e) {
-                        e.preventDefault();
-                        this.$('button[name=submit]').removeAttr("disabled");
-                        var s = this.fields.get("submit");
-                        if ("success" == s.get("status")) {
-                            s.set({status: "", message: "", disabled: false});
-                            this.$el.enhanceWithin();
-                        }
-                    },
-                    "submit": function (e) {
-                        var self = this;
-                        e.preventDefault();
-                        $.mobile.loading("show");
-                        self.undelegateEvents();
-                        self.model.errorModel.clear();
+            _.bindAll(this, "scroll_back_after_page_change");
+        },
 
-                        /*
-                        self.model.errorModel.set({"realname": "Refusing any real name whatsoever"});
-                        */
-
-                        InjectAuthData(self.model);
-
-                        self.model.save().then(function () {
-                            self.fields.get("submit").set({status: "success", message: "Successfully Updated", disabled: true});
-                            self.$el.enhanceWithin();
-                        }, function (error) {
-                            self.fields.get("submit").set({status: "error", message: _.escape(error.message), disabled: false});
-                            self.$el.enhanceWithin();
-                        }).always(function () {
-                            $.mobile.loading("hide");
-                            self.delegateEvents();
-                        });
-
-                        return false;
-                    }
-                }
+        scroll_back_after_page_change: function() {
+            var self = this;
+            $(document).one("pagechange", function() {
+                var top = _.parseInt(self.backToTop);
+                $.mobile.silentScroll(top);
             });
         },
-        
-        onRender: function() {
-            this.form.setElement(this.$el);
-            this.form.render();
-            
+
+        // Renders all of the Category models on the UI
+        render: function() {
+
+            // Sets the view's template property
+            this.template = _.template(character_create_view_html)({ "character": this.model } );
+
+            // Renders the view's template inside of the current listview element
+            this.$el.find("div[role='main']").html(this.template);
+
             this.$el.enhanceWithin();
+
+            // Maintains chainability
             return this;
-        },
-        
-        register: function(character) {
-            this.form.model.set("name", character.get("name"));
-            return this.render();
+
         }
+
     } );
 
     // Returns the View class
