@@ -60,7 +60,8 @@ define([
     "../helpers/UserWreqr",
     "../views/CharactersSummarizeListView",
     "../views/CharacterRenameView",
-    "../views/SimpleTraitNewSpecializationView"
+    "../views/SimpleTraitNewSpecializationView",
+    "../views/CharacterCreateSimpleTraitNewView"
 ], function ($,
              Parse,
              pretty,
@@ -116,7 +117,8 @@ define([
              UserChannel,
              CharactersSummarizeListView,
              CharacterRenameView,
-             SimpleTraitNewSpecializationView
+             SimpleTraitNewSpecializationView,
+             CharacterCreateSimpleTraitNewView
 ) {
 
     // Extends Backbone.Router
@@ -149,6 +151,7 @@ define([
             this.simpleTextNewView = new SimpleTextNewView({el: "#simpletext-new"});
             this.simpleTraitSpecializationView = new SimpleTraitSpecializationView({el: "#simpletrait-specialization"});
             this.simpleTraitNewSpecializationView = new SimpleTraitNewSpecializationView({el: "#simpletrait-new-specialization"});
+            this.characterCreateSimpleTraitNewView = new CharacterCreateSimpleTraitNewView({el: "#character-create-simpletrait-new"});
 
             this.characterCreateView = new CharacterCreateView({el: "#character-create"});
             this.characterNewView = new CharacterNewView({el: "#character-new"});
@@ -441,7 +444,7 @@ define([
                 if ("disciplines" == category) {
                     specialCategory = "in clan disciplines";
                 }
-                self.simpleTraitNewView.register(
+                self.characterCreateSimpleTraitNewView.register(
                     c,
                     category,
                     i,
@@ -449,7 +452,7 @@ define([
                     specialCategory,
                     "#charactercreate/simpletraits/<%= self.category %>/<%= self.character.id %>/specialize/<%= b.linkId() %>/" + i);
                 self.characterCreateView.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
-                $.mobile.changePage("#simpletrait-new", {reverse: false, changeHash: false});
+                $.mobile.changePage("#character-create-simpletrait-new", {reverse: false, changeHash: false});
             });
         },
 
