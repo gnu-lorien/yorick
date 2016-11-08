@@ -61,7 +61,8 @@ define([
     "../views/CharactersSummarizeListView",
     "../views/CharacterRenameView",
     "../views/SimpleTraitNewSpecializationView",
-    "../views/CharacterCreateSimpleTraitNewView"
+    "../views/CharacterCreateSimpleTraitNewView",
+    "../views/DescriptionsView"
 ], function ($,
              Parse,
              pretty,
@@ -118,7 +119,8 @@ define([
              CharactersSummarizeListView,
              CharacterRenameView,
              SimpleTraitNewSpecializationView,
-             CharacterCreateSimpleTraitNewView
+             CharacterCreateSimpleTraitNewView,
+             DescriptionsView
 ) {
 
     // Extends Backbone.Router
@@ -259,6 +261,7 @@ define([
             "administration/patronage/:id": "administration_patronage",
             "administration/patronages/new": "administration_patronage_new",
             "administration/patronages/new/:userid": "administration_patronage_new",
+            "administration/descriptions": "administration_descriptions",
 
         },
 
@@ -664,6 +667,21 @@ define([
             }).fail(PromiseFailReport).fail(function () {
                 $.mobile.loading("hide");
             });
+        },
+
+        administration_descriptions: function() {
+            var self = this;
+            self.set_back_button("#administration");
+            $.mobile.loading("show");
+            self.enforce_logged_in().then(function () {
+                self.administrationDescriptionsView = self.administrationDescriptionsView ||
+                    new DescriptionsView().setup();
+                return self.administrationDescriptionsView.update_categories();
+            }).then(function () {
+                $.mobile.changePage("#administration-descriptions", {reverse: false, changeHash: false});
+            }).fail(function () {
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
         },
 
         characterdelete: function(cid) {
