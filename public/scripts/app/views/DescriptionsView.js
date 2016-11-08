@@ -9,8 +9,9 @@ define([
     "backform",
     "text!../templates/character-summarize-list-item-csv.html",
     "text!../templates/character-summarize-list-item-csv-header-grouped.html",
-    "../helpers/PromiseFailReport"
-], function( _, $, Backbone, character_summarize_list_item_html, Marionette, Vampire, Backform, character_summarize_list_item_csv_html, character_summarize_list_item_csv_header_grouped_html, PromiseFailReport ) {
+    "../helpers/PromiseFailReport",
+    "papaparse"
+], function( _, $, Backbone, character_summarize_list_item_html, Marionette, Vampire, Backform, character_summarize_list_item_csv_html, character_summarize_list_item_csv_header_grouped_html, PromiseFailReport, Papa ) {
 
     var PrettyView = Marionette.ItemView.extend({
         tagName: "li",
@@ -164,7 +165,55 @@ define([
                 label: "Descriptions",
                 control: "textarea"
             }
-        ]
+        ],
+        events: {
+            "submit": function(e) {
+                var self = this;
+                e.preventDefault();
+                var results = Papa.parse(self.model.get("descriptiondata"), {header: true});
+                console.log(results);               
+                if (0 != results.errors.length) {
+                    console.log(JSON.stringify(results.errors));
+                    return;
+                }
+                
+                var promises = _.map(results.data, function(d, i) {
+                    // Find any existing data that matches the category and name
+                    var q = new Parse.Query("Description")
+                        .equalTo("category", d.category)
+                        .equalTo("name", d.name);
+                    return q.first().then(function (toupdate) {
+                        // If found, use that as the update object
+                        // Otherwise create a new update object
+                        if (!toupdate) {
+                            toupdate = new Parse.Object("Description");
+                            console.log("Didn't find existing object for " + d.category + " " + d.name);
+                        } else {
+                            console.log("Found existing object for " + d.category + " " + d.name);
+                        }
+                        
+                        // Set the ACL to be writable by administrators
+                        var acl = new Parse.ACL;
+                        acl.setPublicReadAccess(true);
+                        acl.setPublicWriteAccess(false);
+                        acl.setRoleReadAccess("Administrator", true);
+                        acl.setRoleWriteAccess("Administrator", true);
+                        toupdate.setACL(acl);
+                        
+                        return Parse.Promise.as(toupdate);
+                    })
+                    // Return the promise so we can wait on them all
+                });
+                
+                Parse.Promise.when(promises).then(function() {
+                    console.log(JSON.stringify(arguments));
+                    return Parse.Object.saveAll(arguments);
+                }).then(function() {
+                    console.log("Saved all of that");
+                }).fail(PromiseFailReport);
+                // Wait on all of the promises and report back
+            }
+        }
     });
     
     var Form = Backform.Form.extend({
@@ -194,6 +243,7 @@ define([
         },
         childEvents: {
             "filterwith": "filterwith",
+            "submit": "submit"
         },
         filterwith: function (formvalues) {
             var self = this
@@ -201,13 +251,12 @@ define([
             var descriptions = [];
             var q = new Parse.Query("Description").equalTo("category", formvalues.get("category"));
             return q.each(function (d) {
-                descriptions.push(d);
+                descriptions.push(_.omit(d.attributes, "ACL"));
             }).then(function () {
                 descriptions = _(descriptions)
-                    .map("attributes")
                     .sortBy("order", "name")
                     .value();
-                self.data.set("descriptiondata", JSON.stringify(descriptions));
+                self.data.set("descriptiondata", Papa.unparse(descriptions));
             }).fail(PromiseFailReport);
             
             this.$el.enhanceWithin();
