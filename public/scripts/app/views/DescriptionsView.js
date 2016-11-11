@@ -186,7 +186,10 @@ define([
                         // If found, use that as the update object
                         // Otherwise create a new update object
                         if (!toupdate) {
-                            toupdate = new Parse.Object("Description");
+                            toupdate = new Parse.Object("Description", {
+                                name: d.name,
+                                category: d.category
+                            });
                             console.log("Didn't find existing object for " + d.category + " " + d.name);
                         } else {
                             console.log("Found existing object for " + d.category + " " + d.name);
@@ -200,6 +203,21 @@ define([
                         acl.setRoleWriteAccess("Administrator", true);
                         toupdate.setACL(acl);
                         
+                        var final = _.omit(d, function(key) {
+                            if (_.includes(["name", "category"], key)) {
+                                return true;
+                            }
+                            if ("" == key) {
+                                return true;
+                            }
+                            
+                            return false;
+                        })
+                        
+                        _.each(final, function(value, key) {
+                            toupdate.set(key, value);
+                        })
+                        console.log(toupdate.attributes);
                         return Parse.Promise.as(toupdate);
                     })
                     // Return the promise so we can wait on them all
@@ -249,7 +267,7 @@ define([
             var self = this
             self.data.set("descriptiondata", formvalues.get("category"));
             var descriptions = [];
-            var q = new Parse.Query("Description");//.equalTo("category", formvalues.get("category"));
+            var q = new Parse.Query("Description").equalTo("category", formvalues.get("category"));
             return q.each(function (d) {
                 descriptions.push(_.omit(d.attributes, "ACL"));
             }).then(function () {
