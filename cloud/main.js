@@ -143,7 +143,15 @@ Parse.Cloud.beforeSave("Vampire", function(request, response) {
         console.log("Saving vampire (" + v.id + ") and there are no changes we track here");
         return response.success();
     }
+    
+    var modified_vampire = request.object;
+    if (_.isUndefined(modified_vampire.id)) {
+        console.log("Creating a new vampire named " + request.object.get("name"));
+        return response.success();
+    }
+    
     // TODO: Update the history permissions if troupes has changed
+    
     var new_values = {};
     _.each(v.dirtyKeys(), function(k) {
         new_values[k] = v.get(k);
