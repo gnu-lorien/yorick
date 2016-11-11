@@ -265,14 +265,18 @@ define([
         },
         filterwith: function (formvalues) {
             var self = this
-            self.data.set("descriptiondata", formvalues.get("category"));
+            var q;
+            if (formvalues.get("category") == "All") {
+                q = new Parse.Query("Description");
+            } else {
+                q = new Parse.Query("Description").equalTo("category", formvalues.get("category"));
+            }
             var descriptions = [];
-            var q = new Parse.Query("Description").equalTo("category", formvalues.get("category"));
             return q.each(function (d) {
                 descriptions.push(_.omit(d.attributes, "ACL"));
             }).then(function () {
                 descriptions = _(descriptions)
-                    .sortBy("order", "name")
+                    .sortByAll(["category", "order", "name"])
                     .value();
                 var all_fields = _(descriptions)
                     .map(function (d) {
@@ -343,12 +347,16 @@ define([
                 console.log(categories);
                 var form = self.sections.currentView;
                 var firstSelect = form.fields.models[0];
-                firstSelect.set("options", _.map(categories, function(value, key) {
+                var so = _.map(categories, function(value, key) {
                     return {
                         label: key,
                         value: key
                     };
-                }));
+                });
+                so = _.sortBy(so, 'label');
+                so.push({label: "All", value: "All"});
+                
+                firstSelect.set("options", so);
                 return Parse.Promise.as(form.render());
             })
         }
