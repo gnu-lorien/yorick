@@ -6,69 +6,84 @@ define([
 	"jquery",
 	"backbone",
     "../models/Vampire",
-], function( $, Backbone, Vampire ) {
+    "backform"
+], function( $, Backbone, Vampire, Backform ) {
 
     // Extends Backbone.View
-    var View = Backbone.View.extend({
+    var View = Backform.Form.extend({
 
         // The View Constructor
         initialize: function (options) {
-            _.bindAll(this, "remove", "update_value", "save_clicked");
-
+            Backform.Form.prototype.initialize.apply(this, arguments);
+            
             this.redirectRemove = options.redirectRemove || "#characters?all";
             this.redirectRemove = _.template(this.redirectRemove);
-            this.redirectSave = options.redirectSave || "#character?<%= self.model.id %>";
+            this.redirectSave = options.redirectSave || "#character?<%= character.id %>";
             this.redirectSave = _.template(this.redirectSave);
         },
+        
+        model: new Backbone.Model(),
+        
+        errorModel: new Backbone.Model(),
 
+        fields: [
+            {
+                name: "name",
+                label: "Character Name",
+                control: "input"
+            },
+            {
+                name: "type",
+                label: "Venue",
+                control: "select",
+                options: [
+                    {label: "Vampire", value: "Vampire"},
+                    {label: "Werewolf", value: "Werewolf"}
+                ]
+            },
+            {
+                control: "Button",
+                label: "Create New Character"
+            }
+        ],
+        
         events: {
-            "click .cancel": "cancel",
-            "change": "update_value",
-            "click .save": "save_clicked",
             "submit": "save_clicked"
         },
-
-        cancel: function(a, b, c) {
+        
+        validate: function(attributes, options) {
             var self = this;
-            $.mobile.loading("show");
-            window.location.hash = self.redirectRemove({"self": self});
+            self.errorModel.clear();
+            
+            if (_.isEmpty(self.model.get("name"))) {
+                self.errorModel.set({name: "Name cannot be empty."});
+                return "Validation errors. Please fix.";
+            }
+        },
 
+        save_clicked: function(e) {
+            var self = this;
+            e.preventDefault();
+            if (self.validate()) {
+                return;
+            }
+            if (self.model.get("type") == "Vampire") {
+                $.mobile.loading("show");
+                Vampire.create(self.model.get("name")).then(function(populated_character) {
+                    window.location.hash = self.redirectSave({"character": populated_character});
+                }, function(error) {
+                    console.log("Failed to save a character", error.message);
+                })               
+            } else {
+                $.mobile.loading("show");
+                Vampire.create(self.model.get("name")).then(function(populated_character) {
+                    window.location.hash = self.redirectSave({"character": populated_character});
+                }, function(error) {
+                    console.log("Failed to save a character", error.message);
+                })               
+            }
+            
             return false;
-        },
-
-        update_value: function(a, b, c) {
-            var self = this;
-            var v = this.$(a.target).val();
-            this.model.set("name", v);
-        },
-
-        save_clicked: function(a, b, c) {
-            var self = this;
-            var v = self.$el.find('input[name="characterName"]').val();
-            $.mobile.loading("show");
-            Vampire.create(v).then(function(populated_character) {
-                self.model = populated_character;
-                window.location.hash = self.redirectSave({"self": self});
-            }, function(error) {
-                console.log("Failed to save a character", error.message);
-            })
-            return false;
-        },
-
-        // Renders all of the Category models on the UI
-        render: function() {
-
-            // Sets the view's template property
-            this.template = _.template( $( "script#characterNewView" ).html())({ "model": this.model } );
-
-            // Renders the view's template inside of the current listview element
-            this.$el.find("div[role='main']").html(this.template);
-
-            this.$el.enhanceWithin();
-
-            // Maintains chainability
-            return this;
-
         }
 
     } );

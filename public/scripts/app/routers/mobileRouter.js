@@ -156,7 +156,7 @@ define([
             this.characterCreateSimpleTraitNewView = new CharacterCreateSimpleTraitNewView({el: "#character-create-simpletrait-new"});
 
             this.characterCreateView = new CharacterCreateView({el: "#character-create"});
-            this.characterNewView = new CharacterNewView({el: "#character-new"});
+            this.characterNewView = new CharacterNewView({el: "#character-new-form"});
 
             this.characterPrintView = new CharacterPrintView({el: "#printable-sheet"});
             this.characterCostsView = new CharacterCostsView({el: "#character-costs"});
@@ -417,7 +417,6 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#characters?all");
-            self.characterNewView.model = new Vampire;
             self.characterNewView.render();
             $.mobile.changePage("#character-new", {reverse: false, changeHash: false});
         },
