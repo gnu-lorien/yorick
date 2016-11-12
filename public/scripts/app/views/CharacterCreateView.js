@@ -5,8 +5,9 @@
 define([
 	"jquery",
 	"backbone",
-    "text!../templates/character-create-view.html"
-], function( $, Backbone, character_create_view_html ) {
+    "text!../templates/character-create-view.html",
+    "text!../templates/werewolf-create-view.html"
+], function( $, Backbone, character_create_view_html , werewolf_create_view_html ) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
@@ -27,8 +28,11 @@ define([
         // Renders all of the Category models on the UI
         render: function() {
 
-            // Sets the view's template property
-            this.template = _.template(character_create_view_html)({ "character": this.model } );
+            if ("Werewolf" == this.model.get("type")) {
+                this.template = _.template(werewolf_create_view_html)({ "character": this.model } );
+            } else {
+                this.template = _.template(character_create_view_html)({ "character": this.model } );
+            }
 
             // Renders the view's template inside of the current listview element
             this.$el.find("div[role='main']").html(this.template);

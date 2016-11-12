@@ -134,12 +134,13 @@ define([
                         if (_.contains(traitNames, model.get("name"))) {
                             return false;
                         }
-                        _.each(_.range(1, 4), function (i) {
+                        return _.some(_.map(_.range(1, 4), function (i) {
                             if (_.contains(icd, model.get("affinity_" + i))) {
                                 return true;
+                            } else {
+                                return false;
                             }
-                        });
-                        return false;
+                        }));
                     })
                 }
                 descriptionItems = descriptionItems.value();

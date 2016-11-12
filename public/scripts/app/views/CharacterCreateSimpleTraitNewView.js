@@ -46,7 +46,11 @@ define([
             }
 
             if (self.filterRule !== filterRule) {
-                self.filterRule = filterRule;
+                if (_.isString(filterRule)) {
+                    self.filterRule = [filterRule];
+                } else {
+                    self.filterRule = filterRule;
+                }
                 change = true;
             }
 
@@ -111,7 +115,7 @@ define([
                 .without(self.requireSpecializations)
                 .value();
 
-            if ("in clan disciplines" == self.filterRule) {
+            if (_.contains(self.filterRule, "in clan disciplines")) {
                 var icd = _.without(self.character.get_in_clan_disciplines(), undefined);
                 descriptionItems = _.chain(self.collection.models);
                 if (0 != icd.length) {
@@ -126,7 +130,7 @@ define([
                     })
                 }
                 descriptionItems = descriptionItems.value();
-            } else if ("affinity" == self.filterRule) {
+            } else if (_.contains(self.filterRule, "affinity")) {
                 var icd = _.without(self.character.get_affinities(), undefined);
                 descriptionItems = _.chain(self.collection.models);
                 if (0 != icd.length) {
@@ -134,12 +138,13 @@ define([
                         if (_.contains(traitNames, model.get("name"))) {
                             return false;
                         }
-                        _.each(_.range(1, 4), function (i) {
+                        return _.some(_.map(_.range(1, 4), function (i) {
                             if (_.contains(icd, model.get("affinity_" + i))) {
                                 return true;
+                            } else {
+                                return false;
                             }
-                        });
-                        return false;
+                        }));
                     })
                 }
                 descriptionItems = descriptionItems.value();
@@ -150,6 +155,12 @@ define([
                     }
                     return false;
                 }).value();
+            }
+            
+            if (_.contains(self.filterRule, "show_only_value_1")) {
+                descriptionItems = _.select(descriptionItems, function (model) {
+                    return model.get("value") == 1;
+                });
             }
 
             // Sets the view's template property

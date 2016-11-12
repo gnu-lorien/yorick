@@ -448,7 +448,7 @@ define([
                 if ("disciplines" == category) {
                     specialCategory = "in clan disciplines";
                 } else if ("wta_gifts" == category) {
-                    specialCategory = "affinity"
+                    specialCategory = ["affinity", "show_only_value_1"];
                 }
                 self.characterCreateSimpleTraitNewView.register(
                     c,
