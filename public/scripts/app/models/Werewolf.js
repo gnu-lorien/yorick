@@ -12,12 +12,12 @@ define([
     "../collections/VampireChangeCollection",
     "../collections/ExperienceNotationCollection",
     "../models/ExperienceNotation",
-    "../helpers/BNSMETV1_VampireCosts",
+    "../helpers/BNSWTAV1_WerewolfCosts",
     "../helpers/PromiseFailReport",
     "../helpers/ExpirationMixin",
     "../helpers/UserWreqr",
     "../models/Character"
-], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSMETV1_VampireCosts, PromiseFailReport, ExpirationMixin, UserChannel, Character ) {
+], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSWTAV1_WerewolfCosts, PromiseFailReport, ExpirationMixin, UserChannel, Character ) {
 
     var ALL_SIMPLETRAIT_CATEGORIES = [
         ["attributes", "Attributes", "Attributes"],
@@ -177,12 +177,12 @@ define([
 
         calculate_trait_cost: function(trait) {
             var self = this;
-            return self.VampireCosts.calculate_trait_cost(self, trait);
+            return self.Costs.calculate_trait_cost(self, trait);
         },
 
         calculate_trait_to_spend: function(trait) {
             var self = this;
-            var new_cost = self.VampireCosts.calculate_trait_cost(self, trait);
+            var new_cost = self.Costs.calculate_trait_cost(self, trait);
             var old_cost = trait.get("cost") || 0;
             return new_cost - old_cost;
         },
@@ -220,11 +220,11 @@ define([
             return 20;
         },
 
-        initialize_vampire_costs: function() {
+        initialize_costs: function() {
             var self = this;
-            if (_.isUndefined(self.VampireCosts)) {
-                self.VampireCosts = new BNSMETV1_VampireCosts;
-                return self.VampireCosts.initialize().then(function () {
+            if (_.isUndefined(self.Costs)) {
+                self.Costs = new BNSWTAV1_WerewolfCosts;
+                return self.Costs.initialize().then(function () {
                     return Parse.Promise.as(self);
                 });
             }
@@ -292,7 +292,7 @@ define([
         }
         /* FIXME: Hack to inject something that should be created with the character */
         return character_cache._character.ensure_creation_rules_exist().then(function (c) {
-            return character_cache._character.initialize_vampire_costs();
+            return character_cache._character.initialize_costs();
         }).then(function (c) {
             return character_cache._character.initialize_troupe_membership();
         });
