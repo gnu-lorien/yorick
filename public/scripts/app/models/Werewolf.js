@@ -60,7 +60,7 @@ define([
                 }
             }
             /* FIXME Move to the creation model */
-            if (!_.contains(["flaws", "merits", "focus_mentals", "focus_physicals", "focus_socials", "attributes", "skills", "wta_gifts", "backgrounds"], category)) {
+            if (!_.contains(["wta_flaws", "wta_merits", "focus_mentals", "focus_physicals", "focus_socials", "attributes", "skills", "wta_gifts", "wta_backgrounds"], category)) {
                 return Parse.Promise.as(self);
             }
             return Parse.Object.fetchAllIfNeeded([self.get("creation")]).then(function (creations) {
@@ -68,7 +68,7 @@ define([
                 var stepName = category + "_" + freeValue + "_remaining";
                 var listName = category + "_" + freeValue + "_picks";
                 creation.addUnique(listName, modified_trait);
-                if (_.contains(["merits", "flaws"], category)) {
+                if (_.contains(["wta_merits", "wta_flaws"], category)) {
                     var sum = _.sum(creation.get(listName), "attributes.value");
                     creation.set(stepName, 7 - sum);
                 } else {
@@ -99,18 +99,18 @@ define([
                 "skills_3_remaining": 2,
                 "skills_2_remaining": 3,
                 "skills_1_remaining": 4,
-                "backgrounds_3_remaining": 1,
-                "backgrounds_2_remaining": 1,
-                "backgrounds_1_remaining": 1,
-                "gifts_1_remaining": 3,
+                "wta_backgrounds_3_remaining": 1,
+                "wta_backgrounds_2_remaining": 1,
+                "wta_backgrounds_1_remaining": 1,
+                "wta_gifts_1_remaining": 3,
                 "attributes_7_remaining": 1,
                 "attributes_5_remaining": 1,
                 "attributes_3_remaining": 1,
                 "focus_mentals_1_remaining": 1,
                 "focus_socials_1_remaining": 1,
                 "focus_physicals_1_remaining": 1,
-                "merits_0_remaining": 7,
-                "flaws_0_remaining": 7,
+                "wta_merits_0_remaining": 7,
+                "wta_flaws_0_remaining": 7,
                 "phase_1_finished": false,
                 "initial_xp": 30,
                 "phase_2_finished": false,
@@ -130,7 +130,7 @@ define([
             var self = this;
             return self.ensure_creation_rules_exist().then(function () {
                 var creation = self.get("creation");
-                var listCategories = ["flaws", "merits", "focus_mentals", "focus_physicals", "focus_socials", "attributes", "skills", "backgrounds", "wta_gifts"];
+                var listCategories = ["wta_flaws", "wta_merits", "focus_mentals", "focus_physicals", "focus_socials", "attributes", "skills", "wta_backgrounds", "wta_gifts"];
                 var objectIds = [];
                 _.each(listCategories, function(category) {
                     _.each(_.range(-1, 10), function(i) {
@@ -168,7 +168,7 @@ define([
         },
 
         rank: function() {
-            return this._raw_rank() || 1;
+            return this._raw_rank() || 0;
         },
 
         has_rank: function() {
