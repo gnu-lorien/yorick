@@ -62,7 +62,8 @@ define([
     "../views/CharacterRenameView",
     "../views/SimpleTraitNewSpecializationView",
     "../views/CharacterCreateSimpleTraitNewView",
-    "../views/DescriptionsView"
+    "../views/DescriptionsView",
+    "../models/Werewolf"
 ], function ($,
              Parse,
              pretty,
@@ -120,7 +121,8 @@ define([
              CharacterRenameView,
              SimpleTraitNewSpecializationView,
              CharacterCreateSimpleTraitNewView,
-             DescriptionsView
+             DescriptionsView,
+             Werewolf
 ) {
 
     // Extends Backbone.Router
@@ -445,6 +447,8 @@ define([
                 var specialCategory;
                 if ("disciplines" == category) {
                     specialCategory = "in clan disciplines";
+                } else if ("wta_gifts" == category) {
+                    specialCategory = "affinity"
                 }
                 self.characterCreateSimpleTraitNewView.register(
                     c,
@@ -896,8 +900,14 @@ define([
 
         _get_character: function(id, categories) {
             var self = this;
-            return Vampire.get_character(id, categories, self)
-                .then(self._check_character_mismatch);
+            var q = new Parse.Query("Vampire").select("type");
+            return q.get(id).then(function (c) {
+                if (c.get("type") == "Werewolf") {
+                    return Werewolf.get_character(id, categories, self);
+                } else {
+                    return Vampire.get_character(id, categories, self);
+                }
+            }).then(self._check_character_mismatch);
         },
 
         simpletrait: function(category, cid, bid) {

@@ -182,6 +182,7 @@ define([
                     var q = new Parse.Query("Description")
                         .equalTo("category", d.category)
                         .equalTo("name", d.name);
+                    var disguy;
                     return q.first().then(function (toupdate) {
                         // If found, use that as the update object
                         // Otherwise create a new update object
@@ -215,17 +216,26 @@ define([
                         })
                         
                         _.each(final, function(value, key) {
-                            toupdate.set(key, value);
+                            if (key == "order") {
+                                toupdate.set(key, _.parseInt(value));
+                            } else {
+                                toupdate.set(key, value);
+                            }
                         })
                         console.log(toupdate.attributes);
-                        return Parse.Promise.as(toupdate);
+                        disguy = " " + toupdate.id + " " + toupdate.attributes.name;
+                        return toupdate.save();
+                    }).fail(function (e) {
+                        console.log(e);
+                        console.log("Error on saving disguy?" + disguy);
                     })
                     // Return the promise so we can wait on them all
                 });
                 
                 Parse.Promise.when(promises).then(function() {
                     console.log(JSON.stringify(arguments));
-                    return Parse.Object.saveAll(arguments);
+                    console.log("Saved all of that");
+                    //return Parse.Object.saveAll(arguments);
                 }).then(function() {
                     console.log("Saved all of that");
                 }).fail(PromiseFailReport);

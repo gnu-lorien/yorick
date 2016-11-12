@@ -6,8 +6,9 @@ define([
 	"jquery",
 	"backbone",
     "../models/Vampire",
-    "backform"
-], function( $, Backbone, Vampire, Backform ) {
+    "backform",
+    "../models/Werewolf",
+], function( $, Backbone, Vampire, Backform, Werewolf ) {
 
     // Extends Backbone.View
     var View = Backform.Form.extend({
@@ -22,7 +23,10 @@ define([
             this.redirectSave = _.template(this.redirectSave);
         },
         
-        model: new Backbone.Model(),
+        model: new Backbone.Model({
+            name: "New Character Name",
+            type: "Vampire"
+        }),
         
         errorModel: new Backbone.Model(),
 
@@ -76,7 +80,7 @@ define([
                 })               
             } else {
                 $.mobile.loading("show");
-                Vampire.create(self.model.get("name")).then(function(populated_character) {
+                Werewolf.create(self.model.get("name")).then(function(populated_character) {
                     window.location.hash = self.redirectSave({"character": populated_character});
                 }, function(error) {
                     console.log("Failed to save a character", error.message);

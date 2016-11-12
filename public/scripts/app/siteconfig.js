@@ -27,7 +27,14 @@ define([
         SAMPLE_TROUPE_ID: "k7zf9B7bwV"
     };
 
-    //return ConfigGnuLorienDev;
-    return ConfigPatron;
+
+    var Config = {
+        serverURL: "https://yorick-undergroundtheater-gnu-lorien.c9users.io/parse",
+        redirect_uri: "https://yorick-undergroundtheater-gnu-lorien.c9users.io/index.html",
+        SAMPLE_TROUPE_ID: "zCQcZnlFx5"
+    };
+    
+    return Config;
+    //return ConfigPatron;
 
 });

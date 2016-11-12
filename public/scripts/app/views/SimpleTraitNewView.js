@@ -126,6 +126,23 @@ define([
                     })
                 }
                 descriptionItems = descriptionItems.value();
+            } else if ("affinity" == self.filterRule) {
+                var icd = _.without(self.character.get_affinities(), undefined);
+                descriptionItems = _.chain(self.collection.models);
+                if (0 != icd.length) {
+                    descriptionItems = descriptionItems.select(function (model) {
+                        if (_.contains(traitNames, model.get("name"))) {
+                            return false;
+                        }
+                        _.each(_.range(1, 4), function (i) {
+                            if (_.contains(icd, model.get("affinity_" + i))) {
+                                return true;
+                            }
+                        });
+                        return false;
+                    })
+                }
+                descriptionItems = descriptionItems.value();
             } else {
                 descriptionItems = _.chain(self.collection.models).select(function (model) {
                     if (!_.contains(traitNames, model.get("name"))) {

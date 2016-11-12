@@ -26,16 +26,14 @@ define([
         ["focus_socials", "Social Focus", "Attributes"],
         ["health_levels", "Health Levels", "Expended"],
         ["willpower_sources", "Willpower", "Expended"],
+        ["willpower_sources", "Gnosis", "Expended"],
         ["skills", "Skills", "Skills"],
         ["lore_specializations", "Lore Specializations", "Skills"],
         ["academics_specializations", "Academics Specializations", "Skills"],
         ["drive_specializations", "Drive Specializations", "Skills"],
         ["linguistics_specializations", "Languages", "Skills"],
-        ["disciplines", "Disciplines", "Disciplines"],
-        ["techniques", "Techniques", "Disciplines"],
-        ["elder_disciplines", "Elder Disciplines", "Disciplines"],
-        ["rituals", "Rituals", "Disciplines"],
-        ["extra_in_clan_disciplines", "Extra In Clan Disciplines", "Disciplines"],
+        ["wta_gifts", "Gifts", "Gifts"],
+        ["extra_affinity_links", "Extra Affinities", "Gifts"]
         ["paths", "Path of Enlightenment/Humanity", "Morality"],
         ["backgrounds", "Backgrounds", "Backgrounds"],
         ["haven_specializations", "Haven Specializations", "Backgrounds"],
@@ -45,12 +43,12 @@ define([
         ["vampiric_texts", "Vampiric Texts", "Backgrounds"],
         ["influence_elite_specializations", "Influence: Elite", "Backgrounds"],
         ["influence_underworld_specializations", "Influence: Underworld", "Backgrounds"],
-        ["status_traits", "Sect Status", "Backgrounds"],
+        ["monikers", "Monikers", "Backgrounds"],
         ["merits", "Merits", "Merits and Flaws"],
         ["flaws", "Flaws", "Merits and Flaws"]
     ];
     
-    var TEXT_ATTRIBUTES = ["clan", "archetype", "sect", "faction", "title", "antecedence"];
+    var TEXT_ATTRIBUTES = ["archetype", "wta_breed", "wta_auspice", "wta_tribe", "wta_camp", "wta_faction", "antecedence"];
     
     // The Model constructor
     var instance_methods = _.extend({
@@ -62,7 +60,7 @@ define([
                 }
             }
             /* FIXME Move to the creation model */
-            if (!_.contains(["flaws", "merits", "focus_mentals", "focus_physicals", "focus_socials", "attributes", "skills", "disciplines", "backgrounds"], category)) {
+            if (!_.contains(["flaws", "merits", "focus_mentals", "focus_physicals", "focus_socials", "attributes", "skills", "wta_gifts", "backgrounds"], category)) {
                 return Parse.Promise.as(self);
             }
             return Parse.Object.fetchAllIfNeeded([self.get("creation")]).then(function (creations) {
@@ -104,8 +102,7 @@ define([
                 "backgrounds_3_remaining": 1,
                 "backgrounds_2_remaining": 1,
                 "backgrounds_1_remaining": 1,
-                "disciplines_2_remaining": 1,
-                "disciplines_1_remaining": 2,
+                "gifts_1_remaining": 3,
                 "attributes_7_remaining": 1,
                 "attributes_5_remaining": 1,
                 "attributes_3_remaining": 1,
@@ -133,7 +130,7 @@ define([
             var self = this;
             return self.ensure_creation_rules_exist().then(function () {
                 var creation = self.get("creation");
-                var listCategories = ["flaws", "merits", "focus_mentals", "focus_physicals", "focus_socials", "attributes", "skills", "backgrounds", "disciplines"];
+                var listCategories = ["flaws", "merits", "focus_mentals", "focus_physicals", "focus_socials", "attributes", "skills", "backgrounds", "wta_gifts"];
                 var objectIds = [];
                 _.each(listCategories, function(category) {
                     _.each(_.range(-1, 10), function(i) {
@@ -157,12 +154,12 @@ define([
         all_text_attributes: function() {
             return TEXT_ATTRIBUTES;
         },
-        
-        _raw_generation: function() {
+ 
+        _raw_rank: function() {
             var self = this;
             var generation;
             _.each(self.get("backgrounds"), function(b) {
-                if (b.get_base_name() == "Generation") {
+                if (b.get_base_name() == "Rank") {
                     generation = b.get("value");
                 }
             });
@@ -170,37 +167,12 @@ define([
             return generation;
         },
 
-        generation: function() {
-            return this._raw_generation() || 1;
+        rank: function() {
+            return this._raw_rank() || 1;
         },
 
-        has_generation: function() {
-            return !_.isUndefined(this._raw_generation());
-        },
-
-        morality_merit: function() {
-            var self = this;
-            var morality = "Humanity";
-            _.each(self.get("merits"), function (m) {
-                if (_.startsWith(m.get("name"), "Path of")) {
-                    var words = _.words(m.get("name"));
-                    morality = _.slice(words, 2);
-                    morality = morality.join(" ");
-                }
-            });
-            return morality;
-        },
-
-        morality: function() {
-            var self = this;
-            if (!self.has("paths")) {
-                return new SimpleTrait;
-            }
-            var p = self.get("paths")[0];
-            if (!p) {
-                return new SimpleTrait({'name': "Humanity", "value": 1});
-            }
-            return p;
+        has_rank: function() {
+            return !_.isUndefined(this._raw_rank());
         },
 
         calculate_trait_cost: function(trait) {
@@ -220,12 +192,9 @@ define([
             var current_categories = [
                 "skills",
                 "backgrounds",
-                "disciplines",
+                "gifts",
                 "attributes",
-                "merits",
-                "rituals",
-                "techniques",
-                "elder_disciplines",
+                "merits"
                 ];
             var response = {};
             var objectIds = _.chain(current_categories).map(function(category) {
@@ -262,9 +231,15 @@ define([
             return Parse.Promise.as(self);
         },
         
-        get_in_clan_disciplines: function() {
+        get_affinities: function() {
             var self = this;
-            return self.VampireCosts.get_in_clan_disciplines(self);
+            var affinities = [
+                self.get("wta_tribe"),
+                self.get("wta_auspice"),
+                self.get("wta_breed"),
+            ];
+            affinities = _.without(affinities, undefined);
+            return affinities;
         },
     }, ExpirationMixin );
     
@@ -286,7 +261,7 @@ define([
             q.include("portrait");
             q.include("owner");
             q.include("backgrounds");
-            q.include("extra_in_clan_disciplines");
+            q.include("extra_affinity_links");
             return q.get(id).then(function(m) {
                 character_cache._character = m;
                 return Model.get_character(id, categories, character_cache);
@@ -346,6 +321,7 @@ define([
         return UserChannel.get_latest_patronage(Parse.User.current()).then(function (patronage) {
             var changes = {
                 name: name,
+                type: "Werewolf",
                 owner: Parse.User.current(),
                 change_count: 0
             };
@@ -388,7 +364,7 @@ define([
     Model.all_simpletrait_categories = function () {
         return ALL_SIMPLETRAIT_CATEGORIES;
     };
-    
+
     Model.all_text_attributes = function () {
         return TEXT_ATTRIBUTES;
     };

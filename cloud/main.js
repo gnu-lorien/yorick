@@ -533,8 +533,8 @@ Parse.Cloud.define("submit_facebook_profile_data", function(request, response) {
 });
 
 Parse.Cloud.define("make_me_admin", function(request, response) {
-    (new Parse.Query(Parse.Role)).equalTo("name", "SiteAdministrator").first().then(function (role) {
-        role.getUsers().add(new Parse.User({id: "KE09Xe9Z8i"}));
+    (new Parse.Query(Parse.Role)).equalTo("name", "Administrator").first().then(function (role) {
+        role.getUsers().add(new Parse.User({id: "b9VFx9QiZj"}));
         return role.save({}, {useMasterKey: true});
     }).then(function (s) {
         response.success(s.id);
