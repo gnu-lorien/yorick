@@ -20,18 +20,20 @@ define([
         redirect_uri: "http://localhost/index.html"
     };
 
-    var ConfigOldGnuLorienDev = {
+    var ConfigGnuLorienLocalhost = {
         serverURL: "http://localhost:1337/parse",
         facebookAppId: "1607159299598020",
         redirect_uri: "http://localhost:63342/yorick/public/index.html",
         SAMPLE_TROUPE_ID: "k7zf9B7bwV"
     };
 
-    var ConfigGnuLorienDev = {
+    var ConfigC9 = {
         serverURL: "https://yorick-undergroundtheater-gnu-lorien.c9users.io/parse",
         redirect_uri: "https://yorick-undergroundtheater-gnu-lorien.c9users.io/index.html",
         SAMPLE_TROUPE_ID: "zCQcZnlFx5"
     };
+    
+    var ConfigGnuLorienDev = ConfigC9;
     
     return ConfigGnuLorienDev;
 
