@@ -56,7 +56,7 @@ define([
             "click .remove": "remove",
             "change .value-slider": "update_value",
             "change .free-slider": "update_free_value",
-            "change .experience-modifier-slider": "update_experience_modifier_value",
+            "change .cost-modifier-slider": "update_experience_modifier_value",
             "change #specialize-name": "update_specialty_name",
             "change #experience-type-select": "update_experience_type",
             "click .save": "save_clicked"
@@ -94,7 +94,7 @@ define([
         update_experience_modifier_value: function(a, b, c) {
             var self = this;
             var v = this.$(a.target).val();
-            this.fauxtrait.set("experience_cost_modifier", _.parseInt(this.$(a.target).val()));
+            this.fauxtrait.set("experience_cost_modifier", _.parseInt(v));
             self.render_view();
         },
 
