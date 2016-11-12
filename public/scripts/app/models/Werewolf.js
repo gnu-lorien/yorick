@@ -26,7 +26,7 @@ define([
         ["focus_socials", "Social Focus", "Attributes"],
         ["health_levels", "Health Levels", "Expended"],
         ["willpower_sources", "Willpower", "Expended"],
-        ["willpower_sources", "Gnosis", "Expended"],
+        ["wta_gnosis_sources", "Gnosis", "Expended"],
         ["skills", "Skills", "Skills"],
         ["lore_specializations", "Lore Specializations", "Skills"],
         ["academics_specializations", "Academics Specializations", "Skills"],
@@ -34,18 +34,15 @@ define([
         ["linguistics_specializations", "Languages", "Skills"],
         ["wta_gifts", "Gifts", "Gifts"],
         ["extra_affinity_links", "Extra Affinities", "Gifts"],
-        ["paths", "Path of Enlightenment/Humanity", "Morality"],
-        ["backgrounds", "Backgrounds", "Backgrounds"],
-        ["haven_specializations", "Haven Specializations", "Backgrounds"],
+        ["wta_backgrounds", "Backgrounds", "Backgrounds"],
+        ["wta_territory_specializations", "Territory Specializations", "Backgrounds"],
         ["contacts_specializations", "Contacts Specializations", "Backgrounds"],
         ["allies_specializations", "Allies Specializations", "Backgrounds"],
-        ["sabbat_rituals", "Sabbat Ritae", "Backgrounds"],
-        ["vampiric_texts", "Vampiric Texts", "Backgrounds"],
         ["influence_elite_specializations", "Influence: Elite", "Backgrounds"],
         ["influence_underworld_specializations", "Influence: Underworld", "Backgrounds"],
-        ["monikers", "Monikers", "Backgrounds"],
-        ["merits", "Merits", "Merits and Flaws"],
-        ["flaws", "Flaws", "Merits and Flaws"]
+        ["wta_monikers", "Monikers", "Backgrounds"],
+        ["wta_merits", "Merits", "Merits and Flaws"],
+        ["wta_flaws", "Flaws", "Merits and Flaws"]
     ];
     
     var TEXT_ATTRIBUTES = ["archetype", "wta_breed", "wta_auspice", "wta_tribe", "wta_camp", "wta_faction", "antecedence"];
@@ -54,7 +51,7 @@ define([
     var instance_methods = _.extend({
         _update_creation: function(category, modified_trait, freeValue) {
             var self = this;
-            if (!_.contains(["merits", "flaws"], category)) {
+            if (!_.contains(["wta_merits", "wta_flaws"], category)) {
                 if (!freeValue) {
                     return Parse.Promise.as(self);
                 }
@@ -335,9 +332,6 @@ define([
             return Model.get_character(v.id);
         }).then(function (vampire) {
             populated_character = vampire;
-            progress("Adding Humanity");
-            return populated_character.update_trait("Humanity", 5, "paths", 5, true);
-        }).then(function () {
             progress("Adding Healthy");
             return populated_character.update_trait("Healthy", 3, "health_levels", 3, true);
         }).then(function () {
