@@ -56,7 +56,9 @@ define([
             "click .remove": "remove",
             "change .value-slider": "update_value",
             "change .free-slider": "update_free_value",
+            "change .experience-modifier-slider": "update_experience_modifier_value",
             "change #specialize-name": "update_specialty_name",
+            "change #experience-type-select": "update_experience_type",
             "click .save": "save_clicked"
         },
 
@@ -88,11 +90,32 @@ define([
             this.fauxtrait.set("free_value", _.parseInt(this.$(a.target).val()));
             self.render_view();
         },
+        
+        update_experience_modifier_value: function(a, b, c) {
+            var self = this;
+            var v = this.$(a.target).val();
+            this.fauxtrait.set("experience_cost_modifier", _.parseInt(this.$(a.target).val()));
+            self.render_view();
+        },
 
         update_specialty_name: function(a) {
             var self = this;
             var v = this.$(a.target).val();
             self.fauxtrait.set_specialization(this.$(a.target).val());
+            self.render_view();
+        },
+        
+        update_experience_type: function(a) {
+            var self = this;
+            var elem = this.$(a.target)[0];
+            var v = elem.options[elem.selectedIndex].value;
+            if ("automatic" == v) {
+                v = undefined;
+            }
+            self.fauxtrait.set("experience_cost_type", v);
+            if (!_.isFinite(self.fauxtrait.get("experience_cost_modifier"))) {
+                self.fauxtrait.set("experience_cost_modifier", 1);
+            }
             self.render_view();
         },
 
