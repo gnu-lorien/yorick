@@ -33,7 +33,7 @@ define([
         ["drive_specializations", "Drive Specializations", "Skills"],
         ["linguistics_specializations", "Languages", "Skills"],
         ["wta_gifts", "Gifts", "Gifts"],
-        ["extra_affinity_links", "Extra Affinities", "Gifts"]
+        ["extra_affinity_links", "Extra Affinities", "Gifts"],
         ["paths", "Path of Enlightenment/Humanity", "Morality"],
         ["backgrounds", "Backgrounds", "Backgrounds"],
         ["haven_specializations", "Haven Specializations", "Backgrounds"],
