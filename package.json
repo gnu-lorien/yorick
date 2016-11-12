@@ -20,6 +20,7 @@
     "moment": "^2.14.1",
     "parse": "^1.9.0",
     "parse-server": "<=2.2.21",
+    "parse-server-nodemailer-adapter": "^1.0.0",
     "paypal-ipn": "^3.0.0",
     "request": "^2.72.0",
     "require": "*",
