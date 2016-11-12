@@ -204,18 +204,22 @@ var isMeaningfulChange = function (vc) {
 }
 
 Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
+    console.log("beforeSave simpleTrait");
     var vc = new Parse.Object("VampireChange");
     var modified_trait = request.object;
     if (_.isUndefined(modified_trait.id)) {
         var flow_promise = Parse.Promise.as({});
+        console.log("beforeSave simpleTrait Setting blank flow promise");
     } else {
         var flow_promise = new Parse.Query("SimpleTrait").get(modified_trait.id, {useMasterKey: true}).then(function (st) {
+            console.log("beforeSave simpleTrait Calling _getServerData()");
             return st._getServerData();
         });
+        console.log("beforeSave simpleTrait Setting fetch flow promise");
     }
     flow_promise.then(function(serverData) {
-        console.log("beforeSave SimpleTrait Setting vc " + modified_trait.id ? modified_trait.get("name") : modified_trait.id);
-        console.log(pretty(serverData));
+        console.log("beforeSave simpleTrait Starting with serverdata response " + JSON.stringify(modified_trait));
+        console.log(JSON.stringify(serverData));
         vc.set({
             "name": modified_trait.get("name"),
             "category": modified_trait.get("category"),
