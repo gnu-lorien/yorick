@@ -114,7 +114,7 @@ define([
             }
             
             if ("wta_backgrounds" == category) {
-                return self.get_trait_cost_on_table(self.get_cost_on_table(2), trait);
+                return self.get_trait_cost_on_table(self.get_cost_table(2), trait);
             }
 
             var rank = character.rank();
