@@ -154,14 +154,14 @@ define([
  
         _raw_rank: function() {
             var self = this;
-            var generation;
-            _.each(self.get("backgrounds"), function(b) {
+            var rank;
+            _.each(self.get("wta_backgrounds"), function(b) {
                 if (b.get_base_name() == "Rank") {
-                    generation = b.get("value");
+                    rank = b.get("value");
                 }
             });
 
-            return generation;
+            return rank;
         },
 
         rank: function() {
@@ -188,10 +188,10 @@ define([
             var self = this;
             var current_categories = [
                 "skills",
-                "backgrounds",
-                "gifts",
+                "wta_backgrounds",
+                "wta_gifts",
                 "attributes",
-                "merits"
+                "wta_merits"
                 ];
             var response = {};
             var objectIds = _.chain(current_categories).map(function(category) {
@@ -257,7 +257,7 @@ define([
             //q.equalTo("owner", Parse.User.current());
             q.include("portrait");
             q.include("owner");
-            q.include("backgrounds");
+            q.include("wta_backgrounds");
             q.include("extra_affinity_links");
             return q.get(id).then(function(m) {
                 character_cache._character = m;

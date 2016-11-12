@@ -90,7 +90,7 @@ define([
             if ("flat" == experience_cost_type) {
                 return mod_value * experience_cost_modifier;
             } else if ("linear" == experience_cost_type) {
-                return self.get_trait_cost_on_table(self.get_cost_table(), trait);
+                return self.get_trait_cost_on_table(self.get_cost_table(experience_cost_modifier), trait);
             }
 
             if ("attributes" == category) {
