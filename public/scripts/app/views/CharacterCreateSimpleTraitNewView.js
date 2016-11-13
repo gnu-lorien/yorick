@@ -199,7 +199,7 @@ define([
             var pickedId = $(e.target).attr("backendId");
             var description = self.collection.get(pickedId);
             var valueField = _.parseInt(description.get("value"));
-            var cost = 1;
+            var cost = self.free_value;
             if (valueField) {
                 cost = valueField;
             }
