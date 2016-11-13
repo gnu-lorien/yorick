@@ -221,6 +221,12 @@ define([
                 "format_skill",
                 "format_specializations"
             );
+        },
+        onRender: function () {
+            console.log('onRender');
+            this.$el = this.$el.children();
+            this.$el.unwrap();
+            this.setElement(this.$el);
         }
     });
     _.extend(BloodView.prototype, VampirePrintHelper);
