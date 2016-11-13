@@ -502,11 +502,13 @@ define([
                 self.showChildView('health_levels', new HealthLevelsView({model: character}), options);
                 // Forms
                 // Rage
-                self.showChildView('morality', new TotalView({model: new Backbone.Model({
-                    name: "Rage",
-                    total: 10,
-                    split: 7
-                })}), options);
+                if (self.character.get("wta_tribe") != "Ananasi") {
+                    self.showChildView('morality', new TotalView({model: new Backbone.Model({
+                        name: "Rage",
+                        total: 10,
+                        split: 7
+                    })}), options);
+                }
                 // Harano
                 self.showChildView('total_a', new TotalView({model: new Backbone.Model({
                     name: "Harano",
