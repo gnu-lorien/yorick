@@ -6,7 +6,7 @@ define([
 
     var Mixin = {
         format_simpletext: function(attrname) {
-            var character = this.character_override || this.character;
+            var character = this.character_override || this.character || this.model;
             if (this.transform_description) {
                 var matcher = {
                     name: attrname,
@@ -55,7 +55,7 @@ define([
 
         format_attribute_focus: function(name) {
             var self = this;
-            var character = self.character_override || self.character;
+            var character = this.character_override || this.character || this.model;
             var focusName = "focus_" + name.toLowerCase() + "s";
             if (this.transform_description) {
                 var matcher = {
@@ -196,7 +196,7 @@ define([
 
         format_specializations: function (name) {
             var self = this;
-            var character = self.character_override || self.character;
+            var character = this.character_override || this.character || this.model;
             if (this.transform_description) {
                 var matcher = {
                     category: name,
