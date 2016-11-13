@@ -18,6 +18,7 @@ define([
     "text!../templates/print/section.html",
     "text!../templates/print/gnosis.html",
     "text!../templates/print/total.html",
+    "text!../templates/print/fixed-blood.html",
 ], function(
     $,
     Backbone,
@@ -32,7 +33,8 @@ define([
     skills_html,
     section_html,
     gnosis_html,
-    total_html
+    total_html,
+    fixed_blood_html
 ) {
 
     var HeaderView = Marionette.ItemView.extend({
@@ -157,8 +159,8 @@ define([
         },
         initialize: function(options) {
             var self = this;
-            this.column = options.column;
-            this.$el.addClass("ui-block-" + String.fromCharCode(97 + this.column));
+            
+            self.listenTo(self.model, "change:backgrounds", self.render);
             
             _.bindAll(this,
                 "render",
@@ -177,6 +179,35 @@ define([
         }
     });
     _.extend(BloodView.prototype, VampirePrintHelper);
+    
+    var FixedBloodView = Marionette.ItemView.extend({
+        template: _.template(fixed_blood_html),
+        templateHelpers: function() {
+            var self = this;
+            return {
+                character: self.model
+            }
+        },
+        initialize: function(options) {
+            var self = this;
+            
+            _.bindAll(this,
+                "render",
+                "template",
+                "format_simpletext",
+                "format_attribute_value",
+                "format_attribute_focus",
+                "format_skill",
+                "format_specializations"
+            );
+        },
+        onRender: function () {
+            this.$el = this.$el.children();
+            this.$el.unwrap();
+            this.setElement(this.$el);
+        }
+    });
+    _.extend(FixedBloodView.prototype, VampirePrintHelper);
     
     var WillpowerView = Marionette.ItemView.extend({
         template: _.template(willpower_html),
@@ -414,9 +445,12 @@ define([
         setup: function(character) {
             var self = this;
             var options = self.options || {};
-            if (character == self.character) {
-                return;
+            if (self.lasttribe && self.character.get("wta_tribe") == self.lasttribe) {
+                if (character == self.character) {
+                    return;
+                }
             }
+            self.lasttribe = character.get("wta_tribe");
             self.character = character;
             
             self.render();
@@ -450,10 +484,20 @@ define([
                     }]
                 }), options);
                 self.showChildView('attributes', new AttributesView({model: character}), options);
-                self.showChildView('blood', new GnosisView({
-                    model: character,
-                    column: 1
-                }), options);
+                if (self.character.get("wta_tribe") == "Ananasi") {
+                    self.showChildView('blood', new FixedBloodView({model: new Backbone.Model({
+                        generation: 0,
+                        total: 15,
+                        split: 5,
+                        linebreak: 10,
+                        blood_per_turn: 3
+                    })}), options);
+                } else {
+                    self.showChildView('blood', new GnosisView({
+                        model: character,
+                        column: 1
+                    }), options);
+                }
                 self.showChildView('willpower', new WillpowerView({model: character}), options);
                 self.showChildView('health_levels', new HealthLevelsView({model: character}), options);
                 // Forms
@@ -608,10 +652,7 @@ define([
                     }]
                 }), options);
                 self.showChildView('attributes', new AttributesView({model: character}), options);
-                self.showChildView('blood', new BloodView({
-                    model: character,
-                    column: 1
-                }), options);
+                self.showChildView('blood', new BloodView({model: character}), options);
                 self.showChildView('morality', new MoralityView({model: character}), options);
                 self.showChildView('willpower', new WillpowerView({model: character}), options);
                 self.showChildView('health_levels', new HealthLevelsView({model: character}), options);
