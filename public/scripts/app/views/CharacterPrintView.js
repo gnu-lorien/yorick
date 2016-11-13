@@ -155,7 +155,9 @@ define([
                 str.push('<h4 class="ui-bar ui-bar-a ui-corner-all">' + name + '</h4>');
                 str.push('<div class="ui-body">');
                 var attribute = _.find(self.model.get("attributes"), "attributes.name", name);
-                str.push(self.format_attribute_value(attribute));
+                if (attribute) {
+                    str.push(self.format_attribute_value(attribute));
+                }
                 str.push('<br/>');
                 str.push(self.format_attribute_focus(name));
                 str.push('</div></div>');
