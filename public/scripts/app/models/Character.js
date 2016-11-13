@@ -94,10 +94,12 @@ define([
             if (!_.isString(nameOrTrait)) {
                 modified_trait = nameOrTrait;
                 category = modified_trait.get("category");
-                wait = true;
             } else {
                 name = nameOrTrait;
             };
+            if (_.isUndefined(wait)) {
+                wait = true;
+            }
             self.ensure_category(category);
             return Parse.Object.fetchAllIfNeeded(self.get_category_for_fetch(category)).then(function() {
                 if (!_.isString(nameOrTrait)) {
