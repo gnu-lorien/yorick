@@ -81,7 +81,14 @@ define([
             });
         },
 
-        update_trait: function(nameOrTrait, value, category, freeValue, wait) {
+        update_trait: function(
+                nameOrTrait,
+                value,
+                category,
+                free_value,
+                wait,
+                experience_cost_type,
+                experience_cost_modifier) {
             var self = this;
             var modified_trait, name, serverData, toSave = [];
             if (!_.isString(nameOrTrait)) {
@@ -127,11 +134,15 @@ define([
                     modified_trait.setACL(self.get_me_acl());
                     var TempVampire = Parse.Object.extend("Vampire");
                     modified_trait.set({"name": name,
-                        "value": freeValue || value,
+                        "value": value || free_value,
                         "category": category,
                         "owner": new TempVampire({id: self.id}),
-                        "free_value": freeValue || 0
+                        "free_value": free_value || 0,
                     });
+                    if (experience_cost_type) {
+                        modified_trait.set("experience_cost_type", experience_cost_type);
+                        modified_trait.set("experience_cost_modifier", _.parseInt(experience_cost_modifier));
+                    }
                 }
                 var cost = self.calculate_trait_cost(modified_trait);
                 var spend = self.calculate_trait_to_spend(modified_trait);
@@ -142,7 +153,7 @@ define([
                 self.increment("change_count");
                 self.addUnique(category, modified_trait);
 
-                var minimumPromise = self._update_creation(category, modified_trait, freeValue).then(function() {
+                var minimumPromise = self._update_creation(category, modified_trait, free_value).then(function() {
                     if (0 != spend) {
                         return self.add_experience_notation({
                             alteration_spent: spend,

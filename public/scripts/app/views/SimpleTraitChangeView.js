@@ -30,13 +30,7 @@ define([
 
             if (simpletrait !== self.simpletrait) {
                 self.simpletrait = simpletrait;
-                self.fauxtrait = new SimpleTrait({
-                    name: self.simpletrait.get("name"),
-                    value: self.simpletrait.get("value"),
-                    free_value: self.simpletrait.get("free_value"),
-                    cost: self.simpletrait.get("cost"),
-                    category: self.simpletrait.get("category")
-                })
+                self.fauxtrait = new SimpleTrait(self.simpletrait.attributes);
                 changed = true;
             }
 
@@ -130,7 +124,9 @@ define([
                     self.fauxtrait.get("value"),
                     self.fauxtrait.get("category"),
                     self.fauxtrait.get("free_value"),
-                    true
+                    true,
+                    self.fauxtrait.get("experience_cost_type"),
+                    self.fauxtrait.get("experience_cost_modifier")
                 ).then(function (newtrait) {
                     console.log("asaved", self.category, newtrait);
                     window.location.hash = "#simpletraits/" + self.category + "/" + self.character.id + "/all";

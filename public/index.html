@@ -419,12 +419,12 @@
         <input type="range" name="free-slider" id="free-slider" class="free-slider" value="<%= b.get('free_value') || 0 %>" min="0" max="<%= traitmax %>">
         <label for="experience-type-select">Experience Cost Type Override</label>
         <select name="experience-type-select" id="experience-type-select">
-          <option value="automatic" selected="selected">Automatic</option>
-          <option value="flat">Flat</option>
-          <option value="linear">Linear</option>
+          <option value="automatic" <%= b.get('experience_cost_type') ? '' : 'selected="selected"' %> >Automatic</option>
+          <option value="flat" <%= b.get('experience_cost_type') == 'flat' ? 'selected' : '' %> >Flat</option>
+          <option value="linear" <%= b.get('experience_cost_type') == 'linear' ? 'selected' : '' %> >Linear</option>
         </select>
         <label for="experience-cost-modifier">Experience Cost Modifier</label>
-        <input type="range" name="experience-cost-modifier" id="experience-cost-modifier" class="cost-modifier-slider" value="1" min="1" max="10">
+        <input type="range" name="experience-cost-modifier" id="experience-cost-modifier" class="cost-modifier-slider" value="<%= b.get('experience_cost_modifier') || 1%>" min="1" max="10">
     </p>
 </script>
 
