@@ -40,9 +40,11 @@ define([
         ["allies_specializations", "Allies Specializations", "Backgrounds"],
         ["influence_elite_specializations", "Influence: Elite", "Backgrounds"],
         ["influence_underworld_specializations", "Influence: Underworld", "Backgrounds"],
+        ["wta_rites", "Rites", "Backgrounds"],
         ["wta_monikers", "Monikers", "Backgrounds"],
         ["wta_merits", "Merits", "Merits and Flaws"],
-        ["wta_flaws", "Flaws", "Merits and Flaws"]
+        ["wta_flaws", "Flaws", "Merits and Flaws"],
+        ["wta_totem_bonus_traits", "Totem Bonuses", "Pack"]
     ];
     
     var TEXT_ATTRIBUTES = ["archetype", "wta_breed", "wta_auspice", "wta_tribe", "wta_camp", "wta_faction", "antecedence"];

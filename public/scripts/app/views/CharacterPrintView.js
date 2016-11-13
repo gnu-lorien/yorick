@@ -17,6 +17,7 @@ define([
     "text!../templates/print/skills.html",
     "text!../templates/print/section.html",
     "text!../templates/print/gnosis.html",
+    "text!../templates/print/total.html",
 ], function(
     $,
     Backbone,
@@ -30,7 +31,8 @@ define([
     health_levels_html,
     skills_html,
     section_html,
-    gnosis_html
+    gnosis_html,
+    total_html
 ) {
 
     var HeaderView = Marionette.ItemView.extend({
@@ -282,6 +284,36 @@ define([
     });
     _.extend(HealthLevelsView.prototype, VampirePrintHelper);
     
+    var TotalView = Marionette.ItemView.extend({
+        template: _.template(total_html),
+        templateHelpers: function() {
+            var self = this;
+            return {
+                character: self.model
+            }
+        },
+        initialize: function(options) {
+            var self = this;
+            
+            _.bindAll(this,
+                "render",
+                "template",
+                "format_simpletext",
+                "format_attribute_value",
+                "format_attribute_focus",
+                "format_skill",
+                "format_specializations"
+            );
+        },
+        onRender: function () {
+            this.$el = this.$el.children();
+            this.$el.unwrap();
+            this.setElement(this.$el);
+        }
+    });
+    _.extend(TotalView.prototype, VampirePrintHelper);
+ 
+    
     var SkillsView = Marionette.ItemView.extend({
         template: _.template(skills_html),
         templateHelpers: function() {
@@ -367,6 +399,9 @@ define([
             morality: "#cpp-morality",
             willpower: "#cpp-willpower",
             health_levels: "#cpp-health-levels",
+            total_a: "#cpp-total-a",
+            total_b: "#cpp-total-b",
+            total_c: "#cpp-total-c",
             skills: "#cpp-skills",
             bottom_one_a: "#cpp-bottom-one-a",
             bottom_one_b: "#cpp-bottom-one-b",
@@ -419,9 +454,33 @@ define([
                     model: character,
                     column: 1
                 }), options);
-                //self.showChildView('morality', new GnosisView({model: character}), options);
                 self.showChildView('willpower', new WillpowerView({model: character}), options);
                 self.showChildView('health_levels', new HealthLevelsView({model: character}), options);
+                // Forms
+                // Rage
+                self.showChildView('morality', new TotalView({model: new Backbone.Model({
+                    name: "Rage",
+                    total: 10,
+                    split: 7
+                })}), options);
+                // Harano
+                self.showChildView('total_a', new TotalView({model: new Backbone.Model({
+                    name: "Harano",
+                    total: 5,
+                    split: 5
+                })}), options);
+                // Wyrm Taint
+                self.showChildView('total_b', new TotalView({model: new Backbone.Model({
+                    name: "Wyrm Taint",
+                    total: 5,
+                    split: 5
+                })}), options);
+                // Seethe
+                self.showChildView('total_c', new TotalView({model: new Backbone.Model({
+                    name: "Seethe Traits",
+                    total: 10,
+                    split: 5
+                })}), options);
                 self.showChildView('skills', new SkillsView({model: character}), options);
                 self.showChildView('bottom_one_a', new SectionsView({
                     model: character,
@@ -448,6 +507,10 @@ define([
                     },{
                         display: "Allies",
                         name: "allies_specializations",
+                        format: 1
+                    },{
+                        display: "Rites",
+                        name: "wta_rites",
                         format: 1
                     }]
                 }), options);
@@ -487,6 +550,10 @@ define([
                     },{
                         display: "Academics",
                         name: "academics_specializations",
+                        format: 0
+                    },{
+                        display: "Totem Bonuses",
+                        name: "wta_totem_bonus_traits",
                         format: 0
                     }]
                 }), options);
