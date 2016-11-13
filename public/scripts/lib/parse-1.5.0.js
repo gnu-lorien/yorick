@@ -5400,9 +5400,12 @@
      *
      * @param attr {String} The key.
      * @param item {} The object to add.
+     * @param {Object} options A set of Backbone-like options for the set.
+     *     The only supported options are <code>silent</code>,
+     *     <code>error</code>, and <code>promise</code>.
      */
-    addUnique: function(attr, item) {
-      return this.set(attr, new Parse.Op.AddUnique([item]));
+    addUnique: function(attr, item, options) {
+      return this.set(attr, new Parse.Op.AddUnique([item]), options);
     },
 
     /**
