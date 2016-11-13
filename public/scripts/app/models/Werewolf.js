@@ -171,6 +171,13 @@ define([
         has_rank: function() {
             return !_.isUndefined(this._raw_rank());
         },
+        
+        get_gnosis_total: function() {
+            var self = this;
+            var wps = self.get("wta_gnosis_sources");
+            var total = _.sum(wps, "attributes.value");
+            return total;
+        },
 
         calculate_trait_cost: function(trait) {
             var self = this;
@@ -343,6 +350,9 @@ define([
         }).then(function () {
             progress("Adding Willpower");
             return populated_character.update_trait("Willpower", 6, "willpower_sources", 6, true);
+        }).then(function () {
+            progress("Adding Gnosis");
+            return populated_character.update_trait("Gnosis", 10, "wta_gnosis_sources", 6, true);
         }).then(function () {
             progress("Done!");
             return Parse.Promise.as(populated_character);

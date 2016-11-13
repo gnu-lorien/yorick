@@ -16,6 +16,7 @@ define([
     "text!../templates/print/health-levels.html",
     "text!../templates/print/skills.html",
     "text!../templates/print/section.html",
+    "text!../templates/print/gnosis.html",
 ], function(
     $,
     Backbone,
@@ -28,7 +29,8 @@ define([
     willpower_html,
     health_levels_html,
     skills_html,
-    section_html
+    section_html,
+    gnosis_html
 ) {
 
     var HeaderView = Marionette.ItemView.extend({
@@ -198,6 +200,31 @@ define([
         }
     });
     _.extend(WillpowerView.prototype, VampirePrintHelper);
+    
+    var GnosisView = Marionette.ItemView.extend({
+        template: _.template(gnosis_html),
+        templateHelpers: function() {
+            var self = this;
+            return {
+                character: self.model
+            }
+        },
+        initialize: function(options) {
+            var self = this;
+            self.listenTo(self.model, "change:gnosis_sources", self.render);
+            
+            _.bindAll(this,
+                "render",
+                "template",
+                "format_simpletext",
+                "format_attribute_value",
+                "format_attribute_focus",
+                "format_skill",
+                "format_specializations"
+            );
+        }
+    });
+    _.extend(GnosisView.prototype, VampirePrintHelper);
     
     var MoralityView = Marionette.ItemView.extend({
         template: _.template(morality_html),
@@ -388,11 +415,11 @@ define([
                     }]
                 }), options);
                 self.showChildView('attributes', new AttributesView({model: character}), options);
-                self.showChildView('blood', new BloodView({
+                self.showChildView('blood', new GnosisView({
                     model: character,
                     column: 1
                 }), options);
-                self.showChildView('morality', new MoralityView({model: character}), options);
+                //self.showChildView('morality', new GnosisView({model: character}), options);
                 self.showChildView('willpower', new WillpowerView({model: character}), options);
                 self.showChildView('health_levels', new HealthLevelsView({model: character}), options);
                 self.showChildView('skills', new SkillsView({model: character}), options);
@@ -400,7 +427,7 @@ define([
                     model: character,
                     sections: [{
                         display: "Backgrounds",
-                        name: "backgrounds",
+                        name: "wta_backgrounds",
                         format: 1
                     },{
                         display: "Haven",
@@ -419,10 +446,6 @@ define([
                         name: "contacts_specializations",
                         format: 1
                     },{
-                        display: "Sabbat Rituals",
-                        name: "sabbat_rituals",
-                        format: 1
-                    },{
                         display: "Allies",
                         name: "allies_specializations",
                         format: 1
@@ -432,17 +455,9 @@ define([
                 self.showChildView('bottom_one_b', new SectionsView({
                     model: character,
                     sections: [{
-                        display: "Disciplines",
-                        name: "disciplines",
+                        display: "Gifts",
+                        name: "wta_gifts",
                         format: 1
-                    },{
-                        display: "Techniques",
-                        name: "techniques",
-                        format: 0
-                    },{
-                        display: "Elder Disciplines",
-                        name: "elder_disciplines",
-                        format: 0
                     }]
                 }), options);
                 
@@ -450,15 +465,15 @@ define([
                     model: character,
                     sections: [{
                         display: "Merits",
-                        name: "merits",
+                        name: "wta_merits",
                         format: 4
                     },{
                         display: "Flaws",
-                        name: "flaws",
+                        name: "wta_flaws",
                         format: 4
                     },{
-                        display: "Status",
-                        name: "status_traits",
+                        display: "Monikers",
+                        name: "monikers",
                         format: 4
                     }]
                 }), options);
@@ -494,10 +509,6 @@ define([
                     },{
                         display: "Drive",
                         name: "drive_specializations",
-                        format: 0
-                    },{
-                        display: "Texts",
-                        name: "vampiric_texts",
                         format: 0
                     }]
                 }), options);
