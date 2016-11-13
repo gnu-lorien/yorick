@@ -358,148 +358,293 @@ define([
             self.character = character;
             
             self.render();
-            self.showChildView('header', new HeaderView({model: character}), options);
-            self.showChildView('firstbar', new TextBarView({
-                model: character,
-                fields: [{
-                    name: "clan",
-                    display: "Clan"
-                },{
-                    name: "archetype",
-                    display: "Archetype", 
-                },{
-                    name:"antecedence",
-                    display: "Antecedence"
-                }]
-            }), options);
-            self.showChildView('secondbar', new TextBarView({
-                model: character,
-                fields: [{
-                    name: "sect",
-                    display: "Sect"
-                },{
-                    name: "faction",
-                    display: "Faction", 
-                },{
-                    name:"title",
-                    display: "Title"
-                }]
-            }), options);
-            self.showChildView('attributes', new AttributesView({model: character}), options);
-            self.showChildView('blood', new BloodView({
-                model: character,
-                column: 1
-            }), options);
-            self.showChildView('morality', new MoralityView({model: character}), options);
-            self.showChildView('willpower', new WillpowerView({model: character}), options);
-            self.showChildView('health_levels', new HealthLevelsView({model: character}), options);
-            self.showChildView('skills', new SkillsView({model: character}), options);
-            self.showChildView('bottom_one_a', new SectionsView({
-                model: character,
-                sections: [{
-                    display: "Backgrounds",
-                    name: "backgrounds",
-                    format: 1
-                },{
-                    display: "Haven",
-                    name: "haven_specializations",
-                    format: 1
-                },{
-                    display: "Influences: The Elite",
-                    name: "influence_elite_specializations",
-                    format: 1
-                },{
-                    display: "Influences: The Underworld",
-                    name: "influence_underworld_specializations",
-                    format: 1
-                },{
-                    display: "Contacts",
-                    name: "contacts_specializations",
-                    format: 1
-                },{
-                    display: "Sabbat Rituals",
-                    name: "sabbat_rituals",
-                    format: 1
-                },{
-                    display: "Allies",
-                    name: "allies_specializations",
-                    format: 1
-                }]
-            }), options);
- 
-            self.showChildView('bottom_one_b', new SectionsView({
-                model: character,
-                sections: [{
-                    display: "Disciplines",
-                    name: "disciplines",
-                    format: 1
-                },{
-                    display: "Techniques",
-                    name: "techniques",
-                    format: 0
-                },{
-                    display: "Elder Disciplines",
-                    name: "elder_disciplines",
-                    format: 0
-                }]
-            }), options);
             
-            self.showChildView('bottom_one_c', new SectionsView({
-                model: character,
-                sections: [{
-                    display: "Merits",
-                    name: "merits",
-                    format: 4
-                },{
-                    display: "Flaws",
-                    name: "flaws",
-                    format: 4
-                },{
-                    display: "Status",
-                    name: "status_traits",
-                    format: 4
-                }]
-            }), options);
-            
-            self.showChildView('bottom_two_a', new SectionsView({
-                model: character,
-                sections: [{
-                    display: "Lores",
-                    name: "lore_specializations",
-                    format: 0
-                },{
-                    display: "Academics",
-                    name: "academics_specializations",
-                    format: 0
-                }]
-            }), options);
-            
-            self.showChildView('bottom_two_b', new SectionsView({
-                model: character,
-                sections: [{
-                    display: "Rituals",
-                    name: "rituals",
-                    format: 0
-                }]
-            }), options);
-            
-            self.showChildView('bottom_two_c', new SectionsView({
-                model: character,
-                sections: [{
-                    display: "Languages",
-                    name: "linguistics_specializations",
-                    format: 0
-                },{
-                    display: "Drive",
-                    name: "drive_specializations",
-                    format: 0
-                },{
-                    display: "Texts",
-                    name: "vampiric_texts",
-                    format: 0
-                }]
-            }), options);
- 
+            if (self.character.get("type") == "Werewolf") {
+                self.showChildView('header', new HeaderView({model: character}), options);
+                self.showChildView('firstbar', new TextBarView({
+                    model: character,
+                    fields: [{
+                        name: "wta_tribe",
+                        display: "Tribe"
+                    },{
+                        name: "wta_breed",
+                        display: "Breed", 
+                    },{
+                        name:"wta_auspice",
+                        display: "Auspice"
+                    }]
+                }), options);
+                self.showChildView('secondbar', new TextBarView({
+                    model: character,
+                    fields: [{
+                        name: "archetype",
+                        display: "Archetype"
+                    },{
+                        name: "wta_camp",
+                        display: "Camp", 
+                    },{
+                        name:"wta_faction",
+                        display: "Faction"
+                    }]
+                }), options);
+                self.showChildView('attributes', new AttributesView({model: character}), options);
+                self.showChildView('blood', new BloodView({
+                    model: character,
+                    column: 1
+                }), options);
+                self.showChildView('morality', new MoralityView({model: character}), options);
+                self.showChildView('willpower', new WillpowerView({model: character}), options);
+                self.showChildView('health_levels', new HealthLevelsView({model: character}), options);
+                self.showChildView('skills', new SkillsView({model: character}), options);
+                self.showChildView('bottom_one_a', new SectionsView({
+                    model: character,
+                    sections: [{
+                        display: "Backgrounds",
+                        name: "backgrounds",
+                        format: 1
+                    },{
+                        display: "Haven",
+                        name: "haven_specializations",
+                        format: 1
+                    },{
+                        display: "Influences: The Elite",
+                        name: "influence_elite_specializations",
+                        format: 1
+                    },{
+                        display: "Influences: The Underworld",
+                        name: "influence_underworld_specializations",
+                        format: 1
+                    },{
+                        display: "Contacts",
+                        name: "contacts_specializations",
+                        format: 1
+                    },{
+                        display: "Sabbat Rituals",
+                        name: "sabbat_rituals",
+                        format: 1
+                    },{
+                        display: "Allies",
+                        name: "allies_specializations",
+                        format: 1
+                    }]
+                }), options);
+     
+                self.showChildView('bottom_one_b', new SectionsView({
+                    model: character,
+                    sections: [{
+                        display: "Disciplines",
+                        name: "disciplines",
+                        format: 1
+                    },{
+                        display: "Techniques",
+                        name: "techniques",
+                        format: 0
+                    },{
+                        display: "Elder Disciplines",
+                        name: "elder_disciplines",
+                        format: 0
+                    }]
+                }), options);
+                
+                self.showChildView('bottom_one_c', new SectionsView({
+                    model: character,
+                    sections: [{
+                        display: "Merits",
+                        name: "merits",
+                        format: 4
+                    },{
+                        display: "Flaws",
+                        name: "flaws",
+                        format: 4
+                    },{
+                        display: "Status",
+                        name: "status_traits",
+                        format: 4
+                    }]
+                }), options);
+                
+                self.showChildView('bottom_two_a', new SectionsView({
+                    model: character,
+                    sections: [{
+                        display: "Lores",
+                        name: "lore_specializations",
+                        format: 0
+                    },{
+                        display: "Academics",
+                        name: "academics_specializations",
+                        format: 0
+                    }]
+                }), options);
+                
+                self.showChildView('bottom_two_b', new SectionsView({
+                    model: character,
+                    sections: [{
+                        display: "Rituals",
+                        name: "rituals",
+                        format: 0
+                    }]
+                }), options);
+                
+                self.showChildView('bottom_two_c', new SectionsView({
+                    model: character,
+                    sections: [{
+                        display: "Languages",
+                        name: "linguistics_specializations",
+                        format: 0
+                    },{
+                        display: "Drive",
+                        name: "drive_specializations",
+                        format: 0
+                    },{
+                        display: "Texts",
+                        name: "vampiric_texts",
+                        format: 0
+                    }]
+                }), options);
+            } else {
+                self.showChildView('header', new HeaderView({model: character}), options);
+                self.showChildView('firstbar', new TextBarView({
+                    model: character,
+                    fields: [{
+                        name: "clan",
+                        display: "Clan"
+                    },{
+                        name: "archetype",
+                        display: "Archetype", 
+                    },{
+                        name:"antecedence",
+                        display: "Antecedence"
+                    }]
+                }), options);
+                self.showChildView('secondbar', new TextBarView({
+                    model: character,
+                    fields: [{
+                        name: "sect",
+                        display: "Sect"
+                    },{
+                        name: "faction",
+                        display: "Faction", 
+                    },{
+                        name:"title",
+                        display: "Title"
+                    }]
+                }), options);
+                self.showChildView('attributes', new AttributesView({model: character}), options);
+                self.showChildView('blood', new BloodView({
+                    model: character,
+                    column: 1
+                }), options);
+                self.showChildView('morality', new MoralityView({model: character}), options);
+                self.showChildView('willpower', new WillpowerView({model: character}), options);
+                self.showChildView('health_levels', new HealthLevelsView({model: character}), options);
+                self.showChildView('skills', new SkillsView({model: character}), options);
+                self.showChildView('bottom_one_a', new SectionsView({
+                    model: character,
+                    sections: [{
+                        display: "Backgrounds",
+                        name: "backgrounds",
+                        format: 1
+                    },{
+                        display: "Haven",
+                        name: "haven_specializations",
+                        format: 1
+                    },{
+                        display: "Influences: The Elite",
+                        name: "influence_elite_specializations",
+                        format: 1
+                    },{
+                        display: "Influences: The Underworld",
+                        name: "influence_underworld_specializations",
+                        format: 1
+                    },{
+                        display: "Contacts",
+                        name: "contacts_specializations",
+                        format: 1
+                    },{
+                        display: "Sabbat Rituals",
+                        name: "sabbat_rituals",
+                        format: 1
+                    },{
+                        display: "Allies",
+                        name: "allies_specializations",
+                        format: 1
+                    }]
+                }), options);
+     
+                self.showChildView('bottom_one_b', new SectionsView({
+                    model: character,
+                    sections: [{
+                        display: "Disciplines",
+                        name: "disciplines",
+                        format: 1
+                    },{
+                        display: "Techniques",
+                        name: "techniques",
+                        format: 0
+                    },{
+                        display: "Elder Disciplines",
+                        name: "elder_disciplines",
+                        format: 0
+                    }]
+                }), options);
+                
+                self.showChildView('bottom_one_c', new SectionsView({
+                    model: character,
+                    sections: [{
+                        display: "Merits",
+                        name: "merits",
+                        format: 4
+                    },{
+                        display: "Flaws",
+                        name: "flaws",
+                        format: 4
+                    },{
+                        display: "Status",
+                        name: "status_traits",
+                        format: 4
+                    }]
+                }), options);
+                
+                self.showChildView('bottom_two_a', new SectionsView({
+                    model: character,
+                    sections: [{
+                        display: "Lores",
+                        name: "lore_specializations",
+                        format: 0
+                    },{
+                        display: "Academics",
+                        name: "academics_specializations",
+                        format: 0
+                    }]
+                }), options);
+                
+                self.showChildView('bottom_two_b', new SectionsView({
+                    model: character,
+                    sections: [{
+                        display: "Rituals",
+                        name: "rituals",
+                        format: 0
+                    }]
+                }), options);
+                
+                self.showChildView('bottom_two_c', new SectionsView({
+                    model: character,
+                    sections: [{
+                        display: "Languages",
+                        name: "linguistics_specializations",
+                        format: 0
+                    },{
+                        display: "Drive",
+                        name: "drive_specializations",
+                        format: 0
+                    },{
+                        display: "Texts",
+                        name: "vampiric_texts",
+                        format: 0
+                    }]
+                }), options);
+     
+            }
  
             return self;
         }
