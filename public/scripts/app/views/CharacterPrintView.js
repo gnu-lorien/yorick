@@ -405,6 +405,9 @@ define([
         setup: function(character) {
             var self = this;
             var options = self.options || {};
+            if (character == self.character) {
+                return;
+            }
             self.character = character;
             
             self.render();
