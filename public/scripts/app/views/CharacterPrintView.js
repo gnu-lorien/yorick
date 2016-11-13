@@ -10,13 +10,21 @@ define([
     "../helpers/VampirePrintHelper",
     "marionette",
     "text!../templates/character-print-parent.html",
+    "text!../templates/print/blood.html",
+    "text!../templates/print/morality.html",
+    "text!../templates/print/willpower.html",
+    "text!../templates/print/health-levels.html",
 ], function(
     $,
     Backbone,
     character_print_view_html,
     VampirePrintHelper,
     Marionette,
-    character_print_parent_html    
+    character_print_parent_html,
+    blood_html,
+    morality_html,
+    willpower_html,
+    health_levels_html
 ) {
 
     // Extends Backbone.View
@@ -136,7 +144,6 @@ define([
     _.extend(TextBarView.prototype, VampirePrintHelper);
     
     var AttributesView = Marionette.ItemView.extend({
-        className: "ui-grid-b ui-responsive",
         template: function(serialized_model) {
             var self = this;
             var tmpl = _.map(["Physical", "Social", "Mental"], function (name, i) {
@@ -164,7 +171,9 @@ define([
         },
         initialize: function(options) {
             var self = this;
-            this.fields = options.fields || ["clan", "archetype", "antecedence"]
+            this.fields = options.fields || ["clan", "archetype", "antecedence"];
+            this.$el.addClass("ui-grid-b");
+            this.$el.addClass("ui-responsive");
             
             _.each(this.fields, function (field) {
                 self.listenTo(self.model, "change:" + field, self.render);
@@ -184,6 +193,112 @@ define([
     });
     _.extend(AttributesView.prototype, VampirePrintHelper);
     
+    var BloodView = Marionette.ItemView.extend({
+        template: _.template(blood_html),
+        templateHelpers: function() {
+            var self = this;
+            return {
+                character: self.model
+            }
+        },
+        initialize: function(options) {
+            var self = this;
+            this.column = options.column;
+            this.$el.addClass("ui-block-" + String.fromCharCode(97 + this.column));
+            
+            _.bindAll(this,
+                "render",
+                "template",
+                "format_simpletext",
+                "format_attribute_value",
+                "format_attribute_focus",
+                "format_skill",
+                "format_specializations"
+            );
+        }
+    });
+    _.extend(BloodView.prototype, VampirePrintHelper);
+    
+    var WillpowerView = Marionette.ItemView.extend({
+        template: _.template(willpower_html),
+        templateHelpers: function() {
+            var self = this;
+            return {
+                character: self.model
+            }
+        },
+        initialize: function(options) {
+            var self = this;
+            self.listenTo(self.model, "change:willpower_sources", self.render);
+            
+            _.bindAll(this,
+                "render",
+                "template",
+                "format_simpletext",
+                "format_attribute_value",
+                "format_attribute_focus",
+                "format_skill",
+                "format_specializations"
+            );
+        }
+    });
+    _.extend(WillpowerView.prototype, VampirePrintHelper);
+    
+    var MoralityView = Marionette.ItemView.extend({
+        template: _.template(morality_html),
+        templateHelpers: function() {
+            var self = this;
+            return {
+                character: self.model
+            }
+        },
+        initialize: function(options) {
+            var self = this;
+            
+            _.bindAll(this,
+                "render",
+                "template",
+                "format_simpletext",
+                "format_attribute_value",
+                "format_attribute_focus",
+                "format_skill",
+                "format_specializations"
+            );
+        }
+    });
+    _.extend(MoralityView.prototype, VampirePrintHelper);
+    
+    var HealthLevelsView = Marionette.ItemView.extend({
+        template: _.template(health_levels_html),
+        templateHelpers: function() {
+            var self = this;
+            return {
+                character: self.model
+            }
+        },
+        initialize: function(options) {
+            var self = this;
+            this.column = options.column;
+            
+            _.bindAll(this,
+                "render",
+                "template",
+                "format_simpletext",
+                "format_attribute_value",
+                "format_attribute_focus",
+                "format_skill",
+                "format_specializations"
+            );
+        },
+        onRender: function () {
+            console.log('onRender');
+            this.$el = this.$el.children();
+            this.$el.unwrap();
+            this.setElement(this.$el);
+        }
+    });
+    _.extend(HealthLevelsView.prototype, VampirePrintHelper);
+    
     var LayoutView = Marionette.LayoutView.extend({
         template: _.template(character_print_parent_html),
         
@@ -192,6 +307,10 @@ define([
             firstbar: "#cpp-firstbar",
             secondbar: "#cpp-secondbar",
             attributes: "#cpp-attributes",
+            blood: "#cpp-blood",
+            morality: "#cpp-morality",
+            willpower: "#cpp-willpower",
+            health_levels: "#cpp-health-levels"
         },
         
         setup: function(character) {
@@ -210,6 +329,13 @@ define([
                 fields: ["sect", "faction", "title"]
             }), options);
             self.showChildView('attributes', new AttributesView({model: character}), options);
+            self.showChildView('blood', new BloodView({
+                model: character,
+                column: 1
+            }), options);
+            self.showChildView('morality', new MoralityView({model: character}), options);
+            self.showChildView('willpower', new WillpowerView({model: character}), options);
+            self.showChildView('health_levels', new HealthLevelsView({model: character}), options);
             
             return self;
         }
