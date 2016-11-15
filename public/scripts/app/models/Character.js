@@ -423,7 +423,11 @@ define([
 
         add_experience_notation: function(options) {
             var self = this;
-            return self.get_experience_notations().then(function (ens) {
+            self._addExperienceEntryWrapper = self._addExperienceEntryWrapper || Parse.Promise.as();
+            
+            self._addExperienceEntryWrapper = self._addExperienceEntryWrapper.always(function () {
+                return self.get_experience_notations();
+            }).then(function (ens) {
                 var en = self._default_experience_notation(options);
                 // Silence the notification
                 ens.add(en, {silent: true});
@@ -441,7 +445,9 @@ define([
                     model.trigger('add', model, ens, {index: index});
                     self.trigger("finish_experience_notation_propagation");
                 });
-            })
+            });
+            
+            return self._addExperienceEntryWrapper;
         },
 
         remove_experience_notation: function(models, options) {
