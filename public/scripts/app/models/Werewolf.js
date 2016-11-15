@@ -245,7 +245,9 @@ define([
                 self.get("wta_breed"),
             ];
             affinities = _.without(affinities, undefined);
-            return affinities;
+            var extra_affinities = _.map(self.get('extra_affinity_links'), "attributes.name");
+            extra_affinities = _.without(extra_affinities, undefined);
+            return [].concat(affinities, extra_affinities);
         },
     }, ExpirationMixin );
     

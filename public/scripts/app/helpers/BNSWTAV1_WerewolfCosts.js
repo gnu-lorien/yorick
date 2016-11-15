@@ -25,8 +25,6 @@ define([
         get_affinities: function(character) {
             var self = this;
             var icds = character.get_affinities();
-            var eicds = _.map(character.get('extra_affinity_links'), "attributes.name");
-            icds = [].concat(icds, eicds);
             return icds;
         },
         

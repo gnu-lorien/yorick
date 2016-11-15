@@ -135,7 +135,7 @@ define([
         
         get_affinity_items: function() {
             var self = this;
-            var icd = _.without(self.character.get_affinities(), undefined);
+            var icd = self.character.get_affinities();
             var descriptionItems = _.chain(self.collection.models);
             if (0 != icd.length) {
                 descriptionItems = descriptionItems.select(function (model) {
