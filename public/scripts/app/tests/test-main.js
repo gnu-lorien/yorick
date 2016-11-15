@@ -14,17 +14,55 @@ Object.keys(window.__karma__.files).forEach(function (file) {
     }
 });
 
+if (!String.prototype.startsWith) {
+    String.prototype.startsWith = function(searchString, position){
+      position = position || 0;
+      return this.substr(position, searchString.length) === searchString;
+  };
+}
+
+if (!String.prototype.endsWith) {
+  String.prototype.endsWith = function(searchString, position) {
+      var subjectString = this.toString();
+      if (typeof position !== 'number' || !isFinite(position) || Math.floor(position) !== position || position > subjectString.length) {
+        position = subjectString.length;
+      }
+      position -= searchString.length;
+      var lastIndex = subjectString.lastIndexOf(searchString, position);
+      return lastIndex !== -1 && lastIndex === position;
+  };
+}
+
+function createDefineShim(originalDefine) {
+    return function (deps, callback) {
+        for(var i = 0; i < deps.length; i++) {
+            if (deps[i].startsWith("..") && !deps[i].endsWith(".js")) {
+                deps[i] = deps[i] + ".js";
+            }
+        }
+        console.log(deps);
+        originalDefine(deps, callback);
+    };
+}
+define = createDefineShim(define);
+define.amd = {
+    jQuery: true,
+};
+
 require.config({
     // Karma serves files under /base, which is the basePath from your config file
     baseUrl: '/base/scripts/lib',
+	waitSeconds: 0,
     paths: {
 
         // Core Libraries
-        jquery: "//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery",
-        jquerymobile: "//code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5",
+        //jquery: "jquery",
+        jquery: "//cdnjs.cloudflare.com/ajax/libs/jquery/1.11.2/jquery",
+        
+        jquerymobile: "jquery.mobile-1.4.5",
         jscookie: "js.cookie",
-        underscore: "//cdn.jsdelivr.net/lodash/3.10.0/lodash",
-        backbone: "//cdnjs.cloudflare.com/ajax/libs/backbone.js/1.1.2/backbone",
+        underscore: "lodash",
+        backbone: "backbone",
         //parse: "//www.parsecdn.com/js/parse-1.5.0.min",
         parse: "parse-1.5.0",
         pretty: "prettyprint",
@@ -36,11 +74,10 @@ require.config({
 
     // Sets the configuration for your third party scripts that are not AMD compatible
     shim: {
-
-        "backbone": {
-            "deps": [ "underscore", "jquery" ],
-            "exports": "Backbone"
-        },
+		"backbone": {
+			"deps": [ "underscore", "jquery" ],
+			"exports": "Backbone"
+		},
 
         "parse": {
             "deps": [ "underscore", "jquery" ],
