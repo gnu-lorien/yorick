@@ -111,6 +111,7 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "mario
             })
         });
 
+
         it("can be renamed", function (done) {
             var start_check = expected_change_length;
             vampire.update_trait("Retainers", 1, "backgrounds", 0, true).done(function (trait) {
