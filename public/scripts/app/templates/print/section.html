@@ -2,7 +2,7 @@
     <% _.each(sections, function (section) { %>
     <% if (character.has(section.name) && 0 != character.get(section.name).length) { %>
     <h4 class="ui-bar ui-bar-a ui-corner-all"><%= section.display %></h4>
-    <% _.each(_.chain(character.get(section.name)).sortBy("attributes.name").value(), function(d) { %>
+    <% _.each(section.values, function(d) { %>
     <%= format_skill(d, section.format) %><br/>
     <% }); %>
     <% }; %>

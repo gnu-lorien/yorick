@@ -385,6 +385,21 @@ define([
         template: _.template(section_html),
         templateHelpers: function() {
             var self = this;
+            _.each(self.sections, function(s) {
+                var sort = s.sort || "name";
+                var direction = s.direction || "asc";
+                var values = self.model.get(s.name);
+                if (sort == "name") {
+                    values = _.sortByAll(values, ["attributes.name"]);
+                } else if (sort == "value") {
+                    values = _.sortByAll(values, ["attributes.value", "attributes.name"]);
+                }
+                if (direction == "desc") {
+                    values = _(values).reverse().value();
+                }
+                s.values = values;
+            });
+            
             return {
                 character: self.model,
                 sections: self.sections,
@@ -566,7 +581,9 @@ define([
                     sections: [{
                         display: "Gifts",
                         name: "wta_gifts",
-                        format: 1
+                        format: 1,
+                        sort: "value",
+                        direction: "asc"
                     }]
                 }), options);
                 
