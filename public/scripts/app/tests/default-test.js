@@ -3,7 +3,7 @@
  * Created by Andrew on 11/7/2015.
  */
 
-define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "marionette", "../models/Troupe", "../models/SimpleTrait", "../siteconfig"], function (_, $, Parse, Vampire, Backbone, Troupe, SimpleTrait, siteconfig) {
+define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "marionette", "../models/Troupe", "../models/SimpleTrait", "../testsiteconfig"], function (_, $, Parse, Vampire, Backbone, Marionette, Troupe, SimpleTrait, siteconfig) {
     jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
     var ParseInit = function() {
         Parse.$ = $;
