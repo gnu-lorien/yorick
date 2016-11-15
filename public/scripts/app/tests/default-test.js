@@ -308,7 +308,7 @@ define(["underscore", "jquery", "parse", "../models/Vampire", "backbone", "mario
             var creation = vampire.get("creation");
             expect(creation.get("attributes_7_remaining")).toBe(1);
             expect(creation.get("attributes_7_picks")).toBe(undefined);
-            vampire.update_trait("Physical", 1, "attributes", 7, true).then(function (st) {
+            vampire.update_trait("Physical", 7, "attributes", 7, true).then(function (st) {
                 expect(vampire.get("creation").get("attributes_7_remaining")).toBe(0);
                 expect(vampire.get("creation").get("attributes_7_picks").length).toBe(1);
                 expect(vampire.get("creation").get("attributes_7_picks")[0].get("name")).toBe("Physical");
