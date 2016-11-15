@@ -1,24 +1,154 @@
 // Category View
 // =============
 
+/* global _ */
+
 // Includes file dependencies
 define([
 	"jquery",
 	"backbone",
     "parse",
+    "backform",
+    "marionette",
     "../models/SimpleTrait",
     "../collections/DescriptionCollection",
     "../models/Description",
-    "../collections/BNSMETV1_ClanRules"
-], function( $, Backbone, Parse, SimpleTrait, DescriptionCollection, Description, ClanRules ) {
+    "../collections/BNSMETV1_ClanRules",
+    "marionette",
+    "text!../templates/simpletrait-new-base.html",
+    "text!../templates/simpletrait-new-list.html",
+], function(
+    $,
+    Backbone,
+    Parse,
+    Backform,
+    Marionette,
+    SimpleTrait,
+    DescriptionCollection,
+    Description,
+    ClanRules,
+    Marionette,
+    simpletrait_new_base_html,
+    simpletrait_new_list_html
+) {
 
-    // Extends Backbone.View
-    var View = Backbone.View.extend( {
+    var View = Marionette.ItemView.extend( {
+        initialize: function(options) {
+            this.gift_filter_options = options.gift_filter_options;
+            this.listenTo(this.gift_filter_options, "change", this.render);
+            
+            _.bindAll(
+                this,
+                "register",
+                "update_collection_query_and_fetch",
+                "templateHelpers");
+        },
+        
+        //template: "script#simpletraitcategoryDescriptionItems",
+        template: _.template(simpletrait_new_list_html),
+        
+        templateHelpers: function () {
+            var self = this;
+            var descriptionItems;
+            self.requireSpecializations = _.chain(self.collection.models).select(function (model) {
+                if (model.get("requirement") == "requires_specialization") {
+                    return true;
+                }
+                return false;
+            }).pluck("attributes").pluck("name").value();
+            var traitNames = _(self.character.get(self.category))
+                .pluck("attributes")
+                .pluck("name")
+                .without(self.requireSpecializations)
+                .value();
 
-        // The View Constructor
-        initialize: function() {
+            if ("in clan disciplines" == self.filterRule) {
+                var icd = _.without(self.character.get_in_clan_disciplines(), undefined);
+                descriptionItems = _.chain(self.collection.models);
+                if (0 != icd.length) {
+                    descriptionItems = descriptionItems.select(function (model) {
+                        if (_.contains(traitNames, model.get("name"))) {
+                            return false;
+                        }
+                        if (_.contains(icd, model.get("name"))) {
+                            return true;
+                        }
+                        return false;
+                    })
+                }
+                descriptionItems = descriptionItems.value();
+            } else if ("affinity" == self.filterRule) {
+                descriptionItems = self.get_affinity_items();
+            } else {
+                descriptionItems = _.chain(self.collection.models).select(function (model) {
+                    if (!_.contains(traitNames, model.get("name"))) {
+                        return true;
+                    }
+                    return false;
+                }).value();
+            }
+            
+            if (self.category == "wta_gifts") {
+                if (self.gift_filter_options.attributes.affinities == "mine") {
+                    descriptionItems = self.get_affinity_items();
+                }
+                
+                if (self.gift_filter_options.attributes.ladder) {
+                    var available_levels = [1];
+                    var ladder = _.countBy(self.character.get("wta_gifts"), function(gift) {
+                        return gift.attributes.value;
+                    });
+                    _.each(_.range(2, 6), function(current_level) {
+                        var current_rungs = ladder[current_level] || 0;
+                        var previous_rungs = ladder[current_level - 1] || 0;
+                        var available_rungs = previous_rungs - current_rungs;
+                        if (available_rungs <= 0 || !_.isFinite(available_rungs)) {
+                            available_rungs = 0;
+                        } else {
+                            available_levels.push(current_level);
+                        }
+                    })
+                    
+                    descriptionItems = _.select(descriptionItems, function (item) {
+                        return _.contains(available_levels, _.parseInt(item.attributes.value));
+                    });
+                }
+                
+                if (self.gift_filter_options.attributes.sort == "alpha") {
+                    descriptionItems = _.sortByAll(descriptionItems, ["attributes.name"]);
+                } else if (self.gift_filter_options.attributes.sort == "level") {
+                    descriptionItems = _.sortByAll(descriptionItems, ["attributes.value", "attributes.name"]);
+                }
+                
+                if (self.gift_filter_options.attributes.direction == "desc") {
+                    descriptionItems = _(descriptionItems).reverse().value();
+                }
+            }
 
-            _.bindAll(this, "register", "update_collection_query_and_fetch");
+            return {
+                "collection": descriptionItems,
+                "character": self.character,
+                "category": self.category,
+                "free_value": self.free_value
+            };
+        },
+        
+        get_affinity_items: function() {
+            var self = this;
+            var icd = _.without(self.character.get_affinities(), undefined);
+            var descriptionItems = _.chain(self.collection.models);
+            if (0 != icd.length) {
+                descriptionItems = descriptionItems.select(function (model) {
+                    return _.some(_.map(_.range(1, 4), function (i) {
+                        if (_.contains(icd, model.get("affinity_" + i))) {
+                            return true;
+                        } else {
+                            return false;
+                        }
+                    }));
+                })
+            }
+            return descriptionItems.value();
         },
 
         switch_character_category_listening: function() {
@@ -47,7 +177,7 @@ define([
 
             if (self.filterRule !== filterRule) {
                 self.filterRule = filterRule;
-                change = true;
+                changed = true;
             }
 
             if (free_value !== self.free_value && free_value != _) {
@@ -59,7 +189,6 @@ define([
                 if (self.character)
                     self.stopListening(self.character);
                 self.character = character;
-                //self.listenTo(self.character, "change:" + category, self.update_collection_query_and_fetch);
                 self.listenTo(self.character, "change:" + category, self.render);
                 changed = true;
             }
@@ -94,89 +223,11 @@ define([
             self.collection.fetch({reset: true});
         },
 
-        // Renders all of the Category models on the UI
-        render: function() {
-            var self = this;
-
-            var descriptionItems;
-            self.requireSpecializations = _.chain(self.collection.models).select(function (model) {
-                if (model.get("requirement") == "requires_specialization") {
-                    return true;
-                }
-                return false;
-            }).pluck("attributes").pluck("name").value();
-            var traitNames = _(self.character.get(self.category))
-                .pluck("attributes")
-                .pluck("name")
-                .without(self.requireSpecializations)
-                .value();
-
-            if ("in clan disciplines" == self.filterRule) {
-                var icd = _.without(self.character.get_in_clan_disciplines(), undefined);
-                descriptionItems = _.chain(self.collection.models);
-                if (0 != icd.length) {
-                    descriptionItems = descriptionItems.select(function (model) {
-                        if (_.contains(traitNames, model.get("name"))) {
-                            return false;
-                        }
-                        if (_.contains(icd, model.get("name"))) {
-                            return true;
-                        }
-                        return false;
-                    })
-                }
-                descriptionItems = descriptionItems.value();
-            } else if ("affinity" == self.filterRule) {
-                var icd = _.without(self.character.get_affinities(), undefined);
-                descriptionItems = _.chain(self.collection.models);
-                if (0 != icd.length) {
-                    descriptionItems = descriptionItems.select(function (model) {
-                        if (_.contains(traitNames, model.get("name"))) {
-                            return false;
-                        }
-                        return _.some(_.map(_.range(1, 4), function (i) {
-                            if (_.contains(icd, model.get("affinity_" + i))) {
-                                return true;
-                            } else {
-                                return false;
-                            }
-                        }));
-                    })
-                }
-                descriptionItems = descriptionItems.value();
-            } else {
-                descriptionItems = _.chain(self.collection.models).select(function (model) {
-                    if (!_.contains(traitNames, model.get("name"))) {
-                        return true;
-                    }
-                    return false;
-                }).value();
-            }
-
-            // Sets the view's template property
-            this.template = _.template($("script#simpletraitcategoryDescriptionItems").html())({
-                "collection": descriptionItems,
-                "character": this.character,
-                "category": this.category,
-                "free_value": this.free_value
-            });
-
-            // Renders the view's template inside of the current listview element
-            this.$el.find("div[role='main']").html(this.template);
-
-            /*
-            this.headerTemplate = _.template($("script#headerTemplate").html())({
-                "character": this.character,
-                "title": this.category,
-            });
-
-            this.$el.find("div[data-role='header']").html(this.headerTemplate);
-            */
-
+        onRender: function() {
+            this.$el = this.$el.children();
+            this.$el.unwrap();
+            this.setElement(this.$el);
             this.$el.enhanceWithin();
-
-            // Maintains chainability
-            return this;
         },
 
         events: {
@@ -211,8 +262,89 @@ define([
         }
 
     } );
+    
+    var GiftsForm = Backform.Form.extend({
+        fields: [
+            {
+                name: "affinities",
+                label: "Show by Affinity",
+                control: "select",
+                options: [
+                    {label: "Mine", value: "mine"},
+                    {label: "Any", value: "any"}
+                ]
+            },
+            {
+                name: "ladder",
+                label: "Show only available on the gift level ladder",
+                control: "checkbox"
+            },
+            {
+                name: "sort",
+                label: "Sort By",
+                control: "select",
+                options: [
+                    {label: "Alphabetical", value: "alpha"},
+                    {label: "Level", value: "level"}
+                ]
+            },{
+                name: "direction",
+                label: "Direction",
+                control: "select",
+                options: [
+                    {label: "Ascending", value: "asc"},
+                    {label: "Descending", value: "desc"}
+                ]
+            }
+        ]
+    });
+    
+    var LayoutView = Marionette.LayoutView.extend({
+        template: _.template(simpletrait_new_base_html),
+        
+        regions: {
+            filter_rules: "#category-filter-rules",
+            list: "#category-list"
+        },
+        
+        model: new Backbone.Model(),
+        
+        initialize: function() {
+            var self = this;
+            self.gift_filter_options = new Backbone.Model({
+                "affinities": "mine",
+                "ladder": true,
+                "sort": "level",
+                "direction": "asc"
+            });
+        },
 
-    // Returns the View class
-    return View;
+        register: function(character, category, free_value, redirect, filterRule, specializationRedirect) {
+            var self = this;
+            
+            self.model.set("free_value", free_value);
+            
+            self.render();
+        
+            if (category == "wta_gifts") {
+                self.showChildView('filter_rules', new GiftsForm({model: self.gift_filter_options}));
+            }
+            
+            self.view = new View({gift_filter_options: self.gift_filter_options});
+            self.view.register(
+                character,
+                category,
+                free_value,
+                redirect,
+                filterRule,
+                specializationRedirect)
+            self.showChildView('list', self.view);
+                
+            self.$el.enhanceWithin();
+        },
+
+    });
+
+    return LayoutView;
 
 } );

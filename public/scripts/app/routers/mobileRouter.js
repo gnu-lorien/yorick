@@ -150,7 +150,7 @@ define([
             this.character = new CharacterView({ el: "#character"});
 
             this.simpleTraitCategoryView = new SimpleTraitCategoryView({el: "#simpletraitcategory-all"});
-            this.simpleTraitNewView = new SimpleTraitNewView({el: "#simpletrait-new"});
+            this.simpleTraitNewView = new SimpleTraitNewView({el: "#simpletrait-new > div[role='main']"});
             this.simpleTraitChangeView = new SimpleTraitChangeView({el: "#simpletrait-change"});
             this.simpleTextNewView = new SimpleTextNewView({el: "#simpletext-new"});
             this.simpleTraitSpecializationView = new SimpleTraitSpecializationView({el: "#simpletrait-specialization"});

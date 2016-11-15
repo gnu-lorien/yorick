@@ -45,7 +45,10 @@ define([
         render: function() {
 
             // Sets the view's template property
-            this.template = _.template( $( "script#simpleTraitCategoryView" ).html())({ "character": this.character, "category": this.category } );
+            this.template = _.template( $( "script#simpleTraitCategoryView" ).html())({
+                "character": this.character,
+                "category": this.category
+            } );
 
             // Renders the view's template inside of the current listview element
             this.$el.find("div[role='main']").html(this.template);
