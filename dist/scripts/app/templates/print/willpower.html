@@ -1,0 +1,9 @@
+<div>
+    <h4 class="ui-bar ui-bar-a ui-corner-all">Willpower</h4>
+    <% _.each(_.range(0, character.get_willpower_total()), function (i) { %>
+    <i class="fa fa-square-o"></i>
+    <% if (0 == (i + 1) % 5) { %>
+    &nbsp;
+    <% } %>
+    <% }); %>
+</div>
