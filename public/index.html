@@ -30,7 +30,7 @@
     <script type="text/javascript">
         window._trackJs = {
             token: '8c029fff54d841498640d86379af7316',
-            enabled: !(window.location.host.indexOf('localhost') >= 0)
+            enabled: false,//!(window.location.host.indexOf('localhost') >= 0)
         };
         // Add a script element as a child of the body
         function downloadJSAtOnload() {
@@ -96,6 +96,7 @@
             <li><a href="#administration/characters/all">Characters</a></li>
             <li><a href="#administration/users/all">Users</a></li>
             <li><a href="#administration/patronages">Patronages</a></li>
+            <li><a href="#administration/descriptions">Descriptions</a></li>
         </ul>
     </div><!-- /content -->
 </div>
@@ -209,6 +210,12 @@
                 <li><a href="#character/<%= character.id %>/approved">Print Approved</a></li>
             </ul>
         </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true"
+                class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/rename">Rename</a></li>
+            </ul>
+        </div>
     </div>
 
     <% if (character.is_being_created()) { %>
@@ -237,7 +244,7 @@
     <% if (!character.is_being_created()) { %>
         <h3 class="ui-bar ui-bar-a">Information</h3>
         <div class="ui-grid-b ui-responsive">
-            <% _.each(["clan", "archetype", "sect", "faction", "title", "antecedence"], function (st) { %>
+            <% _.each(character.all_text_attributes(), function (st) { %>
             <% var ust = st[0].toUpperCase() + st.substr(1); %>
             <div class="ui-block-b">
                 <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
@@ -321,7 +328,7 @@
 <div id="characters-all" data-role="page" data-title="Characters">
     <div role="main" class="ui-content">
         <ul>
-            <li><a href="#characternew">Add New Vampire</a></li>
+            <li><a href="#characternew">Add New Character</a></li>
         </ul>
         <form class="ui-filterable">
             <input id="characters-filter" data-type="search">
@@ -351,9 +358,15 @@
     </div><!-- /content -->
 </div>
 
+<div id="administration-descriptions" data-role="page" data-title="Descriptions">
+    <div role="main" class="ui-content">
+        <div id="descriptions-sections"></div>
+        <div id="administration-descriptions-list"></div>
+    </div><!-- /content -->
+</div>
+
 
 <div id="simpletraitcategory-all" data-role="page" data-title="SimpleTraitCategoryAll">
-
     <div role="main" class="ui-content">
     </div>
 </div>
@@ -403,6 +416,14 @@
         <input type="text" id="specialize-name" name="specialize-name" value="<%= b.get_specialization() %>">
         <label for="free-slider">Free Value:</label>
         <input type="range" name="free-slider" id="free-slider" class="free-slider" value="<%= b.get('free_value') || 0 %>" min="0" max="<%= traitmax %>">
+        <label for="experience-type-select">Experience Cost Type Override</label>
+        <select name="experience-type-select" id="experience-type-select">
+          <option value="automatic" <%= b.get('experience_cost_type') ? '' : 'selected="selected"' %> >Automatic</option>
+          <option value="flat" <%= b.get('experience_cost_type') == 'flat' ? 'selected' : '' %> >Flat</option>
+          <option value="linear" <%= b.get('experience_cost_type') == 'linear' ? 'selected' : '' %> >Linear</option>
+        </select>
+        <label for="experience-cost-modifier">Experience Cost Modifier</label>
+        <input type="range" name="experience-cost-modifier" id="experience-cost-modifier" class="cost-modifier-slider" value="<%= b.get('experience_cost_modifier') || 1%>" min="1" max="10">
     </p>
 </script>
 
@@ -555,30 +576,25 @@
 </div>
 
 <div id="character-new" data-role="page" data-title="New Character">
-
     <div role="main" class="ui-content">
+        <form id="character-new-form"></form>
     </div>
 </div>
-
-<script id="characterNewView" type="text/template">
-    <form>
-        <label for="characterName">Name:</label>
-        <input type="text" name="characterName" id="characterName" value="New Character Name">
-    </form>
-    <p>
-        <button class="cancel ui-btn">Cancel</button>
-        <button class="save ui-btn">Save Changes</button>
-    </p>
-</script>
 
 <div id="simpletrait-new" data-role="page" data-title="New Simple Trait">
     <div role="main" class="ui-content">
     </div>
 </div>
 
+<div id="character-create-simpletrait-new" data-role="page" data-title="New Simple Trait">
+    <div role="main" class="ui-content">
+    </div>
+</div>
+
+
 <script id="simpletraitcategoryDescriptionItems" type="text/template">
-    <% if (freeValue) { %>
-        <p>Pick one for value <%= freeValue %></p>
+    <% if (free_value) { %>
+        <p>Pick one for value <%= free_value %></p>
     <% } %>
     <form class="ui-filterable">
         <input id="filterBasic-input" data-type="search">
@@ -701,6 +717,11 @@
     </div>
 </div>
 
+<div id="simpletrait-new-specialization" data-role="page" data-title="Simple Trait Specialization">
+    <div role="main" class="ui-content">
+    </div>
+</div>
+
 <script id="simpleTraitSpecialization" type="text/template">
     <p><%= description.attributes.help_specialization %></p>
     <form>
@@ -772,6 +793,11 @@
     </div>
 </div>
 
+<div id="character-rename" data-role="page" data-title="Rename Character">
+    <div role="main" class="ui-content">
+        <form id="character-rename-main"></form>
+    </div>
+</div>
 
 <div id="user-settings-profile" data-role="page" data-title="Profile">
 </div>

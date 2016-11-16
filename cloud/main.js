@@ -136,14 +136,36 @@ var get_vampire_change_acl = function(vampire) {
 }
 
 Parse.Cloud.beforeSave("Vampire", function(request, response) {
-    var tracked_texts = ["clan", "state", "archetype", "faction", "title", "sect", "antecedence"];
+    var tracked_texts = [
+        "name",
+        "clan",
+        "state",
+        "archetype",
+        "faction",
+        "title",
+        "sect",
+        "antecedence",
+        "wta_breed",
+        "wta_auspice",
+        "wta_tribe",
+        "wta_camp",
+        "wta_faction"
+    ];
     var v = request.object;
     var desired_changes = _.intersection(tracked_texts, v.dirtyKeys());
     if (0 === desired_changes.length) {
         console.log("Saving vampire (" + v.id + ") and there are no changes we track here");
         return response.success();
     }
+    
+    var modified_vampire = request.object;
+    if (_.isUndefined(modified_vampire.id)) {
+        console.log("Creating a new vampire named " + request.object.get("name"));
+        return response.success();
+    }
+    
     // TODO: Update the history permissions if troupes has changed
+    
     var new_values = {};
     _.each(v.dirtyKeys(), function(k) {
         new_values[k] = v.get(k);
@@ -196,18 +218,22 @@ var isMeaningfulChange = function (vc) {
 }
 
 Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
+    console.log("beforeSave simpleTrait");
     var vc = new Parse.Object("VampireChange");
     var modified_trait = request.object;
     if (_.isUndefined(modified_trait.id)) {
         var flow_promise = Parse.Promise.as({});
+        console.log("beforeSave simpleTrait Setting blank flow promise");
     } else {
         var flow_promise = new Parse.Query("SimpleTrait").get(modified_trait.id, {useMasterKey: true}).then(function (st) {
+            console.log("beforeSave simpleTrait Calling _getServerData()");
             return st._getServerData();
         });
+        console.log("beforeSave simpleTrait Setting fetch flow promise");
     }
     flow_promise.then(function(serverData) {
-        console.log("beforeSave SimpleTrait Setting vc " + modified_trait.id ? modified_trait.get("name") : modified_trait.id);
-        console.log(pretty(serverData));
+        console.log("beforeSave simpleTrait Starting with serverdata response " + JSON.stringify(modified_trait));
+        console.log(JSON.stringify(serverData));
         vc.set({
             "name": modified_trait.get("name"),
             "category": modified_trait.get("category"),
@@ -525,8 +551,8 @@ Parse.Cloud.define("submit_facebook_profile_data", function(request, response) {
 });
 
 Parse.Cloud.define("make_me_admin", function(request, response) {
-    (new Parse.Query(Parse.Role)).equalTo("name", "SiteAdministrator").first().then(function (role) {
-        role.getUsers().add(new Parse.User({id: "KE09Xe9Z8i"}));
+    (new Parse.Query(Parse.Role)).equalTo("name", "Administrator").first().then(function (role) {
+        role.getUsers().add(new Parse.User({id: "b9VFx9QiZj"}));
         return role.save({}, {useMasterKey: true});
     }).then(function (s) {
         response.success(s.id);

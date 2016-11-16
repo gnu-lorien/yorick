@@ -3,6 +3,7 @@ requirejs.config( {
 	baseUrl: "scripts/lib",
 	//urlArgs: "bust=" + (new Date()).getTime(),
 	urlArgs: "bust=010101",
+	waitSeconds: 0,
 
 	// 3rd party script alias names
 	paths: {
@@ -23,6 +24,8 @@ requirejs.config( {
 		hello: "hello",
 		marionette: "backbone.marionette",
 		"bootstrap-datepicker": "//cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.6.1/js/bootstrap-datepicker",
+		"url-search-params": "url-search-params.max.amd",
+		papaparse: "papaparse-4.1.2",
 
 		app: "../app"
 	},

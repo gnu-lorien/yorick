@@ -40,7 +40,7 @@ module.exports = function(config) {
 
 
     // web server port
-    port: 9876,
+    port: 8082,
 
 
     // enable / disable colors in the output (reporters and logs)
@@ -49,11 +49,11 @@ module.exports = function(config) {
 
     // level of logging
     // possible values: config.LOG_DISABLE || config.LOG_ERROR || config.LOG_WARN || config.LOG_INFO || config.LOG_DEBUG
-    logLevel: config.LOG_INFO,
+    logLevel: config.LOG_DEBUG,
 
 
     // enable / disable watching file and executing tests whenever any file changes
-    autoWatch: false,
+    autoWatch: true,
 
 
     // start these browsers

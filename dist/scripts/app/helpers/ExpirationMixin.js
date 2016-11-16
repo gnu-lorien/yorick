@@ -1,1 +1,1 @@
-define([],function(){var e={isActive:function(){return this.has("expiresOn")?this.get("expiresOn")>Date.now():!1},isExpired:function(){return this.has("expiresOn")?this.get("expiresOn")<Date.now():!1},status:function(){return this.isActive()?"Active":"Expired"}};return e});
+define([],function(){var e={isActive:function(){return!!this.has("expiresOn")&&this.get("expiresOn")>Date.now()},isExpired:function(){return!!this.has("expiresOn")&&this.get("expiresOn")<Date.now()},status:function(){return this.isActive()?"Active":"Expired"}};return e});

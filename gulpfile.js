@@ -24,6 +24,12 @@ gulp.task('copy-html-templates', ['clean'], function () {
         .pipe(gulp.dest('dist/scripts/app/templates'));
 })
 
+gulp.task('copy-print-templates', ['clean'], function () {
+    return gulp.src('./public/scripts/app/templates/print/*')
+        .pipe(gulp.dest('dist/scripts/app/templates/print'));
+})
+
+
 gulp.task('minify-css', ['clean'], function () {
     return gulp.src('./public/**/*.css') // path to your files
         .pipe(minifyCss())
@@ -70,6 +76,6 @@ gulp.task('indexbust', ['minify-html'], function () {
         .pipe(gulp.dest('dist'));
 })
 
-gulp.task('pubstorm', ['minify-html', 'copy-html-templates', 'minify-css', 'images', 'siteconfig-pubstorm', 'appbust', 'indexbust']);
+gulp.task('pubstorm', ['minify-html', 'copy-print-templates', 'copy-html-templates', 'minify-css', 'images', 'siteconfig-pubstorm', 'appbust', 'indexbust']);
 
-gulp.task('patron', ['minify-html', 'copy-html-templates', 'minify-css', 'images', 'siteconfig-patron', 'appbust', 'indexbust']);
+gulp.task('patron', ['minify-html', 'copy-print-templates', 'copy-html-templates', 'minify-css', 'images', 'siteconfig-patron', 'appbust', 'indexbust']);

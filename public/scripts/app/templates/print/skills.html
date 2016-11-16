@@ -1,0 +1,14 @@
+<h4 class="ui-bar ui-bar-a">Skills</h4>
+<div class="ui-grid-b ui-responsive">
+    <% _.each(groupedSkills, function(three_group) { %>
+    <% _.each(three_group, function(skill, i) { %>
+    <% if (skill) { %>
+    <div class="ui-block-<%= String.fromCharCode(97 + (i % 3)) %>">
+        <div class="ui-body" style="overflow: hidden; white-space:nowrap">
+            <%= format_skill(skill, 1) %>
+        </div>
+    </div>
+    <% } %>
+    <% }); %>
+    <% }); %>
+</div>

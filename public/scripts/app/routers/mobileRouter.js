@@ -59,6 +59,11 @@ define([
     "../models/Patronage",
     "../helpers/UserWreqr",
     "../views/CharactersSummarizeListView",
+    "../views/CharacterRenameView",
+    "../views/SimpleTraitNewSpecializationView",
+    "../views/CharacterCreateSimpleTraitNewView",
+    "../views/DescriptionsView",
+    "../models/Werewolf"
 ], function ($,
              Parse,
              pretty,
@@ -112,7 +117,12 @@ define([
              Users,
              Patronage,
              UserChannel,
-             CharactersSummarizeListView
+             CharactersSummarizeListView,
+             CharacterRenameView,
+             SimpleTraitNewSpecializationView,
+             CharacterCreateSimpleTraitNewView,
+             DescriptionsView,
+             Werewolf
 ) {
 
     // Extends Backbone.Router
@@ -140,13 +150,15 @@ define([
             this.character = new CharacterView({ el: "#character"});
 
             this.simpleTraitCategoryView = new SimpleTraitCategoryView({el: "#simpletraitcategory-all"});
-            this.simpleTraitNewView = new SimpleTraitNewView({el: "#simpletrait-new"});
+            this.simpleTraitNewView = new SimpleTraitNewView({el: "#simpletrait-new > div[role='main']"});
             this.simpleTraitChangeView = new SimpleTraitChangeView({el: "#simpletrait-change"});
             this.simpleTextNewView = new SimpleTextNewView({el: "#simpletext-new"});
             this.simpleTraitSpecializationView = new SimpleTraitSpecializationView({el: "#simpletrait-specialization"});
+            this.simpleTraitNewSpecializationView = new SimpleTraitNewSpecializationView({el: "#simpletrait-new-specialization"});
+            this.characterCreateSimpleTraitNewView = new CharacterCreateSimpleTraitNewView({el: "#character-create-simpletrait-new"});
 
             this.characterCreateView = new CharacterCreateView({el: "#character-create"});
-            this.characterNewView = new CharacterNewView({el: "#character-new"});
+            this.characterNewView = new CharacterNewView({el: "#character-new-form"});
 
             this.characterPrintView = new CharacterPrintView({el: "#printable-sheet"});
             this.characterCostsView = new CharacterCostsView({el: "#character-costs"});
@@ -198,6 +210,8 @@ define([
 
             "simpletrait/:category/:cid/:bid": "simpletrait",
             "simpletrait/specialize/:category/:cid/:bid": "simpletraitspecialize",
+            "simpletrait/spacer/:category/:cid/:name/:value/:free_value/new": "simpletraitnew",
+            "simpletrait/specialize/:category/:cid/:name/:value/:free_value/new": "simpletrait_new_specialize",
             
             "simpletext/:category/:target/:cid/pick": "simpletextpick",
 
@@ -224,6 +238,7 @@ define([
             "character/:cid/troupe/:tid/leave": "character_leave_troupe",
             "character/:cid/troupe/:tid/show": "character_show_troupe",
             "character/:cid/approval": "characterapproval",
+            "character/:cid/rename": "characterrename",
 
             "character/:cid/experience/:start/:changeBy": "characterexperience",
 
@@ -248,6 +263,7 @@ define([
             "administration/patronage/:id": "administration_patronage",
             "administration/patronages/new": "administration_patronage_new",
             "administration/patronages/new/:userid": "administration_patronage_new",
+            "administration/descriptions": "administration_descriptions",
 
         },
 
@@ -374,14 +390,26 @@ define([
             }).fail(PromiseFailReport);
         },
 
+        characterrename: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid, "all").then(function (character) {
+                self.characterRenameView = self.characterRenameView || new CharacterRenameView({el: "#character-rename-main"});
+                return self.characterRenameView.register(character);
+            }).then(function () {
+                $.mobile.changePage("#character-rename", {reverse: false, changeHash: false});
+            }).always(function () {
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
+        },
 
         characterprint: function(cid) {
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
             self.get_character(cid, "all").done(function (character) {
-                self.characterPrintView.character = character;
-                self.characterPrintView.render();
+                self.characterPrintView.setup(character);
                 $.mobile.changePage("#printable-sheet", {reverse: false, changeHash: false});
             }).fail(PromiseFailReport);
         },
@@ -390,7 +418,6 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#characters?all");
-            self.characterNewView.model = new Vampire;
             self.characterNewView.render();
             $.mobile.changePage("#character-new", {reverse: false, changeHash: false});
         },
@@ -419,8 +446,10 @@ define([
                 var specialCategory;
                 if ("disciplines" == category) {
                     specialCategory = "in clan disciplines";
+                } else if ("wta_gifts" == category) {
+                    specialCategory = ["affinity", "show_only_value_1"];
                 }
-                self.simpleTraitNewView.register(
+                self.characterCreateSimpleTraitNewView.register(
                     c,
                     category,
                     i,
@@ -428,7 +457,7 @@ define([
                     specialCategory,
                     "#charactercreate/simpletraits/<%= self.category %>/<%= self.character.id %>/specialize/<%= b.linkId() %>/" + i);
                 self.characterCreateView.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
-                $.mobile.changePage("#simpletrait-new", {reverse: false, changeHash: false});
+                $.mobile.changePage("#character-create-simpletrait-new", {reverse: false, changeHash: false});
             });
         },
 
@@ -640,6 +669,21 @@ define([
             }).fail(PromiseFailReport).fail(function () {
                 $.mobile.loading("hide");
             });
+        },
+
+        administration_descriptions: function() {
+            var self = this;
+            self.set_back_button("#administration");
+            $.mobile.loading("show");
+            self.enforce_logged_in().then(function () {
+                self.administrationDescriptionsView = self.administrationDescriptionsView ||
+                    new DescriptionsView().setup();
+                return self.administrationDescriptionsView.update_categories();
+            }).then(function () {
+                $.mobile.changePage("#administration-descriptions", {reverse: false, changeHash: false});
+            }).fail(function () {
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
         },
 
         characterdelete: function(cid) {
@@ -855,8 +899,14 @@ define([
 
         _get_character: function(id, categories) {
             var self = this;
-            return Vampire.get_character(id, categories, self)
-                .then(self._check_character_mismatch);
+            var q = new Parse.Query("Vampire").select("type");
+            return q.get(id).then(function (c) {
+                if (c.get("type") == "Werewolf") {
+                    return Werewolf.get_character(id, categories, self);
+                } else {
+                    return Vampire.get_character(id, categories, self);
+                }
+            }).then(self._check_character_mismatch);
         },
 
         simpletrait: function(category, cid, bid) {
@@ -889,6 +939,45 @@ define([
                 );
             }).then(function () {
                 $.mobile.changePage("#simpletrait-specialization", {reverse: false, changeHash: false});
+            }).fail(function(error) {
+                console.log(error.message);
+            });
+        },
+        
+        simpletraitnew: function(category, cid, name, value, free_value) {
+            var self = this;
+            self.set_back_button("#simpletraits/" + category + "/" + cid + "/all");
+            self.get_character(cid, [category]).then(function (character) {
+                var trait = new SimpleTrait({
+                    name: name,
+                    value: _.parseInt(value),
+                    free_value: _.parseInt(free_value),
+                    category: category,
+                });
+                self.simpleTraitChangeView.register(character, trait, category);
+                $.mobile.changePage("#simpletrait-change", {reverse: false, changeHash: false});
+            }).fail(function(error) {
+                console.log(error.message);
+            });
+        },
+
+        simpletrait_new_specialize: function(category, cid, name, value, free_value) {
+            var self = this;
+            self.set_back_button("#simpletraits/" + category + "/" + cid + "/all");
+            self.get_character(cid, [category]).then(function (character) {
+                var trait = new SimpleTrait({
+                    name: name,
+                    value: _.parseInt(value),
+                    free_value: _.parseInt(free_value)
+                })
+                return self.simpleTraitNewSpecializationView.register(
+                    trait,
+                    category,
+                    "#simpletraits/<%= self.category %>/" + cid + "/all",
+                    "#simpletrait/spacer/<%= self.category %>/" + cid + "/<%= b.get('name') %>/<%= b.get('value') %>/<%= b.get('free_value') %>/new"
+                );
+            }).then(function () {
+                $.mobile.changePage("#simpletrait-new-specialization", {reverse: false, changeHash: false});
             }).fail(function(error) {
                 console.log(error.message);
             });

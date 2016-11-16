@@ -1,0 +1,9 @@
+<div>
+    <h4 class="ui-bar ui-bar-a ui-corner-all"><%= name %></h4>
+    <% _.each(_.range(0, total), function (i) { %>
+    <i class="fa fa-square-o"></i>
+    <% if (0 == (i + 1) % split) { %>
+    &nbsp;
+    <% } %>
+    <% }); %>
+</div>

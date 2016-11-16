@@ -44,7 +44,7 @@ define([
                 console.log("I found this user with a role of " + role);
                 return Parse.Promise.as(role);
             }).then(function (role) {
-                self.user.set("role", role);
+                self.user.set("role", role || "None");
                 self.form = new Backform.Form({
                     el: "#troupe-edit-staff-form",
                     model: self.user,
