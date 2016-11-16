@@ -3,10 +3,15 @@ A Vampire character database compatible with By Night Studio's Mind's Eye Theatr
 
 Licensed under the GNU Affero General Public License v3
 
-# Quickstart with Nitrous.io
-Nitrous.io is a great remote workstation that I tend to use when I need to make changes to code like this on the fly.
+Develop ![Image of build status for branch develop](https://travis-ci.org/gnu-lorien/yorick.svg?branch=develop)
 
-Start up a workstation with the node.js configuration. Run the following commands to checkout the repository and run the nitrous initialization script. When it's done you will have the dashboard running on port 4000 and the website running on 8080. The default dashboard username and password is tmp. You can use the preview buttons to get at them.
+Master ![Image of build status for branch master](https://travis-ci.org/gnu-lorien/yorick.svg?branch=master)
 
-    git clone https://github.com/gnu-lorien/yorick.git ~/code/yorick
-    bash ~/code/yorick/dotfiles/initialize_nitrous.bash
+# Quickstart with Cloud9
+
+I've started using Cloud9 so there's also a quick start script for this.
+
+Start up a workstation with the node.js configuration. Clone the yorick address from github https://github.com/gnu-lorien/yorick.git ~/code/yorick. Once it starts up, run the following command in the terminal:
+
+bash ~/workspace/dotfiles/initialize_nitrous.bash
+You'll get the webapp running on the default port and connecting to a mongodb also hosted on C9.
