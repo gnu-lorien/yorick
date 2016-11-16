@@ -1,6 +1,6 @@
 {
   "name": "yorick",
-  "version": "0.7.9",
+  "version": "0.7.10",
   "author": "Andrew Sayman <andrew.sayman@gmail.com>",
   "description": "A Vampire character database for BNS MET",
   "license": "AGPL-3.0",
