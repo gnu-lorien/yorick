@@ -49,8 +49,13 @@ define([
     
     var TEXT_ATTRIBUTES = ["archetype", "wta_breed", "wta_auspice", "wta_tribe", "wta_camp", "wta_faction", "antecedence"];
     
+    var SUM_CREATION_CATEGORIES = ["wta_merits", "wta_flaws"];
+    
     // The Model constructor
     var instance_methods = _.extend({
+        get_sum_creation_categories: function() {
+            return SUM_CREATION_CATEGORIES;
+        },
         _update_creation: function(category, modified_trait, freeValue) {
             var self = this;
             if (!_.contains(["wta_merits", "wta_flaws"], category)) {
@@ -365,7 +370,7 @@ define([
 
     Model.create_test_character = function(nameappend) {
         var nameappend = nameappend || "";
-        var name = "karmacharactertest" + nameappend + Math.random().toString(36).slice(2);
+        var name = "karmacharactertestwerewolf" + nameappend + Math.random().toString(36).slice(2);
         return Model.create(name);
     };
     

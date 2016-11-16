@@ -52,8 +52,13 @@ define([
     
     var TEXT_ATTRIBUTES = ["clan", "archetype", "sect", "faction", "title", "antecedence"];
     
+    var SUM_CREATION_CATEGORIES = ["merits", "flaws"];
+    
     // The Model constructor
     var instance_methods = _.extend({
+        get_sum_creation_categories: function() {
+            return SUM_CREATION_CATEGORIES;
+        },
         _update_creation: function(category, modified_trait, freeValue) {
             var self = this;
             if (!_.contains(["merits", "flaws"], category)) {

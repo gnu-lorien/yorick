@@ -249,7 +249,7 @@ define([
                 var remaining_name = category + "_" + pick_index + "_remaining";
                 var creation = self.get("creation");
                 creation.remove(picks_name, picked_trait);
-                if (_.contains(["merits", "flaws"], category)) {
+                if (_.contains(self.get_sum_creation_categories(), category)) {
                     var sum = _.sum(creation.get(picks_name), "attributes.value");
                     creation.set(remaining_name, 7 - sum);
                 } else {
