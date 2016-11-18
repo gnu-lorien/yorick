@@ -190,6 +190,8 @@ define([
             // When there is no hash bang on the url, the home method is called
             "": "home",
             "start": "home",
+            
+            "about": "about",
 
             "logout": "logout",
             "signup": "signup",
@@ -304,6 +306,10 @@ define([
             } else {
                 window.location.hash = "";
             }
+        },
+        
+        about: function() {
+            $.mobile.changePage("#about", {reverse: false, changeHash: false})
         },
 
         resetpassword: function() {
