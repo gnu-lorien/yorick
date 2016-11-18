@@ -440,7 +440,7 @@ define([
             header: "#cpp-header",
             firstbar: "#cpp-firstbar",
             secondbar: "#cpp-secondbar",
-            attributes: "#cpp-attributes",
+            attributeRegion: "#cpp-attributes",
             blood: "#cpp-blood",
             morality: "#cpp-morality",
             willpower: "#cpp-willpower",
@@ -456,19 +456,10 @@ define([
             bottom_two_b: "#cpp-bottom-two-b",
             bottom_two_c: "#cpp-bottom-two-c"
         },
-        
-        setup: function(character) {
+        setup_regions: function() {
             var self = this;
             var options = self.options || {};
-            if (self.lasttribe && self.character.get("wta_tribe") == self.lasttribe) {
-                if (character == self.character) {
-                    return;
-                }
-            }
-            self.lasttribe = character.get("wta_tribe");
-            self.character = character;
-            
-            self.render();
+            var character = self.character;
             
             if (self.character.get("type") == "Werewolf") {
                 self.showChildView('header', new HeaderView({model: character}), options);
@@ -498,7 +489,7 @@ define([
                         display: "Faction"
                     }]
                 }), options);
-                self.showChildView('attributes', new AttributesView({model: character}), options);
+                self.showChildView('attributeRegion', new AttributesView({model: character}), options);
                 if (self.character.get("wta_tribe") == "Ananasi") {
                     self.showChildView('blood', new FixedBloodView({model: new Backbone.Model({
                         generation: 0,
@@ -670,7 +661,7 @@ define([
                         display: "Title"
                     }]
                 }), options);
-                self.showChildView('attributes', new AttributesView({model: character}), options);
+                self.showChildView('attributeRegion', new AttributesView({model: character}), options);
                 self.showChildView('blood', new BloodView({model: character}), options);
                 self.showChildView('morality', new MoralityView({model: character}), options);
                 self.showChildView('willpower', new WillpowerView({model: character}), options);
@@ -781,9 +772,28 @@ define([
                         format: 0
                     }]
                 }), options);
-     
             }
- 
+        },
+        onShow: function () {
+            this.setup_regions()
+        },
+        initialize: function(options) {
+            _.bindAll(this, "setup_regions");
+        },
+        setup: function(character) {
+            var self = this;
+            var options = self.options || {};
+            if (self.lasttribe && self.character.get("wta_tribe") == self.lasttribe) {
+                if (character == self.character) {
+                    return;
+                }
+            }
+            self.lasttribe = character.get("wta_tribe");
+            self.character = character;
+            
+            self.render();
+            self.setup_regions();
+
             return self;
         }
         
