@@ -489,7 +489,10 @@ define([
                     model: character,
                     fields: [{
                         name: "archetype",
-                        display: "Archetype" + ", " + "archtype_2" 
+                        display: "Archetype"
+                    },{
+                        name: "archetype_2",
+                        display: "Archetype"
                     },{
                         name: "wta_camp",
                         display: "Camp", 
