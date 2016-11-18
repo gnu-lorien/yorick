@@ -12,8 +12,9 @@ define([
     "text!../templates/character-print-view.html",
     "text!../templates/character-history-selected-view.html",
     "text!../templates/character-history-view.html",
-    "../helpers/VampirePrintHelper"
-], function( _, $, Backbone, Marionette, Parse, moment, character_print_view_html, character_history_selected_view_html, character_history_view_html, VampirePrintHelper) {
+    "../helpers/VampirePrintHelper",
+    "../views/CharacterPrintView"
+], function( _, $, Backbone, Marionette, Parse, moment, character_print_view_html, character_history_selected_view_html, character_history_view_html, VampirePrintHelper, CharacterPrintView ) {
 
     var MainView = Marionette.ItemView.extend({
         template: _.template(character_history_view_html),
@@ -104,57 +105,6 @@ define([
         }
     });
     
-    var SheetView = Marionette.ItemView.extend({
-        template: _.template(character_print_view_html),
-        templateHelpers: function () {
-            var self = this;
-            var character = self.override.get("character") || self.model
-            var sortedSkills = character.get_sorted_skills();
-            return {
-                "character": character,
-                "skills": sortedSkills,
-                "groupedSkills": character.get_grouped_skills(sortedSkills),
-                format_simpletext: this.format_simpletext,
-                format_attribute_value: this.format_attribute_value,
-                format_attribute_focus: this.format_attribute_focus,
-                format_skill: this.format_skill,
-                format_specializations: this.format_specializations
-            }
-        },       
-        modelEvents: {
-            "change": "renderIfNoOverride",
-        },
-        initialize: function(options) {
-            this.override = options.override;
-            this.listenTo(
-                this.override,
-                "change",
-                _.debounce(this.render, 100, { trailing: true}));
-            
-            _.bindAll(
-                this,
-                "templateHelpers",
-                "format_simpletext",
-                "format_attribute_value",
-                "format_attribute_focus",
-                "format_skill",
-                "format_specializations"
-            );
- 
-        },
-        renderIfNoOverride: function() {
-            var self = this;
-            if (self.override.get("character") == null) {
-                return;
-            }
-            return self.render();
-        },
-        onRender: function() {
-            this.$el.enhanceWithin();
-        }
-    })
-    _.extend(SheetView.prototype, VampirePrintHelper);
-    
     var LayoutView = Marionette.LayoutView.extend({
         tagName: "div",
         regions: {
@@ -185,10 +135,9 @@ define([
                         model: self.model,
                         picked: self.picked
                     }));
-                    self.showChildView('sheet', new SheetView({
-                        model: self.model,
-                        override: self.override
-                    }));
+                    var cpv = new CharacterPrintView;
+                    cpv = cpv.setup(self.model, self.override);
+                    self.showChildView('sheet', cpv);
                 });
             }
             
