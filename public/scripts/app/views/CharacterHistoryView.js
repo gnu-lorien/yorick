@@ -3,66 +3,88 @@
 
 // Includes file dependencies
 define([
+    "underscore",
     "jquery",
     "backbone",
+    "marionette",
+    "parse",
     "moment",
     "text!../templates/character-print-view.html",
     "text!../templates/character-history-selected-view.html",
     "text!../templates/character-history-view.html",
     "../helpers/VampirePrintHelper"
-], function( $, Backbone, moment, character_print_view_html, character_history_selected_view_html, character_history_view_html, VampirePrintHelper) {
+], function( _, $, Backbone, Marionette, Parse, moment, character_print_view_html, character_history_selected_view_html, character_history_view_html, VampirePrintHelper) {
 
-    // Extends Backbone.View
-    var View = Backbone.View.extend( {
-
-        // The View Constructor
-        initialize: function() {
+    var MainView = Marionette.ItemView.extend({
+        template: _.template(character_history_view_html),
+        templateHelpers: function () {
             var self = this;
-
-            _.bindAll(this,
-                "render",
-                "format_simpletext",
-                "format_attribute_value",
-                "format_attribute_focus",
-                "format_skill",
-                "format_specializations"
-            );
-            
-            self.sheetTemplate = _.template(character_print_view_html);
-            self.selectedTemplate = _.template(character_history_selected_view_html);
-        },
-
-        register: function(character, changeId) {
-            var self = this;
-            var p = Parse.Promise.as([]);
-
-            if (character !== self.character) {
-                if (self.character) {
-                    self.stopListening(self.character);
-                    if (self.character.recorded_changes) {
-                        self.stopListening(self.character.recorded_changes);
-                    }
-                }
-                self.character = character;
-
-                p = self.character.get_recorded_changes(function (rc) {
-                    self.listenTo(rc, "add", self.render);
-                    self.listenTo(rc, "reset", self.render);
-                    if (self.character.recorded_changes.length > 0) {
-                        _.defer(self.render);
-                    }
-                });
+            return {
+                "character": this.model,
+                "logs": this.model.recorded_changes.models,
+                idForPickedIndex: self.picked.get("value")
             }
+        },       
+        modelEvents: {
+            "saved": "update_then_render"
+        },
+        events: {
+            "change": "update_picked"
+        },
+        initialize: function(options) {
+            this.picked = options.picked;
+            this.override = options.override;
+            
+            _.bindAll(this, "templateHelpers");
+        },
+        update_picked: function (e) {
+            var self = this;
+            var selectedIndex = _.parseInt(this.$(e.target).val());
+            self.picked.set("value", selectedIndex);
 
-            return p.then(function () {
-                Parse.Promise.as(self);
+            var selectedId = this.$("#history-changes-" + selectedIndex).val();
+            var changesToApply = _.chain(self.model.recorded_changes.models).takeRightWhile(function (model) {
+                return model.id != selectedId;
+            }).reverse().value();
+            var c = self.model.get_transformed(changesToApply);
+            self.override.set("character", c);
+        },
+        update_then_render: function() {
+            var self = this;
+            self.model.update_recorded_changes().then(function () {
+                self.render();
             });
         },
-
-        events: {
-            "change": "update_selected",
+        onRender: function() {
+            this.$el.enhanceWithin();
+        }
+    });
+    
+    var ViewingView = Marionette.ItemView.extend({
+        template: _.template(character_history_selected_view_html),
+        templateHelpers: function () {
+            var self = this;
+            return {
+                "character": this.model,
+                "logs": this.model.recorded_changes.models,
+                "format_entry": this.format_entry,
+                idForPickedIndex: self.picked.get("value")
+            }
+        },       
+        modelEvents: {
+            "add": "render",
+            "reset": "render"
         },
-
+        initialize: function(options) {
+            this.picked = options.picked;
+            
+            this.listenTo(
+                this.picked,
+                "change",
+                _.debounce(this.render, 100, { trailing: true}));
+            
+            _.bindAll(this, "templateHelpers");
+        },
         format_entry: function(log, entry) {
             if (_.isUndefined(log)) {
                 console.log("Undefined log");
@@ -77,94 +99,108 @@ define([
             }
             return attr;
         },
-
-        update_selected: function (e) {
+        onRender: function() {
+            this.$el.enhanceWithin();
+        }
+    });
+    
+    var SheetView = Marionette.ItemView.extend({
+        template: _.template(character_print_view_html),
+        templateHelpers: function () {
             var self = this;
-            var selectedIndex = _.parseInt(this.$(e.target).val());
-            self.idForPickedIndex = selectedIndex;
-            self._render_viewing(true);
-
-            var selectedId = this.$("#history-changes-" + selectedIndex).val();
-            var changesToApply = _.chain(self.character.recorded_changes.models).takeRightWhile(function (model) {
-                return model.id != selectedId;
-            }).reverse().value();
-            var c = self.character.get_transformed(changesToApply);
-            self._render_sheet(c, true);
-        },
-
-        _render_viewing: function(enhance) {
-            var self = this;
-            var sendId = self.idForPickedIndex;
-            if (_.isUndefined(sendId)) {
-                sendId = self.character.recorded_changes.models.length - 1;
-            }
-            this.$el.find("#history-viewing").html(this.selectedTemplate({
-                "character": this.character,
-                "logs": self.character.recorded_changes.models,
-                "format_entry": this.format_entry,
-                idForPickedIndex: sendId,
-            }));
-            if (enhance) {
-                this.$el.find("#history-viewing").enhanceWithin();
-            }
-        },
-
-        _render_sheet: function(characterOverride, enhance) {
-            var self = this;
-            self.character_override = characterOverride || self.character;
-            var c = self.character_override;
-            var sortedSkills = c.get_sorted_skills();
-            var groupedSkills = c.get_grouped_skills(sortedSkills, 3);
-            this.$el.find("#history-sheet").html(this.sheetTemplate({
-                "character": c,
+            var character = self.override.get("character") || self.model
+            var sortedSkills = character.get_sorted_skills();
+            return {
+                "character": character,
                 "skills": sortedSkills,
-                "groupedSkills": groupedSkills,
+                "groupedSkills": character.get_grouped_skills(sortedSkills),
                 format_simpletext: this.format_simpletext,
                 format_attribute_value: this.format_attribute_value,
                 format_attribute_focus: this.format_attribute_focus,
                 format_skill: this.format_skill,
-                format_specializations: this.format_specializations,} ));
-            if (enhance) {
-                this.$el.find("#history-sheet").enhanceWithin();
+                format_specializations: this.format_specializations
             }
+        },       
+        modelEvents: {
+            "change": "renderIfNoOverride",
         },
-
-        // Renders all of the Category models on the UI
-        render: function() {
+        initialize: function(options) {
+            this.override = options.override;
+            this.listenTo(
+                this.override,
+                "change",
+                _.debounce(this.render, 100, { trailing: true}));
+            
+            _.bindAll(
+                this,
+                "templateHelpers",
+                "format_simpletext",
+                "format_attribute_value",
+                "format_attribute_focus",
+                "format_skill",
+                "format_specializations"
+            );
+ 
+        },
+        renderIfNoOverride: function() {
             var self = this;
-
-            var sendId = self.idForPickedIndex;
-            if (_.isUndefined(sendId)) {
-                sendId = self.character.recorded_changes.models.length - 1;
+            if (self.override.get("character") == null) {
+                return;
             }
-
-            // Sets the view's template property
-            this.template = _.template(character_history_view_html)({
-                    "character": this.character,
-                    "logs": this.character.recorded_changes.models,
-                    "format_entry": this.format_entry,
-                    idForPickedIndex: sendId,
-                 });
-
-            // Renders the view's template inside of the current listview element
-            this.$el.find("#history-main").html(this.template);
-
-            this._render_viewing();
-
-            this._render_sheet();
-
+            return self.render();
+        },
+        onRender: function() {
             this.$el.enhanceWithin();
-
-            // Maintains chainability
-            return this;
-
         }
-
-    } );
-
-    _.extend(View.prototype, VampirePrintHelper);
+    })
+    _.extend(SheetView.prototype, VampirePrintHelper);
     
-    // Returns the View class
-    return View;
+    var LayoutView = Marionette.LayoutView.extend({
+        tagName: "div",
+        regions: {
+            main: "#history-main",
+            viewing: "#history-viewing",
+            sheet: "#history-sheet"
+        },
+        
+        register: function(model) {
+            var self = this;
+            var p = Parse.Promise.as([]);
+
+            if (model != self.model) {
+                self.model = model;
+                self.picked = new Backbone.Model({value: 0});
+                self.override = new Backbone.Model({character: null});
+
+                p = self.model.get_recorded_changes().then(function () {
+                    self.picked.set("value", self.model.recorded_changes.models.length - 1);
+                    
+                    // Set up child views now
+                    self.showChildView('main', new MainView({
+                        model: self.model,
+                        picked: self.picked,
+                        override: self.override
+                    }));
+                    self.showChildView('viewing', new ViewingView({
+                        model: self.model,
+                        picked: self.picked
+                    }));
+                    self.showChildView('sheet', new SheetView({
+                        model: self.model,
+                        override: self.override
+                    }));
+                });
+            }
+            
+            return p.then(function () {
+                Parse.Promise.as(self);
+            });
+        },
+        onRender: function () {
+            this.$el.enhanceWithin();
+        }
+    });
+    
+    return LayoutView;
 
 } );
