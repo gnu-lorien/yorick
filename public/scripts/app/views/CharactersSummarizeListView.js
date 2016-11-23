@@ -9,10 +9,11 @@ define([
     "text!../templates/character-summarize-list-item.html",
     "marionette",
     "../models/Vampire",
+    "../models/Werewolf",
     "backform",
     "text!../templates/character-summarize-list-item-csv.html",
     "text!../templates/character-summarize-list-item-csv-header-grouped.html",
-], function( _, $, Backbone, character_summarize_list_item_html, Marionette, Vampire, Backform, character_summarize_list_item_csv_html, character_summarize_list_item_csv_header_grouped_html ) {
+], function( _, $, Backbone, character_summarize_list_item_html, Marionette, Vampire, Werewolf, Backform, character_summarize_list_item_csv_html, character_summarize_list_item_csv_header_grouped_html ) {
 
     var PrettyView = Marionette.ItemView.extend({
         tagName: "li",
@@ -155,19 +156,68 @@ define([
         childView: FilterButton
     });
     
-    var category_options = _.map(Vampire.all_simpletrait_categories(), function (info) {
+    var vampire_options = _.map(Vampire.all_simpletrait_categories(), function (info) {
         return {
             label: info[1],
             value: info[0]
         };
-    }); 
+    });
+    
+    var werewolf_options = _.map(Werewolf.all_simpletrait_categories(), function (info) {
+        return {
+            label: info[1],
+            value: info[0]
+        };
+    });
+    
+    var category_options = [
+        {
+            label: "Vampire",
+            options: vampire_options
+        },{
+            label: "Werewolf",
+            options: werewolf_options
+        }
+    ];
+    
+    var OptGroupSelectControl = Backform.Control.extend({
+        defaults: {
+          label: "",
+          options: [], // List of options as [{label:<label>, value:<value>}, ...]
+          extraClasses: []
+        },
+        template: _.template([
+          '<label class="<%=Backform.controlLabelClassName%>"><%-label%></label>',
+          '<div class="<%=Backform.controlsClassName%>">',
+          '  <select class="<%=Backform.controlClassName%> <%=extraClasses.join(\' \')%>" name="<%=name%>" value="<%-value%>" <%=disabled ? "disabled" : ""%> <%=required ? "required" : ""%> >',
+          '    <% for (var i=0; i < options.length; i++) { %>',
+          '      <% var optgroup = options[i] %>',
+          '      <optgroup label="<%= optgroup.label %>">',
+          '      <% for (var j=0; j < optgroup.options.length; j++) { %>',
+          '        <% var option = optgroup.options[j]; %>',
+          '        <option value="<%-formatter.fromRaw(option.value)%>" <%=option.value === rawValue ? "selected=\'selected\'" : ""%> <%=option.disabled ? "disabled=\'disabled\'" : ""%>><%-option.label%></option>',
+          '      <% } %>',
+          '      </optgroup>',
+          '    <% } %>',
+          '  </select>',
+          '</div>'
+        ].join("\n")),
+        events: {
+          "change select": "onChange",
+          "focus select": "clearInvalid"
+        },
+        formatter: Backform.JSONFormatter,
+        getValueFromDOM: function() {
+          return this.formatter.toRaw(this.$el.find("select").val(), this.model);
+        }
+    });
     
     var Form = Backform.Form.extend({
         fields: [
             {
                 name: "category",
                 label: "Category",
-                control: "select",
+                control: OptGroupSelectControl,
                 options: category_options
             },
             {
@@ -236,6 +286,14 @@ define([
                 };
                 return false;
             })
+            if (_.isUndefined(entry)) {
+                entry = _.find(Werewolf.all_simpletrait_categories(), function(e) {
+                    if (e[0] == formvalues.get("category")) {
+                        return true;
+                    };
+                    return false;
+                })
+            }
             self.list.currentView.name = entry[1];
             self.list.currentView.columnNames = self.getColumnNames(formvalues.get("category"));
             

@@ -14,6 +14,7 @@ define([
 	"../views/CategoryView",
     "../views/CharactersListView",
     "../models/Vampire",
+    "../models/Werewolf",
     "../collections/Vampires",
     "../views/CharacterView",
     "../views/SimpleTraitCategoryView",
@@ -74,6 +75,7 @@ define([
              CategoryView,
              CharactersListView,
              Vampire,
+             Werewolf,
              Vampires,
              CharacterView,
              SimpleTraitCategoryView,
@@ -783,6 +785,9 @@ define([
             q.include("portrait");
             q.include("owner");
             _.each(Vampire.all_simpletrait_categories(), function (e) {
+                q.include(e[0]);
+            });
+            _.each(Werewolf.all_simpletrait_categories(), function (e) {
                 q.include(e[0]);
             });
             $.mobile.loading("show", {text: "Fetching all characters", textVisible: true});
