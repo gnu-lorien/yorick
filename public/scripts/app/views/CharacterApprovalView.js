@@ -343,7 +343,6 @@ define([
 
             if (model != self.model) {
                 self.model = model;
-                self.approvals = new Approvals;
                 
                 if (self.picked) {
                     self.stopListening(self.picked);
@@ -366,16 +365,11 @@ define([
                     self.picked.set("left", 0);
                     self.picked.set("right", self.model.recorded_changes.models.length - 1);
                     
-                    var q = new Parse.Query(Approval);
-                    q.equalTo("owner", self.model);
-                    self.approvals.query = q;
+                    return self.model.get_approvals();
+                }).then(function (approvals) {
+                    self.approvals = approvals;
+                    self.picked.set("approval", self.approvals.length);
                     
-                    self.picked.set("approval", 0);
-                    return q.each(function (approval) {
-                        self.approvals.add(approval);
-                        self.picked.set("approval", self.approvals.length);
-                    });
-                }).then(function () {
                     // Set up parent functions
                     self.listenTo(self.picked, "change:right change:left", _.debounce(self.update_override_character_and_transform, 100, {trailing: true}));
                     

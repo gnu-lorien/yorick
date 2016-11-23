@@ -16,8 +16,10 @@ define([
     "../helpers/PromiseFailReport",
     "../helpers/ExpirationMixin",
     "../helpers/UserWreqr",
-    "../models/FauxSimpleTrait"
-], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSMETV1_VampireCosts, PromiseFailReport, ExpirationMixin, UserChannel, FauxSimpleTrait ) {
+    "../models/FauxSimpleTrait",
+    "../collections/Approvals",
+    "../models/Approval"
+], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSMETV1_VampireCosts, PromiseFailReport, ExpirationMixin, UserChannel, FauxSimpleTrait, Approvals, Approval ) {
 
     // The Model constructor
     var instance_methods = _.extend({
@@ -521,6 +523,29 @@ define([
                 return self.recorded_changes.fetch({reset: true});
             });
             return self._recordedChangesFetch;
+        },
+        
+        get_approvals: function () {
+            var self = this;
+            self._approvalsFetch = self._approvalsFetch || Parse.Promise.as();
+            self._approvalsFetch = self._approvalsFetch.always(function () {
+                if (_.isUndefined(self.approvals)) {
+                    self.approvals = new Approvals;
+                }
+                var q = new Parse.Query(Approval);
+                q.equalTo("owner", self);
+                
+                if (0 != self.approvals.length) {
+                    q.greaterThan("createdAt", self.approvals.last().createdAt);
+                }
+                
+                return q.each(function(approval) {
+                    self.approvals.add(approval);
+                });
+            }).then(function() {
+                return Parse.Promise.as(self.approvals);
+            });
+            return self._approvalsFetch;
         },
 
         get_transformed: function(changes) {
