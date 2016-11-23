@@ -15,8 +15,9 @@ define([
     "../helpers/BNSMETV1_VampireCosts",
     "../helpers/PromiseFailReport",
     "../helpers/ExpirationMixin",
-    "../helpers/UserWreqr"
-], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSMETV1_VampireCosts, PromiseFailReport, ExpirationMixin, UserChannel ) {
+    "../helpers/UserWreqr",
+    "../models/FauxSimpleTrait"
+], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSMETV1_VampireCosts, PromiseFailReport, ExpirationMixin, UserChannel, FauxSimpleTrait ) {
 
     // The Model constructor
     var instance_methods = _.extend({
@@ -545,7 +546,7 @@ define([
                         return _.isEqual(st.get("name"), change.get("name"));
                     });
                     // Create fake
-                    var trait = new SimpleTrait({
+                    var trait = new FauxSimpleTrait({
                         "name": change.get("old_text") || change.get("name"),
                         "free_value": change.get("free_value"),
                         "value": change.get("old_value") || change.get("value"),

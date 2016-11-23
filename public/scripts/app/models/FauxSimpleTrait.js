@@ -4,12 +4,12 @@
 // Includes file dependencies
 define([
 	"jquery",
-	"parse",
+	"backbone",
 	"../models/SimpleTraitMixin"
-], function( $, Parse, SimpleTraitMixin ) {
+], function( $, Backbone, SimpleTraitMixin ) {
 
     // The Model constructor
-    var Model = Parse.Object.extend( "SimpleTrait", SimpleTraitMixin );
+    var Model = Backbone.Model.extend( SimpleTraitMixin );
 
     // Returns the Model class
     return Model;
