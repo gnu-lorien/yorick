@@ -547,6 +547,20 @@ define([
             });
             return self._approvalsFetch;
         },
+        
+        get_transformed_last_approved: function () {
+            var self = this;
+            return self.get_approvals().then(function () {
+                return self.get_recorded_changes();
+            }).then(function () {
+                var last_approved_recorded_change_id = self.approvals.last().get("change").id;
+                var changesToApply = _.chain(self.recorded_changes.models).takeRightWhile(function (model) {
+                    return model.id != last_approved_recorded_change_id;
+                }).reverse().value();
+                var c = self.get_transformed(changesToApply);
+                return Parse.Promise.as(c);
+            })
+        },
 
         get_transformed: function(changes) {
             // do not define self to prevent self-modification

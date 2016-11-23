@@ -241,6 +241,7 @@ define([
             "character/:cid/troupe/:tid/show": "character_show_troupe",
             "character/:cid/approval": "characterapproval",
             "character/:cid/rename": "characterrename",
+            "character/:cid/approved": "character_show_approved",
 
             "character/:cid/experience/:start/:changeBy": "characterexperience",
 
@@ -393,6 +394,19 @@ define([
                     var r = $.mobile.changePage("#character-approval", {reverse: false, changeHash: false});
                     $.mobile.loading("hide");
                 });
+            }).fail(PromiseFailReport);
+        },
+
+        character_show_approved: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid, "all").then(function (character) {
+                return character.get_transformed_last_approved();
+            }).then(function (transformed) {
+                transformed.transform_description = [];
+                self.characterPrintView.setup(transformed);
+                $.mobile.changePage("#printable-sheet", {reverse: false, changeHash: false});
             }).fail(PromiseFailReport);
         },
 
