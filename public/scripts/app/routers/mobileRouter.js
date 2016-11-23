@@ -260,6 +260,7 @@ define([
 
             "administration": "administration",
             "administration/characters/all": "administration_characters_all",
+            "administration/characters/summarize": "administration_characters_summarize",
             "administration/character/:id": "administration_character",
             "administration/users/all": "administration_users",
             "administration/user/:id": "administration_user",
@@ -824,6 +825,34 @@ define([
                 return Parse.Promise.as(self.characters.collection);
             })
         },
+        
+        get_administrator_summarize_characters: function() {
+            var self = this;
+            var c = [];
+            if (Parse.User.current().get("username") == "devuser") {
+                c.sortbycreated = true;
+            }
+            var p = Parse.Promise.as([]);
+            var q = new Parse.Query(Vampire);
+            //q.equalTo("owner", Parse.User.current());
+            q.exists("owner");
+            q.include("portrait");
+            q.include("owner");
+            _.each(Vampire.all_simpletrait_categories(), function (e) {
+                q.include(e[0]);
+            });
+            _.each(Werewolf.all_simpletrait_categories(), function (e) {
+                q.include(e[0]);
+            });
+            p = q.each(function (character) {
+                c.push(character);
+            }).then(function () {
+                self.characters.collection.reset(c);
+            })
+            return p.done(function () {
+                return Parse.Promise.as(self.characters.collection);
+            })
+        },
 
         get_patronages: function() {
             var self = this;
@@ -1374,6 +1403,22 @@ define([
                 $.mobile.loading("hide");
             }).fail(PromiseFailReport);
         },
+        
+        administration_characters_summarize: function() {
+            var self = this;
+            $.mobile.loading("show");
+            self.enforce_logged_in().then(function() {
+                self.set_back_button("#administration");
+                return self.get_administrator_summarize_characters();
+            }).then(function() {
+                self.administrationSummarizeCharacters = self.administrationSummarizeCharacters || new CharactersSummarizeListView({collection:  self.characters.collection}).setup();
+                self.troupeCharacters.register("#administration/character/<%= character_id %>");
+                $.mobile.changePage("#troupe-summarize-characters-all", {reverse: false, changeHash: false});
+            }).always(function() {
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
+        },
+
 
     } );
 
