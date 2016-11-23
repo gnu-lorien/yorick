@@ -167,7 +167,7 @@ define([
             this.characterExperienceView = new CharacterExperienceView({el: "#experience-notations-all"});
             this.characterPortraitView = new CharacterPortraitView({el: "#character-portrait"});
             this.characterDeleteView = new CharacterDeleteView({el: "#character-delete"});
-            this.characterApprovalView = new CharacterApprovalView({el: "#character-approval"});
+            this.characterApprovalView = new CharacterApprovalView({el: "#character-approval > div[role='main']"});
 
             this.loginView = new LoginView();
             this.signupView = new SignupView();

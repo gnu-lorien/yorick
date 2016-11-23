@@ -1,0 +1,7 @@
+<div>
+    <label for="approval-slider">Previous Approvals:</label>
+    <input type="range" name="approvalChangePicker" id="approval-slider" value="<%= approval_index %>" min="0" max="<%= approvals.length %>">
+    <% _.each(approvals, function (approval, i) { %>
+    <input type="hidden" value="<%= approval.id %>" id="approval-changes-<%= i %>" />
+    <% }); %>
+</div>
