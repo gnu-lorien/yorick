@@ -1010,7 +1010,7 @@ define([
             self.set_back_button("#simpletraits/" + category + "/" + cid + "/all");
             self.get_character(cid, [category]).then(function (character) {
                 var trait = new SimpleTrait({
-                    name: name,
+                    name: decodeURIComponent(name),
                     value: _.parseInt(value),
                     free_value: _.parseInt(free_value),
                     category: category,
@@ -1027,7 +1027,7 @@ define([
             self.set_back_button("#simpletraits/" + category + "/" + cid + "/all");
             self.get_character(cid, [category]).then(function (character) {
                 var trait = new SimpleTrait({
-                    name: name,
+                    name: decodeURIComponent(name),
                     value: _.parseInt(value),
                     free_value: _.parseInt(free_value)
                 })
