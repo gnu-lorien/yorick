@@ -65,7 +65,8 @@ define([
     "../views/CharacterCreateSimpleTraitNewView",
     "../views/DescriptionsView",
     "../models/Werewolf",
-    "../views/CharactersPrintView"
+    "../views/CharactersPrintView",
+    "../views/CharactersSelectToPrintView"
 ], function ($,
              Parse,
              pretty,
@@ -126,7 +127,8 @@ define([
              CharacterCreateSimpleTraitNewView,
              DescriptionsView,
              Werewolf,
-             CharactersPrintView
+             CharactersPrintView,
+             CharactersSelectToPrintView
 ) {
 
     // Extends Backbone.Router
@@ -256,7 +258,7 @@ define([
             "troupe/:id/staff/edit/:uid": "troupeeditstaff",
             "troupe/:id/characters/:type": "troupecharacters",
             "troupe/:id/characters/summarize/:type": "troupesummarizecharacters",
-            "troupe/:id/characters/selecttoprin/:type": "troupe_select_to_print_characters",
+            "troupe/:id/characters/selecttoprint/:type": "troupe_select_to_print_characters",
             "troupe/:id/characters/print/:type": "troupe_print_characters",
             "troupe/:id/characters/relationships/network": "troupe_relationship_network",
             "troupe/:id/character/:cid": "troupe_character",
@@ -1269,11 +1271,37 @@ define([
             }).fail(PromiseFailReport);
         },
         
-        troupe_print_characters: function(id, type) {
+        troupe_select_to_print_characters: function(id, type) {
             var self = this;
             $.mobile.loading("show");
             self.enforce_logged_in().then(function() {
                 self.set_back_button("#troupe/" + id);
+                var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
+                return get_troupe;
+            }).then(function (troupe, user) {
+                self.troupeSelectToPrintCharacters = self.troupeSelectToPrintCharacters || new CharactersSelectToPrintView({
+                    collection: new Vampires,
+                    el: "#troupe-select-to-print-characters-all > div[role='main']"
+                }).setup();
+                self.troupeCharacters.register("#troupe/" + id + "/character/<%= character_id %>");
+                self.troupeSelectToPrintCharacters.submission_template = _.template("#troupe/" + id + "/characters/print/selected");
+                return self.get_troupe_summarize_characters(troupe, self.troupeSelectToPrintCharacters.collection);
+            }).then(function() {
+                $.mobile.changePage("#troupe-select-to-print-characters-all", {reverse: false, changeHash: false});
+            }).always(function() {
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
+        },
+        
+        troupe_print_characters: function(id, type) {
+            var self = this;
+            $.mobile.loading("show");
+            self.enforce_logged_in().then(function() {
+                if ("selected" == type) {
+                    self.set_back_button("#troupe/" + id + "/characters/selecttoprint/all");
+                } else {
+                    self.set_back_button("#troupe/" + id);
+                }
                 var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
                 return get_troupe;
             }).then(function (troupe, user) {
@@ -1282,7 +1310,11 @@ define([
                     el: "#troupe-print-characters-all > div[role='main']"
                 }).setup();
                 self.troupeCharacters.register("#troupe/" + id + "/character/<%= character_id %>");
-                return self.get_troupe_summarize_characters(troupe, self.troupePrintCharacters.collection);
+                if ("selected" == type) {
+                    self.troupePrintCharacters.collection.reset(self.troupeSelectToPrintCharacters.get_filtered());
+                } else {
+                    return self.get_troupe_summarize_characters(troupe, self.troupePrintCharacters.collection);
+                }
             }).then(function() {
                 $.mobile.changePage("#troupe-print-characters-all", {reverse: false, changeHash: false});
             }).always(function() {

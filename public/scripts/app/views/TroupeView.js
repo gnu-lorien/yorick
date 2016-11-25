@@ -86,7 +86,7 @@ define([
         viewprintcharacters: function (e) {
             var self = this;
             e.preventDefault();
-            window.location.hash = "#troupe/" + self.troupe.id + "/characters/print/all";
+            window.location.hash = "#troupe/" + self.troupe.id + "/characters/selecttoprint/all";
         },
 
         viewrelationships: function (e) {
