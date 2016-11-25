@@ -440,7 +440,7 @@ define([
             header: "#cpp-header",
             firstbar: "#cpp-firstbar",
             secondbar: "#cpp-secondbar",
-            attributes: "#cpp-attributes",
+            attributeRegion: "#cpp-attributes",
             blood: "#cpp-blood",
             morality: "#cpp-morality",
             willpower: "#cpp-willpower",
@@ -456,21 +456,12 @@ define([
             bottom_two_b: "#cpp-bottom-two-b",
             bottom_two_c: "#cpp-bottom-two-c"
         },
-        
-        setup: function(character) {
+        setup_regions: function() {
             var self = this;
             var options = self.options || {};
-            if (self.lasttribe && self.character.get("wta_tribe") == self.lasttribe) {
-                if (character == self.character) {
-                    return;
-                }
-            }
-            self.lasttribe = character.get("wta_tribe");
-            self.character = character;
+            var character = self.override.get("character") || self.character;
             
-            self.render();
-            
-            if (self.character.get("type") == "Werewolf") {
+            if (character.get("type") == "Werewolf") {
                 self.showChildView('header', new HeaderView({model: character}), options);
                 self.showChildView('firstbar', new TextBarView({
                     model: character,
@@ -498,8 +489,8 @@ define([
                         display: "Faction"
                     }]
                 }), options);
-                self.showChildView('attributes', new AttributesView({model: character}), options);
-                if (self.character.get("wta_tribe") == "Ananasi") {
+                self.showChildView('attributeRegion', new AttributesView({model: character}), options);
+                if (character.get("wta_tribe") == "Ananasi") {
                     self.showChildView('blood', new FixedBloodView({model: new Backbone.Model({
                         generation: 0,
                         total: 15,
@@ -517,7 +508,7 @@ define([
                 self.showChildView('health_levels', new HealthLevelsView({model: character}), options);
                 // Forms
                 // Rage
-                if (self.character.get("wta_tribe") != "Ananasi") {
+                if (character.get("wta_tribe") != "Ananasi") {
                     self.showChildView('morality', new TotalView({model: new Backbone.Model({
                         name: "Rage",
                         total: 10,
@@ -670,7 +661,7 @@ define([
                         display: "Title"
                     }]
                 }), options);
-                self.showChildView('attributes', new AttributesView({model: character}), options);
+                self.showChildView('attributeRegion', new AttributesView({model: character}), options);
                 self.showChildView('blood', new BloodView({model: character}), options);
                 self.showChildView('morality', new MoralityView({model: character}), options);
                 self.showChildView('willpower', new WillpowerView({model: character}), options);
@@ -781,9 +772,35 @@ define([
                         format: 0
                     }]
                 }), options);
-     
             }
- 
+        },
+        onRender: function() {
+            this.setup_regions()
+        },
+        initialize: function(options) {
+            _.bindAll(this, "setup_regions");
+        },
+        setup: function(character, override) {
+            var self = this;
+            var options = self.options || {};
+            if (self.lasttribe && self.character.get("wta_tribe") == self.lasttribe) {
+                if (character == self.character) {
+                    return;
+                }
+            }
+            self.lasttribe = character.get("wta_tribe");
+            self.character = character;
+            if (self.override) {
+                self.stopListening(self.override);
+            }
+            self.override = override || new Backbone.Model({character: null});
+            self.listenTo(
+                self.override,
+                "change",
+                _.debounce(self.setup_regions, 100, {trailing: true}));
+            
+            self.render();
+
             return self;
         }
         

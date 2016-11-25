@@ -370,7 +370,7 @@ define([
                     self.approvals = approvals;
                     self.picked.set("approval", self.approvals.length);
                     
-                    self.update_override_character_and_transform();
+                    // Set up parent functions
                     self.listenTo(self.picked, "change:right change:left", _.debounce(self.update_override_character_and_transform, 100, {trailing: true}));
                     
                     // Set up child views now
@@ -407,5 +407,19 @@ define([
         }
     });
     
-    return LayoutView;
+    var CollectionView = Marionette.CollectionView.extend({
+        childView: CharacterPrintView,
+        setup: function() {
+            return this.render();
+        },
+        buildChildView: function(child, ChildViewClass, childViewOptions){
+            // create the child view instance
+            var view = new CharacterPrintView(childViewOptions);
+            
+            return view.setup(child);
+        }
+    });
+    
+    //return LayoutView;
+    return CollectionView;
 } );

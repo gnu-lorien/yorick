@@ -33,7 +33,7 @@ define([
         SAMPLE_TROUPE_ID: "zCQcZnlFx5"
     };
     
-    var ConfigGnuLorienDev = ConfigPatron;
+    var ConfigGnuLorienDev = ConfigC9;
     
     return ConfigGnuLorienDev;
 

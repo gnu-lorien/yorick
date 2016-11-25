@@ -14,6 +14,7 @@ define([
 	"../views/CategoryView",
     "../views/CharactersListView",
     "../models/Vampire",
+    "../models/Werewolf",
     "../collections/Vampires",
     "../views/CharacterView",
     "../views/SimpleTraitCategoryView",
@@ -63,7 +64,9 @@ define([
     "../views/SimpleTraitNewSpecializationView",
     "../views/CharacterCreateSimpleTraitNewView",
     "../views/DescriptionsView",
-    "../models/Werewolf"
+    "../models/Werewolf",
+    "../views/CharactersPrintView",
+    "../views/CharactersSelectToPrintView"
 ], function ($,
              Parse,
              pretty,
@@ -74,6 +77,7 @@ define([
              CategoryView,
              CharactersListView,
              Vampire,
+             Werewolf,
              Vampires,
              CharacterView,
              SimpleTraitCategoryView,
@@ -122,7 +126,9 @@ define([
              SimpleTraitNewSpecializationView,
              CharacterCreateSimpleTraitNewView,
              DescriptionsView,
-             Werewolf
+             Werewolf,
+             CharactersPrintView,
+             CharactersSelectToPrintView
 ) {
 
     // Extends Backbone.Router
@@ -167,7 +173,7 @@ define([
             this.characterExperienceView = new CharacterExperienceView({el: "#experience-notations-all"});
             this.characterPortraitView = new CharacterPortraitView({el: "#character-portrait"});
             this.characterDeleteView = new CharacterDeleteView({el: "#character-delete"});
-            this.characterApprovalView = new CharacterApprovalView({el: "#character-approval"});
+            this.characterApprovalView = new CharacterApprovalView({el: "#character-approval > div[role='main']"});
 
             this.loginView = new LoginView();
             this.signupView = new SignupView();
@@ -190,6 +196,8 @@ define([
             // When there is no hash bang on the url, the home method is called
             "": "home",
             "start": "home",
+            
+            "about": "about",
 
             "logout": "logout",
             "signup": "signup",
@@ -239,6 +247,7 @@ define([
             "character/:cid/troupe/:tid/show": "character_show_troupe",
             "character/:cid/approval": "characterapproval",
             "character/:cid/rename": "characterrename",
+            "character/:cid/approved": "character_show_approved",
 
             "character/:cid/experience/:start/:changeBy": "characterexperience",
 
@@ -249,12 +258,15 @@ define([
             "troupe/:id/staff/edit/:uid": "troupeeditstaff",
             "troupe/:id/characters/:type": "troupecharacters",
             "troupe/:id/characters/summarize/:type": "troupesummarizecharacters",
+            "troupe/:id/characters/selecttoprint/:type": "troupe_select_to_print_characters",
+            "troupe/:id/characters/print/:type": "troupe_print_characters",
             "troupe/:id/characters/relationships/network": "troupe_relationship_network",
             "troupe/:id/character/:cid": "troupe_character",
             "troupe/:id/portrait": "troupe_portrait",
 
             "administration": "administration",
             "administration/characters/all": "administration_characters_all",
+            "administration/characters/summarize": "administration_characters_summarize",
             "administration/character/:id": "administration_character",
             "administration/users/all": "administration_users",
             "administration/user/:id": "administration_user",
@@ -304,6 +316,10 @@ define([
             } else {
                 window.location.hash = "";
             }
+        },
+        
+        about: function() {
+            $.mobile.changePage("#about", {reverse: false, changeHash: false})
         },
 
         resetpassword: function() {
@@ -390,6 +406,19 @@ define([
             }).fail(PromiseFailReport);
         },
 
+        character_show_approved: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid, "all").then(function (character) {
+                return character.get_transformed_last_approved();
+            }).then(function (transformed) {
+                transformed.transform_description = [];
+                self.characterPrintView.setup(transformed);
+                $.mobile.changePage("#printable-sheet", {reverse: false, changeHash: false});
+            }).fail(PromiseFailReport);
+        },
+
         characterrename: function(cid) {
             var self = this;
             $.mobile.loading("show");
@@ -409,6 +438,7 @@ define([
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
             self.get_character(cid, "all").done(function (character) {
+                character.transform_description = [];
                 self.characterPrintView.setup(character);
                 $.mobile.changePage("#printable-sheet", {reverse: false, changeHash: false});
             }).fail(PromiseFailReport);
@@ -765,6 +795,9 @@ define([
             _.each(Vampire.all_simpletrait_categories(), function (e) {
                 q.include(e[0]);
             });
+            _.each(Werewolf.all_simpletrait_categories(), function (e) {
+                q.include(e[0]);
+            });
             $.mobile.loading("show", {text: "Fetching all characters", textVisible: true});
             p = q.each(function (character) {
                 c.push(character);
@@ -790,6 +823,34 @@ define([
             q.exists("owner");
             q.include("portrait");
             q.include("owner");
+            p = q.each(function (character) {
+                c.push(character);
+            }).then(function () {
+                self.characters.collection.reset(c);
+            })
+            return p.done(function () {
+                return Parse.Promise.as(self.characters.collection);
+            })
+        },
+        
+        get_administrator_summarize_characters: function() {
+            var self = this;
+            var c = [];
+            if (Parse.User.current().get("username") == "devuser") {
+                c.sortbycreated = true;
+            }
+            var p = Parse.Promise.as([]);
+            var q = new Parse.Query(Vampire);
+            //q.equalTo("owner", Parse.User.current());
+            q.exists("owner");
+            q.include("portrait");
+            q.include("owner");
+            _.each(Vampire.all_simpletrait_categories(), function (e) {
+                q.include(e[0]);
+            });
+            _.each(Werewolf.all_simpletrait_categories(), function (e) {
+                q.include(e[0]);
+            });
             p = q.each(function (character) {
                 c.push(character);
             }).then(function () {
@@ -1209,6 +1270,57 @@ define([
                 $.mobile.loading("hide");
             }).fail(PromiseFailReport);
         },
+        
+        troupe_select_to_print_characters: function(id, type) {
+            var self = this;
+            $.mobile.loading("show");
+            self.enforce_logged_in().then(function() {
+                self.set_back_button("#troupe/" + id);
+                var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
+                return get_troupe;
+            }).then(function (troupe, user) {
+                self.troupeSelectToPrintCharacters = self.troupeSelectToPrintCharacters || new CharactersSelectToPrintView({
+                    collection: new Vampires,
+                    el: "#troupe-select-to-print-characters-all > div[role='main']"
+                }).setup();
+                self.troupeCharacters.register("#troupe/" + id + "/character/<%= character_id %>");
+                self.troupeSelectToPrintCharacters.submission_template = _.template("#troupe/" + id + "/characters/print/selected");
+                return self.get_troupe_summarize_characters(troupe, self.troupeSelectToPrintCharacters.collection);
+            }).then(function() {
+                $.mobile.changePage("#troupe-select-to-print-characters-all", {reverse: false, changeHash: false});
+            }).always(function() {
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
+        },
+        
+        troupe_print_characters: function(id, type) {
+            var self = this;
+            $.mobile.loading("show");
+            self.enforce_logged_in().then(function() {
+                if ("selected" == type) {
+                    self.set_back_button("#troupe/" + id + "/characters/selecttoprint/all");
+                } else {
+                    self.set_back_button("#troupe/" + id);
+                }
+                var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
+                return get_troupe;
+            }).then(function (troupe, user) {
+                self.troupePrintCharacters = self.troupePrintCharacters || new CharactersPrintView({
+                    collection: new Vampires,
+                    el: "#troupe-print-characters-all > div[role='main']"
+                }).setup();
+                self.troupeCharacters.register("#troupe/" + id + "/character/<%= character_id %>");
+                if ("selected" == type) {
+                    self.troupePrintCharacters.collection.reset(self.troupeSelectToPrintCharacters.get_filtered());
+                } else {
+                    return self.get_troupe_summarize_characters(troupe, self.troupePrintCharacters.collection);
+                }
+            }).then(function() {
+                $.mobile.changePage("#troupe-print-characters-all", {reverse: false, changeHash: false});
+            }).always(function() {
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
+        },
 
         troupe_portrait: function(id) {
             var self = this;
@@ -1349,6 +1461,22 @@ define([
                 $.mobile.loading("hide");
             }).fail(PromiseFailReport);
         },
+        
+        administration_characters_summarize: function() {
+            var self = this;
+            $.mobile.loading("show");
+            self.enforce_logged_in().then(function() {
+                self.set_back_button("#administration");
+                return self.get_administrator_summarize_characters();
+            }).then(function() {
+                self.administrationSummarizeCharacters = self.administrationSummarizeCharacters || new CharactersSummarizeListView({collection:  self.characters.collection}).setup();
+                self.troupeCharacters.register("#administration/character/<%= character_id %>");
+                $.mobile.changePage("#troupe-summarize-characters-all", {reverse: false, changeHash: false});
+            }).always(function() {
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
+        },
+
 
     } );
 

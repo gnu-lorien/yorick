@@ -1,0 +1,1 @@
+define(["jquery","backbone","../models/SimpleTraitMixin"],function(e,n,i){var r=n.Model.extend(i);return r});

@@ -115,8 +115,6 @@ define([
             */
             self.$el.attr('data-role', 'listview');
             self.$el.attr('data-inset', 'true');
-            self.$el.attr('data-filter', 'true');
-            self.$el.attr('data-input', '#troupes-summarize-characters-filter');
             /*
             self.$el.enhanceWithin();
             */
@@ -246,16 +244,6 @@ define([
                 name: "playable",
                 label: "Only show playable characters",
                 control: "checkbox"
-            },
-            {
-                name: "format",
-                label: "Format",
-                control: "select",
-                options: [
-                    {label: "Pretty", value: "pretty"},
-                    {label: "CSV", value: "csv"},
-                    {label: "CSV with Trait Grouping", value: "csvtraitgrouping"}
-                ]
             }
         ]
     });
@@ -269,13 +257,20 @@ define([
     })
     
     var View = Marionette.LayoutView.extend({
-        el: "#troupe-summarize-characters-all > div[data-role='main']", 
         regions: {
             sections: "#sections",
-            list: "#troupe-summarize-characters-list"
+            list: "#troupe-select-to-print-characters-list"
         },
         childEvents: {
-            "filterwith": "filterwith",
+            "filterwith": "filterwith"
+        },
+        events: {
+            "click #print-shown": "printselected"
+        },
+        printselected: function (e) {
+            e.preventDefault();
+            console.log("Print selected");
+            window.location.hash = this.submission_template();
         },
         filterwith: function (formvalues) {
             var self = this
@@ -305,6 +300,13 @@ define([
             } else {
                 self.list.currentView.childView = CSVView;
             }
+            
+            self.list.currentView.filter = self.get_filter_function();
+            self.collection.reset(_.map(self.collection.models));
+        },
+        get_filter_function: function() {
+            var self = this
+            var formvalues = self.filterOptions;
             
             var newfilter = function(child, index, collection) {
                 var a = child.get("antecedence");
@@ -349,8 +351,12 @@ define([
                 
                 return true;
             };
-            self.list.currentView.filter = newfilter;
-            self.collection.reset(_.map(self.collection.models));
+            
+            return newfilter;
+        },
+        get_filtered: function() {
+            var newfilter = this.get_filter_function();
+            return _.filter(this.collection.models, newfilter);
         },
         getColumnNames: function(category) {
             var self = this;
@@ -363,7 +369,9 @@ define([
                 .uniq(true)
                 .value();
         },
- 
+        initialize: function () {
+            _.bindAll(this, "get_filter_function", "get_filtered");
+        },
         setup: function() {
             var self = this;
             var options = self.options || {};
@@ -399,7 +407,9 @@ define([
                     collection: self.collection}),
                 options);
             this.$el.enhanceWithin();
+            
             self.filterOptions.trigger("change", self.filterOptions);
+            
             return self;
         }
     });

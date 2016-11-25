@@ -15,8 +15,11 @@ define([
     "../helpers/BNSMETV1_VampireCosts",
     "../helpers/PromiseFailReport",
     "../helpers/ExpirationMixin",
-    "../helpers/UserWreqr"
-], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSMETV1_VampireCosts, PromiseFailReport, ExpirationMixin, UserChannel ) {
+    "../helpers/UserWreqr",
+    "../models/FauxSimpleTrait",
+    "../collections/Approvals",
+    "../models/Approval"
+], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSMETV1_VampireCosts, PromiseFailReport, ExpirationMixin, UserChannel, FauxSimpleTrait, Approvals, Approval ) {
 
     // The Model constructor
     var instance_methods = _.extend({
@@ -521,6 +524,43 @@ define([
             });
             return self._recordedChangesFetch;
         },
+        
+        get_approvals: function () {
+            var self = this;
+            self._approvalsFetch = self._approvalsFetch || Parse.Promise.as();
+            self._approvalsFetch = self._approvalsFetch.always(function () {
+                if (_.isUndefined(self.approvals)) {
+                    self.approvals = new Approvals;
+                }
+                var q = new Parse.Query(Approval);
+                q.equalTo("owner", self);
+                
+                if (0 != self.approvals.length) {
+                    q.greaterThan("createdAt", self.approvals.last().createdAt);
+                }
+                
+                return q.each(function(approval) {
+                    self.approvals.add(approval);
+                });
+            }).then(function() {
+                return Parse.Promise.as(self.approvals);
+            });
+            return self._approvalsFetch;
+        },
+        
+        get_transformed_last_approved: function () {
+            var self = this;
+            return self.get_approvals().then(function () {
+                return self.get_recorded_changes();
+            }).then(function () {
+                var last_approved_recorded_change_id = self.approvals.last().get("change").id;
+                var changesToApply = _.chain(self.recorded_changes.models).takeRightWhile(function (model) {
+                    return model.id != last_approved_recorded_change_id;
+                }).reverse().value();
+                var c = self.get_transformed(changesToApply);
+                return Parse.Promise.as(c);
+            })
+        },
 
         get_transformed: function(changes) {
             // do not define self to prevent self-modification
@@ -545,7 +585,7 @@ define([
                         return _.isEqual(st.get("name"), change.get("name"));
                     });
                     // Create fake
-                    var trait = new SimpleTrait({
+                    var trait = new FauxSimpleTrait({
                         "name": change.get("old_text") || change.get("name"),
                         "free_value": change.get("free_value"),
                         "value": change.get("old_value") || change.get("value"),

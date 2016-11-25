@@ -7,13 +7,13 @@ define([
     var Mixin = {
         format_simpletext: function(attrname) {
             var character = this.character_override || this.character || this.model;
-            if (this.transform_description) {
+            if (this.model.transform_description) {
                 var matcher = {
                     name: attrname,
                     category: "core"
                 }
-                if (_.find(this.transform_description, matcher)) {
-                    var updates = _(this.transform_description)
+                if (_.find(this.model.transform_description, matcher)) {
+                    var updates = _(this.model.transform_description)
                         .select(matcher)
                         .reject({old_text: undefined})
                         .reverse()
@@ -30,14 +30,14 @@ define([
         },
 
         format_attribute_value: function(attribute) {
-            if (this.transform_description) {
+            if (this.model.transform_description) {
                 var matcher = {
                     name: attribute.get("name"),
                     category: "attributes"
                 }
-                var change = _.find(this.transform_description, matcher);
+                var change = _.find(this.model.transform_description, matcher);
                 if (change) {
-                    var updates = _(this.transform_description)
+                    var updates = _(this.model.transform_description)
                         .select(matcher)
                         .reject({fake: undefined})
                         .reverse()
@@ -57,20 +57,20 @@ define([
             var self = this;
             var character = this.character_override || this.character || this.model;
             var focusName = "focus_" + name.toLowerCase() + "s";
-            if (this.transform_description) {
+            if (this.model.transform_description) {
                 var matcher = {
                     category: focusName,
                 }
-                var change = _.find(self.transform_description, matcher);
+                var change = _.find(self.model.transform_description, matcher);
                 if (change) {
                     var outputs = _.map(character.get(focusName), function (skill) {
                         var matcher = {
                             category: focusName,
                             name: skill.get("name")
                         }
-                        var change = _.find(self.transform_description, matcher);
+                        var change = _.find(self.model.transform_description, matcher);
                         if (change) {
-                            var updates = _(self.transform_description)
+                            var updates = _(self.model.transform_description)
                                 .select(matcher)
                                 .reject({fake: undefined})
                                 .reverse()
@@ -168,14 +168,14 @@ define([
         format_skill: function(skill, style) {
             var self = this;
             var output = this._format_skill_string(skill, style);
-            if (this.transform_description) {
+            if (this.model.transform_description) {
                 var matcher = {
                     name: skill.get("name"),
                     category: skill.get("category"),
                 }
-                var change = _.find(this.transform_description, matcher);
+                var change = _.find(this.model.transform_description, matcher);
                 if (change) {
-                    var updates = _(this.transform_description)
+                    var updates = _(this.model.transform_description)
                         .select(matcher)
                         .reject({fake: undefined})
                         .reverse()
@@ -197,20 +197,20 @@ define([
         format_specializations: function (name) {
             var self = this;
             var character = this.character_override || this.character || this.model;
-            if (this.transform_description) {
+            if (this.model.transform_description) {
                 var matcher = {
                     category: name,
                 }
-                var change = _.find(self.transform_description, matcher);
+                var change = _.find(self.model.transform_description, matcher);
                 if (change) {
                     return _.map(character.get(name), function (skill) {
                         var matcher = {
                             category: name,
                             name: skill.get("name")
                         }
-                        var change = _.find(self.transform_description, matcher);
+                        var change = _.find(self.model.transform_description, matcher);
                         if (change) {
-                            var updates = _(self.transform_description)
+                            var updates = _(self.model.transform_description)
                                 .select(matcher)
                                 .reject({fake: undefined})
                                 .reverse()

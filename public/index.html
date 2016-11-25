@@ -84,6 +84,27 @@
     </div><!-- /content -->
 </div>
 
+<div id="about" data-role="page" data-title="About">
+    <div role="main" calss="ui-content">
+        <p>
+            <a href="https://github.com/gnu-lorien/yorick">Yorick</a> is a troupe and character management application designed to support role-playing game systems published by <a href="http://www.bynightstudios.com/">By Night Studios</a>.
+        </p>
+        <p>
+            This website is primarily maintained for usage by the non-profit <a href="http://www.undergroundtheater.org/">Underground Theater</a>.
+        </p>
+        <p>
+            <a href="https://github.com/gnu-lorien/yorick">Yorick</a> is an open-source project that anybody may contribute to. It is licensed under the AGPLv3.
+        </p>
+        <p>
+            Real-time analytics and error reported is provided by <a href="https://trackjs.com/">Track JS</a>.
+        </p>  
+        <p>
+            Some icons are provided by <a href="http://game-icons.net/">Game-icons.net</a> under the terms of the <a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a> license.
+        </p>
+        <p><a href="#">Return to Login</a></p>
+    </div>
+</div>
+
 <div id="player-options" data-role="page" data-title="Player Options">
     <div role="main" class="ui-content">
     </div><!-- /content -->
@@ -94,6 +115,7 @@
         <ul>
             <li><a href="#troupes">Troupes</a></li>
             <li><a href="#administration/characters/all">Characters</a></li>
+            <li><a href="#administration/characters/summarize">SummarizeCharacters</a></li>
             <li><a href="#administration/users/all">Users</a></li>
             <li><a href="#administration/patronages">Patronages</a></li>
             <li><a href="#administration/descriptions">Descriptions</a></li>
@@ -355,6 +377,20 @@
             <input id="troupes-summarize-characters-filter" data-type="search">
         </form>
         <div id="troupe-summarize-characters-list"></div>
+    </div><!-- /content -->
+</div>
+
+<div id="troupe-select-to-print-characters-all" data-role="page" data-title="Troupe Characters">
+    <div role="main" class="ui-content">
+        <div id="sections"></div>
+        <button id="print-shown">Print Shown</button>
+        <div id="troupe-select-to-print-characters-list"></div>
+    </div><!-- /content -->
+</div>
+
+
+<div id="troupe-print-characters-all" data-role="page" data-title="Print Troupe Characters">
+    <div role="main" class="ui-content">
     </div><!-- /content -->
 </div>
 
@@ -691,6 +727,9 @@
         <div>
             <a href="#reset">Forgot your password?</a>
         </div>
+        <div>
+            <a href="#about">About Yorick</a>
+        </div>
     </div>
 </script>
 
@@ -778,8 +817,10 @@
 
 <div id="character-approval" data-role="page" data-title="Character Approval">
     <div role="main" class="ui-content">
-        <div id="approval-main"></div>
+        <div id="approval-changes"></div>
+        <div id="approval-approvals"></div>
         <div id="approval-edit"></div>
+        <!--
         <div data-role="tabs" id="approval-tabs">
             <div data-role="navbar">
                 <ul>
@@ -787,9 +828,10 @@
                     <li><a href="#approval-viewing" data-ajax="false">Show Individual Changes</a></li>
                 </ul>
             </div>
-            <div id="approval-sheet"></div>
-            <div id="approval-viewing"></div>
         </div>
+        -->
+        <div id="approval-sheet"></div>
+        <div id="approval-viewing"></div>
     </div>
 </div>
 
