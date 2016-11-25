@@ -64,7 +64,8 @@ define([
     "../views/SimpleTraitNewSpecializationView",
     "../views/CharacterCreateSimpleTraitNewView",
     "../views/DescriptionsView",
-    "../models/Werewolf"
+    "../models/Werewolf",
+    "../views/CharactersPrintView"
 ], function ($,
              Parse,
              pretty,
@@ -124,7 +125,8 @@ define([
              SimpleTraitNewSpecializationView,
              CharacterCreateSimpleTraitNewView,
              DescriptionsView,
-             Werewolf
+             Werewolf,
+             CharactersPrintView
 ) {
 
     // Extends Backbone.Router
@@ -254,6 +256,8 @@ define([
             "troupe/:id/staff/edit/:uid": "troupeeditstaff",
             "troupe/:id/characters/:type": "troupecharacters",
             "troupe/:id/characters/summarize/:type": "troupesummarizecharacters",
+            "troupe/:id/characters/selecttoprin/:type": "troupe_select_to_print_characters",
+            "troupe/:id/characters/print/:type": "troupe_print_characters",
             "troupe/:id/characters/relationships/network": "troupe_relationship_network",
             "troupe/:id/character/:cid": "troupe_character",
             "troupe/:id/portrait": "troupe_portrait",
@@ -1260,6 +1264,27 @@ define([
                 return self.get_troupe_summarize_characters(troupe, self.troupeSummarizeCharacters.collection);
             }).then(function() {
                 $.mobile.changePage("#troupe-summarize-characters-all", {reverse: false, changeHash: false});
+            }).always(function() {
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
+        },
+        
+        troupe_print_characters: function(id, type) {
+            var self = this;
+            $.mobile.loading("show");
+            self.enforce_logged_in().then(function() {
+                self.set_back_button("#troupe/" + id);
+                var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
+                return get_troupe;
+            }).then(function (troupe, user) {
+                self.troupePrintCharacters = self.troupePrintCharacters || new CharactersPrintView({
+                    collection: new Vampires,
+                    el: "#troupe-print-characters-all > div[role='main']"
+                }).setup();
+                self.troupeCharacters.register("#troupe/" + id + "/character/<%= character_id %>");
+                return self.get_troupe_summarize_characters(troupe, self.troupePrintCharacters.collection);
+            }).then(function() {
+                $.mobile.changePage("#troupe-print-characters-all", {reverse: false, changeHash: false});
             }).always(function() {
                 $.mobile.loading("hide");
             }).fail(PromiseFailReport);
