@@ -30,7 +30,7 @@
     <script type="text/javascript">
         window._trackJs = {
             token: '8c029fff54d841498640d86379af7316',
-            enabled: false,//!(window.location.host.indexOf('localhost') >= 0)
+            enabled: !(window.location.host.indexOf('localhost') >= 0)
         };
         // Add a script element as a child of the body
         function downloadJSAtOnload() {
