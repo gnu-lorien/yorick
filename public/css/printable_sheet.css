@@ -9,6 +9,7 @@
 
     body {
         margin: 0px !important;
+        overflow-x: initial !important;
     }
 
     .slidedown {
@@ -69,6 +70,15 @@
     h4 {
         font-family: Arial;
         font-size: 8pt;
+    }
+    
+    .force-printing-page-break {
+        page-break-after: always;
+        page-break-inside: avoid;
+    }
+    
+    div {
+        overflow:initial !important;
     }
 }
 
