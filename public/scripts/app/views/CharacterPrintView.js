@@ -774,7 +774,7 @@ define([
                 }), options);
             }
         },
-        onShow: function () {
+        onRender: function() {
             this.setup_regions()
         },
         initialize: function(options) {
@@ -800,7 +800,6 @@ define([
                 _.debounce(self.setup_regions, 100, {trailing: true}));
             
             self.render();
-            self.setup_regions();
 
             return self;
         }
