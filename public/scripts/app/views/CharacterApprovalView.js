@@ -370,7 +370,7 @@ define([
                     self.approvals = approvals;
                     self.picked.set("approval", self.approvals.length);
                     
-                    // Set up parent functions
+                    self.update_override_character_and_transform();
                     self.listenTo(self.picked, "change:right change:left", _.debounce(self.update_override_character_and_transform, 100, {trailing: true}));
                     
                     // Set up child views now
