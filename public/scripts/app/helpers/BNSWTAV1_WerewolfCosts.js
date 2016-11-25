@@ -97,9 +97,9 @@ define([
 
             if ("wta_gifts" == category) {
                 if (self.gift_is_affinity(character, trait)) {
-                    return self.get_trait_cost_on_table(self.get_cost_table(4), trait);
+                    return mod_value * 4;
                 } else {
-                    return self.get_trait_cost_on_table(self.get_cost_table(6), trait);
+                    return mod_value * 6;
                 }
             }
 
