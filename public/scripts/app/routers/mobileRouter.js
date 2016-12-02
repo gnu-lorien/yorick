@@ -221,7 +221,8 @@ define([
             "simpletrait/spacer/:category/:cid/:name/:value/:free_value/new": "simpletraitnew",
             "simpletrait/specialize/:category/:cid/:name/:value/:free_value/new": "simpletrait_new_specialize",
             
-            "simpletext/:category/:target/:cid/pick": "simpletextpick",
+            "simpletext/:category/:target/:cid/pick":   "simpletextpick",
+            "simpletext/:category/:target/:cid/unpick":   "simpletextunpick",
 
             "charactercreate/:cid": "charactercreate",
 
@@ -229,6 +230,7 @@ define([
             "charactercreate/simpletraits/:category/:cid/unpick/:stid/:i": "charactercreateunpicksimpletrait",
             "charactercreate/simpletraits/:category/:cid/specialize/:stid/:i": "charactercreatespecializesimpletrait",
             "charactercreate/simpletext/:category/:target/:cid/pick": "charactercreatepicksimpletext",
+            "charactercreate/simpletext/:category/:target/:cid/unpick": "charactercreateunpicksimpletext",
             "charactercreate/complete/:cid": "charactercreatecomplete",
 
             "characternew": "characternew",
@@ -540,6 +542,18 @@ define([
             });
         },
         
+        charactercreateunpicksimpletext: function(category, target, cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#charactercreate/" + cid);
+            self.get_character(cid, [category]).then(function (character) {
+                self.character.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
+                return character.unpick_text(target);
+            }).then(function (c) {
+                window.location.hash = "#charactercreate/" + c.id;
+            }).fail(PromiseFailReport);
+        },
+        
         charactercreatecomplete: function(cid) {
             var self = this;
             $.mobile.loading("show");
@@ -574,6 +588,8 @@ define([
                 c.render();
                 c.scroll_back_after_page_change();
                 $.mobile.changePage("#character", {reverse: false, changeHash:false});
+            }).then(function () {
+                $.mobile.loading("hide");
             }).fail(PromiseFailReport).fail(function () {
                 window.location.hash = back_url;
             });
@@ -1054,8 +1070,19 @@ define([
                 $.mobile.changePage("#simpletext-new", {reverse: false, changeHash: false});
             });
         },
+        
+        simpletextunpick: function(category, target, cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid, [category]).then(function (character) {
+                self.character.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
+                return character.unpick_text(target);
+            }).then(function (c) {
+                window.location.hash = "#character?" + c.id;
+            }).fail(PromiseFailReport);
+        },
  
-
         simpletraits: function(category, cid, type) {
             var self = this;
             if ("all" == type) {

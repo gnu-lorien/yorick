@@ -204,6 +204,20 @@ define([
                 });
             }).fail(PromiseFailReport)
         },
+        
+        unpick_text: function(target) {
+            var self = this;
+            self.unset(target);
+            return self.save().then(function() {
+                return Parse.Object.fetchAllIfNeeded([self.get("creation")]).then(function (creations) {
+                    var creation = creations[0];
+                    creation.set(target, false);
+                    return creation.save().then(function () {
+                        return Parse.Promise.as(self);
+                    });
+                });
+            })
+        },
 
         get_trait_by_name: function(category, name) {
             var self = this;
