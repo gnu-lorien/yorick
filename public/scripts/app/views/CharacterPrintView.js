@@ -482,6 +482,9 @@ define([
                         name: "archetype",
                         display: "Archetype"
                     },{
+                        name: "archetype_2",
+                        display: "Archetype"
+                    },{
                         name: "wta_camp",
                         display: "Camp", 
                     },{
