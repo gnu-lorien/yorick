@@ -415,9 +415,13 @@ define([
             self.get_character(cid, "all").then(function (character) {
                 return character.get_transformed_last_approved();
             }).then(function (transformed) {
-                transformed.transform_description = [];
-                self.characterPrintView.setup(transformed);
-                $.mobile.changePage("#printable-sheet", {reverse: false, changeHash: false});
+                if (null == transformed) {
+                    $.mobile.changePage("#character-print-no-approval", {reverse: false, changeHash: false});
+                } else {
+                    transformed.transform_description = [];
+                    self.characterPrintView.setup(transformed);
+                    $.mobile.changePage("#printable-sheet", {reverse: false, changeHash: false});
+                }
             }).fail(PromiseFailReport);
         },
 

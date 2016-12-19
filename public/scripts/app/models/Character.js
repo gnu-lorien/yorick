@@ -567,6 +567,9 @@ define([
             return self.get_approvals().then(function () {
                 return self.get_recorded_changes();
             }).then(function () {
+                if (0 == self.approvals.length) {
+                    return Parse.Promise.as(null);
+                }
                 var last_approved_recorded_change_id = self.approvals.last().get("change").id;
                 var changesToApply = _.chain(self.recorded_changes.models).takeRightWhile(function (model) {
                     return model.id != last_approved_recorded_change_id;
