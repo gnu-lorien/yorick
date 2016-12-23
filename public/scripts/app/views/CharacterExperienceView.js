@@ -11,6 +11,7 @@ define([
     "../collections/VampireChangeCollection"
 ], function( $, Backbone, moment, ExperienceNotation, ExperienceNotationCollection, VampireChangeCollection) {
 
+    var MOMENT_FORMAT = "L LTS";
     // Extends Backbone.View
     var View = Backbone.View.extend( {
 
@@ -70,7 +71,7 @@ define([
             var id = self.$("#popupEditEntered #date-id").val();
             var d = self.$("#popupEditEntered #date-input").val();
             var en = self.collection.getByCid(id);
-            var updatedEntered = moment(d);
+            var updatedEntered = moment(d, MOMENT_FORMAT, true);
             if (updatedEntered.isValid()) {
                 en.set("entered", updatedEntered.toDate());
                 en.save();
@@ -115,7 +116,7 @@ define([
             event.preventDefault();
             if ("entered" === headerName) {
                 var popup = $("#popupEditEntered");
-                $("#popupEditEntered #date-input").val(moment(en.get("entered")).format());
+                $("#popupEditEntered #date-input").val(moment(en.get("entered")).format(MOMENT_FORMAT));
                 //self.$("#popupEditEntered #date-input")[0].setCustomValidity("");
                 $("#popupEditEntered #date-id").val(clickedNotationId);
                 popup.enhanceWithin().popup("open");
@@ -201,13 +202,13 @@ define([
             if (log.has(entry)) {
                 var v = log.get(entry);
                 if (_.isDate(v)) {
-                    return moment(v).format('lll');
+                    return moment(v).format(MOMENT_FORMAT);
                 }
                 return log.get(entry);
             }
             var attr = log[entry];
             if (_.isDate(attr)) {
-                return moment(attr).format('lll');
+                return moment(attr).format(MOMENT_FORMAT);
             }
             return attr;
         },
