@@ -489,13 +489,15 @@
     <button class="previous ui-btn ui-btn-icon-left">View Previous</button>
     <button class="next ui-btn ui-btn-icon-left">View Next</button>
     -->
-    <% var headers = ["entered", "reason", "alteration_earned", "alteration_spent", "earned", "spent"]; %>
+    <% var headers =      ["entered", "reason", "alteration_earned", "alteration_spent", "available"]; %>
+    <% var pretty_names = ["Date", "Reason", "Earned?", "Spent?", "Available"]; %>
     <% var editable = ["entered", "reason", "alteration_earned", "alteration_spent"]; %>
     <table data-role="table" id="table-column-toggle" class="ui-responsive table-stroke">
         <thead>
         <tr>
-            <% _.each(headers, function (h, i) { %>
-            <th data-priority="<%= i + 1 %>"><%= h %></th>
+            <% _.each(pretty_names, function (h, i) { %>
+                <th></th>
+                <th data-priority="<%= i + 1 %>"><%= h %></th>
             <% }); %>
             <th></th>
         </tr>
@@ -503,11 +505,26 @@
         <tbody>
             <% _.each(logs, function (log, i) { %>
                 <tr>
-                    <% _.each(headers, function (h) { %>
-                    <td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td><%= format_entry(log, "earned") %></td>
+                    <td></td>
+                    <td><%= format_entry(log, "spent") %></td>
+                    <td></td>
+                    <td><%= log.get("earned") - log.get("spent") %></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <% _.each(headers, function (h, i) { %>
+                    <td style="padding-right: 0px">
                         <% if (_.contains(editable, h)) { %>
-                        <a href="#" class="experience-notation-edit ui-btn ui-icon-edit ui-btn-icon-notext ui-corner-all ui-btn-inline" header="<%= h %>" notation-id="<%= log.cid %>">Edit</a>
+                        <a href="#" class="experience-notation-edit ui-btn ui-icon-edit ui-btn-icon-notext ui-corner-all ui-btn-inline" style="margin: 0px" header="<%= h %>" notation-id="<%= log.cid %>">Edit</a>
                         <% } %>
+                    </td>
+                    <td>
                         <%= format_entry(log, h) %>
                     </td>
                     <% }); %>
@@ -521,7 +538,7 @@
             <div style="padding:10px 20px;">
                 <input type="text" id="date-input" data-inline="true" data-role="date">
                 <button type="submit" class="ui-btn ui-corner-all ui-shadow ui-btn-b ui-btn-icon-left ui-icon-check">
-                    Update Date Entered
+                    Update Date
                 </button>
                 <input type="hidden" id="date-id"/>
             </div>
