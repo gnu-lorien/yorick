@@ -71,7 +71,7 @@ define([
             var id = self.$("#popupEditEntered #date-id").val();
             var d = self.$("#popupEditEntered #date-input").val();
             var en = self.collection.getByCid(id);
-            var updatedEntered = moment(d, MOMENT_FORMAT, true);
+            var updatedEntered = moment(d, MOMENT_FORMAT);
             if (updatedEntered.isValid()) {
                 en.set("entered", updatedEntered.toDate());
                 en.save();
