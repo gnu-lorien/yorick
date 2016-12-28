@@ -631,7 +631,9 @@ define([
                         description: "History and backstory for your character.",                       
                     });
                 $.mobile.changePage("#long-text", {reverse: false, changeHash: false});
-            }).fail(PromiseFailReport);
+            }).fail(PromiseFailReport).always(function() {
+                $.mobile.loading("hide");
+            });
         },
         
         character_notes_long_text: function(cid) {
@@ -650,10 +652,12 @@ define([
                     {
                         category: "notes",
                         pretty: "Notes",
-                        description: "Notes about your character's interactions and progression", 
+                        description: "Notes about your character's interactions and progression",
                     });
                 $.mobile.changePage("#long-text", {reverse: false, changeHash: false});
-            }).fail(PromiseFailReport);
+            }).fail(PromiseFailReport).always(function() {
+                $.mobile.loading("hide");
+            });
         },
         
         show_character_helper: function(id, back_url) {
