@@ -238,6 +238,24 @@
                 <li><a href="#character/<%= character.id %>/rename">Rename</a></li>
             </ul>
         </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true"
+                class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/extendedprinttext">Extended Print Text</a></li>
+            </ul>
+        </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true"
+                class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/backgroundlt">Background</a></li>
+            </ul>
+        </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true"
+                class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/noteslt">Notes</a></li>
+            </ul>
+        </div>
     </div>
 
     <% if (character.is_being_created()) { %>
@@ -995,6 +1013,16 @@
 <div id="character-print-no-approval" data-role="page" data-title="Print Approval">
     <div role="main" class="ui-content">
         <p>No approved versions of your character</p>
+    </div>
+</div>
+
+<div id="extended-print-text" data-role="page" data-title="Additional Printed Text">
+    <div role="main" class="ui-content">
+    </div>
+</div>
+
+<div id="long-text" data-role="page" data-title="Long Text">
+    <div role="main" class="ui-content">
     </div>
 </div>
 
