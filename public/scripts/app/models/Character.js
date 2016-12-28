@@ -939,7 +939,7 @@ define([
         has_fetched_long_text: function(category) {
             var self = this;
             self._ltCache = self._ltCache || {};
-            return _.result(self._ltCache, category, false);
+            return _.has(self._ltCache, category);
         },
         
         /**
