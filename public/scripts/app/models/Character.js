@@ -944,6 +944,16 @@ define([
         },
         
         /**
+         * Get text only from local cache
+         * @return {LongText}
+         */
+        get_fetched_long_text: function(category) {
+            var self = this;
+            self._ltCache = self._ltCache || {};
+            return _.result(self._ltCache, category);
+        },
+        
+        /**
          * Update long text with the matching category
          * @return {Parse.Promise} for server update
          */

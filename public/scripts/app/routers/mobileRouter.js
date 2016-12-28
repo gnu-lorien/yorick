@@ -66,7 +66,8 @@ define([
     "../views/DescriptionsView",
     "../models/Werewolf",
     "../views/CharactersPrintView",
-    "../views/CharactersSelectToPrintView"
+    "../views/CharactersSelectToPrintView",
+    "../views/CharacterLongTextView"
 ], function ($,
              Parse,
              pretty,
@@ -128,7 +129,8 @@ define([
              DescriptionsView,
              Werewolf,
              CharactersPrintView,
-             CharactersSelectToPrintView
+             CharactersSelectToPrintView,
+             CharacterLongTextView
 ) {
 
     // Extends Backbone.Router
@@ -250,6 +252,7 @@ define([
             "character/:cid/approval": "characterapproval",
             "character/:cid/rename": "characterrename",
             "character/:cid/approved": "character_show_approved",
+            "character/:cid/extendedprinttext": "character_extended_print_text",
 
             "character/:cid/experience/:start/:changeBy": "characterexperience",
 
@@ -582,6 +585,21 @@ define([
                 $.mobile.changePage("#character-portrait", {reverse: false, changeHash: false});
             });
         },
+        
+        character_extended_print_text: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid, "all").done(function (character) {
+                character.transform_description = [];
+                self.cept = self.cept || new CharacterLongTextView({
+                    el: "#extended-print-text"
+                })
+                self.cept.setup(character);
+                $.mobile.changePage("#extended-print-text", {reverse: false, changeHash: false});
+            }).fail(PromiseFailReport);
+        },
+
 
         show_character_helper: function(id, back_url) {
             $.mobile.loading("show");
