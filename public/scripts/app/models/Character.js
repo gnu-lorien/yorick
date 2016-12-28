@@ -965,6 +965,7 @@ define([
                 return lt.save().then(function () {
                     self._ltCache = self._ltCache || {};
                     _.set(self._ltCache, category, lt);
+                    return Parse.Promise.as(lt);
                 });
             });
         },
