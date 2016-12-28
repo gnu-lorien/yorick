@@ -42,6 +42,7 @@ define([
                         name: "submit",
                         label: "Update",
                         control: "button",
+                        disabled: true,
                         id: "submit"
                     }
                 ],
@@ -60,10 +61,10 @@ define([
                         self.model.errorModel.clear();
 
                         view.character.update_long_text(options.category, self.model.get("text")).then(function () {
-                            self.fields.get("submit").set({status: "success", message: "Successfully Updated"});
+                            self.fields.get("submit").set({status: "success", message: "Successfully Updated", disabled: true});
                             self.$el.enhanceWithin();
                         }, function (error) {
-                            self.fields.get("submit").set({status: "error", message: _.escape(error.message)});
+                            self.fields.get("submit").set({status: "error", message: _.escape(error.message), disabled: false});
                             self.$el.enhanceWithin();
                         }).always(function () {
                             $.mobile.loading("hide");
