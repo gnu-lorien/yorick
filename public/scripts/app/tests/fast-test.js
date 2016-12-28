@@ -252,6 +252,8 @@ define([
                     done.fail(error);
                 });
             });
+            
+            //it("fetching properly primes the cache")
         });
     });
 });
