@@ -595,8 +595,11 @@ define([
             }).then(function (character) {
                 character.transform_description = [];
                 self.cept = self.cept || new CharacterLongTextView({
-                    el: "#extended-print-text"
-                })
+                    el: "#extended-print-text",
+                    category: "extended_print_text",
+                    pretty: "Extended Print Text",
+                    description: "Additional text to display with your printed character sheet.",
+                });
                 self.cept.setup(character);
                 $.mobile.changePage("#extended-print-text", {reverse: false, changeHash: false});
             }).fail(PromiseFailReport);

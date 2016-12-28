@@ -160,11 +160,6 @@ define([
         setup: function(character, options) {
             var self = this;
             var options = self.options || {};
-            _.defaults(options, {
-                category: "extended_print_text",
-                pretty: "Extended Print Text",
-                description: "Additional text to display with your printed character sheet."
-            })
             self.character = character;
             self.editingoptions = new Backbone.Model;
             self.render();
