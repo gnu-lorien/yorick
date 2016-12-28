@@ -915,6 +915,17 @@ define([
         },
         
         /**
+         * Cache a long text on the Character
+         * @return {Parse.Promise} current character
+         */
+        fetch_long_text: function (category, options) {
+            var self = this;
+            return self.get_long_text(category, options).then(function() {
+                return Parse.Promise.as(self);
+            })
+        },
+        
+        /**
          * Whether or not the server has a long text in this category
          * @return {Parse.Promise}
          */
