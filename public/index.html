@@ -244,6 +244,18 @@
                 <li><a href="#character/<%= character.id %>/extendedprinttext">Extended Print Text</a></li>
             </ul>
         </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true"
+                class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/backgroundlt">Background</a></li>
+            </ul>
+        </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true"
+                class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/noteslt">Notes</a></li>
+            </ul>
+        </div>
     </div>
 
     <% if (character.is_being_created()) { %>
