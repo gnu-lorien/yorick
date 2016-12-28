@@ -245,9 +245,9 @@ define([
                 }); 
                
                 var l = new Listener;
-                vampire.update_long_text("background", the_text).then(function () {
+                vampire.update_long_text("something_else", the_text).then(function () {
                     l.listenTo(vampire, "change:longtextsomething_else", l.finish);
-                    return vampire.remove_long_text("something_else");
+                    return vampire.remove_long_text("something_else", {update: false});
                 }).fail(function(error) {
                     done.fail(error);
                 });

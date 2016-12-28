@@ -976,9 +976,13 @@ define([
          * Remove a long text from the server and locally
          * @return {Parse.Promise} for server update
          */
-        remove_long_text: function(category) {
+        remove_long_text: function(category, options) {
             var self = this;
-            var getp = self.get_long_text(category, {update: true});
+            var options = options || {};
+            _.defaults(options, {
+                update: true
+            })
+            var getp = self.get_long_text(category, options);
             return getp.then(function (lt) {
                 if (!lt) {
                     return Parse.Promise.as(null);
