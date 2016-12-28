@@ -433,6 +433,29 @@ define([
     });
     _.extend(SectionsView.prototype, VampirePrintHelper);
     
+    var ExtendedPrintTextView = Marionette.ItemView.extend({
+        template: _.template("<%= inputtext %>"),
+        templateHelpers: function() {
+            var self = this;
+            var inputtext = "";
+            var lt = self.model.get_fetched_long_text("extended_print_text")
+            if (lt && lt.has("text")) {
+                inputtext = lt.get("text");
+            } 
+            inputtext = _.template(inputtext)({
+                character: self.model
+            })
+            return {
+                inputtext: inputtext
+            }
+        },
+        initialize: function(options) {
+            var self = this;
+            this.$el.addClass("ui-block-a");
+        }
+    });
+    _.extend(ExtendedPrintTextView.prototype, VampirePrintHelper);
+    
     var LayoutView = Marionette.LayoutView.extend({
         template: _.template(character_print_parent_html),
         
@@ -454,12 +477,15 @@ define([
             bottom_one_c: "#cpp-bottom-one-c",
             bottom_two_a: "#cpp-bottom-two-a",
             bottom_two_b: "#cpp-bottom-two-b",
-            bottom_two_c: "#cpp-bottom-two-c"
+            bottom_two_c: "#cpp-bottom-two-c",
+            extended_print_text: "#cpp-extended-print-text"
         },
         setup_regions: function() {
             var self = this;
             var options = self.options || {};
             var character = self.override.get("character") || self.character;
+            
+            self.showChildView('extended_print_text', new ExtendedPrintTextView({model: character}), options);
             
             if (character.get("type") == "Werewolf") {
                 self.showChildView('header', new HeaderView({model: character}), options);
