@@ -90,20 +90,20 @@ define([
         template: _.template("<h1>Preview<h1><p><%= inputtext %>"),
         templateHelpers: function () {
             var self = this;
+            var inputtext = "";
             if (self.model.get("preview")) {
-                return {
-                    inputtext: self.model.get("text")
-                };
+                inputtext = self.model.get("text")
             } else {
                 var lt = self.options.character.get_fetched_long_text(self.options.category)
                 if (lt && lt.has("text")) {
-                    return {
-                        inputtext: lt.get("text")
-                    };
+                    inputtext = lt.get("text");
                 }
-                return {
-                    inputtext: "",
-                }
+            }
+            inputtext = _.template(inputtext)({
+                character: self.options.character
+            });
+            return {
+                inputtext: inputtext
             }
         },
         initialize: function(options) {
