@@ -887,10 +887,10 @@ define([
             var options = options || {update: false};
             self._ltPromise = self._ltPromise || Parse.Promise.as();
             self._ltPromise = self._ltPromise.always(function () {
-                var cache = self._ltCache || {};
-                if (_.has(cache, category)) {
+                self._ltCache = self._ltCache || {};
+                if (_.has(self._ltCache, category)) {
                     if (!options.update) {
-                        return Parse.Promise.as(_.result(cache, category));
+                        return Parse.Promise.as(_.result(self._ltCache, category));
                     }
                 }
                 // Get the long text
@@ -899,14 +899,14 @@ define([
                     .equalTo("category", category);
                 return q.first().then(function (lt) {
                     // Put it in the cache
-                    var cache = self._ltCache || {};
+                    self._ltCache = self._ltCache || {};
                     if (_.isUndefined(lt)) {
-                        _.set(cache, category, null);
+                        _.set(self._ltCache, category, null);
                     } else {
-                        _.set(cache, category, lt);
+                        _.set(self._ltCache, category, lt);
                     }
                     // Return it
-                    return Parse.Promise.as(_.result(cache, category));
+                    return Parse.Promise.as(_.result(self._ltCache, category));
                 })
             });
             
@@ -938,8 +938,8 @@ define([
          */
         has_fetched_long_text: function(category) {
             var self = this;
-            var cache = self._ltCache || {};
-            return _.result(cache, category, false);
+            self._ltCache = self._ltCache || {};
+            return _.result(self._ltCache, category, false);
         },
         
         /**
@@ -962,7 +962,10 @@ define([
                     });
                 }
                 
-                return lt.save();
+                return lt.save().then(function () {
+                    self._ltCache = self._ltCache || {};
+                    _.set(self._ltCache, category, lt);
+                });
             });
         },
         
@@ -978,8 +981,8 @@ define([
                     return Parse.Promise.as(null);
                 }
                 return lt.destroy({wait: true}).then(function () {
-                    var cache = self._ltCache || {};
-                    delete cache[category];
+                    self._ltCache = self._ltCache || {};
+                    delete self._ltCache[category];
                 });
             });
         },
@@ -989,8 +992,8 @@ define([
          */
         free_fetched_long_text: function(category) {
             var self = this;
-            var cache = self._ltCache || {};
-            delete cache[category];
+            self._ltCache = self._ltCache || {};
+            delete self._ltCache[category];
         }
         
     }, ExpirationMixin );
