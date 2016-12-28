@@ -41,10 +41,17 @@ define([
                     },{
                         name: "submit",
                         label: "Update",
-                        control: "button"
+                        control: "button",
+                        id: "submit"
                     }
                 ],
                 events: {
+                    "change": function(e) {
+                        e.preventDefault();
+                        this.model.errorModel.clear();
+                        this.fields.get("submit").set({status: "", message: "", disabled: false});
+                        this.$el.enhanceWithin();
+                    },
                     "submit": function (e) {
                         var self = this;
                         e.preventDefault();
@@ -53,11 +60,11 @@ define([
                         self.model.errorModel.clear();
 
                         view.character.update_long_text(options.category, self.model.get("text")).then(function () {
-                            self.fields.get("submit").set({status: "success", message: "Successfully Updated", disabled: true});
-                            //self.$el.enhanceWithin();
+                            self.fields.get("submit").set({status: "success", message: "Successfully Updated"});
+                            self.$el.enhanceWithin();
                         }, function (error) {
-                            self.fields.get("submit").set({status: "error", message: _.escape(error.message), disabled: false});
-                            //self.$el.enhanceWithin();
+                            self.fields.get("submit").set({status: "error", message: _.escape(error.message)});
+                            self.$el.enhanceWithin();
                         }).always(function () {
                             $.mobile.loading("hide");
                             self.delegateEvents();
@@ -88,14 +95,14 @@ define([
                 };
             } else {
                 var lt = self.options.character.get_fetched_long_text(self.options.category)
-                if (!lt) {
+                if (lt && lt.has("text")) {
                     return {
-                        inputtext: "",
-                    }
+                        inputtext: lt.get("text")
+                    };
                 }
                 return {
-                    inputtext: test.get("text")
-                };
+                    inputtext: "",
+                }
             }
         },
         initialize: function(options) {
@@ -161,7 +168,13 @@ define([
             var self = this;
             var options = self.options || {};
             self.character = character;
-            self.editingoptions = new Backbone.Model;
+            self.editingoptions = new Backbone.Model({
+                preview: true
+            });
+            var lt = self.character.get_fetched_long_text(options.category);
+            if (lt && lt.has("text")) {
+                self.editingoptions.set("text", lt.get("text"));
+            }
             self.render();
             return self;
         }
