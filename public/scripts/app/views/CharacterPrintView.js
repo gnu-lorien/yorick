@@ -452,6 +452,7 @@ define([
         initialize: function(options) {
             var self = this;
             this.$el.addClass("ui-block-a");
+            self.listenTo(self.model, "change", self.render);
         }
     });
     _.extend(ExtendedPrintTextView.prototype, VampirePrintHelper);
