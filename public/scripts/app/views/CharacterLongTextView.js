@@ -87,7 +87,7 @@ define([
 
     var Preview = Marionette.ItemView.extend({
         tagName: 'div',
-        template: _.template("<h1>Preview<h1><p><%= inputtext %>"),
+        template: _.template("<h1>Preview</h1><p><%= inputtext %></p>"),
         templateHelpers: function () {
             var self = this;
             var inputtext = "";
@@ -135,6 +135,27 @@ define([
             this.$el.enhanceWithin();
         }
     });
+    
+    var Description = Marionette.ItemView.extend({
+        tagName: 'div',
+        template: _.template("<p><%= inputtext %></p>"),
+        templateHelpers: function () {
+            var self = this;
+            return {
+                inputtext: self.options.description
+            };
+        },
+        initialize: function(options) {
+            var self = this;
+            self.options = options;
+            _.bindAll(
+                self,
+                "templateHelpers");
+        },
+        onRender: function() {
+            this.$el.enhanceWithin();
+        }
+    });
 
     var LayoutView = Marionette.LayoutView.extend({
         template: _.template(character_long_text_parent_html),
@@ -147,6 +168,9 @@ define([
             var self = this;
             var options = {};
             
+            self.showChildView('top', new Description({
+                description: self.options.description
+            }));
             self.showChildView('edit', new EditForm({
                 character: self.character,
                 category: self.options.category,
