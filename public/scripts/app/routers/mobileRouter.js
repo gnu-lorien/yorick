@@ -590,7 +590,9 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
-            self.get_character(cid, "all").done(function (character) {
+            self.get_character(cid, "all").then(function (character) {
+                return character.fetch_long_text("extended_print_text");
+            }).then(function (character) {
                 character.transform_description = [];
                 self.cept = self.cept || new CharacterLongTextView({
                     el: "#extended-print-text"
