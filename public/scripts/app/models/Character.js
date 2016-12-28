@@ -808,6 +808,15 @@ define([
                 self.progress("Updating server side change log");
                 return Parse.Cloud.run("update_vampire_change_permissions_for", {character: self.id});
             }).then(function () {
+                self.progress("Fetching long texts to update");
+                return self.get_minimal_long_texts();
+            }).then(function(longtexts) {
+                self.progress("Updating long texts with new permissions");
+                _.each(longtexts, function (lt) {
+                    lt.setACL(self.get_me_acl());
+                });
+                return Parse.Object.saveAll(longtexts);
+            }).then(function () {
                 self.progress("Finishing up!");
                 return Parse.Promise.as(self);
             });
@@ -984,6 +993,8 @@ define([
                     });
                 }
                 
+                lt.setACL(self.get_me_acl());
+                
                 return lt.save().then(function () {
                     self._ltCache = self._ltCache || {};
                     _.set(self._ltCache, category, lt);
@@ -1023,6 +1034,28 @@ define([
             var self = this;
             self._ltCache = self._ltCache || {};
             delete self._ltCache[category];
+        },
+        
+        /**
+         * Gets the minimal version of all long texts for this character
+         * @return {Parse.Promise} minimal LongTexts
+         */
+        get_minimal_long_texts: function() {
+            var self = this;
+            self._ltPromise = self._ltPromise || Parse.Promise.as();
+            self._ltPromise = self._ltPromise.always(function () {
+                var q = new Parse.Query(LongText)
+                    .equalTo("owner", self)
+                    .select(["owner", "category", "ACL"]);
+                var longtexts = [];
+                return q.each(function (lt) {
+                    longtexts.push(lt);
+                }).then(function () {
+                    return Parse.Promise.as(longtexts);
+                });
+            });
+            
+            return self._ltPromise;           
         }
         
     }, ExpirationMixin );
