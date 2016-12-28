@@ -193,6 +193,65 @@ define([
                     done.fail(error);
                 })
             });
+            
+            it("notifies when updated", function(done) {
+                var the_text = "I'm awesome";
+                var Listener = Backbone.View.extend({
+                    initialize: function() {
+                        _.bindAll(this, "finish");
+                    },
+                    finish: function(lt) {
+                        this.stopListening();
+                        expect(lt).toBeDefined();
+                        expect(lt.get("owner")).toBe(vampire);
+                        expect(lt.get("text")).toEqual(the_text);
+                        expect(lt.get("category")).toEqual("background");
+                        expect(vampire.has_fetched_long_text("background")).toBe(true);
+                        vampire.has_long_text("background").then(function (result) {
+                            expect(result).toBe(true);
+                            done();
+                        }).fail(function(error) {
+                            done.fail(error);
+                        });
+                    }
+                }); 
+                
+                var l = new Listener;
+                l.listenTo(vampire, "change:longtextbackground", l.finish);
+                vampire.update_long_text("background", the_text).fail(function(error) {
+                    done.fail(error);
+                });
+            });
+            
+            it("notifies when removed", function(done) {
+                var the_text = "I'm awesome";
+                var Listener = Backbone.View.extend({
+                    initialize: function() {
+                        _.bindAll(this, "finish");
+                    },
+                    finish: function(lt) {
+                        this.stopListening();
+                        expect(vampire.has_fetched_long_text("something_else")).toBe(false);
+                        vampire.has_long_text("something_else").then(function (result) {
+                            expect(result).toBe(false);
+                            return vampire.get_long_text("something_else");
+                        }).then(function (lt) {
+                            expect(lt).toBe(null);
+                            done();
+                        }).fail(function(error) {
+                            done.fail(error);
+                        });               
+                    }
+                }); 
+               
+                var l = new Listener;
+                vampire.update_long_text("background", the_text).then(function () {
+                    l.listenTo(vampire, "change:longtextsomething_else", l.finish);
+                    return vampire.remove_long_text("something_else");
+                }).fail(function(error) {
+                    done.fail(error);
+                });
+            });
         });
     });
 });
