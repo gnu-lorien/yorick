@@ -905,6 +905,7 @@ define([
                     } else {
                         _.set(self._ltCache, category, lt);
                     }
+                    self.trigger("change:longtext" + category, lt);
                     // Return it
                     return Parse.Promise.as(_.result(self._ltCache, category));
                 })
@@ -965,6 +966,7 @@ define([
                 return lt.save().then(function () {
                     self._ltCache = self._ltCache || {};
                     _.set(self._ltCache, category, lt);
+                    self.trigger("change:longtext" + category, lt);
                     return Parse.Promise.as(lt);
                 });
             });
@@ -984,6 +986,7 @@ define([
                 return lt.destroy({wait: true}).then(function () {
                     self._ltCache = self._ltCache || {};
                     delete self._ltCache[category];
+                    self.trigger("change:longtext" + category);
                 });
             });
         },
