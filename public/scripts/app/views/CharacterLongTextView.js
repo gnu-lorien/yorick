@@ -191,7 +191,7 @@ define([
         },
         setup: function(character, options) {
             var self = this;
-            var options = self.options || {};
+            self.options = options || self.options;
             self.character = character;
             self.editingoptions = new Backbone.Model({
                 preview: true

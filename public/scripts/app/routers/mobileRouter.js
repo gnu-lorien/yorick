@@ -253,6 +253,8 @@ define([
             "character/:cid/rename": "characterrename",
             "character/:cid/approved": "character_show_approved",
             "character/:cid/extendedprinttext": "character_extended_print_text",
+            "character/:cid/backgroundlt": "character_background_long_text",
+            "character/:cid/noteslt": "character_notes_long_text",
 
             "character/:cid/experience/:start/:changeBy": "characterexperience",
 
@@ -598,16 +600,62 @@ define([
                 character.transform_description = [];
                 self.cept = self.cept || new CharacterLongTextView({
                     el: "#extended-print-text",
-                    category: "extended_print_text",
-                    pretty: "Extended Print Text",
-                    description: "Additional text to display with your printed character sheet.",
                 });
-                self.cept.setup(character);
+                self.cept.setup(
+                    character,
+                    {
+                        category: "extended_print_text",
+                        pretty: "Extended Print Text",
+                        description: "Additional text to display with your printed character sheet.",                       
+                    });
                 $.mobile.changePage("#extended-print-text", {reverse: false, changeHash: false});
             }).fail(PromiseFailReport);
         },
-
-
+        
+        character_background_long_text: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid, "all").then(function (character) {
+                return character.fetch_long_text("background");
+            }).then(function (character) {
+                character.transform_description = [];
+                self.clt = self.clt || new CharacterLongTextView({
+                    el: "#long-text",
+                });
+                self.clt.setup(
+                    character,
+                    {
+                        category: "background",
+                        pretty: "Background",
+                        description: "History and backstory for your character.",                       
+                    });
+                $.mobile.changePage("#long-text", {reverse: false, changeHash: false});
+            }).fail(PromiseFailReport);
+        },
+        
+        character_notes_long_text: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid, "all").then(function (character) {
+                return character.fetch_long_text("notes");
+            }).then(function (character) {
+                character.transform_description = [];
+                self.clt = self.clt || new CharacterLongTextView({
+                    el: "#long-text",
+                });
+                self.clt.setup(
+                    character,
+                    {
+                        category: "notes",
+                        pretty: "Notes",
+                        description: "Notes about your character's interactions and progression", 
+                    });
+                $.mobile.changePage("#long-text", {reverse: false, changeHash: false});
+            }).fail(PromiseFailReport);
+        },
+        
         show_character_helper: function(id, back_url) {
             $.mobile.loading("show");
             this.set_back_button(back_url);
