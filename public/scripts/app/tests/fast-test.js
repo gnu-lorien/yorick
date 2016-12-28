@@ -144,7 +144,7 @@ define([
                 var the_text = "I'm awesome";
                 vampire.update_long_text("background", the_text).then(function (lt) {
                     expect(lt).toBeDefined();
-                    expect(lt.get("owner")).toBe(vampire);
+                    expect(lt.get("owner").id).toBe(vampire.id);
                     expect(lt.get("text")).toEqual(the_text);
                     expect(lt.get("category")).toEqual("background");
                     expect(vampire.has_fetched_long_text("background")).toBe(true);
@@ -203,7 +203,7 @@ define([
                     finish: function(lt) {
                         this.stopListening();
                         expect(lt).toBeDefined();
-                        expect(lt.get("owner")).toBe(vampire);
+                        expect(lt.get("owner").id).toBe(vampire.id);
                         expect(lt.get("text")).toEqual(the_text);
                         expect(lt.get("category")).toEqual("background");
                         expect(vampire.has_fetched_long_text("background")).toBe(true);
