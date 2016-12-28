@@ -1105,8 +1105,17 @@ define([
                 });
             });
     
-            it("return null when non-existent", function (done) {
+            it("return null when getting non-existent", function (done) {
                 vampire.get_long_text("some ridiculous thing we'd never have").then(function (lt) {
+                    expect(lt).toBe(null);
+                    done();
+                }).fail(function(error) {
+                    done.fail(error);
+                })
+            });
+            
+            it("return null when removing non-existent", function (done) {
+                vampire.remove_long_text("some ridiculous thing we'd never have").then(function (lt) {
                     expect(lt).toBe(null);
                     done();
                 }).fail(function(error) {
@@ -1120,8 +1129,11 @@ define([
                     expect(lt).toBeDefined();
                     expect(lt.get("owner")).toBe(vampire);
                     expect(lt.get("text")).toEqual(the_text);
+                    expect(lt.get("category")).toEqual("background");
                     expect(vampire.has_fetched_long_text("background")).toBe(true);
-                    expect(vampire.has_long_text("background")).toBe(true);
+                    return vampire.has_long_text("background");
+                }).then(function (result) {
+                    expect(result).toBe(true);
                     done();
                 }).fail(function(error) {
                     done.fail(error);
@@ -1134,12 +1146,17 @@ define([
                     expect(lt).toBeDefined();
                     expect(lt.get("owner")).toBe(vampire);
                     expect(lt.get("text")).toEqual(the_text);
+                    expect(lt.get("category")).toEqual("something_else");
                     expect(vampire.has_fetched_long_text("something_else")).toBe(true);
-                    expect(vampire.has_long_text("something_else")).toBe(true);
+                    return vampire.has_long_text("something_else");
+                }).then(function (result) {
+                    expect(result).toBe(true);
                     return vampire.remove_long_text("something_else");
                 }).then(function () {
                     expect(vampire.has_fetched_long_text("something_else")).toBe(false);
-                    expect(vampire.has_long_text("something_else")).toBe(false);
+                    return vampire.has_long_text("something_else");
+                }).then(function (result) {
+                    expect(result).toBe(false);
                     return vampire.get_long_text("something_else");
                 }).then(function (lt) {
                     expect(lt).toBe(null);
