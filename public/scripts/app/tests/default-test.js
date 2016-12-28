@@ -1085,4 +1085,80 @@ define([
     
         });
     });
+    
+    _.each(character_types, function (character_type) {
+        describe("A " + character_type.name + "'s long texts", function() {
+            var vampire;
+            var expected_change_length;
+    
+            beforeAll(function (done) {
+                ParseStart().then(function () {
+                    return character_type.template.create_test_character("longtexts" + character_type.name);
+                }).then(function (v) {
+                    expected_change_length = 5;
+                    return character_type.template.get_character(v.id);
+                }).then(function (v) {
+                    vampire = v;
+                    done();
+                }, function (error) {
+                    done.fail(error);
+                });
+            });
+    
+            it("return null when non-existent", function (done) {
+                vampire.get_long_text("some ridiculous thing we'd never have").then(function (lt) {
+                    expect(lt).toBe(null);
+                    done();
+                }).fail(function(error) {
+                    done.fail(error);
+                })
+            });
+            
+            it("can be updated", function(done) {
+                var the_text = "I'm awesome";
+                vampire.update_long_text("background", the_text).then(function (lt) {
+                    expect(lt).toBeDefined();
+                    expect(lt.get("owner")).toBe(vampire);
+                    expect(lt.get("text")).toEqual(the_text);
+                    expect(vampire.has_fetched_long_text("background")).toBe(true);
+                    expect(vampire.has_long_text("background")).toBe(true);
+                    done();
+                }).fail(function(error) {
+                    done.fail(error);
+                });
+            });
+            
+            it("can be removed", function(done) {
+                var the_text = "Nothing extra needed";
+                vampire.update_long_text("something_else", the_text).then(function (lt) {
+                    expect(lt).toBeDefined();
+                    expect(lt.get("owner")).toBe(vampire);
+                    expect(lt.get("text")).toEqual(the_text);
+                    expect(vampire.has_fetched_long_text("something_else")).toBe(true);
+                    expect(vampire.has_long_text("something_else")).toBe(true);
+                    return vampire.remove_long_text("something_else");
+                }).then(function () {
+                    expect(vampire.has_fetched_long_text("something_else")).toBe(false);
+                    expect(vampire.has_long_text("something_else")).toBe(false);
+                    return vampire.get_long_text("something_else");
+                }).then(function (lt) {
+                    expect(lt).toBe(null);
+                    done();
+                }).fail(function(error) {
+                    done.fail(error);
+                });               
+            });
+            
+            it("can be cleared to save memory", function(done) {
+                vampire.update_long_text("extra_printed", "The clocks only come out at nine").then(function (lt) {
+                    expect(vampire.has_fetched_long_text("extra_printed")).toBe(true);
+                    vampire.free_fetched_long_text("extra_printed");
+                    expect(vampire.has_fetched_long_text("extra_printed")).toBe(false);
+                    done();
+                }).fail(function (error) {
+                    done.fail(error);
+                })
+            });
+        });
+    });
 });
