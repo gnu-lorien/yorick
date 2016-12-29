@@ -424,7 +424,9 @@ define([
                     $.mobile.changePage("#character-print-no-approval", {reverse: false, changeHash: false});
                 } else {
                     transformed.transform_description = [];
-                    self.characterPrintView.setup(transformed);
+                    self.characterPrintView.setup({
+                        character: transformed
+                    });
                     $.mobile.changePage("#printable-sheet", {reverse: false, changeHash: false});
                 }
             }).fail(PromiseFailReport);
@@ -452,7 +454,9 @@ define([
                 return character.fetch_long_text("extended_print_text");
             }).then(function (character) {
                 character.transform_description = [];
-                self.characterPrintView.setup(character);
+                self.characterPrintView.setup({
+                    character: character
+                });
                 $.mobile.changePage("#printable-sheet", {reverse: false, changeHash: false});
             }).fail(PromiseFailReport);
         },

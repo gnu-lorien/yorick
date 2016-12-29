@@ -810,9 +810,10 @@ define([
         initialize: function(options) {
             _.bindAll(this, "setup_regions");
         },
-        setup: function(character, override) {
+        setup: function(options) {
             var self = this;
-            var options = self.options || {};
+            var character = options.character;
+            var override = options.override;
             if (self.lasttribe && self.character.get("wta_tribe") == self.lasttribe) {
                 if (character == self.character) {
                     return;

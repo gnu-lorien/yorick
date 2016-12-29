@@ -137,7 +137,10 @@ define([
                         picked: self.picked
                     }));
                     var cpv = new CharacterPrintView;
-                    cpv = cpv.setup(self.model, self.override);
+                    cpv = cpv.setup({
+                        character: self.model,
+                        override: self.override
+                    });
                     self.showChildView('sheet', cpv);
                 });
             }
