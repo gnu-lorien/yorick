@@ -48,6 +48,7 @@ define([
                 return model.id != selectedId;
             }).reverse().value();
             var c = self.model.get_transformed(changesToApply);
+            c.transform_description = [];
             self.override.set("character", c);
         },
         update_then_render: function() {
