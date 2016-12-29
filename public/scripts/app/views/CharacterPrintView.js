@@ -6,6 +6,7 @@
 define([
 	"jquery",
 	"backbone",
+	"backform",
     "text!../templates/character-print-view.html",
     "../helpers/VampirePrintHelper",
     "marionette",
@@ -22,6 +23,7 @@ define([
 ], function(
     $,
     Backbone,
+    Backform,
     character_print_view_html,
     VampirePrintHelper,
     Marionette,
@@ -457,10 +459,61 @@ define([
     });
     _.extend(ExtendedPrintTextView.prototype, VampirePrintHelper);
     
+    var SettingsForm = Marionette.ItemView.extend({
+        tagName: 'form',
+        template: _.template(""),
+        initialize: function (options) {
+            var view = this;
+            
+            this.form = new Backform.Form({
+                el: this.$el,
+                model: view.model,
+                fields: [
+                    {
+                        name: "font_size",
+                        label: "Font Size",
+                        control: "select",
+                        options: [
+                            {label: "50%", value: 50},
+                            {label: "60%", value: 60},
+                            {label: "70%", value: 70},
+                            {label: "80%", value: 80},
+                            {label: "90%", value: 90},
+                            {label: "100%", value: 100},
+                            {label: "110%", value: 110},
+                            {label: "120%", value: 120},
+                            {label: "130%", value: 130},
+                            {label: "140%", value: 140},
+                            {label: "150%", value: 150},
+                        ]
+                    },{
+                        name: "exclude_extended",
+                        label: "Exclude Extended Print Text",
+                        control: "checkbox",
+                    }
+                ],
+                events: {
+                    "submit": function (e) {
+                        var self = this;
+                        e.preventDefault();
+                    }
+                }
+            });
+        },
+
+        onRender: function() {
+            this.form.render();
+
+            this.$el.enhanceWithin();
+            return this;
+        }
+    });
+
     var LayoutView = Marionette.LayoutView.extend({
         template: _.template(character_print_parent_html),
         
         regions: {
+            settings: "#cpp-settings",
             header: "#cpp-header",
             firstbar: "#cpp-firstbar",
             secondbar: "#cpp-secondbar",
@@ -486,6 +539,7 @@ define([
             var options = self.options || {};
             var character = self.override.get("character") || self.character;
             
+            self.showChildView("settings", new SettingsForm({ model: self.print_options}), options);
             self.showChildView('extended_print_text', new ExtendedPrintTextView({model: character}), options);
             
             if (character.get("type") == "Werewolf") {
@@ -814,6 +868,12 @@ define([
             var self = this;
             var character = options.character;
             var override = options.override;
+            self.print_options = options.print_options || {};
+            _.defaults(self.print_options, {
+                font_size: 100,
+                exclude_extended: false
+            });
+            self.print_options = new Backbone.Model(self.print_options);
             if (self.lasttribe && self.character.get("wta_tribe") == self.lasttribe) {
                 if (character == self.character) {
                     return;

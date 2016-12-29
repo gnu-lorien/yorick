@@ -80,5 +80,13 @@
     div {
         overflow:initial !important;
     }
+    
+    .hidden-when-printing {
+        display: none;
+    }
+    
+    .hidden-when-printing > *{
+        display: none;
+    }
 }
 
