@@ -20,6 +20,7 @@ define([
     "text!../templates/print/gnosis.html",
     "text!../templates/print/total.html",
     "text!../templates/print/fixed-blood.html",
+    "../forms/PrintSettingsForm"
 ], function(
     $,
     Backbone,
@@ -36,7 +37,8 @@ define([
     section_html,
     gnosis_html,
     total_html,
-    fixed_blood_html
+    fixed_blood_html,
+    PrintSettingsForm
 ) {
 
     var HeaderView = Marionette.ItemView.extend({
@@ -464,56 +466,6 @@ define([
         }
     });
     _.extend(ExtendedPrintTextView.prototype, VampirePrintHelper);
-    
-    var SettingsForm = Marionette.ItemView.extend({
-        tagName: 'form',
-        template: _.template(""),
-        initialize: function (options) {
-            var view = this;
-            
-            this.form = new Backform.Form({
-                el: this.$el,
-                model: view.model,
-                fields: [
-                    {
-                        name: "font_size",
-                        label: "Font Size",
-                        control: "select",
-                        options: [
-                            {label: "50%", value: 50},
-                            {label: "60%", value: 60},
-                            {label: "70%", value: 70},
-                            {label: "80%", value: 80},
-                            {label: "90%", value: 90},
-                            {label: "100%", value: 100},
-                            {label: "110%", value: 110},
-                            {label: "120%", value: 120},
-                            {label: "130%", value: 130},
-                            {label: "140%", value: 140},
-                            {label: "150%", value: 150},
-                        ]
-                    },{
-                        name: "exclude_extended",
-                        label: "Exclude Extended Print Text",
-                        control: "checkbox",
-                    }
-                ],
-                events: {
-                    "submit": function (e) {
-                        var self = this;
-                        e.preventDefault();
-                    }
-                }
-            });
-        },
-
-        onRender: function() {
-            this.form.render();
-
-            this.$el.enhanceWithin();
-            return this;
-        }
-    });
 
     var LayoutView = Marionette.LayoutView.extend({
         template: _.template(character_print_parent_html),
@@ -545,7 +497,7 @@ define([
             var options = self.options || {};
             var character = self.override.get("character") || self.character;
             
-            self.showChildView("settings", new SettingsForm({ model: self.print_options}), options);
+            self.showChildView("settings", new PrintSettingsForm({ model: self.print_options}), options);
             
             self.showChildView('extended_print_text', new ExtendedPrintTextView({
                 model: character,
@@ -873,6 +825,10 @@ define([
         },
         initialize: function(options) {
             _.bindAll(this, "setup_regions");
+            this.print_options = new Backbone.Model({
+                font_size: 100,
+                exclude_extended: false               
+            });
         },
         match_font_size: function() {
             this.$el.css('font-size', "" + this.print_options.get("font_size") + "%");
@@ -882,12 +838,10 @@ define([
             var character = options.character;
             var override = options.override;
             
-            self.print_options = options.print_options || {};
-            _.defaults(self.print_options, {
-                font_size: 100,
-                exclude_extended: false
-            });
-            self.print_options = new Backbone.Model(self.print_options);
+            self.stopListening(self.print_options);
+            if (options.print_options) {
+                self.print_options = options.print_options;
+            }
             self.match_font_size();
             self.listenTo(self.print_options, "change:font_size", self.match_font_size);
             

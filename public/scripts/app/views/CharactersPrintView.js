@@ -420,7 +420,8 @@ define([
             var view = new CharacterPrintView(childViewOptions);
             
             return view.setup({
-                character: child
+                character: child,
+                print_options: this.options.print_options
             });
         }
     });
