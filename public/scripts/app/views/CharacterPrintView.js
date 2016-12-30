@@ -440,6 +440,11 @@ define([
         templateHelpers: function() {
             var self = this;
             var inputtext = "";
+            if (self.options.print_options.get("exclude_extended")) {
+                return {
+                    inputtext: ""
+                }
+            }
             var lt = self.model.get_fetched_long_text("extended_print_text")
             if (lt && lt.has("text")) {
                 inputtext = lt.get("text");
@@ -455,6 +460,7 @@ define([
             var self = this;
             this.$el.addClass("ui-block-a");
             self.listenTo(self.model, "change", self.render);
+            self.listenTo(self.options.print_options, "change:exclude_extended", self.render);
         }
     });
     _.extend(ExtendedPrintTextView.prototype, VampirePrintHelper);
@@ -540,7 +546,11 @@ define([
             var character = self.override.get("character") || self.character;
             
             self.showChildView("settings", new SettingsForm({ model: self.print_options}), options);
-            self.showChildView('extended_print_text', new ExtendedPrintTextView({model: character}), options);
+            
+            self.showChildView('extended_print_text', new ExtendedPrintTextView({
+                model: character,
+                print_options: self.print_options
+            }), options);
             
             if (character.get("type") == "Werewolf") {
                 self.showChildView('header', new HeaderView({model: character}), options);
@@ -871,6 +881,7 @@ define([
             var self = this;
             var character = options.character;
             var override = options.override;
+            
             self.print_options = options.print_options || {};
             _.defaults(self.print_options, {
                 font_size: 100,
@@ -879,6 +890,7 @@ define([
             self.print_options = new Backbone.Model(self.print_options);
             self.match_font_size();
             self.listenTo(self.print_options, "change:font_size", self.match_font_size);
+            
             if (self.lasttribe && self.character.get("wta_tribe") == self.lasttribe) {
                 if (character == self.character) {
                     return;
