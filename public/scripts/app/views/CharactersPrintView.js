@@ -417,7 +417,9 @@ define([
         },
         buildChildView: function(child, ChildViewClass, childViewOptions){
             // create the child view instance
-            var view = new CharacterPrintView(childViewOptions);
+            var view = new CharacterPrintView({
+                no_print_settings_form: true
+            });
             
             return view.setup({
                 character: child,

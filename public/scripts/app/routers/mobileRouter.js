@@ -1436,7 +1436,7 @@ define([
                     print_options: self.get_troupe_print_options()
                 }).setup();
                 self.troupeCharacters.register("#troupe/" + id + "/character/<%= character_id %>");
-                if ("selected" == type) {
+                if ("selected" == type && self.troupeSelectToPrintCharacters) {
                     self.troupePrintCharacters.collection.reset(self.troupeSelectToPrintCharacters.get_filtered());
                 } else {
                     return self.get_troupe_summarize_characters(troupe, self.troupePrintCharacters.collection);

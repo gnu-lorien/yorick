@@ -497,7 +497,14 @@ define([
             var options = self.options || {};
             var character = self.override.get("character") || self.character;
             
-            self.showChildView("settings", new PrintSettingsForm({ model: self.print_options}), options);
+            if (!options.no_print_settings_form) {
+                self.showChildView(
+                    "settings",
+                    new PrintSettingsForm({
+                        model: self.print_options
+                    }),
+                    options);
+            }
             
             self.showChildView('extended_print_text', new ExtendedPrintTextView({
                 model: character,
