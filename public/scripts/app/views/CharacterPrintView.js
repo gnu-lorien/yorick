@@ -864,6 +864,9 @@ define([
         initialize: function(options) {
             _.bindAll(this, "setup_regions");
         },
+        match_font_size: function() {
+            this.$el.css('font-size', "" + this.print_options.get("font_size") + "%");
+        },
         setup: function(options) {
             var self = this;
             var character = options.character;
@@ -874,6 +877,8 @@ define([
                 exclude_extended: false
             });
             self.print_options = new Backbone.Model(self.print_options);
+            self.match_font_size();
+            self.listenTo(self.print_options, "change:font_size", self.match_font_size);
             if (self.lasttribe && self.character.get("wta_tribe") == self.lasttribe) {
                 if (character == self.character) {
                     return;

@@ -54,22 +54,18 @@
     }
     h1 {
         font-family: Arial;
-        font-size: 16pt;
     }
 
     h2 {
         font-family: Arial;
-        font-size: 8pt;
     }
 
     h3 {
         font-family: Arial;
-        font-size: 8pt;
     }
 
     h4 {
         font-family: Arial;
-        font-size: 8pt;
     }
     
     .force-printing-page-break {
@@ -89,4 +85,3 @@
         display: none;
     }
 }
-
