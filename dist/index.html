@@ -9,12 +9,12 @@
             max-height: 90vh;
         }</style><!-- BEGIN TRACKJS --><script type="text/javascript">window._trackJs = {
             token: '8c029fff54d841498640d86379af7316',
-            enabled: false,//!(window.location.host.indexOf('localhost') >= 0)
+            enabled: !(window.location.host.indexOf('localhost') >= 0)
         };
         // Add a script element as a child of the body
         function downloadJSAtOnload() {
             var element = document.createElement("script");
-            element.src = "scripts/lib/require.js?bust=0.8.0";
+            element.src = "scripts/lib/require.js?bust=0.8.1";
             element.setAttribute("data-main", "scripts/app");
             document.body.appendChild(element);
         }
@@ -72,6 +72,24 @@
                 <li><a href="#character/<%= character.id %>/rename">Rename</a></li>
             </ul>
         </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true"
+                class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/extendedprinttext">Extended Print Text</a></li>
+            </ul>
+        </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true"
+                class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/backgroundlt">Background</a></li>
+            </ul>
+        </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true"
+                class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/noteslt">Notes</a></li>
+            </ul>
+        </div>
     </div> <% if (character.is_being_created()) { %> <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
         <li><a href="#charactercreate/<%= character.id %>">Character Creation</a></li>
     </ul> <% } %> <% var sorted = character.all_simpletrait_categories() %> <% var heading = null; %> <div class="ui-grid-b ui-responsive"> <% _.each(sorted, function(grouping) { %> <% var description = grouping[1]; %> <% var category = grouping[0]; %> <% if (heading != grouping[2]) { %> <% heading = grouping[2]; %> <h3 class="ui-bar ui-bar-a"><%= heading %></h3> <% } %> <div class="ui-block-b">
@@ -81,7 +99,8 @@
         </div> <% }) %> <% if (!character.is_being_created()) { %> <h3 class="ui-bar ui-bar-a">Information</h3>
         <div class="ui-grid-b ui-responsive"> <% _.each(character.all_text_attributes(), function (st) { %> <% var ust = st[0].toUpperCase() + st.substr(1); %> <div class="ui-block-b">
                 <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow"> <% if (character.get(st)) { %> <li data-role="list-divider"><%= ust %><p><%= character.get(st) %></p></li>
-                    <li><a href="#simpletext/<%= st %>s/<%= st %>/<%= character.id %>/pick">Repick <%= ust %></a></li> <% } else { %> <li><a href="#simpletext/<%= st %>s/<%= st %>/<%= character.id %>/pick">Pick <%= ust %></a></li> <% } %> </ul>
+                    <li><a href="#simpletext/<%= st %>s/<%= st %>/<%= character.id %>/pick">Repick <%= ust %></a></li>
+                    <li data-icon="delete"><a href="#simpletext/<%= st %>s/<%= st %>/<%= character.id %>/unpick">Unpick <%= ust %></a></li> <% } else { %> <li><a href="#simpletext/<%= st %>s/<%= st %>/<%= character.id %>/pick">Pick <%= ust %></a></li> <% } %> </ul>
             </div> <% }) %> </div> <% } %> </div>
 
     <h3 class="ui-bar ui-bar-a">Progression</h3>
@@ -137,7 +156,7 @@
                 <li><a href="#character/<%= character.id %>/delete">Delete Character</a></li>
             </ul>
         </div>
-    </div></script><div id="character-create" data-role="page" data-title="Create Character"><div role="main" class="ui-content">createodapage</div></div><div id="characters-all" data-role="page" data-title="Characters"><div role="main" class="ui-content"><ul><li><a href="#characternew">Add New Character</a></li></ul><form class="ui-filterable"><input id="characters-filter" data-type="search"></form><ul data-role="listview" data-inset="true" data-filter="true" data-input="#characters-filter"></ul></div><!-- /content --></div><div id="troupe-characters-all" data-role="page" data-title="Troupe Characters"><div role="main" class="ui-content"><form class="ui-filterable"><input id="troupes-characters-filter" data-type="search"></form><ul data-role="listview" data-inset="true" data-filter="true" data-input="#troupes-characters-filter"></ul></div><!-- /content --></div><div id="troupe-summarize-characters-all" data-role="page" data-title="Troupe Characters"><div role="main" class="ui-content"><div id="sections"></div><form class="ui-filterable"><input id="troupes-summarize-characters-filter" data-type="search"></form><div id="troupe-summarize-characters-list"></div></div><!-- /content --></div><div id="troupe-select-to-print-characters-all" data-role="page" data-title="Troupe Characters"><div role="main" class="ui-content"><div id="sections"></div><button id="print-shown">Print Shown</button><div id="troupe-select-to-print-characters-list"></div></div><!-- /content --></div><div id="troupe-print-characters-all" data-role="page" data-title="Print Troupe Characters"><div role="main" class="ui-content"></div><!-- /content --></div><div id="administration-descriptions" data-role="page" data-title="Descriptions"><div role="main" class="ui-content"><div id="descriptions-sections"></div><div id="administration-descriptions-list"></div></div><!-- /content --></div><div id="simpletraitcategory-all" data-role="page" data-title="SimpleTraitCategoryAll"><div role="main" class="ui-content"></div></div><script id="simpleTraitCategoryView" type="text/template"><ul>
+    </div></script><div id="character-create" data-role="page" data-title="Create Character"><div role="main" class="ui-content">createodapage</div></div><div id="characters-all" data-role="page" data-title="Characters"><div role="main" class="ui-content"><ul><li><a href="#characternew">Add New Character</a></li></ul><form class="ui-filterable"><input id="characters-filter" data-type="search"></form><ul data-role="listview" data-inset="true" data-filter="true" data-input="#characters-filter"></ul></div><!-- /content --></div><div id="troupe-characters-all" data-role="page" data-title="Troupe Characters"><div role="main" class="ui-content"><form class="ui-filterable"><input id="troupes-characters-filter" data-type="search"></form><ul data-role="listview" data-inset="true" data-filter="true" data-input="#troupes-characters-filter"></ul></div><!-- /content --></div><div id="troupe-summarize-characters-all" data-role="page" data-title="Troupe Characters"><div role="main" class="ui-content"><div id="sections"></div><form class="ui-filterable"><input id="troupes-summarize-characters-filter" data-type="search"></form><div id="troupe-summarize-characters-list"></div></div><!-- /content --></div><div id="troupe-select-to-print-characters-all" data-role="page" data-title="Troupe Characters"><div role="main" class="ui-content"><div id="sections"></div><div id="print-options"></div><button id="print-shown">Print Shown</button><div id="troupe-select-to-print-characters-list"></div></div><!-- /content --></div><div id="troupe-print-characters-all" data-role="page" data-title="Print Troupe Characters"><div role="main" class="ui-content"></div><!-- /content --></div><div id="administration-descriptions" data-role="page" data-title="Descriptions"><div role="main" class="ui-content"><div id="descriptions-sections"></div><div id="administration-descriptions-list"></div></div><!-- /content --></div><div id="simpletraitcategory-all" data-role="page" data-title="SimpleTraitCategoryAll"><div role="main" class="ui-content"></div></div><script id="simpleTraitCategoryView" type="text/template"><ul>
         <li><a href="#simpletraits/<%= category %>/<%= character.id %>/new">Add New <%= category %></a></li>
     </ul>
     <ul> <% if (character.has(category)) { _.each(character.get(category), function(e) { %> <li>
@@ -166,19 +185,34 @@
         </select>
         <label for="experience-cost-modifier">Experience Cost Modifier</label>
         <input type="range" name="experience-cost-modifier" id="experience-cost-modifier" class="cost-modifier-slider" value="<%= b.get('experience_cost_modifier') || 1%>" min="1" max="10">
-    </p></script><div id="victims-all" data-role="page" data-title="VictimsAll"><div role="main" class="ui-content"><ul><li>All</li><li>Idle</li><li>Occupied</li></ul></div></div><div id="experience-notations-all" data-role="page" data-role="Experience Notations"><div role="main" class="ui-content"></div></div><script id="experienceNotationsAllView" type="text/template"><p>Earned: <%= character.get("experience_earned") %></p>
+    </p></script><div id="victims-all" data-role="page" data-title="VictimsAll"><div role="main" class="ui-content"><ul><li>All</li><li>Idle</li><li>Occupied</li></ul></div></div><div id="experience-notations-all" data-role="page" data-title="Experience Notations"><div role="main" class="ui-content"></div></div><script id="experienceNotationsAllView" type="text/template"><p>Earned: <%= character.get("experience_earned") %></p>
     <p>Spent: <%= character.get("experience_spent") %></p>
     <p>Available: <%= character.experience_available() %></p>
-    <button class="add ui-btn ui-btn-icon-plus">Add New Notation</button>
+    <button class="add ui-btn ui-btn-icon-plus">Add New Experience Notation</button>
     <!--
     <button class="previous ui-btn ui-btn-icon-left">View Previous</button>
     <button class="next ui-btn ui-btn-icon-left">View Next</button>
-    --> <% var headers = ["entered", "reason", "alteration_earned", "alteration_spent", "earned", "spent"]; %> <% var editable = ["entered", "reason", "alteration_earned", "alteration_spent"]; %> <table data-role="table" id="table-column-toggle" class="ui-responsive table-stroke">
+    --> <% var headers =      ["entered", "reason", "alteration_earned", "alteration_spent", "available"]; %> <% var pretty_names = ["Date", "Reason", "Earned?", "Spent?", "Available"]; %> <% var editable = ["entered", "reason", "alteration_earned", "alteration_spent"]; %> <table data-role="table" id="table-column-toggle" class="ui-responsive table-stroke">
         <thead>
-        <tr> <% _.each(headers, function (h, i) { %> <th data-priority="<%= i + 1 %>"><%= h %></th> <% }); %> <th></th>
+        <tr> <% _.each(pretty_names, function (h, i) { %> <th></th>
+                <th data-priority="<%= i + 1 %>"><%= h %></th> <% }); %> <th></th>
         </tr>
         </thead>
-        <tbody> <% _.each(logs, function (log, i) { %> <tr> <% _.each(headers, function (h) { %> <td> <% if (_.contains(editable, h)) { %> <a href="#" class="experience-notation-edit ui-btn ui-icon-edit ui-btn-icon-notext ui-corner-all ui-btn-inline" header="<%= h %>" notation-id="<%= log.cid %>">Edit</a> <% } %> <%= format_entry(log, h) %> </td> <% }); %> <td><a href="#" class="experience-notation-delete ui-btn ui-icon-delete ui-btn-icon-notext ui-corner-all ui-btn-inline" notation-id="<%= log.cid %>">Delete</a></td>
+        <tbody> <% _.each(logs, function (log, i) { %> <tr>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td><%= format_entry(log, "earned") %></td>
+                    <td></td>
+                    <td><%= format_entry(log, "spent") %></td>
+                    <td></td>
+                    <td><%= log.get("earned") - log.get("spent") %></td>
+                    <td></td>
+                </tr>
+                <tr> <% _.each(headers, function (h, i) { %> <td style="padding-right: 0px"> <% if (_.contains(editable, h)) { %> <a href="#" class="experience-notation-edit ui-btn ui-icon-edit ui-btn-icon-notext ui-corner-all ui-btn-inline" style="margin: 0px" header="<%= h %>" notation-id="<%= log.cid %>">Edit</a> <% } %> </td>
+                    <td> <%= format_entry(log, h) %> </td> <% }); %> <td><a href="#" class="experience-notation-delete ui-btn ui-icon-delete ui-btn-icon-notext ui-corner-all ui-btn-inline" notation-id="<%= log.cid %>">Delete</a></td>
                 </tr> <% }); %> </tbody>
     </table>
     <div data-role="popup" id="popupEditEntered" data-theme="a" class="ui-corner-all">
@@ -186,7 +220,7 @@
             <div style="padding:10px 20px;">
                 <input type="text" id="date-input" data-inline="true" data-role="date">
                 <button type="submit" class="ui-btn ui-corner-all ui-shadow ui-btn-b ui-btn-icon-left ui-icon-check">
-                    Update Date Entered
+                    Update Date
                 </button>
                 <input type="hidden" id="date-id"/>
             </div>
@@ -320,4 +354,4 @@
             <legend>Characters to display:</legend> <% _.each(characters, function (character, i) { %> <% var n = "checkbox-" + character.id || character.cid; %> <input type="checkbox" name="<%= n %>" id="<%= n %>">
             <label for="<%= n %>"><%= character.get("name") %></label> <% }) %> </fieldset>
     </div></script><div id="character-delete" data-role="page" data-title="Delete Character"><div role="main" class="ui-content"></div></div><script id="characterDeleteView" type="text/template"><h1>Are you sure you want to delete <%= character.get("name") %>?</h1>
-    <button class="delete-character">Delete <%= character.get("name") %></button></script></body></html>
+    <button class="delete-character">Delete <%= character.get("name") %></button></script><div id="character-print-no-approval" data-role="page" data-title="Print Approval"><div role="main" class="ui-content"><p>No approved versions of your character</p></div></div><div id="extended-print-text" data-role="page" data-title="Additional Printed Text"><div role="main" class="ui-content"></div></div><div id="long-text" data-role="page" data-title="Long Text"><div role="main" class="ui-content"></div></div></body></html>

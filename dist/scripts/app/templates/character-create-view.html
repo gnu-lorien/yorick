@@ -9,7 +9,6 @@
     <% if (creation.get(st)) { %>
     <li data-role="list-divider"><%= ust %><p><%= character.get(st) %></p></li>
     <li><a href="#charactercreate/simpletext/<%= st %>s/<%= st %>/<%= character.id %>/pick">Repick <%= ust %></a></li>
-    <li data-icon="delete"><a href="#charactercreate/simpletext/<%= st %>s/<%= st %>/<%= character.id %>/unpick">Unpick <%= ust %></a></li>
     <% } else { %>
     <li><a href="#charactercreate/simpletext/<%= st %>s/<%= st %>/<%= character.id %>/pick">Pick <%= ust %></a></li>
     <% } %>
