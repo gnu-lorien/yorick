@@ -9,6 +9,7 @@ define([
     "pretty",
     "jscookie",
     "moment",
+    "backbone",
 	"../models/CategoryModel",
 	"../collections/CategoriesCollection",
 	"../views/CategoryView",
@@ -73,6 +74,7 @@ define([
              pretty,
              Cookie,
              moment,
+             Backbone,
              CategoryModel,
              CategoriesCollection,
              CategoryView,
@@ -424,7 +426,9 @@ define([
                     $.mobile.changePage("#character-print-no-approval", {reverse: false, changeHash: false});
                 } else {
                     transformed.transform_description = [];
-                    self.characterPrintView.setup(transformed);
+                    self.characterPrintView.setup({
+                        character: transformed
+                    });
                     $.mobile.changePage("#printable-sheet", {reverse: false, changeHash: false});
                 }
             }).fail(PromiseFailReport);
@@ -452,7 +456,9 @@ define([
                 return character.fetch_long_text("extended_print_text");
             }).then(function (character) {
                 character.transform_description = [];
-                self.characterPrintView.setup(character);
+                self.characterPrintView.setup({
+                    character: character
+                });
                 $.mobile.changePage("#printable-sheet", {reverse: false, changeHash: false});
             }).fail(PromiseFailReport);
         },
@@ -898,6 +904,7 @@ define([
             $.mobile.loading("show", {text: "Fetching all characters", textVisible: true});
             p = q.each(function (character) {
                 c.push(character);
+                return character.get_long_text("extended_print_text");
             }).then(function () {
                 $.mobile.loading("show", {text: "Updating local character list", textVisible: true});
                 collection.reset(c);
@@ -1379,6 +1386,15 @@ define([
             }).fail(PromiseFailReport);
         },
         
+        get_troupe_print_options: function() {
+            var self = this;
+            self.troupePrintOptions = self.troupePrintOptions || new Backbone.Model({
+                font_size: 100,
+                exclude_extended: false               
+            });           
+            return self.troupePrintOptions;
+        },
+        
         troupe_select_to_print_characters: function(id, type) {
             var self = this;
             $.mobile.loading("show");
@@ -1389,7 +1405,8 @@ define([
             }).then(function (troupe, user) {
                 self.troupeSelectToPrintCharacters = self.troupeSelectToPrintCharacters || new CharactersSelectToPrintView({
                     collection: new Vampires,
-                    el: "#troupe-select-to-print-characters-all > div[role='main']"
+                    el: "#troupe-select-to-print-characters-all > div[role='main']",
+                    print_options: self.get_troupe_print_options()
                 }).setup();
                 self.troupeCharacters.register("#troupe/" + id + "/character/<%= character_id %>");
                 self.troupeSelectToPrintCharacters.submission_template = _.template("#troupe/" + id + "/characters/print/selected");
@@ -1415,10 +1432,11 @@ define([
             }).then(function (troupe, user) {
                 self.troupePrintCharacters = self.troupePrintCharacters || new CharactersPrintView({
                     collection: new Vampires,
-                    el: "#troupe-print-characters-all > div[role='main']"
+                    el: "#troupe-print-characters-all > div[role='main']",
+                    print_options: self.get_troupe_print_options()
                 }).setup();
                 self.troupeCharacters.register("#troupe/" + id + "/character/<%= character_id %>");
-                if ("selected" == type) {
+                if ("selected" == type && self.troupeSelectToPrintCharacters) {
                     self.troupePrintCharacters.collection.reset(self.troupeSelectToPrintCharacters.get_filtered());
                 } else {
                     return self.get_troupe_summarize_characters(troupe, self.troupePrintCharacters.collection);

@@ -6,6 +6,7 @@
 define([
 	"jquery",
 	"backbone",
+	"backform",
     "text!../templates/character-print-view.html",
     "../helpers/VampirePrintHelper",
     "marionette",
@@ -19,9 +20,11 @@ define([
     "text!../templates/print/gnosis.html",
     "text!../templates/print/total.html",
     "text!../templates/print/fixed-blood.html",
+    "../forms/PrintSettingsForm"
 ], function(
     $,
     Backbone,
+    Backform,
     character_print_view_html,
     VampirePrintHelper,
     Marionette,
@@ -34,7 +37,8 @@ define([
     section_html,
     gnosis_html,
     total_html,
-    fixed_blood_html
+    fixed_blood_html,
+    PrintSettingsForm
 ) {
 
     var HeaderView = Marionette.ItemView.extend({
@@ -438,6 +442,11 @@ define([
         templateHelpers: function() {
             var self = this;
             var inputtext = "";
+            if (self.options.print_options.get("exclude_extended")) {
+                return {
+                    inputtext: ""
+                }
+            }
             var lt = self.model.get_fetched_long_text("extended_print_text")
             if (lt && lt.has("text")) {
                 inputtext = lt.get("text");
@@ -453,14 +462,16 @@ define([
             var self = this;
             this.$el.addClass("ui-block-a");
             self.listenTo(self.model, "change", self.render);
+            self.listenTo(self.options.print_options, "change:exclude_extended", self.render);
         }
     });
     _.extend(ExtendedPrintTextView.prototype, VampirePrintHelper);
-    
+
     var LayoutView = Marionette.LayoutView.extend({
         template: _.template(character_print_parent_html),
         
         regions: {
+            settings: "#cpp-settings",
             header: "#cpp-header",
             firstbar: "#cpp-firstbar",
             secondbar: "#cpp-secondbar",
@@ -486,7 +497,19 @@ define([
             var options = self.options || {};
             var character = self.override.get("character") || self.character;
             
-            self.showChildView('extended_print_text', new ExtendedPrintTextView({model: character}), options);
+            if (!options.no_print_settings_form) {
+                self.showChildView(
+                    "settings",
+                    new PrintSettingsForm({
+                        model: self.print_options
+                    }),
+                    options);
+            }
+            
+            self.showChildView('extended_print_text', new ExtendedPrintTextView({
+                model: character,
+                print_options: self.print_options
+            }), options);
             
             if (character.get("type") == "Werewolf") {
                 self.showChildView('header', new HeaderView({model: character}), options);
@@ -809,10 +832,26 @@ define([
         },
         initialize: function(options) {
             _.bindAll(this, "setup_regions");
+            this.print_options = new Backbone.Model({
+                font_size: 100,
+                exclude_extended: false               
+            });
         },
-        setup: function(character, override) {
+        match_font_size: function() {
+            this.$el.css('font-size', "" + this.print_options.get("font_size") + "%");
+        },
+        setup: function(options) {
             var self = this;
-            var options = self.options || {};
+            var character = options.character;
+            var override = options.override;
+            
+            self.stopListening(self.print_options);
+            if (options.print_options) {
+                self.print_options = options.print_options;
+            }
+            self.match_font_size();
+            self.listenTo(self.print_options, "change:font_size", self.match_font_size);
+            
             if (self.lasttribe && self.character.get("wta_tribe") == self.lasttribe) {
                 if (character == self.character) {
                     return;
