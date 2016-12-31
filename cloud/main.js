@@ -141,6 +141,7 @@ Parse.Cloud.beforeSave("Vampire", function(request, response) {
         "clan",
         "state",
         "archetype",
+        "archetype_2",
         "faction",
         "title",
         "sect",

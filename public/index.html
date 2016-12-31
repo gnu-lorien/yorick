@@ -30,7 +30,7 @@
     <script type="text/javascript">
         window._trackJs = {
             token: '8c029fff54d841498640d86379af7316',
-            enabled: false,//!(window.location.host.indexOf('localhost') >= 0)
+            enabled: !(window.location.host.indexOf('localhost') >= 0)
         };
         // Add a script element as a child of the body
         function downloadJSAtOnload() {
@@ -238,6 +238,24 @@
                 <li><a href="#character/<%= character.id %>/rename">Rename</a></li>
             </ul>
         </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true"
+                class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/extendedprinttext">Extended Print Text</a></li>
+            </ul>
+        </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true"
+                class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/backgroundlt">Background</a></li>
+            </ul>
+        </div>
+        <div class="ui-block-b">
+            <ul data-role="listview" data-inset="true"
+                class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+                <li><a href="#character/<%= character.id %>/noteslt">Notes</a></li>
+            </ul>
+        </div>
     </div>
 
     <% if (character.is_being_created()) { %>
@@ -273,6 +291,7 @@
                     <% if (character.get(st)) { %>
                     <li data-role="list-divider"><%= ust %><p><%= character.get(st) %></p></li>
                     <li><a href="#simpletext/<%= st %>s/<%= st %>/<%= character.id %>/pick">Repick <%= ust %></a></li>
+                    <li data-icon="delete"><a href="#simpletext/<%= st %>s/<%= st %>/<%= character.id %>/unpick">Unpick <%= ust %></a></li>
                     <% } else { %>
                     <li><a href="#simpletext/<%= st %>s/<%= st %>/<%= character.id %>/pick">Pick <%= ust %></a></li>
                     <% } %>
@@ -383,6 +402,7 @@
 <div id="troupe-select-to-print-characters-all" data-role="page" data-title="Troupe Characters">
     <div role="main" class="ui-content">
         <div id="sections"></div>
+        <div id="print-options"></div>
         <button id="print-shown">Print Shown</button>
         <div id="troupe-select-to-print-characters-list"></div>
     </div><!-- /content -->
@@ -474,7 +494,7 @@
     </div>
 </div>
 
-<div id="experience-notations-all" data-role="page" data-role="Experience Notations">
+<div id="experience-notations-all" data-role="page" data-title="Experience Notations">
     <div role="main" class="ui-content">
     </div>
 </div>
@@ -483,18 +503,20 @@
     <p>Earned: <%= character.get("experience_earned") %></p>
     <p>Spent: <%= character.get("experience_spent") %></p>
     <p>Available: <%= character.experience_available() %></p>
-    <button class="add ui-btn ui-btn-icon-plus">Add New Notation</button>
+    <button class="add ui-btn ui-btn-icon-plus">Add New Experience Notation</button>
     <!--
     <button class="previous ui-btn ui-btn-icon-left">View Previous</button>
     <button class="next ui-btn ui-btn-icon-left">View Next</button>
     -->
-    <% var headers = ["entered", "reason", "alteration_earned", "alteration_spent", "earned", "spent"]; %>
+    <% var headers =      ["entered", "reason", "alteration_earned", "alteration_spent", "available"]; %>
+    <% var pretty_names = ["Date", "Reason", "Earned?", "Spent?", "Available"]; %>
     <% var editable = ["entered", "reason", "alteration_earned", "alteration_spent"]; %>
     <table data-role="table" id="table-column-toggle" class="ui-responsive table-stroke">
         <thead>
         <tr>
-            <% _.each(headers, function (h, i) { %>
-            <th data-priority="<%= i + 1 %>"><%= h %></th>
+            <% _.each(pretty_names, function (h, i) { %>
+                <th></th>
+                <th data-priority="<%= i + 1 %>"><%= h %></th>
             <% }); %>
             <th></th>
         </tr>
@@ -502,11 +524,26 @@
         <tbody>
             <% _.each(logs, function (log, i) { %>
                 <tr>
-                    <% _.each(headers, function (h) { %>
-                    <td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td><%= format_entry(log, "earned") %></td>
+                    <td></td>
+                    <td><%= format_entry(log, "spent") %></td>
+                    <td></td>
+                    <td><%= log.get("earned") - log.get("spent") %></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <% _.each(headers, function (h, i) { %>
+                    <td style="padding-right: 0px">
                         <% if (_.contains(editable, h)) { %>
-                        <a href="#" class="experience-notation-edit ui-btn ui-icon-edit ui-btn-icon-notext ui-corner-all ui-btn-inline" header="<%= h %>" notation-id="<%= log.cid %>">Edit</a>
+                        <a href="#" class="experience-notation-edit ui-btn ui-icon-edit ui-btn-icon-notext ui-corner-all ui-btn-inline" style="margin: 0px" header="<%= h %>" notation-id="<%= log.cid %>">Edit</a>
                         <% } %>
+                    </td>
+                    <td>
                         <%= format_entry(log, h) %>
                     </td>
                     <% }); %>
@@ -520,7 +557,7 @@
             <div style="padding:10px 20px;">
                 <input type="text" id="date-input" data-inline="true" data-role="date">
                 <button type="submit" class="ui-btn ui-corner-all ui-shadow ui-btn-b ui-btn-icon-left ui-icon-check">
-                    Update Date Entered
+                    Update Date
                 </button>
                 <input type="hidden" id="date-id"/>
             </div>
@@ -973,6 +1010,22 @@
     <h1>Are you sure you want to delete <%= character.get("name") %>?</h1>
     <button class="delete-character">Delete <%= character.get("name") %></button>
 </script>
+
+<div id="character-print-no-approval" data-role="page" data-title="Print Approval">
+    <div role="main" class="ui-content">
+        <p>No approved versions of your character</p>
+    </div>
+</div>
+
+<div id="extended-print-text" data-role="page" data-title="Additional Printed Text">
+    <div role="main" class="ui-content">
+    </div>
+</div>
+
+<div id="long-text" data-role="page" data-title="Long Text">
+    <div role="main" class="ui-content">
+    </div>
+</div>
 
 </body>
 </html>

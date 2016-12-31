@@ -9,6 +9,7 @@ define([
     "pretty",
     "jscookie",
     "moment",
+    "backbone",
 	"../models/CategoryModel",
 	"../collections/CategoriesCollection",
 	"../views/CategoryView",
@@ -66,12 +67,14 @@ define([
     "../views/DescriptionsView",
     "../models/Werewolf",
     "../views/CharactersPrintView",
-    "../views/CharactersSelectToPrintView"
+    "../views/CharactersSelectToPrintView",
+    "../views/CharacterLongTextView"
 ], function ($,
              Parse,
              pretty,
              Cookie,
              moment,
+             Backbone,
              CategoryModel,
              CategoriesCollection,
              CategoryView,
@@ -128,7 +131,8 @@ define([
              DescriptionsView,
              Werewolf,
              CharactersPrintView,
-             CharactersSelectToPrintView
+             CharactersSelectToPrintView,
+             CharacterLongTextView
 ) {
 
     // Extends Backbone.Router
@@ -221,7 +225,8 @@ define([
             "simpletrait/spacer/:category/:cid/:name/:value/:free_value/new": "simpletraitnew",
             "simpletrait/specialize/:category/:cid/:name/:value/:free_value/new": "simpletrait_new_specialize",
             
-            "simpletext/:category/:target/:cid/pick": "simpletextpick",
+            "simpletext/:category/:target/:cid/pick":   "simpletextpick",
+            "simpletext/:category/:target/:cid/unpick":   "simpletextunpick",
 
             "charactercreate/:cid": "charactercreate",
 
@@ -229,6 +234,7 @@ define([
             "charactercreate/simpletraits/:category/:cid/unpick/:stid/:i": "charactercreateunpicksimpletrait",
             "charactercreate/simpletraits/:category/:cid/specialize/:stid/:i": "charactercreatespecializesimpletrait",
             "charactercreate/simpletext/:category/:target/:cid/pick": "charactercreatepicksimpletext",
+            "charactercreate/simpletext/:category/:target/:cid/unpick": "charactercreateunpicksimpletext",
             "charactercreate/complete/:cid": "charactercreatecomplete",
 
             "characternew": "characternew",
@@ -248,6 +254,9 @@ define([
             "character/:cid/approval": "characterapproval",
             "character/:cid/rename": "characterrename",
             "character/:cid/approved": "character_show_approved",
+            "character/:cid/extendedprinttext": "character_extended_print_text",
+            "character/:cid/backgroundlt": "character_background_long_text",
+            "character/:cid/noteslt": "character_notes_long_text",
 
             "character/:cid/experience/:start/:changeBy": "characterexperience",
 
@@ -413,9 +422,15 @@ define([
             self.get_character(cid, "all").then(function (character) {
                 return character.get_transformed_last_approved();
             }).then(function (transformed) {
-                transformed.transform_description = [];
-                self.characterPrintView.setup(transformed);
-                $.mobile.changePage("#printable-sheet", {reverse: false, changeHash: false});
+                if (null == transformed) {
+                    $.mobile.changePage("#character-print-no-approval", {reverse: false, changeHash: false});
+                } else {
+                    transformed.transform_description = [];
+                    self.characterPrintView.setup({
+                        character: transformed
+                    });
+                    $.mobile.changePage("#printable-sheet", {reverse: false, changeHash: false});
+                }
             }).fail(PromiseFailReport);
         },
 
@@ -437,9 +452,13 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
-            self.get_character(cid, "all").done(function (character) {
+            self.get_character(cid, "all").then(function (character) {
+                return character.fetch_long_text("extended_print_text");
+            }).then(function (character) {
                 character.transform_description = [];
-                self.characterPrintView.setup(character);
+                self.characterPrintView.setup({
+                    character: character
+                });
                 $.mobile.changePage("#printable-sheet", {reverse: false, changeHash: false});
             }).fail(PromiseFailReport);
         },
@@ -540,6 +559,18 @@ define([
             });
         },
         
+        charactercreateunpicksimpletext: function(category, target, cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#charactercreate/" + cid);
+            self.get_character(cid, [category]).then(function (character) {
+                self.character.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
+                return character.unpick_text(target);
+            }).then(function (c) {
+                window.location.hash = "#charactercreate/" + c.id;
+            }).fail(PromiseFailReport);
+        },
+        
         charactercreatecomplete: function(cid) {
             var self = this;
             $.mobile.loading("show");
@@ -564,7 +595,77 @@ define([
                 $.mobile.changePage("#character-portrait", {reverse: false, changeHash: false});
             });
         },
-
+        
+        character_extended_print_text: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid, "all").then(function (character) {
+                return character.fetch_long_text("extended_print_text");
+            }).then(function (character) {
+                character.transform_description = [];
+                self.cept = self.cept || new CharacterLongTextView({
+                    el: "#extended-print-text",
+                });
+                self.cept.setup(
+                    character,
+                    {
+                        category: "extended_print_text",
+                        pretty: "Extended Print Text",
+                        description: "Additional text to display with your printed character sheet.",                       
+                    });
+                $.mobile.changePage("#extended-print-text", {reverse: false, changeHash: false});
+            }).fail(PromiseFailReport);
+        },
+        
+        character_background_long_text: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid, "all").then(function (character) {
+                return character.fetch_long_text("background");
+            }).then(function (character) {
+                character.transform_description = [];
+                self.clt = self.clt || new CharacterLongTextView({
+                    el: "#long-text",
+                });
+                self.clt.setup(
+                    character,
+                    {
+                        category: "background",
+                        pretty: "Background",
+                        description: "History and backstory for your character.",                       
+                    });
+                $.mobile.changePage("#long-text", {reverse: false, changeHash: false});
+            }).fail(PromiseFailReport).always(function() {
+                $.mobile.loading("hide");
+            });
+        },
+        
+        character_notes_long_text: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid, "all").then(function (character) {
+                return character.fetch_long_text("notes");
+            }).then(function (character) {
+                character.transform_description = [];
+                self.clt = self.clt || new CharacterLongTextView({
+                    el: "#long-text",
+                });
+                self.clt.setup(
+                    character,
+                    {
+                        category: "notes",
+                        pretty: "Notes",
+                        description: "Notes about your character's interactions and progression",
+                    });
+                $.mobile.changePage("#long-text", {reverse: false, changeHash: false});
+            }).fail(PromiseFailReport).always(function() {
+                $.mobile.loading("hide");
+            });
+        },
+        
         show_character_helper: function(id, back_url) {
             $.mobile.loading("show");
             this.set_back_button(back_url);
@@ -574,6 +675,8 @@ define([
                 c.render();
                 c.scroll_back_after_page_change();
                 $.mobile.changePage("#character", {reverse: false, changeHash:false});
+            }).then(function () {
+                $.mobile.loading("hide");
             }).fail(PromiseFailReport).fail(function () {
                 window.location.hash = back_url;
             });
@@ -801,6 +904,7 @@ define([
             $.mobile.loading("show", {text: "Fetching all characters", textVisible: true});
             p = q.each(function (character) {
                 c.push(character);
+                return character.get_long_text("extended_print_text");
             }).then(function () {
                 $.mobile.loading("show", {text: "Updating local character list", textVisible: true});
                 collection.reset(c);
@@ -1054,8 +1158,19 @@ define([
                 $.mobile.changePage("#simpletext-new", {reverse: false, changeHash: false});
             });
         },
+        
+        simpletextunpick: function(category, target, cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid, [category]).then(function (character) {
+                self.character.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
+                return character.unpick_text(target);
+            }).then(function (c) {
+                window.location.hash = "#character?" + c.id;
+            }).fail(PromiseFailReport);
+        },
  
-
         simpletraits: function(category, cid, type) {
             var self = this;
             if ("all" == type) {
@@ -1271,6 +1386,15 @@ define([
             }).fail(PromiseFailReport);
         },
         
+        get_troupe_print_options: function() {
+            var self = this;
+            self.troupePrintOptions = self.troupePrintOptions || new Backbone.Model({
+                font_size: 100,
+                exclude_extended: false               
+            });           
+            return self.troupePrintOptions;
+        },
+        
         troupe_select_to_print_characters: function(id, type) {
             var self = this;
             $.mobile.loading("show");
@@ -1281,7 +1405,8 @@ define([
             }).then(function (troupe, user) {
                 self.troupeSelectToPrintCharacters = self.troupeSelectToPrintCharacters || new CharactersSelectToPrintView({
                     collection: new Vampires,
-                    el: "#troupe-select-to-print-characters-all > div[role='main']"
+                    el: "#troupe-select-to-print-characters-all > div[role='main']",
+                    print_options: self.get_troupe_print_options()
                 }).setup();
                 self.troupeCharacters.register("#troupe/" + id + "/character/<%= character_id %>");
                 self.troupeSelectToPrintCharacters.submission_template = _.template("#troupe/" + id + "/characters/print/selected");
@@ -1307,10 +1432,11 @@ define([
             }).then(function (troupe, user) {
                 self.troupePrintCharacters = self.troupePrintCharacters || new CharactersPrintView({
                     collection: new Vampires,
-                    el: "#troupe-print-characters-all > div[role='main']"
+                    el: "#troupe-print-characters-all > div[role='main']",
+                    print_options: self.get_troupe_print_options()
                 }).setup();
                 self.troupeCharacters.register("#troupe/" + id + "/character/<%= character_id %>");
-                if ("selected" == type) {
+                if ("selected" == type && self.troupeSelectToPrintCharacters) {
                     self.troupePrintCharacters.collection.reset(self.troupeSelectToPrintCharacters.get_filtered());
                 } else {
                     return self.get_troupe_summarize_characters(troupe, self.troupePrintCharacters.collection);

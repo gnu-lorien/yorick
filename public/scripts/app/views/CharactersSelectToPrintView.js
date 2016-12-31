@@ -13,7 +13,8 @@ define([
     "backform",
     "text!../templates/character-summarize-list-item-csv.html",
     "text!../templates/character-summarize-list-item-csv-header-grouped.html",
-], function( _, $, Backbone, character_summarize_list_item_html, Marionette, Vampire, Werewolf, Backform, character_summarize_list_item_csv_html, character_summarize_list_item_csv_header_grouped_html ) {
+    "../forms/PrintSettingsForm"
+], function( _, $, Backbone, character_summarize_list_item_html, Marionette, Vampire, Werewolf, Backform, character_summarize_list_item_csv_html, character_summarize_list_item_csv_header_grouped_html, PrintSettingsForm ) {
 
     var PrettyView = Marionette.ItemView.extend({
         tagName: "li",
@@ -259,6 +260,7 @@ define([
     var View = Marionette.LayoutView.extend({
         regions: {
             sections: "#sections",
+            print_options: "#print-options",
             list: "#troupe-select-to-print-characters-list"
         },
         childEvents: {
@@ -401,6 +403,14 @@ define([
                     model: self.filterOptions
                 }),
                 options);
+                
+            self.showChildView(
+                'print_options',
+                new PrintSettingsForm({
+                    model: self.options.print_options
+                }),
+                options)
+            
             self.showChildView(
                 'list',
                 new CharactersView({

@@ -47,7 +47,7 @@ define([
         ["wta_totem_bonus_traits", "Totem Bonuses", "Pack"]
     ];
     
-    var TEXT_ATTRIBUTES = ["archetype", "wta_breed", "wta_auspice", "wta_tribe", "wta_camp", "wta_faction", "antecedence"];
+    var TEXT_ATTRIBUTES = ["archetype", "archetype_2", "wta_breed", "wta_auspice", "wta_tribe", "wta_camp", "wta_faction", "antecedence"];
     
     var SUM_CREATION_CATEGORIES = ["wta_merits", "wta_flaws"];
     

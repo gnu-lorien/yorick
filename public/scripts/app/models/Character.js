@@ -18,8 +18,9 @@ define([
     "../helpers/UserWreqr",
     "../models/FauxSimpleTrait",
     "../collections/Approvals",
-    "../models/Approval"
-], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSMETV1_VampireCosts, PromiseFailReport, ExpirationMixin, UserChannel, FauxSimpleTrait, Approvals, Approval ) {
+    "../models/Approval",
+    "../models/LongText"
+], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSMETV1_VampireCosts, PromiseFailReport, ExpirationMixin, UserChannel, FauxSimpleTrait, Approvals, Approval, LongText ) {
 
     // The Model constructor
     var instance_methods = _.extend({
@@ -203,6 +204,20 @@ define([
                     });
                 });
             }).fail(PromiseFailReport)
+        },
+        
+        unpick_text: function(target) {
+            var self = this;
+            self.unset(target);
+            return self.save().then(function() {
+                return Parse.Object.fetchAllIfNeeded([self.get("creation")]).then(function (creations) {
+                    var creation = creations[0];
+                    creation.set(target, false);
+                    return creation.save().then(function () {
+                        return Parse.Promise.as(self);
+                    });
+                });
+            })
         },
 
         get_trait_by_name: function(category, name) {
@@ -553,6 +568,9 @@ define([
             return self.get_approvals().then(function () {
                 return self.get_recorded_changes();
             }).then(function () {
+                if (0 == self.approvals.length) {
+                    return Parse.Promise.as(null);
+                }
                 var last_approved_recorded_change_id = self.approvals.last().get("change").id;
                 var changesToApply = _.chain(self.recorded_changes.models).takeRightWhile(function (model) {
                     return model.id != last_approved_recorded_change_id;
@@ -790,6 +808,15 @@ define([
                 self.progress("Updating server side change log");
                 return Parse.Cloud.run("update_vampire_change_permissions_for", {character: self.id});
             }).then(function () {
+                self.progress("Fetching long texts to update");
+                return self.get_minimal_long_texts();
+            }).then(function(longtexts) {
+                self.progress("Updating long texts with new permissions");
+                _.each(longtexts, function (lt) {
+                    lt.setACL(self.get_me_acl());
+                });
+                return Parse.Object.saveAll(longtexts);
+            }).then(function () {
                 self.progress("Finishing up!");
                 return Parse.Promise.as(self);
             });
@@ -858,7 +885,179 @@ define([
                 return this.update_server_client_permissions_mismatch();
             }
             return Parse.Promise.as(this);
+        },
+        
+        /**
+         * Get a long text from the server or local cache
+         * @return {Parse.Promise} with LongText or null
+         */
+        get_long_text: function (category, options) {
+            var self = this;
+            var options = options || {update: false};
+            self._ltPromise = self._ltPromise || Parse.Promise.as();
+            self._ltPromise = self._ltPromise.always(function () {
+                self._ltCache = self._ltCache || {};
+                if (_.has(self._ltCache, category)) {
+                    if (!options.update) {
+                        return Parse.Promise.as(_.result(self._ltCache, category));
+                    }
+                }
+                // Get the long text
+                var q = new Parse.Query(LongText)
+                    .equalTo("owner", self)
+                    .equalTo("category", category);
+                return q.first().then(function (lt) {
+                    // Put it in the cache
+                    self._ltCache = self._ltCache || {};
+                    if (_.isUndefined(lt)) {
+                        _.set(self._ltCache, category, null);
+                    } else {
+                        _.set(self._ltCache, category, lt);
+                    }
+                    self.trigger("change:longtext" + category, lt);
+                    // Return it
+                    return Parse.Promise.as(_.result(self._ltCache, category));
+                })
+            });
+            
+            return self._ltPromise;
+        },
+        
+        /**
+         * Cache a long text on the Character
+         * @return {Parse.Promise} current character
+         */
+        fetch_long_text: function (category, options) {
+            var self = this;
+            return self.get_long_text(category, options).then(function() {
+                return Parse.Promise.as(self);
+            })
+        },
+        
+        /**
+         * Whether or not the server has a long text in this category
+         * @return {Parse.Promise}
+         */
+        has_long_text: function (category) {
+            var self = this;
+            self._ltPromise = self._ltPromise || Parse.Promise.as();
+            self._ltPromise = self._ltPromise.always(function () {
+                var q = new Parse.Query(LongText)
+                    .equalTo("owner", self)
+                    .equalTo("category", category);
+                return q.first().then(function (lt) {
+                    return Parse.Promise.as(!_.isUndefined(lt));
+                });
+            });
+            
+            return self._ltPromise;
+        },
+        
+        /**
+         * Whether or not a long text in this category is locally cached
+         * @return {bool}
+         */
+        has_fetched_long_text: function(category) {
+            var self = this;
+            self._ltCache = self._ltCache || {};
+            return _.has(self._ltCache, category);
+        },
+        
+        /**
+         * Get text only from local cache
+         * @return {LongText}
+         */
+        get_fetched_long_text: function(category) {
+            var self = this;
+            self._ltCache = self._ltCache || {};
+            return _.result(self._ltCache, category);
+        },
+        
+        /**
+         * Update long text with the matching category
+         * @return {Parse.Promise} for server update
+         */
+        update_long_text: function(category, new_text) {
+            var self = this;
+            var getp = self.get_long_text(category, {update: true});
+            return getp.then(function (lt) {
+                if (null == lt) {
+                    lt = new LongText({
+                        category: category,
+                        owner: self,
+                        text: new_text
+                    });
+                } else {
+                    lt.set({
+                        text: new_text
+                    });
+                }
+                
+                lt.setACL(self.get_me_acl());
+                
+                return lt.save().then(function () {
+                    self._ltCache = self._ltCache || {};
+                    _.set(self._ltCache, category, lt);
+                    self.trigger("change:longtext" + category, lt);
+                    return Parse.Promise.as(lt);
+                });
+            });
+        },
+        
+        /**
+         * Remove a long text from the server and locally
+         * @return {Parse.Promise} for server update
+         */
+        remove_long_text: function(category, options) {
+            var self = this;
+            var options = options || {};
+            _.defaults(options, {
+                update: true
+            })
+            var getp = self.get_long_text(category, options);
+            return getp.then(function (lt) {
+                if (!lt) {
+                    return Parse.Promise.as(null);
+                }
+                return lt.destroy({wait: true}).then(function () {
+                    self._ltCache = self._ltCache || {};
+                    delete self._ltCache[category];
+                    self.trigger("change:longtext" + category);
+                });
+            });
+        },
+        
+        /**
+         * Remove a long text locally only
+         */
+        free_fetched_long_text: function(category) {
+            var self = this;
+            self._ltCache = self._ltCache || {};
+            delete self._ltCache[category];
+        },
+        
+        /**
+         * Gets the minimal version of all long texts for this character
+         * @return {Parse.Promise} minimal LongTexts
+         */
+        get_minimal_long_texts: function() {
+            var self = this;
+            self._ltPromise = self._ltPromise || Parse.Promise.as();
+            self._ltPromise = self._ltPromise.always(function () {
+                var q = new Parse.Query(LongText)
+                    .equalTo("owner", self)
+                    .select(["owner", "category", "ACL"]);
+                var longtexts = [];
+                return q.each(function (lt) {
+                    longtexts.push(lt);
+                }).then(function () {
+                    return Parse.Promise.as(longtexts);
+                });
+            });
+            
+            return self._ltPromise;           
         }
+        
     }, ExpirationMixin );
 
     var Model = Parse.Object.extend("Vampire", instance_methods);

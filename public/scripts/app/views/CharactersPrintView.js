@@ -393,7 +393,10 @@ define([
                         picked: self.picked
                     }));
                     var cpv = new CharacterPrintView;
-                    cpv = cpv.setup(self.model, self.override);
+                    cpv = cpv.setup({
+                        character: self.model,
+                        override: self.override
+                    });
                     self.showChildView('sheet', cpv);
                 });
             }
@@ -414,9 +417,14 @@ define([
         },
         buildChildView: function(child, ChildViewClass, childViewOptions){
             // create the child view instance
-            var view = new CharacterPrintView(childViewOptions);
+            var view = new CharacterPrintView({
+                no_print_settings_form: true
+            });
             
-            return view.setup(child);
+            return view.setup({
+                character: child,
+                print_options: this.options.print_options
+            });
         }
     });
     
