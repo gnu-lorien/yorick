@@ -91,14 +91,14 @@ define([
         },
 
         unlink: function (e) {
-            var self = this;
+            var view = this;
             e.preventDefault();
             view.undelegateEvents();
 
             Parse.User.current().set("authData", {"facebook": null});
             Parse.User.current().save().then(function () {
-                self.delegateEvents();
-                self.render();
+                view.delegateEvents();
+                view.render();
             }).fail(PromiseFailReport);
         },
 
