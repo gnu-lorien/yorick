@@ -20,7 +20,8 @@ define([
     "text!../templates/print/gnosis.html",
     "text!../templates/print/total.html",
     "text!../templates/print/fixed-blood.html",
-    "../forms/PrintSettingsForm"
+    "../forms/PrintSettingsForm",
+    "qrcode"
 ], function(
     $,
     Backbone,
@@ -38,14 +39,23 @@ define([
     gnosis_html,
     total_html,
     fixed_blood_html,
-    PrintSettingsForm
+    PrintSettingsForm,
+    QRCode
 ) {
 
     var HeaderView = Marionette.ItemView.extend({
-        template: _.template('<h1 class="ui-bar ui-bar-a"><%= format_simpletext("name") %></h1>'),
+        className: "ui-grid-a ui-responsive",
+        template: _.template('<div class="ui-block-a">\
+            <h1 class="ui-bar ui-bar-a"><%= format_simpletext("name") %></h1>\
+            <h2 class="ui-bar ui-bar-a">Patronage: <%= character.status() %></h2>\
+            </div>\
+            <div class="ui-block-b">\
+            <div id="qrcode" style="width: .5in; height: .5in"></div>\
+            </div>'),
         templateHelpers: function() {
             var self = this;
             return {
+                character: self.model,
                 format_simpletext: self.format_simpletext
             }
         },
@@ -57,6 +67,14 @@ define([
                 "format_skill",
                 "format_specializations"
             );
+        },
+        onRender: function() {
+            new QRCode(
+                this.$("#qrcode")[0], {
+                    text: "http://jindo.dev.naver.com/collie",
+                    width: 32,
+                    height: 32
+            });
         }
     });
     _.extend(HeaderView.prototype, VampirePrintHelper);
