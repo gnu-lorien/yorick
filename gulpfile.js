@@ -50,7 +50,8 @@ gulp.task('images', ['clean'], function () {
 
 gulp.task('siteconfig-pubstorm', ['minify-js'], function () {
     return gulp.src('./public/scripts/app/siteconfig.js')
-        .pipe(replace('return ConfigGnuLorienDev;', 'return ConfigPubstorm;'))
+        //.pipe(replace('return ConfigGnuLorienDev;', 'return ConfigPubstorm;'))
+        .pipe(replace('return ConfigGnuLorienDev;', 'return ConfigPatron;'))
         .pipe(uglify({outSourceMap: true}))
         .pipe(gulp.dest('dist/scripts/app'));
 });
