@@ -1,4 +1,5 @@
 // Includes file dependencies
+/* global _ */
 define([
     "jquery",
     "backbone",
@@ -96,15 +97,20 @@ define([
             var alter_roles = function (roles) {
                 _.each(roles_to_remove, function (title) {
                     var u = roles[title].getUsers();
-                    console.log(u);
-                    u.remove(self.user);
+                    u.remove(self.user)/*.fail(function (error) {
+                        console.log("Failed to remove user from " + title + " with " + JSON.stringify(error));
+                    });*/
                 });
                 _.each(roles_to_add, function (title) {
-                    roles[title].getUsers().add(self.user);
+                    roles[title].getUsers().add(self.user)/*.fail(function (error) {
+                        console.log("Failed to add user user " + title + " with " + JSON.stringify(error));
+                    });*/
                 })
                 var to_save = _.values(roles);
                 var promises = _.map(to_save, function (s) {
-                    return s.save().fail(PromiseFailReport);
+                    return s.save().fail(function (error) {
+                        console.log("Failed to save role " + s.get("name") + " with " + JSON.stringify(error));
+                    }).fail(PromiseFailReport);
                 })
                 return Parse.Promise.when(promises);
             }
