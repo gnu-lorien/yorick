@@ -891,21 +891,39 @@ define([
                 c.sortbycreated = true;
             }
             var p = Parse.Promise.as([]);
-            var q = new Parse.Query(Vampire);
+            
+            var q = new Parse.Query(Werewolf);
             q.equalTo("troupes", troupe);
             q.include("portrait");
             q.include("owner");
-            _.each(Vampire.all_simpletrait_categories(), function (e) {
-                q.include(e[0]);
-            });
+            q.equalTo("type", "Werewolf");
             _.each(Werewolf.all_simpletrait_categories(), function (e) {
                 q.include(e[0]);
             });
+            
             $.mobile.loading("show", {text: "Fetching all characters", textVisible: true});
             p = q.each(function (character) {
                 c.push(character);
                 return character.get_long_text("extended_print_text");
-            }).then(function () {
+            })
+            
+            var vq = new Parse.Query(Vampire);
+            vq.equalTo("troupes", troupe);
+            vq.include("portrait");
+            vq.include("owner");
+            vq.notEqualTo("type", "Werewolf");
+            _.each(Vampire.all_simpletrait_categories(), function (e) {
+                vq.include(e[0]);
+            });
+
+            p = p.then(function() {
+                return vq.each(function (character) {
+                    c.push(character);
+                    return character.get_long_text("extended_print_text");
+                });
+            });
+            
+            p = p.then(function () {
                 $.mobile.loading("show", {text: "Updating local character list", textVisible: true});
                 collection.reset(c);
             })
@@ -922,16 +940,31 @@ define([
                 c.sortbycreated = true;
             }
             var p = Parse.Promise.as([]);
-            var q = new Parse.Query(Vampire);
-            //q.equalTo("owner", Parse.User.current());
+            
+            var q = new Parse.Query(Werewolf);
             q.exists("owner");
             q.include("portrait");
             q.include("owner");
+            q.equalTo("type", "Werewolf");
             p = q.each(function (character) {
                 c.push(character);
-            }).then(function () {
+            })
+            
+            var vq = new Parse.Query(Vampire);
+            vq.exists("owner");
+            vq.include("portrait");
+            vq.include("owner");
+            vq.notEqualTo("type", "Werewolf");
+            p = p.then(function () {
+                return vq.each(function (character) {
+                    c.push(character);
+                });
+            });
+            
+            p = p.then(function () {
                 self.characters.collection.reset(c);
             })
+            
             return p.done(function () {
                 return Parse.Promise.as(self.characters.collection);
             })
