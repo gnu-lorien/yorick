@@ -77,7 +77,7 @@ define([
     };
 
     var Config = {
-        serverURL: "https://yorick-undergroundtheater-gnu-lorien.c9users.io/parse",
+        serverURL: "https://${C9_HOSTNAME}/parse",
         redirect_uri: "https://${C9_HOSTNAME}/index.html",
         SAMPLE_TROUPE_ID: "zCQcZnlFx5"
     };
@@ -128,4 +128,5 @@ mongoimport -h localhost -d anotherstore -c "VampireCreation" VampireCreation.js
 popd
 popd
 
+npm install
 bash run.bash
