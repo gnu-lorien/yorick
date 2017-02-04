@@ -1,4 +1,5 @@
 // Includes file dependencies
+/* global _ */
 define([
     "jquery",
     "backbone",
@@ -135,7 +136,18 @@ define([
                 return Parse.User.current().id;
             },
         },
-    })
+    });
+    
+    var RoleView = Marionette.ItemView.extend({
+        template: function (serialized_model) {
+            return _.template("The one: <%= attributes.name %>")(serialized_model);
+        }
+    });
+    
+    var RolesView = Marionette.CollectionView.extend({
+        tagName: 'div',
+        childView: RoleView
+    });
 
     var LayoutView = Marionette.LayoutView.extend({
         el: "#user-settings-profile",
@@ -144,7 +156,8 @@ define([
             profile: "#user-settings-profile-abs-form",
             facebook: "#facebook-account-linking",
             patronage: "#usp-patronage-list-region",
-            paypal: "#usp-paypal-button"
+            paypal: "#usp-paypal-button",
+            roles: "#user-roles-available"
         },
         initialize: function(options) {
             var self = this;
@@ -160,6 +173,22 @@ define([
             self.showChildView('patronage', new PatronagesView({
                 el: "#usp-patronage-list",
                 collection: self.patronages,
+            }), options);
+            
+            var roles = new Backbone.Collection();
+            var q = new Parse.Query(Parse.Role);
+            q.each(function (role) {
+                var users_relation = role.getUsers();
+                var uq = users_relation.query();
+                uq.equalTo("objectId", Parse.User.current().id);
+                return uq.each(function (user) {
+                    roles.add(role);
+                }).fail(function (error) {
+                    console.log("Failed in promise for " + role.get("name"));
+                });
+            }).fail(PromiseFailReport);
+            self.showChildView('roles', new RolesView({
+                collection: roles
             }), options);
             self.patronages.query.equalTo("owner", Parse.User.current());
             self.patronages.fetch();

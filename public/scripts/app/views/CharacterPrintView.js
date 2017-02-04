@@ -543,20 +543,10 @@ define([
                     }]
                 }), options);
                 self.showChildView('attributeRegion', new AttributesView({model: character}), options);
-                if (character.get("wta_tribe") == "Ananasi") {
-                    self.showChildView('blood', new FixedBloodView({model: new Backbone.Model({
-                        generation: 0,
-                        total: 15,
-                        split: 5,
-                        linebreak: 10,
-                        blood_per_turn: 3
-                    })}), options);
-                } else {
-                    self.showChildView('blood', new GnosisView({
-                        model: character,
-                        column: 1
-                    }), options);
-                }
+                self.showChildView('blood', new GnosisView({
+                    model: character,
+                    column: 1
+                }), options);
                 self.showChildView('willpower', new WillpowerView({model: character}), options);
                 self.showChildView('health_levels', new HealthLevelsView({model: character}), options);
                 // Forms
@@ -566,6 +556,14 @@ define([
                         name: "Rage",
                         total: 10,
                         split: 7
+                    })}), options);
+                } else {
+                    self.showChildView('morality', new FixedBloodView({model: new Backbone.Model({
+                        generation: 0,
+                        total: 15,
+                        split: 5,
+                        linebreak: 10,
+                        blood_per_turn: 3
                     })}), options);
                 }
                 // Harano
