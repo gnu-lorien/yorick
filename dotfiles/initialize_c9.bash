@@ -16,6 +16,7 @@ nvm install v4.4.5
 npm install -g parse-server parse-dashboard
 
 cat > run.bash << EOF
+parse-dashboard --port 8081 --allowInsecureHTTP --config parse-dashboard-config.json &
 export DEBUG=express:*
 export CONFIG_FILE=/home/ubuntu/workspace/parse-server-config.json
 export PUBLIC_BASE=/home/ubuntu/workspace/public
