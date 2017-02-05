@@ -35,7 +35,8 @@ define([
         Parse.$ = $;
         Parse.initialize("APPLICATION_ID", "yymp8UWnJ7Va32Y2Q4uzvWxfPTYuDvZSA8kdhmdR");
         Parse.serverURL = siteconfig.serverURL;
-    }
+        Backbone.$ = $;
+    };
     
     var character_types = [
         {
@@ -624,6 +625,7 @@ define([
     
             it("updates listeners on add", function(done) {
                 var Listener = Backbone.View.extend({
+                    tagName: "div",
                     initialize: function() {
                         var self = this;
                         _.bindAll(this, "finish");
@@ -719,6 +721,7 @@ define([
     
             it("can remove a middle one by trigger", function(done) {
                 var Listener = Backbone.View.extend({
+                    tagName: "div",
                     initialize: function() {
                         var self = this;
                         _.bindAll(this, "finish");
@@ -744,6 +747,7 @@ define([
     
             it("can update a middle one by trigger", function(done) {
                 var Listener = Backbone.View.extend({
+                    tagName: "div",
                     initialize: function() {
                         var self = this;
                         _.bindAll(this, "finish");
@@ -1180,6 +1184,7 @@ define([
             it("notifies when updated", function(done) {
                 var the_text = "I'm awesome";
                 var Listener = Backbone.View.extend({
+                    tagName: "div",
                     initialize: function() {
                         _.bindAll(this, "finish");
                     },
@@ -1209,6 +1214,7 @@ define([
             it("notifies when removed", function(done) {
                 var the_text = "I'm awesome";
                 var Listener = Backbone.View.extend({
+                    tagName: "div",
                     initialize: function() {
                         _.bindAll(this, "finish");
                     },
