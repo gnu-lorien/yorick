@@ -20,7 +20,7 @@ define([
             return {
                 moment: moment,
                 user: function () {
-                    return UserChannel.channel.reqres.request("get", this.owner.objectId);
+                    return UserChannel.channel.request("user:get", this.owner.objectId);
                 },
                 status: function () {
                     return self.model.status();

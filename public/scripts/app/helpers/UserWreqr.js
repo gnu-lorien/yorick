@@ -5,19 +5,20 @@ define([
     "backbone",
     "marionette",
     "../collections/Users",
+    "backbone.radio"
 ], function( $, _, Parse, Backbone, Marionette, Users ) {
 
     var UserHelper = Backbone.Model.extend({
         initialize: function() {
             var self = this;
 
-            self.channel = Backbone.Wreqr.radio.channel('user');
+            self.channel = Backbone.Radio.channel('user');
             self.users = new Users;
 
-            Backbone.Wreqr.radio.reqres.setHandler("user", "get", function (id) {
+            self.channel.reply("user:get", function (id) {
                 return self.users.get(id);
             })
-            Backbone.Wreqr.radio.reqres.setHandler("user", "all", function () {
+            self.channel.reply("user:all", function () {
                 return self.users;
             })
         },
