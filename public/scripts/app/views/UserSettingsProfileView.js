@@ -16,7 +16,7 @@ define([
     "text!../templates/paypal-button.html"
 ], function ($, Backbone, Parse, Backform, UserForm, profile_facebook_account_html, PromiseFailReport, InjectAuthData, Marionette, PatronagesView, Patronages, user_settings_profile_html, paypal_button_html) {
 
-    var View = Marionette.ItemView.extend({
+    var View = Marionette.View.extend({
         tagName: 'form',
         template: _.template(""),
         initialize: function () {
@@ -82,7 +82,7 @@ define([
         }
     });
 
-    var FacebookLinkButtonView = Marionette.ItemView.extend({
+    var FacebookLinkButtonView = Marionette.View.extend({
         tagName: 'div',
         template: _.template(profile_facebook_account_html),
 
@@ -128,17 +128,17 @@ define([
         }
     });
 
-    var PaypalButton = Marionette.ItemView.extend({
+    var PaypalButton = Marionette.View.extend({
         tagName: 'div',
         template: _.template(paypal_button_html),
-        templateHelpers: {
+        templateContext: {
             userid: function () {
                 return Parse.User.current().id;
             },
         },
     });
     
-    var RoleView = Marionette.ItemView.extend({
+    var RoleView = Marionette.View.extend({
         template: function (serialized_model) {
             return _.template("The one: <%= attributes.name %>")(serialized_model);
         }
@@ -149,7 +149,7 @@ define([
         childView: RoleView
     });
 
-    var LayoutView = Marionette.LayoutView.extend({
+    var LayoutView = Marionette.View.extend({
         el: "#user-settings-profile",
         template: _.template(user_settings_profile_html),
         regions: {

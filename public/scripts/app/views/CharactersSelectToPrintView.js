@@ -16,7 +16,7 @@ define([
     "../forms/PrintSettingsForm"
 ], function( _, $, Backbone, character_summarize_list_item_html, Marionette, Vampire, Werewolf, Backform, character_summarize_list_item_csv_html, character_summarize_list_item_csv_header_grouped_html, PrintSettingsForm ) {
 
-    var PrettyView = Marionette.ItemView.extend({
+    var PrettyView = Marionette.View.extend({
         tagName: "li",
         className: "ul-li-has-thumb",
         template: _.template(character_summarize_list_item_html),
@@ -25,7 +25,7 @@ define([
             this.name = options.name;
         },
         
-        templateHelpers: function () {
+        templateContext: function () {
             var self = this;
             return {
                 e: self.model,
@@ -53,7 +53,7 @@ define([
         }
     });
     
-    var CSVView = Marionette.ItemView.extend({
+    var CSVView = Marionette.View.extend({
         tagName: "li",
         template: _.template(character_summarize_list_item_csv_html),
         initialize: function(options) {
@@ -62,7 +62,7 @@ define([
             this.columnNames = options.columnNames;
         },
         
-        templateHelpers: function () {
+        templateContext: function () {
             var self = this;
             return {
                 e: self.model,
@@ -73,7 +73,7 @@ define([
 
     });
     
-    var CSVHeaderGroupedView = Marionette.ItemView.extend({
+    var CSVHeaderGroupedView = Marionette.View.extend({
         tagName: "li",
         template: _.template(character_summarize_list_item_csv_header_grouped_html),
         initialize: function(options) {
@@ -82,7 +82,7 @@ define([
             this.columnNames = options.columnNames;
         },
         
-        templateHelpers: function () {
+        templateContext: function () {
             var self = this;
             return {
                 e: self.model,
@@ -137,7 +137,7 @@ define([
         
     } );
     
-    var FilterButton = Marionette.ItemView.extend({
+    var FilterButton = Marionette.View.extend({
         className: "ui-block-b",
         template: function (serialized_model) {
             return _.template("<button><%= name %></button>")(serialized_model);
@@ -257,13 +257,13 @@ define([
         model: Mode
     })
     
-    var View = Marionette.LayoutView.extend({
+    var View = Marionette.View.extend({
         regions: {
             sections: "#sections",
             print_options: "#print-options",
             list: "#troupe-select-to-print-characters-list"
         },
-        childEvents: {
+        childViewEvents: {
             "filterwith": "filterwith"
         },
         events: {

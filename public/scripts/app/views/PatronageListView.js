@@ -9,13 +9,13 @@ define([
 ], function( $, Backbone, Marionette, patronage_html, moment, UserChannel ) {
 
     // Extends Backbone.View
-    var View = Marionette.ItemView.extend( {
+    var View = Marionette.View.extend( {
         tagName: 'li',
         template: function(serialized_model) {
             var self = this;
             return _.template(patronage_html)(serialized_model);
         },
-        templateHelpers: function () {
+        templateContext: function () {
             var self = this;
             return {
                 moment: moment,

@@ -10,7 +10,7 @@ define([
     "../collections/Patronages"
 ], function ($, Backbone, Parse, Backform, UserForm, Marionette, PatronagesView, Patronages) {
     // Extends Backbone.View
-    var View = Marionette.ItemView.extend({
+    var View = Marionette.View.extend({
         tagName: 'form',
         template: _.template(""),
         initialize: function () {
@@ -87,7 +87,7 @@ define([
         },
     });
 
-    var ResetButtonView = Marionette.ItemView.extend({
+    var ResetButtonView = Marionette.View.extend({
         tagName: 'div',
         template: function(data) {
             return _.template("<button>Reset Password</button><p class='message'></p>")(data);
@@ -116,7 +116,7 @@ define([
         },
     });
     
-    var NewPatronButtonView = Marionette.ItemView.extend({
+    var NewPatronButtonView = Marionette.View.extend({
         tagName: 'div',
         template: function(data) {
             return _.template("<a href='#administration/patronages/new/<%= userid %>'>Add New Patronage</a>")(data);
@@ -126,7 +126,7 @@ define([
         }
     });
 
-    var LayoutView = Marionette.LayoutView.extend({
+    var LayoutView = Marionette.View.extend({
         el: "#administration-user-view",
         regions: {
             profile: "#abs-form",

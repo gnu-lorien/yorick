@@ -9,7 +9,7 @@ define([
 	"backform"
 ], function( $, Backbone, Marionette, Backform ) {
 
-    var View = Marionette.ItemView.extend({
+    var View = Marionette.View.extend({
         tagName: 'form',
         template: _.template(""),
         

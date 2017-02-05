@@ -36,9 +36,9 @@ define([
              character_approval_changes_html,
              PromiseFailReport
 ) {
-    var EditView = Marionette.ItemView.extend({
+    var EditView = Marionette.View.extend({
         template: _.template(character_approval_edit_html),
-        templateHelpers: function () {
+        templateContext: function () {
             var self = this;
             var no_changes_remaining = self.picked.get("left") >= self.model.recorded_changes.length;
             if (0 != self.approvals.length) {
@@ -72,7 +72,7 @@ define([
                 "change:right",
                 _.debounce(this.render, 100, {trailing: true}));
             
-            _.bindAll(this, "templateHelpers", "format_approval", "approve_change");
+            _.bindAll(this, "templateContext", "format_approval", "approve_change");
         },
         format_approval: function(approval, h) {
             var sub = approval.get(h);
@@ -109,9 +109,9 @@ define([
         }
     });
     
-    var ChangesView = Marionette.ItemView.extend({
+    var ChangesView = Marionette.View.extend({
         template: _.template(character_approval_changes_html),
-        templateHelpers: function () {
+        templateContext: function () {
             var self = this;
             return {
                 "character": this.model,
@@ -125,7 +125,7 @@ define([
             this.watchPicks();
             this.listenTo(this.model, "saved", this.update_then_render);
             
-            _.bindAll(this, "templateHelpers", "update_then_render");
+            _.bindAll(this, "templateContext", "update_then_render");
         },
         events: {
             "change #slider": "update_right",
@@ -162,9 +162,9 @@ define([
         }
     });   
     
-    var ApprovalsView = Marionette.ItemView.extend({
+    var ApprovalsView = Marionette.View.extend({
         template: _.template(character_approval_approvals_html),
-        templateHelpers: function () {
+        templateContext: function () {
             var self = this;
             return {
                 "character": this.model,
@@ -182,7 +182,7 @@ define([
             
             this.listenTo(this.model, "saved", this.render);
             
-            _.bindAll(this, "templateHelpers", "approval_changed", "update_picks_for_approval");
+            _.bindAll(this, "templateContext", "approval_changed", "update_picks_for_approval");
         },
         events: {
             "change #approval-slider": "update_index",
@@ -246,9 +246,9 @@ define([
         }
     });
     
-    var ChangesSelectedView = Marionette.ItemView.extend({
+    var ChangesSelectedView = Marionette.View.extend({
         template: _.template(character_approval_selected_view_html),
-        templateHelpers: function () {
+        templateContext: function () {
             var self = this;
             return {
                 "character": this.model,
@@ -268,7 +268,7 @@ define([
                 "change:right change:left",
                 _.debounce(this.render, 100, {trailing: true}));
             
-            _.bindAll(this, "templateHelpers", "format_entry");
+            _.bindAll(this, "templateContext", "format_entry");
         },
         format_entry: function(log, entry) {
             if (_.isUndefined(log)) {
@@ -289,7 +289,7 @@ define([
         }
     });  
     
-    var LayoutView = Marionette.LayoutView.extend({
+    var LayoutView = Marionette.View.extend({
         tagName: "div",
         regions: {
             changes: "#approval-changes",

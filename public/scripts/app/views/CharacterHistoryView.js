@@ -16,9 +16,9 @@ define([
     "../views/CharacterPrintView"
 ], function( _, $, Backbone, Marionette, Parse, moment, character_print_view_html, character_history_selected_view_html, character_history_view_html, VampirePrintHelper, CharacterPrintView ) {
 
-    var MainView = Marionette.ItemView.extend({
+    var MainView = Marionette.View.extend({
         template: _.template(character_history_view_html),
-        templateHelpers: function () {
+        templateContext: function () {
             var self = this;
             return {
                 "character": this.model,
@@ -36,7 +36,7 @@ define([
             this.picked = options.picked;
             this.override = options.override;
             
-            _.bindAll(this, "templateHelpers");
+            _.bindAll(this, "templateContext");
         },
         update_picked: function (e) {
             var self = this;
@@ -62,9 +62,9 @@ define([
         }
     });
     
-    var ViewingView = Marionette.ItemView.extend({
+    var ViewingView = Marionette.View.extend({
         template: _.template(character_history_selected_view_html),
-        templateHelpers: function () {
+        templateContext: function () {
             var self = this;
             return {
                 "character": this.model,
@@ -85,7 +85,7 @@ define([
                 "change",
                 _.debounce(this.render, 100, { trailing: true}));
             
-            _.bindAll(this, "templateHelpers");
+            _.bindAll(this, "templateContext");
         },
         format_entry: function(log, entry) {
             if (_.isUndefined(log)) {
@@ -106,7 +106,7 @@ define([
         }
     });
     
-    var LayoutView = Marionette.LayoutView.extend({
+    var LayoutView = Marionette.View.extend({
         tagName: "div",
         regions: {
             main: "#history-main",

@@ -32,7 +32,7 @@ define([
     simpletrait_new_list_html
 ) {
 
-    var View = Marionette.ItemView.extend( {
+    var View = Marionette.View.extend( {
         initialize: function(options) {
             this.gift_filter_options = options.gift_filter_options;
             this.listenTo(this.gift_filter_options, "change", this.render);
@@ -41,13 +41,13 @@ define([
                 this,
                 "register",
                 "update_collection_query_and_fetch",
-                "templateHelpers");
+                "templateContext");
         },
         
         //template: "script#simpletraitcategoryDescriptionItems",
         template: _.template(simpletrait_new_list_html),
         
-        templateHelpers: function () {
+        templateContext: function () {
             var self = this;
             var descriptionItems;
             self.requireSpecializations = _.chain(self.collection.models).select(function (model) {
@@ -299,7 +299,7 @@ define([
         ]
     });
     
-    var LayoutView = Marionette.LayoutView.extend({
+    var LayoutView = Marionette.View.extend({
         template: _.template(simpletrait_new_base_html),
         
         regions: {

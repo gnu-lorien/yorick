@@ -12,7 +12,7 @@ define([
     Marionette
 ) {
 
-    var PrintSettingsForm = Marionette.ItemView.extend({
+    var PrintSettingsForm = Marionette.View.extend({
         tagName: 'form',
         template: _.template(""),
         initialize: function (options) {
