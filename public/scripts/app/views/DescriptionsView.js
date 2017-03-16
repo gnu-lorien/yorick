@@ -114,13 +114,13 @@ define([
         ]
     });
     
-    var View = Marionette.LayoutView.extend({
+    var View = Marionette.View.extend({
         el: "#administration-descriptions > div[data-role='main']", 
         regions: {
             sections: "#descriptions-sections",
             list: "#administration-descriptions-list"
         },
-        childEvents: {
+        childViewEvents: {
             "filterwith": "filterwith",
             "submit": "submit"
         },

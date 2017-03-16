@@ -68,6 +68,7 @@ require.config({
         pretty: "prettyprint",
         moment: "moment",
         marionette: "backbone.marionette",
+        "backbone.radio": "backbone.radio",
 
         app: "../app"
     },

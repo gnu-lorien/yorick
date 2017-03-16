@@ -18,7 +18,7 @@ define([
     character_long_text_parent_html
 ) {
 
-    var EditForm = Marionette.ItemView.extend({
+    var EditForm = Marionette.View.extend({
         tagName: 'form',
         template: _.template(""),
         initialize: function (options) {
@@ -85,10 +85,10 @@ define([
         }
     });
 
-    var Preview = Marionette.ItemView.extend({
+    var Preview = Marionette.View.extend({
         tagName: 'div',
         template: _.template("<h1>Preview</h1><p><%= inputtext %></p>"),
-        templateHelpers: function () {
+        templateContext: function () {
             var self = this;
             var inputtext = "";
             if (self.model.get("preview")) {
@@ -123,7 +123,7 @@ define([
             _.bindAll(
                 self,
                 "renderIfLive",
-                "templateHelpers");
+                "templateContext");
         },
         renderIfLive: function() {
             var self = this;
@@ -136,10 +136,10 @@ define([
         }
     });
     
-    var Description = Marionette.ItemView.extend({
+    var Description = Marionette.View.extend({
         tagName: 'div',
         template: _.template("<p><%= inputtext %></p>"),
-        templateHelpers: function () {
+        templateContext: function () {
             var self = this;
             return {
                 inputtext: self.options.description
@@ -150,14 +150,14 @@ define([
             self.options = options;
             _.bindAll(
                 self,
-                "templateHelpers");
+                "templateContext");
         },
         onRender: function() {
             this.$el.enhanceWithin();
         }
     });
 
-    var LayoutView = Marionette.LayoutView.extend({
+    var LayoutView = Marionette.View.extend({
         template: _.template(character_long_text_parent_html),
         regions: {
             top: "#top",

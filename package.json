@@ -41,7 +41,7 @@
     "karma-phantomjs-launcher": "^1.0.0",
     "karma-requirejs": "^1.0.0",
     "nodefy": "^0.2.2",
-    "phantomjs-prebuilt": "^2.1.7",
+    "phantomjs-prebuilt": "*",
     "requirejs": "^2.2.0",
     "url-search-params": "^0.6.1"
   },

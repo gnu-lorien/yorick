@@ -41,9 +41,9 @@ define([
     PrintSettingsForm
 ) {
 
-    var HeaderView = Marionette.ItemView.extend({
+    var HeaderView = Marionette.View.extend({
         template: _.template('<h1 class="ui-bar ui-bar-a"><%= format_simpletext("name") %></h1>'),
-        templateHelpers: function() {
+        templateContext: function() {
             var self = this;
             return {
                 format_simpletext: self.format_simpletext
@@ -61,7 +61,7 @@ define([
     });
     _.extend(HeaderView.prototype, VampirePrintHelper);
     
-    var TextBarView = Marionette.ItemView.extend({
+    var TextBarView = Marionette.View.extend({
         className: "ui-grid-b ui-responsive",
         template: function(serialized_model) {
             var self = this;
@@ -76,7 +76,7 @@ define([
             tmpl = _.template(tmpl.join(""));
             return tmpl(serialized_model);
         },
-        templateHelpers: function() {
+        templateContext: function() {
             var self = this;
             return {
                 format_simpletext: self.format_simpletext
@@ -103,7 +103,7 @@ define([
     });
     _.extend(TextBarView.prototype, VampirePrintHelper);
     
-    var AttributesView = Marionette.ItemView.extend({
+    var AttributesView = Marionette.View.extend({
         template: function(serialized_model) {
             var self = this;
             var tmpl = _.map(["Physical", "Social", "Mental"], function (name, i) {
@@ -123,7 +123,7 @@ define([
             tmpl = _.template(tmpl.join(""));
             return tmpl(serialized_model);
         },
-        templateHelpers: function() {
+        templateContext: function() {
             var self = this;
             return {
                 format_simpletext: self.format_simpletext,
@@ -153,9 +153,9 @@ define([
     });
     _.extend(AttributesView.prototype, VampirePrintHelper);
     
-    var BloodView = Marionette.ItemView.extend({
+    var BloodView = Marionette.View.extend({
         template: _.template(blood_html),
-        templateHelpers: function() {
+        templateContext: function() {
             var self = this;
             return {
                 character: self.model
@@ -184,9 +184,9 @@ define([
     });
     _.extend(BloodView.prototype, VampirePrintHelper);
     
-    var FixedBloodView = Marionette.ItemView.extend({
+    var FixedBloodView = Marionette.View.extend({
         template: _.template(fixed_blood_html),
-        templateHelpers: function() {
+        templateContext: function() {
             var self = this;
             return {
                 character: self.model
@@ -213,9 +213,9 @@ define([
     });
     _.extend(FixedBloodView.prototype, VampirePrintHelper);
     
-    var WillpowerView = Marionette.ItemView.extend({
+    var WillpowerView = Marionette.View.extend({
         template: _.template(willpower_html),
-        templateHelpers: function() {
+        templateContext: function() {
             var self = this;
             return {
                 character: self.model
@@ -238,9 +238,9 @@ define([
     });
     _.extend(WillpowerView.prototype, VampirePrintHelper);
     
-    var GnosisView = Marionette.ItemView.extend({
+    var GnosisView = Marionette.View.extend({
         template: _.template(gnosis_html),
-        templateHelpers: function() {
+        templateContext: function() {
             var self = this;
             return {
                 character: self.model
@@ -263,9 +263,9 @@ define([
     });
     _.extend(GnosisView.prototype, VampirePrintHelper);
     
-    var MoralityView = Marionette.ItemView.extend({
+    var MoralityView = Marionette.View.extend({
         template: _.template(morality_html),
-        templateHelpers: function() {
+        templateContext: function() {
             var self = this;
             return {
                 character: self.model
@@ -288,9 +288,9 @@ define([
     });
     _.extend(MoralityView.prototype, VampirePrintHelper);
     
-    var HealthLevelsView = Marionette.ItemView.extend({
+    var HealthLevelsView = Marionette.View.extend({
         template: _.template(health_levels_html),
-        templateHelpers: function() {
+        templateContext: function() {
             var self = this;
             return {
                 character: self.model
@@ -319,9 +319,9 @@ define([
     });
     _.extend(HealthLevelsView.prototype, VampirePrintHelper);
     
-    var TotalView = Marionette.ItemView.extend({
+    var TotalView = Marionette.View.extend({
         template: _.template(total_html),
-        templateHelpers: function() {
+        templateContext: function() {
             var self = this;
             return {
                 character: self.model
@@ -349,9 +349,9 @@ define([
     _.extend(TotalView.prototype, VampirePrintHelper);
  
     
-    var SkillsView = Marionette.ItemView.extend({
+    var SkillsView = Marionette.View.extend({
         template: _.template(skills_html),
-        templateHelpers: function() {
+        templateContext: function() {
             var self = this;
             var sortedSkills = self.model.get_sorted_skills();
             return {
@@ -385,9 +385,9 @@ define([
     });
     _.extend(SkillsView.prototype, VampirePrintHelper);
     
-    var SectionsView = Marionette.ItemView.extend({
+    var SectionsView = Marionette.View.extend({
         template: _.template(section_html),
-        templateHelpers: function() {
+        templateContext: function() {
             var self = this;
             _.each(self.sections, function(s) {
                 var sort = s.sort || "name";
@@ -437,9 +437,9 @@ define([
     });
     _.extend(SectionsView.prototype, VampirePrintHelper);
     
-    var ExtendedPrintTextView = Marionette.ItemView.extend({
+    var ExtendedPrintTextView = Marionette.View.extend({
         template: _.template("<%= inputtext %>"),
-        templateHelpers: function() {
+        templateContext: function() {
             var self = this;
             var inputtext = "";
             if (self.options.print_options.get("exclude_extended")) {
@@ -467,7 +467,7 @@ define([
     });
     _.extend(ExtendedPrintTextView.prototype, VampirePrintHelper);
 
-    var LayoutView = Marionette.LayoutView.extend({
+    var LayoutView = Marionette.View.extend({
         template: _.template(character_print_parent_html),
         
         regions: {

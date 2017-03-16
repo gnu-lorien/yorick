@@ -16,6 +16,7 @@ nvm install v4.4.5
 npm install -g parse-server parse-dashboard
 
 cat > run.bash << EOF
+parse-dashboard --port 8081 --allowInsecureHTTP --config parse-dashboard-config.json &
 export DEBUG=express:*
 export CONFIG_FILE=/home/ubuntu/workspace/parse-server-config.json
 export PUBLIC_BASE=/home/ubuntu/workspace/public
@@ -77,7 +78,7 @@ define([
     };
 
     var Config = {
-        serverURL: "https://yorick-undergroundtheater-gnu-lorien.c9users.io/parse",
+        serverURL: "https://${C9_HOSTNAME}/parse",
         redirect_uri: "https://${C9_HOSTNAME}/index.html",
         SAMPLE_TROUPE_ID: "zCQcZnlFx5"
     };
@@ -128,4 +129,5 @@ mongoimport -h localhost -d anotherstore -c "VampireCreation" VampireCreation.js
 popd
 popd
 
+npm install
 bash run.bash
