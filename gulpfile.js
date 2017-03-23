@@ -72,6 +72,7 @@ gulp.task('appbust', ['minify-js'], function () {
 gulp.task('indexbust', ['minify-html'], function () {
     return gulp.src('./public/index.html')
         .pipe(replace('require.js?bust=010101', 'require.js?bust=' + pjson.version))
+        .pipe(replace('app.js?bust=010101', 'app.js?bust=' + pjson.version))
         .pipe(htmlmin({collapseWhitespace: true}))
         .pipe(gulp.dest('dist'));
 })

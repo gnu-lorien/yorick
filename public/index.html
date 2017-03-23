@@ -36,7 +36,7 @@
         function downloadJSAtOnload() {
             var element = document.createElement("script");
             element.src = "scripts/lib/require.js?bust=010101";
-            element.setAttribute("data-main", "scripts/app");
+            element.setAttribute("data-main", "scripts/app.js?bust=010101");
             document.body.appendChild(element);
         }
 
