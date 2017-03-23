@@ -407,6 +407,8 @@ define([
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
             self.get_character(cid, "all").then(function (character) {
+                return character.fetch_long_text("extended_print_text");
+            }).then(function (character) {
                 self.characterApprovalView.register(character).then(function () {
                     var activePage = $(".ui-page-active").attr("id");
                     var r = $.mobile.changePage("#character-approval", {reverse: false, changeHash: false});
@@ -420,6 +422,8 @@ define([
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
             self.get_character(cid, "all").then(function (character) {
+                return character.fetch_long_text("extended_print_text");
+            }).then(function (character) {
                 return character.get_transformed_last_approved();
             }).then(function (transformed) {
                 if (null == transformed) {
