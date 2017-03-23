@@ -590,6 +590,8 @@ define([
             if (mustFixBrokenRelation) {
                 this.troupes.parent = null;
             }
+            // Include extended printed text on transformed character by default
+            c._ltCache = this._ltCache;
             var description = [];
 
             _.each(changes, function(change) {
