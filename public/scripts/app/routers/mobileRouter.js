@@ -556,9 +556,10 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#charactercreate/" + cid);
-            self.get_character(cid, [category]).done(function (c) {
-                self.simpleTextNewView.register(c, category, target, "#charactercreate/" + c.id);
+            self.get_character(cid, [category]).then(function (c) {
                 self.characterCreateView.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
+                return self.simpleTextNewView.register(c, category, target, "#charactercreate/" + c.id);
+            }).then(function () {
                 $.mobile.changePage("#simpletext-new", {reverse: false, changeHash: false});
             });
         },
@@ -1189,9 +1190,10 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
-            self.get_character(cid, [category]).done(function (c) {
-                self.simpleTextNewView.register(c, category, target, "#character?" + c.id);
+            self.get_character(cid, [category]).then(function (c) {
                 self.character.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
+                return self.simpleTextNewView.register(c, category, target, "#character?" + c.id);
+            }).then(function () {
                 $.mobile.changePage("#simpletext-new", {reverse: false, changeHash: false});
             });
         },
