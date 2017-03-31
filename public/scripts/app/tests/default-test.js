@@ -166,13 +166,13 @@ define([
                     return vampire.update_trait(trait);
                 }).done(function(){
                     expected_change_length++;
-                    return vampire.update_trait("Retainers: Specialized Now", 2, "backgrounds", 0, true);
+                    return vampire.update_trait("Retainers: Specialized Now", 2, "backgrounds", 0);
                 }).done(function(){
                     expected_change_length++;
-                    return vampire.update_trait("Retainers", 3, "backgrounds", 0, true);
+                    return vampire.update_trait("Retainers", 3, "backgrounds", 0);
                 }).done(function(){
                     expected_change_length++;
-                    return vampire.update_trait("Retainers: Specialized Now", 4, "backgrounds", 0, true);
+                    return vampire.update_trait("Retainers: Specialized Now", 4, "backgrounds", 0);
                 }).done(function(){
                     expected_change_length++;
                     return vampire.update_trait("Retainers", 4, "backgrounds", 0, true);
