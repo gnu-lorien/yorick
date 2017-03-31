@@ -7,10 +7,9 @@ define([
 	"backbone",
     "parse",
     "../models/SimpleTrait",
-    "../collections/DescriptionCollection",
-    "../models/Description",
-    "../collections/BNSMETV1_ClanRules"
-], function( $, Backbone, Parse, SimpleTrait, DescriptionCollection, Description, ClanRules ) {
+    "../collections/BNSMETV1_ClanRules",
+    "../helpers/DescriptionFetcher"
+], function( $, Backbone, Parse, SimpleTrait, ClanRules, DescriptionFetcher ) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
@@ -73,7 +72,7 @@ define([
                 self.switch_character_category_listening();
                 if (self.collection)
                     self.stopListening(self.collection);
-                self.collection = new DescriptionCollection;
+                self.collection = DescriptionFetcher(category);
                 self.listenTo(self.collection, "add", self.render);
                 self.listenTo(self.collection, "reset", self.render);
                 self.update_collection_query_and_fetch();
@@ -88,14 +87,7 @@ define([
 
         update_collection_query_and_fetch: function () {
             var self = this;
-            var q = new Parse.Query(Description);
-            q.equalTo("category", self.category).addAscending(["order", "name"]).limit(1000);
-            /*
-            var traitNames = _(self.character.get(self.category)).pluck("attributes").pluck("name").value();
-            q.notContainedIn("name", traitNames);
-            */
-            self.collection.query = q;
-            self.collection.fetch({reset: true});
+            self.collection.fetch_avoiding_wait();
         },
 
         // Renders all of the Category models on the UI
