@@ -55,6 +55,17 @@ define([
                 
                 return Parse.Promise.as(self);
             })
+        },
+        
+        fetch_avoiding_wait: function (options) {
+            var self = this;
+            var modelLength = self.models.length;
+            var p = self.fetch(options);
+            if (0 != modelLength) {
+                return Parse.Promise.as();
+            } else {
+                return p;
+            }
         }
     } );
     return Collection;

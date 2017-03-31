@@ -67,7 +67,7 @@ define([
         update_collection_query_and_fetch: function () {
             var self = this;
             Progress("Fetching " + self.category);
-            return self.collection.fetch().done(function () {
+            return self.collection.fetch_avoiding_wait().done(function () {
                 Progress();
             }).fail(PromiseFailReport);
         },
