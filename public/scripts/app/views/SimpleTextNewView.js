@@ -6,11 +6,10 @@ define([
 	"jquery",
 	"backbone",
     "parse",
-    "../collections/DescriptionCollection",
-    "../models/Description",
     "../helpers/Progress",
-    "../helpers/PromiseFailReport"
-], function( $, Backbone, Parse, DescriptionCollection, Description, Progress, PromiseFailReport ) {
+    "../helpers/PromiseFailReport",
+    "../helpers/DescriptionFetcher"
+], function( $, Backbone, Parse, Progress, PromiseFailReport, DescriptionFetcher ) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
@@ -52,7 +51,7 @@ define([
                 self.listenTo(self.character, "change:" + category, self.update_collection_query_and_fetch);
                 if (self.collection)
                     self.stopListening(self.collection);
-                self.collection = new DescriptionCollection;
+                self.collection = DescriptionFetcher(category);
                 self.listenTo(self.collection, "add", self.render);
                 self.listenTo(self.collection, "reset", self.render);
                 p = self.update_collection_query_and_fetch();
@@ -68,10 +67,7 @@ define([
         update_collection_query_and_fetch: function () {
             var self = this;
             Progress("Fetching " + self.category);
-            var q = new Parse.Query(Description);
-            q.equalTo("category", self.category);
-            self.collection.query = q;
-            return self.collection.fetch({reset: true}).done(function () {
+            return self.collection.fetch().done(function () {
                 Progress();
             }).fail(PromiseFailReport);
         },
