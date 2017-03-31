@@ -214,11 +214,7 @@ define([
         update_collection_query_and_fetch: function () {
             var self = this;
             var q = new Parse.Query(Description);
-            q.equalTo("category", self.category).addAscending(["order", "name"]).limit(1000);
-            /*
-            var traitNames = _(self.character.get(self.category)).pluck("attributes").pluck("name").value();
-            q.notContainedIn("name", traitNames);
-            */
+            q.equalTo("category", self.category);
             self.collection.query = q;
             self.collection.fetch({reset: true});
         },

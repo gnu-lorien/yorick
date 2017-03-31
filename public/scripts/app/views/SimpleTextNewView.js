@@ -7,8 +7,10 @@ define([
 	"backbone",
     "parse",
     "../collections/DescriptionCollection",
-    "../models/Description"
-], function( $, Backbone, Parse, DescriptionCollection, Description ) {
+    "../models/Description",
+    "../helpers/Progress",
+    "../helpers/PromiseFailReport"
+], function( $, Backbone, Parse, DescriptionCollection, Description, Progress, PromiseFailReport ) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
@@ -42,6 +44,8 @@ define([
                 changed = true;
             }
 
+            var p = Parse.Promise.as();
+            
             if (category != self.category) {
                 self.category = category;
                 self.stopListening(self.character);
@@ -51,22 +55,25 @@ define([
                 self.collection = new DescriptionCollection;
                 self.listenTo(self.collection, "add", self.render);
                 self.listenTo(self.collection, "reset", self.render);
-                self.update_collection_query_and_fetch();
+                p = self.update_collection_query_and_fetch();
                 changed = true;
             }
 
             if (changed) {
-                return self.render();
+                return p.then(function() { return self.render(); });
             }
-            return self;
+            return p.then(function() { return self; });
         },
 
         update_collection_query_and_fetch: function () {
             var self = this;
+            Progress("Fetching " + self.category);
             var q = new Parse.Query(Description);
-            q.equalTo("category", self.category).addAscending(["order", "name"]);
+            q.equalTo("category", self.category);
             self.collection.query = q;
-            self.collection.fetch({reset: true});
+            return self.collection.fetch({reset: true}).done(function () {
+                Progress();
+            }).fail(PromiseFailReport);
         },
 
         // Renders all of the Category models on the UI

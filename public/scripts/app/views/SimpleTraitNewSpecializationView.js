@@ -35,8 +35,7 @@ define([
                 var q = new Parse.Query(Description);
                 q
                     .equalTo("category", self.category)
-                    .startsWith("name", self.simpletrait.get_base_name())
-                    .addAscending(["order", "name"]);
+                    .startsWith("name", self.simpletrait.get_base_name());
                 self.collection.query = q;
                 return self.collection.fetch({reset: true}).then(function () {
                     return self.render();
