@@ -264,27 +264,31 @@ define([
 
         unpick_from_creation: function(category, picked_trait_id, pick_index, wait) {
             var self = this;
-            return self.fetch_all_creation_elements().then(function() {
-                return self.get_trait(category, picked_trait_id);
-            }).then(function (picked_trait) {
-                var picks_name = category + "_" + pick_index + "_picks";
-                var remaining_name = category + "_" + pick_index + "_remaining";
-                var creation = self.get("creation");
-                creation.remove(picks_name, picked_trait);
-                if (_.contains(self.get_sum_creation_categories(), category)) {
-                    var sum = _.sum(creation.get(picks_name), "attributes.value");
-                    creation.set(remaining_name, 7 - sum);
-                } else {
-                    creation.increment(remaining_name, 1);
-                }
-                var promises = Parse.Promise.when(creation.save(), self.remove_trait(picked_trait));
-                if (!wait) {
-                    return Parse.Promise.as(self);
-                }
-                return promises.then(function () {
-                    return Parse.Promise.as(self);
+            self._updateTraitWrapper = self._updateTraitWrapper || Parse.Promise.as();
+            self._updateTraitWrapper = self._updateTraitWrapper.always(function () {
+                return self.fetch_all_creation_elements().then(function() {
+                    return self.get_trait(category, picked_trait_id);
+                }).then(function (picked_trait) {
+                    var picks_name = category + "_" + pick_index + "_picks";
+                    var remaining_name = category + "_" + pick_index + "_remaining";
+                    var creation = self.get("creation");
+                    creation.remove(picks_name, picked_trait);
+                    if (_.contains(self.get_sum_creation_categories(), category)) {
+                        var sum = _.sum(creation.get(picks_name), "attributes.value");
+                        creation.set(remaining_name, 7 - sum);
+                    } else {
+                        creation.increment(remaining_name, 1);
+                    }
+                    var promises = Parse.Promise.when(creation.save(), self.remove_trait(picked_trait));
+                    if (!wait) {
+                        return Parse.Promise.as(self);
+                    }
+                    return promises.then(function () {
+                        return Parse.Promise.as(self);
+                    })
                 })
-            })
+            });
+            return self._updateTraitWrapper;
         },
 
         is_being_created: function() {
