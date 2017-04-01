@@ -49,7 +49,6 @@ define([
     "../views/TroupePortraitView",
     "text!../templates/footer.html",
     "../views/AdministrationUserView",
-    "../views/PasswordReset",
     "../views/CharacterApprovalView",
     "../helpers/InjectAuthData",
     //"../views/AdministrationUserPatronagesView",
@@ -114,7 +113,6 @@ define([
              TroupePortraitView,
              footer_html,
              AdministrationUserView,
-             PasswordResetView,
              CharacterApprovalView,
              InjectAuthData,
              AdministrationUserPatronagesView,
@@ -332,9 +330,11 @@ define([
 
         resetpassword: function() {
             var self = this;
-            self.resetPasswordView = self.resetPasswordView || new PasswordResetView({el: "#user-reset-password"});
-            self.resetPasswordView.render();
-            $.mobile.changePage("#user-reset-password", {reverse: false, changeHash: false});
+            require(["../views/PasswordReset"], function (PasswordResetView) {
+                self.resetPasswordView = self.resetPasswordView || new PasswordResetView({el: "#user-reset-password"});
+                self.resetPasswordView.render();
+                $.mobile.changePage("#user-reset-password", {reverse: false, changeHash: false});
+            });
         },
 
         profile: function() {
