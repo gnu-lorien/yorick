@@ -38,23 +38,14 @@ define([
     "../views/CharacterPortraitView",
     "../views/CharacterDeleteView",
     "../views/PlayerOptionsView",
-    "../views/TroupeNewView",
-    "../views/TroupesListView",
-    "../views/TroupeView",
-    "../views/UsersView",
     "../views/TroupeEditStaffView",
     "../models/Troupe",
     "../helpers/PromiseFailReport",
     "../views/TroupePortraitView",
     "text!../templates/footer.html",
-    "../views/AdministrationUserView",
     "../views/CharacterApprovalView",
     "../helpers/InjectAuthData",
-    //"../views/AdministrationUserPatronagesView",
-    "../views/AdministrationUserView",
     "../collections/Patronages",
-    "../views/PatronagesView",
-    "../views/PatronageView",
     "../collections/Users",
     "../models/Patronage",
     "../helpers/UserWreqr",
@@ -100,22 +91,14 @@ define([
              CharacterPortraitView,
              CharacterDeleteView,
              PlayerOptionsView,
-             TroupeNewView,
-             TroupesListView,
-             TroupeView,
-             UsersView,
              TroupeEditStaffView,
              Troupe,
              PromiseFailReport,
              TroupePortraitView,
              footer_html,
-             AdministrationUserView,
              CharacterApprovalView,
              InjectAuthData,
-             AdministrationUserPatronagesView,
              Patronages,
-             PatronagesView,
-             PatronageView,
              Users,
              Patronage,
              UserChannel,
@@ -696,110 +679,120 @@ define([
         administration_users: function() {
             var self = this;
             $.mobile.loading("show");
-            self.enforce_logged_in().then(function() {
-                self.set_back_button("#administration");
-                self.troupeAddStaffView = self.troupeAddStaffView || new UsersView({el: "#troupe-add-staff"});
-                self.troupeAddStaffView.register("#administration/user/<%= id %>");
-                $.mobile.changePage("#troupe-add-staff", {reverse: false, changeHash: false});
-            }).always(function() {
-                $.mobile.loading("hide");
+            self.set_back_button("#administration");
+            require(["../views/UsersView"], function (UsersView) {
+                self.enforce_logged_in().then(function() {
+                    self.troupeAddStaffView = self.troupeAddStaffView || new UsersView({el: "#troupe-add-staff"});
+                    self.troupeAddStaffView.register("#administration/user/<%= id %>");
+                    $.mobile.changePage("#troupe-add-staff", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                });
             });
         },
         
         administration_user: function(id) {
             var self = this;
             $.mobile.loading("show");
-            self.enforce_logged_in().then(function() {
-                self.set_back_button("#administration/users/all");
-                return Parse.Promise.when(
-                    new Parse.Query("User").get(id),
-                    self.get_patronages(),
-                    UserChannel.get_users());
-            }).then(function (user, patronages, users) {
-                var my_patronages = _.select(patronages.models, "attributes.owner.id", id);
-                self.administrationUserView = self.administrationUserView || new AdministrationUserView({patronages: patronages});
-                self.administrationUserView.register(user);
-                self.administrationUserView.patronages.reset(my_patronages);
-                $.mobile.changePage("#administration-user-view", {reverse: false, changeHash: false});
-            }).always(function() {
-                $.mobile.loading("hide");
-            }).fail(PromiseFailReport);
+            self.set_back_button("#administration/users/all");
+            require(["../views/AdministrationUserView"], function (AdministrationUserView) {
+                self.enforce_logged_in().then(function() {
+                    return Parse.Promise.when(
+                        new Parse.Query("User").get(id),
+                        self.get_patronages(),
+                        UserChannel.get_users());
+                }).then(function (user, patronages, users) {
+                    var my_patronages = _.select(patronages.models, "attributes.owner.id", id);
+                    self.administrationUserView = self.administrationUserView || new AdministrationUserView({patronages: patronages});
+                    self.administrationUserView.register(user);
+                    self.administrationUserView.patronages.reset(my_patronages);
+                    $.mobile.changePage("#administration-user-view", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
         },
         
         administration_user_patronages: function(id) {
             var self = this;
             $.mobile.loading("show");
-            self.enforce_logged_in().then(function() {
-                self.set_back_button("#administration/users/all");
-                return new Parse.Query("User").get(id);
-            }).then(function (user) {
-                self.administrationUserPatronagesView = self.administrationUserPatronagesView || new AdministrationUserPatronagesView({el: "#administration-user-patronages-view"});
-                self.administrationUserPatronagesView.register(user);
-                $.mobile.changePage("#administration-user-patronages-view", {reverse: false, changeHash: false});
-            }).always(function() {
-                $.mobile.loading("hide");
-            }).fail(PromiseFailReport);
+            self.set_back_button("#administration/users/all");
+            require(["../views/AdministrationUserView"], function (AdministrationUserPatronagesView) {
+                self.enforce_logged_in().then(function() {
+                    return new Parse.Query("User").get(id);
+                }).then(function (user) {
+                    self.administrationUserPatronagesView = self.administrationUserPatronagesView || new AdministrationUserPatronagesView({el: "#administration-user-patronages-view"});
+                    self.administrationUserPatronagesView.register(user);
+                    $.mobile.changePage("#administration-user-patronages-view", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
         },
         
         administration_patronages: function() {
             var self = this;
-            self.set_back_button("#administration");
             $.mobile.loading("show");
-            self.enforce_logged_in().then(function () {
-                return Parse.Promise.when(
-                    self.get_patronages(),
-                    UserChannel.get_users());
-            }).then(function (patronages, users) {
-                if (!_.has(self, "administrationPatronagesView")) {
-                    self.administrationPatronagesView = new PatronagesView({el: "#administration-patronages-view-list", collection: patronages});
-                    self.administrationPatronagesView.render();
-                }
-                $.mobile.changePage("#administration-patronages-view", {reverse: false, changeHash: false});
-            }).fail(PromiseFailReport).fail(function () {
-                $.mobile.loading("hide");
+            self.set_back_button("#administration");
+            require(["../views/PatronagesView"], function (PatronagesView) {
+                self.enforce_logged_in().then(function () {
+                    return Parse.Promise.when(
+                        self.get_patronages(),
+                        UserChannel.get_users());
+                }).then(function (patronages, users) {
+                    self.administrationPatronagesView = self.administrationPatronageView ||
+                        new PatronagesView({el: "#administration-patronages-view-list", collection: patronages}).render();
+                    $.mobile.changePage("#administration-patronages-view", {reverse: false, changeHash: false});
+                }).fail(PromiseFailReport).fail(function () {
+                    $.mobile.loading("hide");
+                });
             });
         },
 
         administration_patronage: function(id) {
             var self = this;
-            self.set_back_button("#administration/patronages");
             $.mobile.loading("show");
-            self.enforce_logged_in().then(function () {
-                return Parse.Promise.when(
-                    self.get_patronage(id),
-                    UserChannel.get_users());
-            }).then(function (patronage, users) {
-                if (self.administrationPatronageView) {
-                    self.administrationPatronageView.remove();
-                }
-                self.administrationPatronageView = new PatronageView({model: patronage});
-                self.administrationPatronageView.render();
-                $("#administration-patronage-view").find("div[role='main']").append(self.administrationPatronageView.el);
-                $.mobile.changePage("#administration-patronage-view", {reverse: false, changeHash: false});
-            }).fail(PromiseFailReport).fail(function () {
-                $.mobile.loading("hide");
+            self.set_back_button("#administration/patronages");
+            require(["../views/PatronageView"], function (PatronageView) {
+                self.enforce_logged_in().then(function () {
+                    return Parse.Promise.when(
+                        self.get_patronage(id),
+                        UserChannel.get_users());
+                }).then(function (patronage, users) {
+                    if (self.administrationPatronageView) {
+                        self.administrationPatronageView.remove();
+                    }
+                    self.administrationPatronageView = new PatronageView({model: patronage});
+                    self.administrationPatronageView.render();
+                    $("#administration-patronage-view").find("div[role='main']").append(self.administrationPatronageView.el);
+                    $.mobile.changePage("#administration-patronage-view", {reverse: false, changeHash: false});
+                }).fail(PromiseFailReport).fail(function () {
+                    $.mobile.loading("hide");
+                });
             });
         },
 
         administration_patronage_new: function(userid) {
             var self = this;
-            self.set_back_button("#administration/patronages");
             $.mobile.loading("show");
-            self.enforce_logged_in().then(function () {
-                return Parse.Promise.when(
-                    new Patronage,
-                    UserChannel.get_users());
-            }).then(function (patronage, users) {
-                if (self.administrationPatronageView) {
-                    self.administrationPatronageView.remove();
-                }
-                patronage.set("owner", users.get(userid));
-                self.administrationPatronageView = new PatronageView({model: patronage});
-                self.administrationPatronageView.render();
-                $("#administration-patronage-view").find("div[role='main']").append(self.administrationPatronageView.el);
-                $.mobile.changePage("#administration-patronage-view", {reverse: false, changeHash: false});
-            }).fail(PromiseFailReport).fail(function () {
-                $.mobile.loading("hide");
+            self.set_back_button("#administration/patronages");
+            require(["../views/PatronageView"], function (PatronageView) {
+                self.enforce_logged_in().then(function () {
+                    return Parse.Promise.when(
+                        new Patronage,
+                        UserChannel.get_users());
+                }).then(function (patronage, users) {
+                    if (self.administrationPatronageView) {
+                        self.administrationPatronageView.remove();
+                    }
+                    patronage.set("owner", users.get(userid));
+                    self.administrationPatronageView = new PatronageView({model: patronage});
+                    self.administrationPatronageView.render();
+                    $("#administration-patronage-view").find("div[role='main']").append(self.administrationPatronageView.el);
+                    $.mobile.changePage("#administration-patronage-view", {reverse: false, changeHash: false});
+                }).fail(PromiseFailReport).fail(function () {
+                    $.mobile.loading("hide");
+                });
             });
         },
 
@@ -1432,10 +1425,10 @@ define([
         
         troupesummarizecharacters: function(id, type) {
             var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#troupe/" + id);
             require(["../views/CharactersSummarizeListView"], function (CharactersSummarizeListView) {
-                $.mobile.loading("show");
                 self.enforce_logged_in().then(function() {
-                    self.set_back_button("#troupe/" + id);
                     var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
                     return get_troupe;
                 }).then(function (troupe, user) {
@@ -1531,10 +1524,10 @@ define([
 
         troupe_relationship_network: function(id) {
             var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#troupe/" + id);
             require(["../views/TroupeCharacterRelationshipsNetworkView"], function (TroupeCharacterRelationshipsNetworkView) {
-                $.mobile.loading("show");
                 self.enforce_logged_in().then(function() {
-                    self.set_back_button("#troupe/" + id);
                     var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
                     return get_troupe;
                 }).then(function (troupe, user) {
@@ -1578,58 +1571,66 @@ define([
         troupeaddstaff: function(id) {
             var self = this;
             $.mobile.loading("show");
-            self.enforce_logged_in().then(function() {
-                self.set_back_button("#troupe/" + id);
-                return new Parse.Query("Troupe").get(id);
-            }).then(function (troupe) {
-                self.troupeAddStaffView = self.troupeAddStaffView || new UsersView({el: "#troupe-add-staff"});
-                self.troupeAddStaffView.register("#troupe/" + troupe.id + "/staff/edit/<%= id %>");
-                $.mobile.changePage("#troupe-add-staff", {reverse: false, changeHash: false});
-            }).always(function() {
-                $.mobile.loading("hide");
+            self.set_back_button("#troupe/" + id);
+            require(["../views/UsersView"], function (UsersView) {
+                self.enforce_logged_in().then(function() {
+                    return new Parse.Query("Troupe").get(id);
+                }).then(function (troupe) {
+                    self.troupeAddStaffView = self.troupeAddStaffView || new UsersView({el: "#troupe-add-staff"});
+                    self.troupeAddStaffView.register("#troupe/" + troupe.id + "/staff/edit/<%= id %>");
+                    $.mobile.changePage("#troupe-add-staff", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                });
             });
         },
 
         troupe: function(id) {
             var self = this;
             $.mobile.loading("show");
-            self.enforce_logged_in().then(function() {
-                self.set_back_button("#troupes");
-                return new Parse.Query("Troupe").get(id);
-            }).then(function (troupe) {
-                self.troupeView = self.troupeView || new TroupeView({el: "#troupe"});
-                var is_st = Parse.User.current().get("storytellerinterface");
-                var is_ad = Parse.User.current().get("admininterface");
-                self.troupeView.register(troupe, !(is_st || is_ad));
-                $.mobile.changePage("#troupe", {reverse: false, changeHash: false});
-            }).always(function() {
-                $.mobile.loading("hide");
+            self.set_back_button("#troupes");
+            require(["../views/TroupeView"], function (TroupeView) {
+                self.enforce_logged_in().then(function() {
+                    return new Parse.Query("Troupe").get(id);
+                }).then(function (troupe) {
+                    self.troupeView = self.troupeView || new TroupeView({el: "#troupe"});
+                    var is_st = Parse.User.current().get("storytellerinterface");
+                    var is_ad = Parse.User.current().get("admininterface");
+                    self.troupeView.register(troupe, !(is_st || is_ad));
+                    $.mobile.changePage("#troupe", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                });
             });
         },
 
         troupes: function() {
             var self = this;
             $.mobile.loading("show");
-            self.enforce_logged_in().then(function() {
-                self.set_back_button("#");
-                self.troupesListView = self.troupesListView || new TroupesListView({el: "#troupes-list"}).render();
-                return self.troupesListView.register();
-            }).then(function () {
-                $.mobile.changePage("#troupes-list", {reverse: false, changeHash: false});
-            }).always(function() {
-                $.mobile.loading("hide");
+            self.set_back_button("#");
+            require(["../views/TroupesListView"], function (TroupesListView) {
+                self.enforce_logged_in().then(function() {
+                    self.troupesListView = self.troupesListView || new TroupesListView({el: "#troupes-list"}).render();
+                    return self.troupesListView.register();
+                }).then(function () {
+                    $.mobile.changePage("#troupes-list", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                });
             });
         },
 
         troupenew: function() {
             var self = this;
             $.mobile.loading("show");
-            self.enforce_logged_in().then(function() {
-                self.set_back_button("#troupes");
-                self.troupeNewView = self.troupeNewView || new TroupeNewView({el: "#troupe-new"}).render();
-                $.mobile.changePage("#troupe-new", {reverse: false, changeHash: false});
-            }).always(function() {
-                $.mobile.loading("hide");
+            self.set_back_button("#troupes");
+            require(["../views/TroupeNewView"], function (TroupeNewView) {
+                self.enforce_logged_in().then(function() {
+                    self.troupeNewView = self.troupeNewView || new TroupeNewView({el: "#troupe-new"}).render();
+                    $.mobile.changePage("#troupe-new", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                });
             });
         },
 
@@ -1657,10 +1658,10 @@ define([
         
         administration_characters_summarize: function() {
             var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#administration");
             require(["../views/CharactersSummarizeListView"], function (CharactersSummarizeListView) {
-                $.mobile.loading("show");
                 self.enforce_logged_in().then(function() {
-                    self.set_back_button("#administration");
                     return self.get_administrator_summarize_characters();
                 }).then(function() {
                     self.administrationSummarizeCharacters = self.administrationSummarizeCharacters || new CharactersSummarizeListView({collection:  self.characters.collection}).setup();
