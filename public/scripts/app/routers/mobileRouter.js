@@ -4,6 +4,7 @@
 /* global _ */
 // Includes file dependencies
 define([
+    "require",
 	"jquery",
 	"parse",
     "pretty",
@@ -19,7 +20,6 @@ define([
     "../collections/Vampires",
     "../views/CharacterView",
     "../views/SimpleTraitCategoryView",
-    "../views/SimpleTraitNewView",
     "../models/SimpleTrait",
     "../views/SimpleTraitChangeView",
     "../models/VampireCreation",
@@ -69,7 +69,8 @@ define([
     "../views/CharactersPrintView",
     "../views/CharactersSelectToPrintView",
     "../views/CharacterLongTextView"
-], function ($,
+], function (require,
+             $,
              Parse,
              pretty,
              Cookie,
@@ -84,7 +85,6 @@ define([
              Vampires,
              CharacterView,
              SimpleTraitCategoryView,
-             SimpleTraitNewView,
              SimpleTrait,
              SimpleTraitChangeView,
              VampireCreation,
@@ -160,7 +160,6 @@ define([
             this.character = new CharacterView({ el: "#character"});
 
             this.simpleTraitCategoryView = new SimpleTraitCategoryView({el: "#simpletraitcategory-all"});
-            this.simpleTraitNewView = new SimpleTraitNewView({el: "#simpletrait-new > div[role='main']"});
             this.simpleTraitChangeView = new SimpleTraitChangeView({el: "#simpletrait-change"});
             this.simpleTextNewView = new SimpleTextNewView({el: "#simpletext-new"});
             this.simpleTraitSpecializationView = new SimpleTraitSpecializationView({el: "#simpletrait-specialization"});
@@ -1252,12 +1251,15 @@ define([
             if ("new" == type) {
                 $.mobile.loading("show");
                 self.set_back_button("#simpletraits/" + category + "/" + cid + "/all");
-                self.get_character(cid, [category]).done(function (c) {
-                    return self.simpleTraitNewView.register(c, category);
-                }).then(function () {
-                    $.mobile.changePage("#simpletrait-new", {reverse: false, changeHash: false});
-                }).fail(function(error) {
-                    console.log(error.message);
+                require(["../views/SimpleTraitNewView"], function (SimpleTraitNewView) {
+                    self.simpleTraitNewView = self.simpleTraitNewView || new SimpleTraitNewView({el: "#simpletrait-new > div[role='main']"});
+                    self.get_character(cid, [category]).done(function (c) {
+                        return self.simpleTraitNewView.register(c, category);
+                    }).then(function () {
+                        $.mobile.changePage("#simpletrait-new", {reverse: false, changeHash: false});
+                    }).fail(function(error) {
+                        console.log(error.message);
+                    });
                 });
             }
         },
