@@ -1067,7 +1067,7 @@ define([
             if (self.lastadminchecktime) {
                 var now = new Date();
                 var timediff = now - self.lastadminchecktime;
-                if (timediff < 50000) {
+                if (timediff < 300000) {
                     check_admin_status = false;
                 }
             }
