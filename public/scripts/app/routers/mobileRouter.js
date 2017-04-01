@@ -1253,7 +1253,8 @@ define([
                 $.mobile.loading("show");
                 self.set_back_button("#simpletraits/" + category + "/" + cid + "/all");
                 self.get_character(cid, [category]).done(function (c) {
-                    self.simpleTraitNewView.register(c, category);
+                    return self.simpleTraitNewView.register(c, category);
+                }).then(function () {
                     $.mobile.changePage("#simpletrait-new", {reverse: false, changeHash: false});
                 }).fail(function(error) {
                     console.log(error.message);
