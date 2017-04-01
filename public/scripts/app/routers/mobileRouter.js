@@ -34,7 +34,6 @@ define([
     "../views/SignupView",
     "../views/LoginView",
     "../views/CharacterExperienceView",
-    "../views/UserSettingsProfileView",
     "../views/CharacterPortraitView",
     "../views/CharacterDeleteView",
     "../views/PlayerOptionsView",
@@ -87,7 +86,6 @@ define([
              SignupView,
              LoginView,
              CharacterExperienceView,
-             UserSettingsProfileView,
              CharacterPortraitView,
              CharacterDeleteView,
              PlayerOptionsView,
@@ -316,13 +314,16 @@ define([
 
         profile: function() {
             var self = this;
-            self.enforce_logged_in().then(function() {
-                return UserChannel.get_users();
-            }).then(function() {
-                self.set_back_button("#");
-                self.userSettingsProfileView = self.userSettingsProfileView || new UserSettingsProfileView().setup();
-                $.mobile.changePage("#user-settings-profile", {reverse: false, changeHash: false});
-            })
+            $.mobile.loading("show");
+            self.set_back_button("#");
+            require(["../views/UserSettingsProfileView"], function (UserSettingsProfileView) {
+                self.enforce_logged_in().then(function() {
+                    return UserChannel.get_users();
+                }).then(function() {
+                    self.userSettingsProfileView = self.userSettingsProfileView || new UserSettingsProfileView().setup();
+                    $.mobile.changePage("#user-settings-profile", {reverse: false, changeHash: false});
+                });
+            });
         },
 
         set_back_button: function(url) {
