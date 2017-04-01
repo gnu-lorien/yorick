@@ -1116,14 +1116,26 @@ define([
 
         _get_character: function(id, categories) {
             var self = this;
-            var q = new Parse.Query("Vampire").select("type");
-            return q.get(id).then(function (c) {
-                if (c.get("type") == "Werewolf") {
-                    return Werewolf.get_character(id, categories, self);
+            if (self.last_fetched_character_id == id) {
+                var p;
+                if (self.last_fetched_character_type == "Werewolf") {
+                    p = Werewolf.get_character(id, categories, self);
                 } else {
-                    return Vampire.get_character(id, categories, self);
-                }
-            }).then(self._check_character_mismatch);
+                    p = Vampire.get_character(id, categories, self);
+                }               
+                return p.then(self._check_character_mismatch);
+            } else {
+                var q = new Parse.Query("Vampire").select("type");
+                return q.get(id).then(function (c) {
+                    self.last_fetched_character_id = id;
+                    self.last_fetched_character_type = c.get("type");
+                    if (c.get("type") == "Werewolf") {
+                        return Werewolf.get_character(id, categories, self);
+                    } else {
+                        return Vampire.get_character(id, categories, self);
+                    }
+                }).then(self._check_character_mismatch);
+            }
         },
 
         simpletrait: function(category, cid, bid) {
