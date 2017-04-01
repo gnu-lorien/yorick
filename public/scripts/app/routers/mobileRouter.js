@@ -59,7 +59,6 @@ define([
     "../collections/Users",
     "../models/Patronage",
     "../helpers/UserWreqr",
-    "../views/CharactersSummarizeListView",
     "../views/CharacterRenameView",
     "../views/SimpleTraitNewSpecializationView",
     "../views/CharacterCreateSimpleTraitNewView",
@@ -122,7 +121,6 @@ define([
              Users,
              Patronage,
              UserChannel,
-             CharactersSummarizeListView,
              CharacterRenameView,
              SimpleTraitNewSpecializationView,
              CharacterCreateSimpleTraitNewView,
@@ -1438,20 +1436,22 @@ define([
         
         troupesummarizecharacters: function(id, type) {
             var self = this;
-            $.mobile.loading("show");
-            self.enforce_logged_in().then(function() {
-                self.set_back_button("#troupe/" + id);
-                var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
-                return get_troupe;
-            }).then(function (troupe, user) {
-                self.troupeSummarizeCharacters = self.troupeSummarizeCharacters || new CharactersSummarizeListView({collection: new Vampires}).setup();
-                self.troupeCharacters.register("#troupe/" + id + "/character/<%= character_id %>");
-                return self.get_troupe_summarize_characters(troupe, self.troupeSummarizeCharacters.collection);
-            }).then(function() {
-                $.mobile.changePage("#troupe-summarize-characters-all", {reverse: false, changeHash: false});
-            }).always(function() {
-                $.mobile.loading("hide");
-            }).fail(PromiseFailReport);
+            require(["../views/CharactersSummarizeListView"], function (CharactersSummarizeListView) {
+                $.mobile.loading("show");
+                self.enforce_logged_in().then(function() {
+                    self.set_back_button("#troupe/" + id);
+                    var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
+                    return get_troupe;
+                }).then(function (troupe, user) {
+                    self.troupeSummarizeCharacters = self.troupeSummarizeCharacters || new CharactersSummarizeListView({collection: new Vampires}).setup();
+                    self.troupeCharacters.register("#troupe/" + id + "/character/<%= character_id %>");
+                    return self.get_troupe_summarize_characters(troupe, self.troupeSummarizeCharacters.collection);
+                }).then(function() {
+                    $.mobile.changePage("#troupe-summarize-characters-all", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
         },
         
         get_troupe_print_options: function() {
@@ -1658,17 +1658,19 @@ define([
         
         administration_characters_summarize: function() {
             var self = this;
-            $.mobile.loading("show");
-            self.enforce_logged_in().then(function() {
-                self.set_back_button("#administration");
-                return self.get_administrator_summarize_characters();
-            }).then(function() {
-                self.administrationSummarizeCharacters = self.administrationSummarizeCharacters || new CharactersSummarizeListView({collection:  self.characters.collection}).setup();
-                self.troupeCharacters.register("#administration/character/<%= character_id %>");
-                $.mobile.changePage("#troupe-summarize-characters-all", {reverse: false, changeHash: false});
-            }).always(function() {
-                $.mobile.loading("hide");
-            }).fail(PromiseFailReport);
+            require(["../views/CharactersSummarizeListView"], function (CharactersSummarizeListView) {
+                $.mobile.loading("show");
+                self.enforce_logged_in().then(function() {
+                    self.set_back_button("#administration");
+                    return self.get_administrator_summarize_characters();
+                }).then(function() {
+                    self.administrationSummarizeCharacters = self.administrationSummarizeCharacters || new CharactersSummarizeListView({collection:  self.characters.collection}).setup();
+                    self.troupeCharacters.register("#administration/character/<%= character_id %>");
+                    $.mobile.changePage("#troupe-summarize-characters-all", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
         },
 
 
