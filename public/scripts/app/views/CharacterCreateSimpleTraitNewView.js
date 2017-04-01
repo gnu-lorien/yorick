@@ -50,7 +50,7 @@ define([
                 } else {
                     self.filterRule = filterRule;
                 }
-                change = true;
+                changed = true;
             }
 
             if (free_value !== self.free_value && free_value != _) {
