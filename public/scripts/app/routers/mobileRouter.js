@@ -36,7 +36,6 @@ define([
     "../views/CharacterExperienceView",
     "../views/UserSettingsProfileView",
     "../views/CharacterPortraitView",
-    "../views/TroupeCharacterRelationshipsNetworkView",
     "../views/CharacterDeleteView",
     "../views/PlayerOptionsView",
     "../views/TroupeNewView",
@@ -99,7 +98,6 @@ define([
              CharacterExperienceView,
              UserSettingsProfileView,
              CharacterPortraitView,
-             TroupeCharacterRelationshipsNetworkView,
              CharacterDeleteView,
              PlayerOptionsView,
              TroupeNewView,
@@ -176,8 +174,6 @@ define([
 
             this.loginView = new LoginView();
             this.signupView = new SignupView();
-
-            this.troupeCharacterRelationshipsNetworkView = new TroupeCharacterRelationshipsNetworkView({el: "#troupe-character-relationships-network"});
 
             /*
             if (!Parse.User.current()) {
@@ -1535,19 +1531,22 @@ define([
 
         troupe_relationship_network: function(id) {
             var self = this;
-            $.mobile.loading("show");
-            self.enforce_logged_in().then(function() {
-                self.set_back_button("#troupe/" + id);
-                var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
-                return get_troupe;
-            }).then(function (troupe, user) {
-                return self.get_troupe_characters(troupe);
-            }).then(function(characters) {
-                return self.troupeCharacterRelationshipsNetworkView.register(characters);
-            }).always(function() {
-                $.mobile.changePage("#troupe-character-relationships-network", {reverse: false, changeHash: false});
-                $.mobile.loading("hide");
-            }).fail(PromiseFailReport);
+            require(["../views/TroupeCharacterRelationshipsNetworkView"], function (TroupeCharacterRelationshipsNetworkView) {
+                $.mobile.loading("show");
+                self.enforce_logged_in().then(function() {
+                    self.set_back_button("#troupe/" + id);
+                    var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
+                    return get_troupe;
+                }).then(function (troupe, user) {
+                    return self.get_troupe_characters(troupe);
+                }).then(function(characters) {
+                    self.tcrnv = self.tcrnv || new TroupeCharacterRelationshipsNetworkView({el: "#troupe-character-relationships-network"});
+                    return self.tcrnv.register(characters);
+                }).always(function() {
+                    $.mobile.changePage("#troupe-character-relationships-network", {reverse: false, changeHash: false});
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
         },
 
         troupeeditstaff: function(id, uid) {
