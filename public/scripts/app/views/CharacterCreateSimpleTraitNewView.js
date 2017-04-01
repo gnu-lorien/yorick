@@ -33,6 +33,7 @@ define([
 
         register: function(character, category, free_value, redirect, filterRule, specializationRedirect) {
             var self = this;
+            self.delegateEvents();
             var changed = false;
             var redirect = redirect || "#simpletrait/<%= self.category %>/<%= self.character.id %>/<%= b.linkId() %>";
             var specializationRedirect = specializationRedirect || "#simpletrait/specialize/<%= self.category %>/<%= self.character.id %>/<%= b.linkId() %>";
@@ -194,6 +195,8 @@ define([
 
         clicked: function(e) {
             var self = this;
+            e.preventDefault();
+            self.undelegateEvents();
             $.mobile.loading("show");
             var pickedId = $(e.target).attr("backendId");
             var description = self.collection.get(pickedId);
