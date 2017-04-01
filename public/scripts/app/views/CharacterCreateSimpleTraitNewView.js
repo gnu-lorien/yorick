@@ -6,10 +6,12 @@ define([
 	"jquery",
 	"backbone",
     "parse",
+    "../helpers/Progress",
+    "../helpers/PromiseFailReport",
     "../models/SimpleTrait",
     "../collections/BNSMETV1_ClanRules",
     "../helpers/DescriptionFetcher"
-], function( $, Backbone, Parse, SimpleTrait, ClanRules, DescriptionFetcher ) {
+], function( $, Backbone, Parse, Progress, PromiseFailReport, SimpleTrait, ClanRules, DescriptionFetcher ) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
@@ -67,6 +69,8 @@ define([
                 changed = true;
             }
 
+            var p = Parse.Promise.as();
+
             if (category != self.category) {
                 self.category = category;
                 self.switch_character_category_listening();
@@ -75,19 +79,22 @@ define([
                 self.collection = DescriptionFetcher(category);
                 self.listenTo(self.collection, "add", self.render);
                 self.listenTo(self.collection, "reset", self.render);
-                self.update_collection_query_and_fetch();
+                p = self.update_collection_query_and_fetch();
                 changed = true;
             }
 
             if (changed) {
-                return self.render();
+                return p.then(function() { self.render(); });
             }
-            return self;
+            return p.then(function() { return self; });
         },
 
         update_collection_query_and_fetch: function () {
             var self = this;
-            self.collection.fetch_avoiding_wait();
+            Progress("Fetching " + self.category);
+            return self.collection.fetch_avoiding_wait().done(function () {
+                Progress();
+            }).fail(PromiseFailReport);
         },
 
         // Renders all of the Category models on the UI

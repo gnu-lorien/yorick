@@ -502,14 +502,15 @@ define([
                 } else if ("wta_gifts" == category) {
                     specialCategory = ["affinity", "show_only_value_1"];
                 }
-                self.characterCreateSimpleTraitNewView.register(
+                self.characterCreateView.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
+                return self.characterCreateSimpleTraitNewView.register(
                     c,
                     category,
                     i,
                     "#charactercreate/<%= self.character.id %>",
                     specialCategory,
                     "#charactercreate/simpletraits/<%= self.category %>/<%= self.character.id %>/specialize/<%= b.linkId() %>/" + i);
-                self.characterCreateView.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
+            }).then(function () {
                 $.mobile.changePage("#character-create-simpletrait-new", {reverse: false, changeHash: false});
             });
         },
