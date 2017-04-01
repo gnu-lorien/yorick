@@ -718,23 +718,35 @@ define([
             return self.save();
         },
 
-        initialize_troupe_membership: function() {
+        initialize_troupe_membership: function(throttle) {
             var self = this;
-            self.troupe_ids = [];
-            if (_.isUndefined(self.troupes)) {
-                // Never been set up in the first place
-                self.troupes = self.relation("troupes");
-                self.troupes.targetClassName = "Troupe";
-            } else if (_.isNull(self.troupes.parent)) {
-                // Was trickily overwritten for the sake of get_transformed
-                self.troupes.parent = self;
+            var initialize = true;
+            if (self.troupe_ids && throttle) {
+                var timediff = new Date() - self.last_initialized_troupe_membership;
+                if (timediff < 50000) {
+                    initialize = false;
+                }
             }
-            var q = self.troupes.query();
-            return q.each(function (troupe) {
-                self.troupe_ids.push(troupe.id);
-            }).then(function () {
+            if (initialize) {
+                self.last_initialized_troupe_membership = new Date();
+                self.troupe_ids = [];
+                if (_.isUndefined(self.troupes)) {
+                    // Never been set up in the first place
+                    self.troupes = self.relation("troupes");
+                    self.troupes.targetClassName = "Troupe";
+                } else if (_.isNull(self.troupes.parent)) {
+                    // Was trickily overwritten for the sake of get_transformed
+                    self.troupes.parent = self;
+                }
+                var q = self.troupes.query();
+                return q.each(function (troupe) {
+                    self.troupe_ids.push(troupe.id);
+                }).then(function () {
+                    return Parse.Promise.as(self);
+                })
+            } else {
                 return Parse.Promise.as(self);
-            })
+            }
         },
 
         broken_update_troupe_acls: function() {
