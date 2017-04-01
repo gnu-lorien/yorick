@@ -1063,19 +1063,32 @@ define([
             } else {
                 console.log("Something is blocking trackJs. No user debugging available.");
             }
-            var adminq = (new Parse.Query(Parse.Role)).equalTo("users", Parse.User.current()).equalTo("name", "Administrator");
-            var siteadminq = (new Parse.Query(Parse.Role)).equalTo("users", Parse.User.current()).equalTo("name", "SiteAdministrator");
-            var q = Parse.Query.or(adminq, siteadminq);
-            return q.count().then(function (count) {
-                var isadministrator = count ? true : false;
-                var user = Parse.User.current();
-                if (user.get("admininterface") != isadministrator) {
-                    user.set("admininterface", isadministrator);
-                    InjectAuthData(user);
-                    return user.save();
+            var check_admin_status = true;
+            if (self.lastadminchecktime) {
+                var now = new Date();
+                var timediff = now - self.lastadminchecktime;
+                if (timediff < 50000) {
+                    check_admin_status = false;
                 }
+            }
+            if (check_admin_status) {
+                self.lastadminchecktime = new Date();
+                var adminq = (new Parse.Query(Parse.Role)).equalTo("users", Parse.User.current()).equalTo("name", "Administrator");
+                var siteadminq = (new Parse.Query(Parse.Role)).equalTo("users", Parse.User.current()).equalTo("name", "SiteAdministrator");
+                var q = Parse.Query.or(adminq, siteadminq);
+                return q.count().then(function (count) {
+                    var isadministrator = count ? true : false;
+                    var user = Parse.User.current();
+                    if (user.get("admininterface") != isadministrator) {
+                        user.set("admininterface", isadministrator);
+                        InjectAuthData(user);
+                        return user.save();
+                    }
+                    return Parse.Promise.as(Parse.User.current());
+                });
+            } else {
                 return Parse.Promise.as(Parse.User.current());
-            });
+            }
         },
 
         get_character: function(id, categories) {
