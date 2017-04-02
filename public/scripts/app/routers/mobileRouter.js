@@ -132,7 +132,7 @@ define([
             this.characters = new CharactersListView( {el: "#characters-all", collection: new Vampires});
             this.troupeCharacters = new CharactersListView({el: "#troupe-characters-all", collection: new Vampires});
 
-            this.character = new CharacterView({ el: "#character"});
+            this.characterMainPage = new CharacterView({ el: "#character"});
 
             this.simpleTraitCategoryView = new SimpleTraitCategoryView({el: "#simpletraitcategory-all"});
             this.simpleTraitChangeView = new SimpleTraitChangeView({el: "#simpletrait-change"});
@@ -650,13 +650,13 @@ define([
         },
         
         show_character_helper: function(id, back_url) {
+            var self = this;
             $.mobile.loading("show");
-            this.set_back_button(back_url);
-            var c = this.character;
-            this.get_character(id).done(function (m) {
-                c.model = m;
-                c.render();
-                c.scroll_back_after_page_change();
+            self.set_back_button(back_url);
+            self.get_character(id).done(function (m) {
+                self.characterMainPage.model = m;
+                self.characterMainPage.render();
+                self.characterMainPage.scroll_back_after_page_change();
                 $.mobile.changePage("#character", {reverse: false, changeHash:false});
             }).then(function () {
                 $.mobile.loading("hide");
