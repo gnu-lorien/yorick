@@ -25,7 +25,6 @@ define([
     "../views/SimpleTextNewView",
     "../views/SimpleTraitSpecializationView",
     "../views/CharacterLogView",
-    "../views/CharacterHistoryView",
     "../views/SignupView",
     "../views/LoginView",
     "../views/CharacterExperienceView",
@@ -37,7 +36,6 @@ define([
     "../helpers/PromiseFailReport",
     "../views/TroupePortraitView",
     "text!../templates/footer.html",
-    "../views/CharacterApprovalView",
     "../helpers/InjectAuthData",
     "../collections/Patronages",
     "../collections/Users",
@@ -48,7 +46,6 @@ define([
     "../views/CharacterCreateSimpleTraitNewView",
     "../views/DescriptionsView",
     "../models/Werewolf",
-    "../views/CharactersPrintView",
     "../views/CharactersSelectToPrintView",
     "../views/CharacterLongTextView"
 ], function (require,
@@ -72,7 +69,6 @@ define([
              SimpleTextNewView,
              SimpleTraitSpecializationView,
              CharacterLogView,
-             CharacterHistoryView,
              SignupView,
              LoginView,
              CharacterExperienceView,
@@ -84,7 +80,6 @@ define([
              PromiseFailReport,
              TroupePortraitView,
              footer_html,
-             CharacterApprovalView,
              InjectAuthData,
              Patronages,
              Users,
@@ -95,7 +90,6 @@ define([
              CharacterCreateSimpleTraitNewView,
              DescriptionsView,
              Werewolf,
-             CharactersPrintView,
              CharactersSelectToPrintView,
              CharacterLongTextView
 ) {
@@ -125,11 +119,9 @@ define([
 
             this.characterCostsView = new CharacterCostsView({el: "#character-costs"});
             this.characterLogView = new CharacterLogView({el: "#character-log"});
-            this.characterHistoryView = new CharacterHistoryView({el: "#character-history"});
             this.characterExperienceView = new CharacterExperienceView({el: "#experience-notations-all"});
             this.characterPortraitView = new CharacterPortraitView({el: "#character-portrait"});
             this.characterDeleteView = new CharacterDeleteView({el: "#character-delete"});
-            this.characterApprovalView = new CharacterApprovalView({el: "#character-approval > div[role='main']"});
 
             this.loginView = new LoginView();
             this.signupView = new SignupView();
@@ -348,28 +340,34 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
-            self.get_character(cid, "all").then(function (character) {
-                self.characterHistoryView.register(character, id).then(function () {
+            require(["../views/CharacterHistoryView"], function (CharacterHistoryView) {
+                self.get_character(cid, "all").then(function (character) {
+                    self.characterHistoryView = self.characterHistoryView || new CharacterHistoryView({el: "#character-history"});
+                    return self.characterHistoryView.register(character, id);
+                }).then(function () {
                     var activePage = $(".ui-page-active").attr("id");
                     var r = $.mobile.changePage("#character-history", {reverse: false, changeHash: false});
                     $.mobile.loading("hide");
-                });
-            }).fail(PromiseFailReport);
+                }).fail(PromiseFailReport);
+            });
         },
 
         characterapproval: function(cid) {
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
-            self.get_character(cid, "all").then(function (character) {
-                return character.fetch_long_text("extended_print_text");
-            }).then(function (character) {
-                self.characterApprovalView.register(character).then(function () {
+            require(["../views/CharacterApprovalView"], function (CharacterApprovalView) {
+                self.get_character(cid, "all").then(function (character) {
+                    return character.fetch_long_text("extended_print_text");
+                }).then(function (character) {
+                    self.characterApprovalView = self.characterApprovalView || new CharacterApprovalView({el: "#character-approval > div[role='main']"});
+                    return self.characterApprovalView.register(character);
+                }).then(function () {
                     var activePage = $(".ui-page-active").attr("id");
                     var r = $.mobile.changePage("#character-approval", {reverse: false, changeHash: false});
                     $.mobile.loading("hide");
-                });
-            }).fail(PromiseFailReport);
+                }).fail(PromiseFailReport);
+            });
         },
 
         withCharacterPrintView: function(cb) {
@@ -1485,31 +1483,33 @@ define([
         troupe_print_characters: function(id, type) {
             var self = this;
             $.mobile.loading("show");
-            self.enforce_logged_in().then(function() {
-                if ("selected" == type) {
-                    self.set_back_button("#troupe/" + id + "/characters/selecttoprint/all");
-                } else {
-                    self.set_back_button("#troupe/" + id);
-                }
-                var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
-                return get_troupe;
-            }).then(function (troupe, user) {
-                self.troupePrintCharacters = self.troupePrintCharacters || new CharactersPrintView({
-                    collection: new Vampires,
-                    el: "#troupe-print-characters-all > div[role='main']",
-                    print_options: self.get_troupe_print_options()
-                }).setup();
-                self.troupeCharacters.register("#troupe/" + id + "/character/<%= character_id %>");
-                if ("selected" == type && self.troupeSelectToPrintCharacters) {
-                    self.troupePrintCharacters.collection.reset(self.troupeSelectToPrintCharacters.get_filtered());
-                } else {
-                    return self.get_troupe_summarize_characters(troupe, self.troupePrintCharacters.collection);
-                }
-            }).then(function() {
-                $.mobile.changePage("#troupe-print-characters-all", {reverse: false, changeHash: false});
-            }).always(function() {
-                $.mobile.loading("hide");
-            }).fail(PromiseFailReport);
+            if ("selected" == type) {
+                self.set_back_button("#troupe/" + id + "/characters/selecttoprint/all");
+            } else {
+                self.set_back_button("#troupe/" + id);
+            }
+            require(["../views/CharactersPrintView"], function (CharactersPrintView) {
+                self.enforce_logged_in().then(function() {
+                    var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
+                    return get_troupe;
+                }).then(function (troupe, user) {
+                    self.troupePrintCharacters = self.troupePrintCharacters || new CharactersPrintView({
+                        collection: new Vampires,
+                        el: "#troupe-print-characters-all > div[role='main']",
+                        print_options: self.get_troupe_print_options()
+                    }).setup();
+                    self.troupeCharacters.register("#troupe/" + id + "/character/<%= character_id %>");
+                    if ("selected" == type && self.troupeSelectToPrintCharacters) {
+                        self.troupePrintCharacters.collection.reset(self.troupeSelectToPrintCharacters.get_filtered());
+                    } else {
+                        return self.get_troupe_summarize_characters(troupe, self.troupePrintCharacters.collection);
+                    }
+                }).then(function() {
+                    $.mobile.changePage("#troupe-print-characters-all", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
         },
 
         troupe_portrait: function(id) {
