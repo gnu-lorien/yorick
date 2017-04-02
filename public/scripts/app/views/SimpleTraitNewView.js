@@ -11,12 +11,13 @@ define([
     "backform",
     "marionette",
     "../models/SimpleTrait",
-    "../collections/DescriptionCollection",
-    "../models/Description",
     "../collections/BNSMETV1_ClanRules",
     "marionette",
     "text!../templates/simpletrait-new-base.html",
     "text!../templates/simpletrait-new-list.html",
+    "../helpers/Progress",
+    "../helpers/PromiseFailReport",
+    "../helpers/DescriptionFetcher"
 ], function(
     $,
     Backbone,
@@ -24,12 +25,13 @@ define([
     Backform,
     Marionette,
     SimpleTrait,
-    DescriptionCollection,
-    Description,
     ClanRules,
     Marionette,
     simpletrait_new_base_html,
-    simpletrait_new_list_html
+    simpletrait_new_list_html,
+    Progress,
+    PromiseFailReport,
+    DescriptionFetcher
 ) {
 
     var View = Marionette.ItemView.extend( {
@@ -193,34 +195,32 @@ define([
                 changed = true;
             }
 
+            var p = Parse.Promise.as();
+
             if (category != self.category) {
                 self.category = category;
                 self.switch_character_category_listening();
                 if (self.collection)
                     self.stopListening(self.collection);
-                self.collection = new DescriptionCollection;
+                self.collection = DescriptionFetcher(category);
                 self.listenTo(self.collection, "add", self.render);
                 self.listenTo(self.collection, "reset", self.render);
-                self.update_collection_query_and_fetch();
+                p = self.update_collection_query_and_fetch();
                 changed = true;
             }
 
             if (changed) {
-                return self.render();
+                return p.then(function() { return self.render(); });
             }
-            return self;
+            return p.then(function() { return self; });
         },
 
         update_collection_query_and_fetch: function () {
             var self = this;
-            var q = new Parse.Query(Description);
-            q.equalTo("category", self.category).addAscending(["order", "name"]).limit(1000);
-            /*
-            var traitNames = _(self.character.get(self.category)).pluck("attributes").pluck("name").value();
-            q.notContainedIn("name", traitNames);
-            */
-            self.collection.query = q;
-            self.collection.fetch({reset: true});
+            Progress("Fetching " + self.category);
+            return self.collection.fetch_avoiding_wait().done(function () {
+                Progress();
+            }).fail(PromiseFailReport);
         },
 
         onRender: function() {
@@ -331,7 +331,7 @@ define([
             }
             
             self.view = new View({gift_filter_options: self.gift_filter_options});
-            self.view.register(
+            var viewpromise = self.view.register(
                 character,
                 category,
                 free_value,
@@ -341,6 +341,8 @@ define([
             self.showChildView('list', self.view);
                 
             self.$el.enhanceWithin();
+            
+            return viewpromise;
         },
 
     });

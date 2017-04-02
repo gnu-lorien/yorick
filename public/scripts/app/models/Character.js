@@ -94,99 +94,103 @@ define([
                 experience_cost_type,
                 experience_cost_modifier) {
             var self = this;
-            var modified_trait, name, serverData, toSave = [];
-            if (!_.isString(nameOrTrait)) {
-                modified_trait = nameOrTrait;
-                category = modified_trait.get("category");
-            } else {
-                name = nameOrTrait;
-            };
-            if (_.isUndefined(wait)) {
-                wait = true;
-            }
-            self.ensure_category(category);
-            return Parse.Object.fetchAllIfNeeded(self.get_category_for_fetch(category)).then(function() {
+            self._updateTraitWrapper = self._updateTraitWrapper || Parse.Promise.as();
+            self._updateTraitWrapper = self._updateTraitWrapper.always(function () {
+                var modified_trait, name, serverData, toSave = [];
                 if (!_.isString(nameOrTrait)) {
-                    if (!_.contains(self.get(category), modified_trait)) {
-                        return Parse.Promise.error({code:0, message:"Provided trait not already in Vampire as expected"});
-                    }
-                    if (modified_trait.dirty("name")) {
-                        var matching_names = _.select(
-                            _.without(self.get(category), modified_trait),
-                            "attributes.name",
-                            modified_trait.get("name"));
-                        if (0 != matching_names.length) {
-                            try {
-                                modified_trait.set("name", modified_trait._serverData.name);
-                                return Parse.Promise.error({
-                                    code: 1,
-                                    message: "Name matches an existing trait. Restoring original name"
-                                });
-                            } catch (e) {
-                                 return Parse.Promise.error({
-                                    code: 2,
-                                    message: "Name matches an existing trait. Failed to restore original name. " + e
-                                });
+                    modified_trait = nameOrTrait;
+                    category = modified_trait.get("category");
+                } else {
+                    name = nameOrTrait;
+                };
+                if (_.isUndefined(wait)) {
+                    wait = true;
+                }
+                self.ensure_category(category);
+                return Parse.Object.fetchAllIfNeeded(self.get_category_for_fetch(category)).then(function() {
+                    if (!_.isString(nameOrTrait)) {
+                        if (!_.contains(self.get(category), modified_trait)) {
+                            return Parse.Promise.error({code:0, message:"Provided trait not already in Vampire as expected"});
+                        }
+                        if (modified_trait.dirty("name")) {
+                            var matching_names = _.select(
+                                _.without(self.get(category), modified_trait),
+                                "attributes.name",
+                                modified_trait.get("name"));
+                            if (0 != matching_names.length) {
+                                try {
+                                    modified_trait.set("name", modified_trait._serverData.name);
+                                    return Parse.Promise.error({
+                                        code: 1,
+                                        message: "Name matches an existing trait. Restoring original name"
+                                    });
+                                } catch (e) {
+                                     return Parse.Promise.error({
+                                        code: 2,
+                                        message: "Name matches an existing trait. Failed to restore original name. " + e
+                                    });
+                                }
                             }
                         }
-                    }
-                } else {
-                    modified_trait = new SimpleTrait;
-                    _.each(self.get(category), function (st) {
-                        if (_.isEqual(st.get("name"), name)) {
-                            modified_trait = st;
-                        }
-                    });
-                    modified_trait.setACL(self.get_me_acl());
-                    var TempVampire = Parse.Object.extend("Vampire");
-                    modified_trait.set({"name": name,
-                        "value": value || free_value,
-                        "category": category,
-                        "owner": new TempVampire({id: self.id}),
-                        "free_value": free_value || 0,
-                    });
-                    if (experience_cost_type) {
-                        modified_trait.set("experience_cost_type", experience_cost_type);
-                        modified_trait.set("experience_cost_modifier", _.parseInt(experience_cost_modifier));
-                    }
-                }
-                var cost = self.calculate_trait_cost(modified_trait);
-                var spend = self.calculate_trait_to_spend(modified_trait);
-                if (!_.isFinite(spend)) {
-                    spend = 0;
-                }
-                modified_trait.set("cost", cost);
-                self.increment("change_count");
-                self.addUnique(category, modified_trait, {silent: true});
-
-                var minimumPromise = self._update_creation(category, modified_trait, free_value).then(function() {
-                    return self.save();
-                }).then(function() {
-                    if (0 != spend) {
-                        return self.add_experience_notation({
-                            alteration_spent: spend,
-                            reason: "Update " + modified_trait.get("name") + " to " + modified_trait.get("value"),
+                    } else {
+                        modified_trait = new SimpleTrait;
+                        _.each(self.get(category), function (st) {
+                            if (_.isEqual(st.get("name"), name)) {
+                                modified_trait = st;
+                            }
                         });
+                        modified_trait.setACL(self.get_me_acl());
+                        var TempVampire = Parse.Object.extend("Vampire");
+                        modified_trait.set({"name": name,
+                            "value": value || free_value,
+                            "category": category,
+                            "owner": new TempVampire({id: self.id}),
+                            "free_value": free_value || 0,
+                        });
+                        if (experience_cost_type) {
+                            modified_trait.set("experience_cost_type", experience_cost_type);
+                            modified_trait.set("experience_cost_modifier", _.parseInt(experience_cost_modifier));
+                        }
                     }
-                    return Parse.Promise.as();
-                }).then(function() {
-                    console.log("Finished saving character");
-                    return Parse.Promise.as(self);
-                }).fail(function (errors) {
-                    console.log("Failing to save vampire because of " + JSON.stringify(errors));
-                    PromiseFailReport(errors);
-                })
-                var returnPromise;
-                if (wait) {
-                    returnPromise = minimumPromise;
-                } else {
-                    returnPromise = Parse.Promise.as(self);
-                }
-                return returnPromise.then(function () {
-                    self.trigger("change:" + category);
-                    return Parse.Promise.as(modified_trait, self);
+                    var cost = self.calculate_trait_cost(modified_trait);
+                    var spend = self.calculate_trait_to_spend(modified_trait);
+                    if (!_.isFinite(spend)) {
+                        spend = 0;
+                    }
+                    modified_trait.set("cost", cost);
+                    self.increment("change_count");
+                    self.addUnique(category, modified_trait, {silent: true});
+    
+                    var minimumPromise = self._update_creation(category, modified_trait, free_value).then(function() {
+                        return self.save();
+                    }).then(function() {
+                        if (0 != spend) {
+                            return self.add_experience_notation({
+                                alteration_spent: spend,
+                                reason: "Update " + modified_trait.get("name") + " to " + modified_trait.get("value"),
+                            });
+                        }
+                        return Parse.Promise.as();
+                    }).then(function() {
+                        console.log("Finished saving character");
+                        return Parse.Promise.as(self);
+                    }).fail(function (errors) {
+                        console.log("Failing to save vampire because of " + JSON.stringify(errors));
+                        PromiseFailReport(errors);
+                    })
+                    var returnPromise;
+                    if (wait) {
+                        returnPromise = minimumPromise;
+                    } else {
+                        returnPromise = Parse.Promise.as(self);
+                    }
+                    return returnPromise.then(function () {
+                        self.trigger("change:" + category);
+                        return Parse.Promise.as(modified_trait, self);
+                    });
                 });
             });
+            return self._updateTraitWrapper;
         },
 
         update_text: function(target, value) {
@@ -260,27 +264,31 @@ define([
 
         unpick_from_creation: function(category, picked_trait_id, pick_index, wait) {
             var self = this;
-            return self.fetch_all_creation_elements().then(function() {
-                return self.get_trait(category, picked_trait_id);
-            }).then(function (picked_trait) {
-                var picks_name = category + "_" + pick_index + "_picks";
-                var remaining_name = category + "_" + pick_index + "_remaining";
-                var creation = self.get("creation");
-                creation.remove(picks_name, picked_trait);
-                if (_.contains(self.get_sum_creation_categories(), category)) {
-                    var sum = _.sum(creation.get(picks_name), "attributes.value");
-                    creation.set(remaining_name, 7 - sum);
-                } else {
-                    creation.increment(remaining_name, 1);
-                }
-                var promises = Parse.Promise.when(creation.save(), self.remove_trait(picked_trait));
-                if (!wait) {
-                    return Parse.Promise.as(self);
-                }
-                return promises.then(function () {
-                    return Parse.Promise.as(self);
+            self._updateTraitWrapper = self._updateTraitWrapper || Parse.Promise.as();
+            self._updateTraitWrapper = self._updateTraitWrapper.always(function () {
+                return self.fetch_all_creation_elements().then(function() {
+                    return self.get_trait(category, picked_trait_id);
+                }).then(function (picked_trait) {
+                    var picks_name = category + "_" + pick_index + "_picks";
+                    var remaining_name = category + "_" + pick_index + "_remaining";
+                    var creation = self.get("creation");
+                    creation.remove(picks_name, picked_trait);
+                    if (_.contains(self.get_sum_creation_categories(), category)) {
+                        var sum = _.sum(creation.get(picks_name), "attributes.value");
+                        creation.set(remaining_name, 7 - sum);
+                    } else {
+                        creation.increment(remaining_name, 1);
+                    }
+                    var promises = Parse.Promise.when(creation.save(), self.remove_trait(picked_trait));
+                    if (!wait) {
+                        return Parse.Promise.as(self);
+                    }
+                    return promises.then(function () {
+                        return Parse.Promise.as(self);
+                    })
                 })
-            })
+            });
+            return self._updateTraitWrapper;
         },
 
         is_being_created: function() {
@@ -714,23 +722,35 @@ define([
             return self.save();
         },
 
-        initialize_troupe_membership: function() {
+        initialize_troupe_membership: function(throttle) {
             var self = this;
-            self.troupe_ids = [];
-            if (_.isUndefined(self.troupes)) {
-                // Never been set up in the first place
-                self.troupes = self.relation("troupes");
-                self.troupes.targetClassName = "Troupe";
-            } else if (_.isNull(self.troupes.parent)) {
-                // Was trickily overwritten for the sake of get_transformed
-                self.troupes.parent = self;
+            var initialize = true;
+            if (self.troupe_ids && throttle) {
+                var timediff = new Date() - self.last_initialized_troupe_membership;
+                if (timediff < 50000) {
+                    initialize = false;
+                }
             }
-            var q = self.troupes.query();
-            return q.each(function (troupe) {
-                self.troupe_ids.push(troupe.id);
-            }).then(function () {
+            if (initialize) {
+                self.last_initialized_troupe_membership = new Date();
+                self.troupe_ids = [];
+                if (_.isUndefined(self.troupes)) {
+                    // Never been set up in the first place
+                    self.troupes = self.relation("troupes");
+                    self.troupes.targetClassName = "Troupe";
+                } else if (_.isNull(self.troupes.parent)) {
+                    // Was trickily overwritten for the sake of get_transformed
+                    self.troupes.parent = self;
+                }
+                var q = self.troupes.query();
+                return q.each(function (troupe) {
+                    self.troupe_ids.push(troupe.id);
+                }).then(function () {
+                    return Parse.Promise.as(self);
+                })
+            } else {
                 return Parse.Promise.as(self);
-            })
+            }
         },
 
         broken_update_troupe_acls: function() {

@@ -1,0 +1,1 @@
+define(["jquery","underscore","parse","../models/Description","../collections/DescriptionCollection"],function(e,r,n,o,t){var c={},i=function(e){var i=r.get(c,e,new t);return i.query=new n.Query(o).equalTo("category",e),c[e]=i,i};return i});

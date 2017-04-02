@@ -6,9 +6,10 @@ define([
 	"jquery",
 	"backbone",
     "parse",
-    "../collections/DescriptionCollection",
-    "../models/Description"
-], function( $, Backbone, Parse, DescriptionCollection, Description ) {
+    "../helpers/Progress",
+    "../helpers/PromiseFailReport",
+    "../helpers/DescriptionFetcher"
+], function( $, Backbone, Parse, Progress, PromiseFailReport, DescriptionFetcher ) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
@@ -42,31 +43,33 @@ define([
                 changed = true;
             }
 
+            var p = Parse.Promise.as();
+            
             if (category != self.category) {
                 self.category = category;
                 self.stopListening(self.character);
                 self.listenTo(self.character, "change:" + category, self.update_collection_query_and_fetch);
                 if (self.collection)
                     self.stopListening(self.collection);
-                self.collection = new DescriptionCollection;
+                self.collection = DescriptionFetcher(category);
                 self.listenTo(self.collection, "add", self.render);
                 self.listenTo(self.collection, "reset", self.render);
-                self.update_collection_query_and_fetch();
+                p = self.update_collection_query_and_fetch();
                 changed = true;
             }
 
             if (changed) {
-                return self.render();
+                return p.then(function() { return self.render(); });
             }
-            return self;
+            return p.then(function() { return self; });
         },
 
         update_collection_query_and_fetch: function () {
             var self = this;
-            var q = new Parse.Query(Description);
-            q.equalTo("category", self.category).addAscending(["order", "name"]);
-            self.collection.query = q;
-            self.collection.fetch({reset: true});
+            Progress("Fetching " + self.category);
+            return self.collection.fetch_avoiding_wait().done(function () {
+                Progress();
+            }).fail(PromiseFailReport);
         },
 
         // Renders all of the Category models on the UI

@@ -1,0 +1,1 @@
+define(["jquery","underscore"],function(e,i){var n=function(n){i.isUndefined(e)||i.isUndefined(e.mobile)||i.isUndefined(e.mobile.loading)?console.log("Progress: "+n):n?e.mobile.loading("show",{text:n,textVisible:!0}):e.mobile.loading("hide")};return n});

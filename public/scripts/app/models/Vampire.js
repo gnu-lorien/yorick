@@ -324,7 +324,7 @@ define([
         return character_cache._character.ensure_creation_rules_exist().then(function (c) {
             return character_cache._character.initialize_vampire_costs();
         }).then(function (c) {
-            return character_cache._character.initialize_troupe_membership();
+            return character_cache._character.initialize_troupe_membership(true);
         });
     };
 

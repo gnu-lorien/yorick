@@ -6,11 +6,12 @@ define([
 	"jquery",
 	"backbone",
     "parse",
+    "../helpers/Progress",
+    "../helpers/PromiseFailReport",
     "../models/SimpleTrait",
-    "../collections/DescriptionCollection",
-    "../models/Description",
-    "../collections/BNSMETV1_ClanRules"
-], function( $, Backbone, Parse, SimpleTrait, DescriptionCollection, Description, ClanRules ) {
+    "../collections/BNSMETV1_ClanRules",
+    "../helpers/DescriptionFetcher"
+], function( $, Backbone, Parse, Progress, PromiseFailReport, SimpleTrait, ClanRules, DescriptionFetcher ) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
@@ -32,6 +33,7 @@ define([
 
         register: function(character, category, free_value, redirect, filterRule, specializationRedirect) {
             var self = this;
+            self.delegateEvents();
             var changed = false;
             var redirect = redirect || "#simpletrait/<%= self.category %>/<%= self.character.id %>/<%= b.linkId() %>";
             var specializationRedirect = specializationRedirect || "#simpletrait/specialize/<%= self.category %>/<%= self.character.id %>/<%= b.linkId() %>";
@@ -51,7 +53,7 @@ define([
                 } else {
                     self.filterRule = filterRule;
                 }
-                change = true;
+                changed = true;
             }
 
             if (free_value !== self.free_value && free_value != _) {
@@ -68,34 +70,32 @@ define([
                 changed = true;
             }
 
+            var p = Parse.Promise.as();
+
             if (category != self.category) {
                 self.category = category;
                 self.switch_character_category_listening();
                 if (self.collection)
                     self.stopListening(self.collection);
-                self.collection = new DescriptionCollection;
+                self.collection = DescriptionFetcher(category);
                 self.listenTo(self.collection, "add", self.render);
                 self.listenTo(self.collection, "reset", self.render);
-                self.update_collection_query_and_fetch();
+                p = self.update_collection_query_and_fetch();
                 changed = true;
             }
 
             if (changed) {
-                return self.render();
+                return p.then(function() { self.render(); });
             }
-            return self;
+            return p.then(function() { return self; });
         },
 
         update_collection_query_and_fetch: function () {
             var self = this;
-            var q = new Parse.Query(Description);
-            q.equalTo("category", self.category).addAscending(["order", "name"]).limit(1000);
-            /*
-            var traitNames = _(self.character.get(self.category)).pluck("attributes").pluck("name").value();
-            q.notContainedIn("name", traitNames);
-            */
-            self.collection.query = q;
-            self.collection.fetch({reset: true});
+            Progress("Fetching " + self.category);
+            return self.collection.fetch_avoiding_wait().done(function () {
+                Progress();
+            }).fail(PromiseFailReport);
         },
 
         // Renders all of the Category models on the UI
@@ -195,6 +195,8 @@ define([
 
         clicked: function(e) {
             var self = this;
+            e.preventDefault();
+            self.undelegateEvents();
             $.mobile.loading("show");
             var pickedId = $(e.target).attr("backendId");
             var description = self.collection.get(pickedId);
