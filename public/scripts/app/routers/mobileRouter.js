@@ -1115,15 +1115,22 @@ define([
             }
         },
         
+        withSimpleTraitChangeView: function(cb) {
+            var self = this;
+            require(["../views/SimpleTraitChangeView"], function (SimpleTraitChangeView) {
+                self.simpleTraitChangeView = self.simpleTraitChangeView || new SimpleTraitChangeView({el: "#simpletrait-change"});
+                cb();
+            });
+        },
+        
         simpletrait: function(category, cid, bid) {
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#simpletraits/" + category + "/" + cid + "/all");
-            require(["../views/SimpleTraitChangeView"], function (SimpleTraitChangeView) {
+            self.withSimpleTraitChangeView(function () {
                 self.get_character(cid, [category]).done(function(character) {
                     return character.get_trait(category, bid);
                 }).then(function (trait, character) {
-                    self.simpleTraitChangeView = self.simpleTraitChangeView || new SimpleTraitChangeView({el: "#simpletrait-change"});
                     self.simpleTraitChangeView.register(character, trait, category);
                     $.mobile.changePage("#simpletrait-change", {reverse: false, changeHash: false});
                 }).fail(function(error) {
@@ -1157,7 +1164,7 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#simpletraits/" + category + "/" + cid + "/all");
-            require(["../views/SimpleTraitChangeView"], function (SimpleTraitChangeView) {
+            self.withSimpleTraitChangeView(function () {
                 self.get_character(cid, [category]).then(function (character) {
                     var trait = new SimpleTrait({
                         name: decodeURIComponent(name),
@@ -1165,7 +1172,6 @@ define([
                         free_value: _.parseInt(free_value),
                         category: category,
                     });
-                    self.simpleTraitChangeView = self.simpleTraitChangeView || new SimpleTraitChangeView({el: "#simpletrait-change"});
                     self.simpleTraitChangeView.register(character, trait, category);
                     $.mobile.changePage("#simpletrait-change", {reverse: false, changeHash: false});
                 }).fail(function(error) {
