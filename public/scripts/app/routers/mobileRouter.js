@@ -11,9 +11,7 @@ define([
     "jscookie",
     "moment",
     "backbone",
-	"../models/CategoryModel",
 	"../collections/CategoriesCollection",
-	"../views/CategoryView",
     "../views/CharactersListView",
     "../models/Vampire",
     "../models/Werewolf",
@@ -63,9 +61,7 @@ define([
              Cookie,
              moment,
              Backbone,
-             CategoryModel,
              CategoriesCollection,
-             CategoryView,
              CharactersListView,
              Vampire,
              Werewolf,
@@ -119,15 +115,6 @@ define([
             this._character = null;
 
             _.bindAll(this, "get_character");
-
-            // Instantiates a new Animal Category View
-            this.animalsView = new CategoryView( { el: "#animals", collection: new CategoriesCollection( [] , { type: "animals" } ) } );
-
-            // Instantiates a new Colors Category View
-            this.colorsView = new CategoryView( { el: "#colors", collection: new CategoriesCollection( [] , { type: "colors" } ) } );
-
-            // Instantiates a new Vehicles Category View
-            this.vehiclesView = new CategoryView( { el: "#vehicles", collection: new CategoriesCollection( [] , { type: "vehicles" } ) } );
 
             this.characters = new CharactersListView( {el: "#characters-all", collection: new Vampires});
             this.troupeCharacters = new CharactersListView({el: "#troupe-characters-all", collection: new Vampires});
