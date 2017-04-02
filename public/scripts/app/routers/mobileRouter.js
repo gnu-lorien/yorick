@@ -21,7 +21,6 @@ define([
     "../models/VampireCreation",
     "../views/CharacterCreateView",
     "../views/CharacterNewView",
-    "../views/CharacterPrintView",
     "../views/CharacterCostsView",
     "../views/SimpleTextNewView",
     "../views/SimpleTraitSpecializationView",
@@ -69,7 +68,6 @@ define([
              VampireCreation,
              CharacterCreateView,
              CharacterNewView,
-             CharacterPrintView,
              CharacterCostsView,
              SimpleTextNewView,
              SimpleTraitSpecializationView,
@@ -125,7 +123,6 @@ define([
             this.characterCreateView = new CharacterCreateView({el: "#character-create"});
             this.characterNewView = new CharacterNewView({el: "#character-new-form"});
 
-            this.characterPrintView = new CharacterPrintView({el: "#printable-sheet"});
             this.characterCostsView = new CharacterCostsView({el: "#character-costs"});
             this.characterLogView = new CharacterLogView({el: "#character-log"});
             this.characterHistoryView = new CharacterHistoryView({el: "#character-history"});
@@ -375,25 +372,35 @@ define([
             }).fail(PromiseFailReport);
         },
 
+        withCharacterPrintView: function(cb) {
+            var self = this;
+            require(["../views/CharacterPrintView"], function(CharacterPrintView) {
+                self.characterPrintView = self.characterPrintView || new CharacterPrintView({el: "#printable-sheet"});
+                cb();
+            });
+        },
+        
         character_show_approved: function(cid) {
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
-            self.get_character(cid, "all").then(function (character) {
-                return character.fetch_long_text("extended_print_text");
-            }).then(function (character) {
-                return character.get_transformed_last_approved();
-            }).then(function (transformed) {
-                if (null == transformed) {
-                    $.mobile.changePage("#character-print-no-approval", {reverse: false, changeHash: false});
-                } else {
-                    transformed.transform_description = [];
-                    self.characterPrintView.setup({
-                        character: transformed
-                    });
-                    $.mobile.changePage("#printable-sheet", {reverse: false, changeHash: false});
-                }
-            }).fail(PromiseFailReport);
+            self.withCharacterPrintView(function () {
+                self.get_character(cid, "all").then(function (character) {
+                    return character.fetch_long_text("extended_print_text");
+                }).then(function (character) {
+                    return character.get_transformed_last_approved();
+                }).then(function (transformed) {
+                    if (null == transformed) {
+                        $.mobile.changePage("#character-print-no-approval", {reverse: false, changeHash: false});
+                    } else {
+                        transformed.transform_description = [];
+                        self.characterPrintView.setup({
+                            character: transformed
+                        });
+                        $.mobile.changePage("#printable-sheet", {reverse: false, changeHash: false});
+                    }
+                }).fail(PromiseFailReport);
+            });
         },
 
         characterrename: function(cid) {
@@ -414,15 +421,17 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
-            self.get_character(cid, "all").then(function (character) {
-                return character.fetch_long_text("extended_print_text");
-            }).then(function (character) {
-                character.transform_description = [];
-                self.characterPrintView.setup({
-                    character: character
-                });
-                $.mobile.changePage("#printable-sheet", {reverse: false, changeHash: false});
-            }).fail(PromiseFailReport);
+            self.withCharacterPrintView(function () {
+                self.get_character(cid, "all").then(function (character) {
+                    return character.fetch_long_text("extended_print_text");
+                }).then(function (character) {
+                    character.transform_description = [];
+                    self.characterPrintView.setup({
+                        character: character
+                    });
+                    $.mobile.changePage("#printable-sheet", {reverse: false, changeHash: false});
+                }).fail(PromiseFailReport);
+            });
         },
 
         characternew: function() {
