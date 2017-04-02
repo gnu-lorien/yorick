@@ -17,9 +17,7 @@ define([
     "../models/Werewolf",
     "../collections/Vampires",
     "../views/CharacterView",
-    "../views/SimpleTraitCategoryView",
     "../models/SimpleTrait",
-    "../views/SimpleTraitChangeView",
     "../models/VampireCreation",
     "../views/CharacterCreateView",
     "../views/CharacterNewView",
@@ -67,9 +65,7 @@ define([
              Werewolf,
              Vampires,
              CharacterView,
-             SimpleTraitCategoryView,
              SimpleTrait,
-             SimpleTraitChangeView,
              VampireCreation,
              CharacterCreateView,
              CharacterNewView,
@@ -121,8 +117,6 @@ define([
 
             this.characterMainPage = new CharacterView({ el: "#character"});
 
-            this.simpleTraitCategoryView = new SimpleTraitCategoryView({el: "#simpletraitcategory-all"});
-            this.simpleTraitChangeView = new SimpleTraitChangeView({el: "#simpletrait-change"});
             this.simpleTextNewView = new SimpleTextNewView({el: "#simpletext-new"});
             this.simpleTraitSpecializationView = new SimpleTraitSpecializationView({el: "#simpletrait-specialization"});
             this.simpleTraitNewSpecializationView = new SimpleTraitNewSpecializationView({el: "#simpletrait-new-specialization"});
@@ -1111,18 +1105,21 @@ define([
                 }).then(self._check_character_mismatch);
             }
         },
-
+        
         simpletrait: function(category, cid, bid) {
             var self = this;
+            $.mobile.loading("show");
             self.set_back_button("#simpletraits/" + category + "/" + cid + "/all");
-            self.get_character(cid, [category]).done(function(c) {
-                character = c;
-                return character.get_trait(category, bid);
-            }).then(function (trait, character) {
-                self.simpleTraitChangeView.register(character, trait, category);
-                $.mobile.changePage("#simpletrait-change", {reverse: false, changeHash: false});
-            }).fail(function(error) {
-                console.log(error.message);
+            require(["../views/SimpleTraitChangeView"], function (SimpleTraitChangeView) {
+                self.get_character(cid, [category]).done(function(character) {
+                    return character.get_trait(category, bid);
+                }).then(function (trait, character) {
+                    self.simpleTraitChangeView = self.simpleTraitChangeView || new SimpleTraitChangeView({el: "#simpletrait-change"});
+                    self.simpleTraitChangeView.register(character, trait, category);
+                    $.mobile.changePage("#simpletrait-change", {reverse: false, changeHash: false});
+                }).fail(function(error) {
+                    console.log(error.message);
+                });
             });
         },
 
@@ -1149,18 +1146,22 @@ define([
         
         simpletraitnew: function(category, cid, name, value, free_value) {
             var self = this;
+            $.mobile.loading("show");
             self.set_back_button("#simpletraits/" + category + "/" + cid + "/all");
-            self.get_character(cid, [category]).then(function (character) {
-                var trait = new SimpleTrait({
-                    name: decodeURIComponent(name),
-                    value: _.parseInt(value),
-                    free_value: _.parseInt(free_value),
-                    category: category,
+            require(["../views/SimpleTraitChangeView"], function (SimpleTraitChangeView) {
+                self.get_character(cid, [category]).then(function (character) {
+                    var trait = new SimpleTrait({
+                        name: decodeURIComponent(name),
+                        value: _.parseInt(value),
+                        free_value: _.parseInt(free_value),
+                        category: category,
+                    });
+                    self.simpleTraitChangeView = self.simpleTraitChangeView || new SimpleTraitChangeView({el: "#simpletrait-change"});
+                    self.simpleTraitChangeView.register(character, trait, category);
+                    $.mobile.changePage("#simpletrait-change", {reverse: false, changeHash: false});
+                }).fail(function(error) {
+                    console.log(error.message);
                 });
-                self.simpleTraitChangeView.register(character, trait, category);
-                $.mobile.changePage("#simpletrait-change", {reverse: false, changeHash: false});
-            }).fail(function(error) {
-                console.log(error.message);
             });
         },
 
@@ -1215,11 +1216,14 @@ define([
             if ("all" == type) {
                 $.mobile.loading("show");
                 self.set_back_button("#character?" + cid);
-                self.get_character(cid, [category]).done(function (c) {
-                    self.simpleTraitCategoryView.register(c, category);
-                    $.mobile.changePage("#simpletraitcategory-all", {reverse: false, changeHash: false});
-                }).fail(function(error) {
-                    console.log(error.message);
+                require(["../views/SimpleTraitCategoryView"], function (SimpleTraitCategoryView) {
+                    self.get_character(cid, [category]).done(function (c) {
+                        self.simpleTraitCategoryView = self.simpleTraitCategoryView || new SimpleTraitCategoryView({el: "#simpletraitcategory-all"}); 
+                        self.simpleTraitCategoryView.register(c, category);
+                        $.mobile.changePage("#simpletraitcategory-all", {reverse: false, changeHash: false});
+                    }).fail(function(error) {
+                        console.log(error.message);
+                    });
                 });
             }
 
