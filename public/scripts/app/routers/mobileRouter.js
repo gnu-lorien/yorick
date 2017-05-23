@@ -1359,44 +1359,48 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
-            var character, troupe;
-            self.get_character(cid).then(function (c) {
-                character = c;
-                var t = new Troupe({id: tid});
-                return t.fetch();
-            }).then(function (t) {
-                troupe = t;
-                self.troupeView = self.troupeView || new TroupeView({el: "#troupe"});
-                self.troupeView.register(troupe);
-                $.mobile.changePage("#troupe", {reverse: false, changeHash: false});
-            }).fail(function () {
-                window.location.hash = "#character?" + cid;
-            }).always(function() {
-                $.mobile.loading("hide");
-            }).fail(PromiseFailReport);
+            require(["../views/TroupeView"], function (TroupeView) {
+                var character, troupe;
+                self.get_character(cid).then(function (c) {
+                    character = c;
+                    var t = new Troupe({id: tid});
+                    return t.fetch();
+                }).then(function (t) {
+                    troupe = t;
+                    self.troupeView = self.troupeView || new TroupeView({el: "#troupe"});
+                    self.troupeView.register(troupe);
+                    $.mobile.changePage("#troupe", {reverse: false, changeHash: false});
+                }).fail(function () {
+                    window.location.hash = "#character?" + cid;
+                }).always(function() {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
         },
 
         character_join_troupe: function(cid, tid) {
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
-            var character, troupe;
-            self.get_character(cid).then(function (c) {
-                character = c;
-                var t = new Troupe({id: tid});
-                return t.fetch();
-            }).then(function (t) {
-                troupe = t;
-                return character.join_troupe(t);
-            }).then(function () {
-                self.troupeView = self.troupeView || new TroupeView({el: "#troupe"});
-                self.troupeView.register(troupe);
-                $.mobile.changePage("#troupe", {reverse: false, changeHash: false});
-            }).fail(function () {
-                window.location.hash = "#character?" + cid;
-            }).always(function() {
-                $.mobile.loading("hide");
-            }).fail(PromiseFailReport);
+                require(["../views/TroupeView"], function (TroupeView) {
+                var character, troupe;
+                self.get_character(cid).then(function (c) {
+                    character = c;
+                    var t = new Troupe({id: tid});
+                    return t.fetch();
+                }).then(function (t) {
+                    troupe = t;
+                    return character.join_troupe(t);
+                }).then(function () {
+                    self.troupeView = self.troupeView || new TroupeView({el: "#troupe"});
+                    self.troupeView.register(troupe);
+                    $.mobile.changePage("#troupe", {reverse: false, changeHash: false});
+                }).fail(function () {
+                    window.location.hash = "#character?" + cid;
+                }).always(function() {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
         },
 
         character_leave_troupe: function(cid, tid) {
