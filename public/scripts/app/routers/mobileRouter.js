@@ -671,9 +671,12 @@ define([
             self.set_back_button("#administration");
             require(["../views/UsersView"], function (UsersView) {
                 self.enforce_logged_in().then(function() {
-                    self.troupeAddStaffView = self.troupeAddStaffView || new UsersView({el: "#troupe-add-staff"});
-                    self.troupeAddStaffView.register("#administration/user/<%= id %>");
-                    $.mobile.changePage("#troupe-add-staff", {reverse: false, changeHash: false});
+                    var is_ad = Parse.User.current().get("admininterface");
+                    if (is_ad) {
+                        self.troupeAddStaffView = self.troupeAddStaffView || new UsersView({el: "#troupe-add-staff"});
+                        self.troupeAddStaffView.register("#administration/user/<%= id %>");
+                        $.mobile.changePage("#troupe-add-staff", {reverse: false, changeHash: false});
+                    }
                 }).always(function() {
                     $.mobile.loading("hide");
                 });
@@ -691,11 +694,14 @@ define([
                         self.get_patronages(),
                         UserChannel.get_users());
                 }).then(function (user, patronages, users) {
-                    var my_patronages = _.select(patronages.models, "attributes.owner.id", id);
-                    self.administrationUserView = self.administrationUserView || new AdministrationUserView({patronages: patronages});
-                    self.administrationUserView.register(user);
-                    self.administrationUserView.patronages.reset(my_patronages);
-                    $.mobile.changePage("#administration-user-view", {reverse: false, changeHash: false});
+                    var is_ad = Parse.User.current().get("admininterface");
+                    if (is_ad) {
+                        var my_patronages = _.select(patronages.models, "attributes.owner.id", id);
+                        self.administrationUserView = self.administrationUserView || new AdministrationUserView({patronages: patronages});
+                        self.administrationUserView.register(user);
+                        self.administrationUserView.patronages.reset(my_patronages);
+                        $.mobile.changePage("#administration-user-view", {reverse: false, changeHash: false});
+                    }
                 }).always(function() {
                     $.mobile.loading("hide");
                 }).fail(PromiseFailReport);
