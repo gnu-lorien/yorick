@@ -1,4 +1,4 @@
-"<%= e.get("name") %>","<%= e.get("sect") %>","<%= e.get("archetype") %>","<%= e.get("clan") %>",
+"<%= e.get("name").replace(new RegExp("\"", "g"), "\"\"") %>","<%= e.get("sect") %>","<%= e.get("archetype") %>","<%= e.get("clan") %>",
 "<%= e.get("antecedence") %>","<%= e.get("faction") %>","<%= e.get("title") %>",
     <% if (e.has("owner")) { %>
     <% if (e.get("owner").get("username")) { %>
