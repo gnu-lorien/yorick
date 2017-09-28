@@ -9,6 +9,7 @@ define([
             {name: "shortname", label: "Short Name", control: "input"},
             {name: "shortdescription", label: "Short Public Description", control: "input"},
             {name: "location", label: "Location", control: "input"},
+            {name: "boundaries", label: "Troupe Boundaries", control: "input"},
             {name: "staffemail", label: "Staff Email Address", control: "input"},
             {control: "spacer"},
             {name: "description", label: "Long Public Description", control: "textarea"},
