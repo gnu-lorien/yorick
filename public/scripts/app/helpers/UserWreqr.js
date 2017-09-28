@@ -18,7 +18,15 @@ define([
                 return self.users.get(id);
             })
             Backbone.Wreqr.radio.reqres.setHandler("user", "all", function () {
-                return self.users;
+                var is_st = Parse.User.current().get("storytellerinterface");
+                var is_ad = Parse.User.current().get("admininterface");
+                if (is_ad || is_st) {
+                    return self.users;
+                } else {
+                    var onlyone = new Users;
+                    onlyone.models.push(self.users.get(Parse.User.current().id))
+                    return onlyone;
+                }
             })
         },
         get_users: function() {

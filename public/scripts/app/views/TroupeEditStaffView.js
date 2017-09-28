@@ -21,6 +21,56 @@ define([
             self.troupe = troupe;
             self.user = user;
 
+/* When the troupe doesn't have the correct roles for some reason
+                        var q = new Parse.Query(Parse.Role);
+                        q.equalTo("name", "Administrator");
+                        q.first().then(function (adminRole) {
+                            var roleACL = new Parse.ACL();
+                            roleACL.setPublicReadAccess(true);
+                            roleACL.setPublicWriteAccess(false);
+                            roleACL.setRoleReadAccess("Administrator", true);
+                            roleACL.setRoleWriteAccess("Administrator", true);
+                            var lst_role = new Parse.Role("LST_" + troupe.id, roleACL);
+                            lst_role.getRoles().add(adminRole);
+
+                            var ast_acl = new Parse.ACL();
+                            ast_acl.setPublicReadAccess(true);
+                            ast_acl.setPublicWriteAccess(false);
+                            ast_acl.setRoleReadAccess("Administrator", true);
+                            ast_acl.setRoleWriteAccess("Administrator", true);
+                            ast_acl.setRoleReadAccess(lst_role, true);
+                            ast_acl.setRoleWriteAccess(lst_role, true);
+                            var ast_role = new Parse.Role("AST_" + troupe.id, ast_acl);
+                            ast_role.getRoles().add(adminRole);
+
+                            var nar_acl = new Parse.ACL();
+                            nar_acl.setPublicReadAccess(true);
+                            nar_acl.setPublicWriteAccess(false);
+                            nar_acl.setRoleReadAccess("Administrator", true);
+                            nar_acl.setRoleWriteAccess("Administrator", true);
+                            nar_acl.setRoleReadAccess(lst_role, true);
+                            nar_acl.setRoleWriteAccess(lst_role, true);
+                            nar_acl.setRoleReadAccess(ast_role, true);
+                            nar_acl.setRoleWriteAccess(ast_role, true);
+                            var nar_role = new Parse.Role("Narrator_" + troupe.id, nar_acl);
+                            nar_role.getRoles().add(adminRole);
+                            return Parse.Object.saveAll([lst_role, ast_role, nar_role]);
+                        }).then(function (saved_roles) {
+                            console.log("Saved roles");
+                            var lst_role = saved_roles[0],
+                                ast_role = saved_roles[1],
+                                nar_role = saved_roles[2];
+                            ast_role.getRoles().add(lst_role);
+                            nar_role.getRoles().add([lst_role, ast_role]);
+                            return Parse.Object.saveAll([lst_role, ast_role, nar_role]);
+                        }).then(function (saved_roles) {
+                            var lst_role = saved_roles[0];
+                            var acl = troupe.getACL();
+                            acl.setRoleReadAccess(lst_role, true);
+                            acl.setRoleWriteAccess(lst_role, true);
+                            return troupe.save();
+                        });
+                        */
             var roles = {};
             return Parse.Promise.when(self.troupe.get_roles()).then(function (inroles) {
                 roles = inroles;

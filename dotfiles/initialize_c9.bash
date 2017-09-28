@@ -22,6 +22,10 @@ export PUBLIC_BASE=/home/ubuntu/workspace/public
 node /home/ubuntu/workspace/c9-parse-server.js
 EOF
 
+cat > run_dashboard.bash << EOF
+parse-dashboard --config parse-dashboard-config.json --port 8081 --allowInsecureHTTP
+EOF
+
 cat > parse-dashboard-config.json << EOF
 {
   "apps": [
@@ -29,7 +33,8 @@ cat > parse-dashboard-config.json << EOF
       "serverURL": "https://${C9_HOSTNAME}/parse/1",
       "appId": "APPLICATION_ID",
       "masterKey": "MASTER_KEY",
-      "appName": "yorick"
+      "appName": "Yorick",
+      "allowInsecureHTTP": true,
     }
   ],
   "users": [
