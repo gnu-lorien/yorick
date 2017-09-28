@@ -3,9 +3,9 @@
     <% if (e.has("owner")) { %>
     <% if (e.get("owner").get("username")) { %>
         <% var user = e.get("owner"); %>
-"<%= user.get("realname") %>","<%= user.get("email") %>","<%= user.get("username") %>",
+"<%= user.get("realname") %>","<%= user.get("email") %>","<%= user.get("username") %>","<%= user.get("massmailauthorization") %>",
     <% }} else { %>
-"","","",
+"","","","",
     <% } %>
 "<%= e.status() %>",
     <% if (mode && e.get(mode) && e.get(mode).length != 0) { %>
