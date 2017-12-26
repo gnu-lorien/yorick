@@ -144,6 +144,7 @@ define([
             "start": "home",
             
             "about": "about",
+            "privacy": "privacy_policy",
 
             "logout": "logout",
             "signup": "signup",
@@ -271,6 +272,15 @@ define([
         
         about: function() {
             $.mobile.changePage("#about", {reverse: false, changeHash: false})
+        },
+
+        privacy_policy: function() {
+            var self = this;
+            require(["../views/PrivacyPolicyView"], function (PrivacyPolicyView) {
+                self.privacyPolicyView = self.privacyPolicyView || new PrivacyPolicyView({el: "#privacy"});
+                self.privacyPolicyView.render();
+                $.mobile.changePage("#privacy", {reverse: false, changeHash: false});
+            });
         },
 
         resetpassword: function() {
