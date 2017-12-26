@@ -228,6 +228,11 @@ define([
             "administration/patronages/new/:userid": "administration_patronage_new",
             "administration/descriptions": "administration_descriptions",
 
+            // Referendums
+            "referendums": "referendums", // Listing of active referendums
+            "referendum/:id": "referendum", // Description of an individual referendum with the ballot questions
+            "administration/referendums": "referendums", // Listing of active referendums
+            "administration/referendum/:id": "administration_referendum", // Admin view of a referendum
         },
 
         // Home method
