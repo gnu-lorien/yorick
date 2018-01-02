@@ -106,6 +106,10 @@ Parse.Cloud.beforeSave("CharacterPortrait", function(request, response) {
     crop_and_thumb(request, response);
 });
 
+Parse.Cloud.beforeSave("ReferendumPortrait", function(request, response) {
+    crop_and_thumb(request, response);
+});
+
 var get_vampire_change_acl = function(vampire) {
     var daString = vampire.get("acl_to_json");
     if (_.isUndefined(daString)) {

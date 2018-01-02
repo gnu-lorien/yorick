@@ -1711,6 +1711,22 @@ define([
                 }).fail(PromiseFailReport);
             });
         },
+        
+        referendums: function() {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#");
+            require(["../views/ReferendumsListView"], function (ReferendumsListView) {
+                self.enforce_logged_in().then(function() {
+                    self.referendumsListView = self.referendumsListView || new ReferendumsListView({el: "#referendums-list"}).render();
+                    return self.referendumsListView.register();
+                }).then(function () {
+                    $.mobile.changePage("#referendums-list", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                });
+            });
+        },
 
 
     } );
