@@ -9,7 +9,6 @@ define([
     "text!../templates/profile-facebook-account.html",
     "../helpers/PromiseFailReport",
     "marionette",
-    "../collections/Patronages",
     "text!../templates/referendum/referendum.html",
     "text!../templates/referendum/description.html",
     "text!../templates/referendum/options.html",
@@ -23,7 +22,6 @@ define([
     profile_facebook_account_html,
     PromiseFailReport,
     Marionette,
-    Patronages,
     referendum_html,
     description_html,
     options_html,
@@ -42,12 +40,14 @@ define([
             return {
                 referendum: self.model,
                 ballot_message: self.ballot_message,
-                ballot: self.ballot
+                ballot: self.ballot,
+                patronagestatus: self.patronagestatus
             }
         },
         initialize: function (options) {
             var self = this;
             self.ballot = options.ballot;
+            self.patronagestatus = options.patronagestatus
         },
         events: {
             "click a": "cast_ballot"
@@ -89,15 +89,15 @@ define([
         },
         initialize: function(options) {
             var self = this;
-            self.patronages = new Patronages;
         },
         setup: function(options) {
             var self = this;
             var referendum = options.referendum;
             var ballot = options.ballot;
+            var patronagestatus = options.patronagestatus;
             self.render();
             self.showChildView('description', new DescriptionView({model: referendum}))
-            self.showChildView('options', new OptionsView({model: referendum, ballot: ballot}))
+            self.showChildView('options', new OptionsView({model: referendum, ballot: ballot, patronagestatus: patronagestatus}))
             
             return self;
         }

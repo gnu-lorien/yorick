@@ -1,4 +1,6 @@
-<% if (ballot_message || ballot) { %>
+<% if (!patronagestatus) { %>
+<p>You are not currently a Patron of Underground Theater so you are not eligible to vote.</p>
+<% } else if (ballot_message || ballot) { %>
 <% if (ballot_message) { %>
 <p><%= ballot_message.message %></p>
 <% } %>

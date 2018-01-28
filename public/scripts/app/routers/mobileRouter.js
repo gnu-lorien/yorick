@@ -1742,12 +1742,12 @@ define([
                     return Parse.Promise.when(
                         q.get(id),
                         ballotq.first(),
-                        UserChannel.get_latest_patronage(Parse.User.current()));
-                }).then(function (referendum, ballot, patronage) {
+                        Parse.Cloud.run("get_my_patronage_status"));
+                }).then(function (referendum, ballot, patronagestatus) {
                     self.referendumView = self.referendumView || new ReferendumView({el: "#referendum"});
                     return self.referendumView.setup({
                         referendum: referendum,
-                        patronage: patronage,
+                        patronagestatus: patronagestatus,
                         ballot: ballot
                     });
                 }).then(function () {

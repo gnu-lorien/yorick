@@ -663,3 +663,33 @@ Parse.Cloud.define("vote_for_referendum", function(request, response) {
         response.success("Ballot has been cast");
     })
 });
+
+Parse.Cloud.define("get_my_patronage_status", function(request, response) {
+    if (_.isUndefined(request.user)) {
+        console.log("Cannot request patronage status unless logged in");
+        response.error("Cannot request patronage status unless loggen in");
+        return;
+    }
+    
+    var patronage;
+    var q = new Parse.Query("Patronage")
+        .equalTo("owner", request.user)
+        .descending("expiresOn");
+    q.first({useMasterKey: true}).fail(function (error) {
+        response.error("Error finding patronage " + JSON.stringify(error));
+    }).then(function (found) {
+        if (_.isUndefined(found)) {
+            response.success(false);
+            return;
+        }
+        patronage = found;
+        
+        var expiredSeconds = new Date(patronage.get("expiresOn")).getTime();
+        var nowSeconds = new Date().getTime();
+        if (expiredSeconds < nowSeconds) {
+            response.success(false);
+        } else {
+            response.success(true);
+        }
+    })
+});
