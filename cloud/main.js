@@ -17,7 +17,7 @@ Parse.Cloud.define("hello", function(request, response) {
 var create_thumbnail = function(portrait, input_image, size) {
     var promise = new Promise(
         function(resolve, reject) {
-            cb = function(err, buffer) {
+            var cb = function(err, buffer) {
                     if (err) reject(err);
                     else resolve(buffer);
                 }
@@ -29,7 +29,7 @@ var create_thumbnail = function(portrait, input_image, size) {
     }).then(function(image) {
         return new Promise(
             function(resolve, reject) {
-                cb = function(err, unused) {
+                var cb = function(err, unused) {
                     if (err) reject(err);
                     else resolve(image);
                 }
@@ -39,7 +39,7 @@ var create_thumbnail = function(portrait, input_image, size) {
     }).then(function (image) {
         return new Promise(
             function (resolve, reject) {
-                cb = function (err, buffer) {
+                var cb = function (err, buffer) {
                     if (err) reject(err);
                     else resolve(buffer);
                 }
