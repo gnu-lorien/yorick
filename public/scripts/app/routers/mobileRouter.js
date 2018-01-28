@@ -1728,6 +1728,35 @@ define([
             });
         },
 
+        referendum: function(id) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#referendums");
+            require(["../models/Referendum", "../views/ReferendumView"], function (Referendum, ReferendumView) {
+                self.enforce_logged_in().then(function() {
+                    var q = new Parse.Query(Referendum);
+                    q.include("portrait");
+                    var ballotq = new Parse.Query("ReferendumBallot")
+                        .equalTo("owner", new Referendum({id: id}))
+                        .equalTo("caster", Parse.User.current());
+                    return Parse.Promise.when(
+                        q.get(id),
+                        ballotq.first(),
+                        UserChannel.get_latest_patronage(Parse.User.current()));
+                }).then(function (referendum, ballot, patronage) {
+                    self.referendumView = self.referendumView || new ReferendumView({el: "#referendum"});
+                    return self.referendumView.setup({
+                        referendum: referendum,
+                        patronage: patronage,
+                        ballot: ballot
+                    });
+                }).then(function () {
+                    $.mobile.changePage("#referendum", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                });
+            });
+        },
 
     } );
 

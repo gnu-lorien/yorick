@@ -1,0 +1,19 @@
+<% if (ballot_message || ballot) { %>
+<% if (ballot_message) { %>
+<p><%= ballot_message.message %></p>
+<% } %>
+<% if (ballot) { %>
+<p>On <%= ballot.createdAt %> you voted for <%= referendum.get(ballot.get("choice")) %></p>
+<% } %>
+<% } else { %>
+<% _.each(_.range(0, 4), function(i) { %>
+<% var optstr = "option_" + i; %>
+<% if (optstr && referendum.get(optstr)) { %>
+<p>
+<a name="<%= optstr %>" href="#" class="ui-btn">
+    <%= referendum.get(optstr) %>
+</a>
+</p>
+<% } %>
+<% }); %>
+<% } %>
