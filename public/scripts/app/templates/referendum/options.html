@@ -22,7 +22,7 @@
 <% if (ballots) { %>
 <p>
 <% _.each(ballots.models, function(ballot) { %>
-"<%= ballot.get("caster").get("username") %>","<%= ballot.get("caster").get("realname") %>","<%= ballot.get("caster").get("email") %>","<%= ballot.get("choice") %>","<%= ballot.updatedAt %>"
+"<%= ballot.get("caster").get("username") %>","<%= ballot.get("caster").get("realname") %>","<%= ballot.get("caster").get("email") %>","<%= ballot.get("choice") %>","<%= ballot.updatedAt %>"<br/>
 <% }); %>
 </p>
 <% } %>
