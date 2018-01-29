@@ -6,10 +6,11 @@ define([
 	"jquery",
     "underscore",
 	"parse",
-	"../models/Referendum" ], function( $, _, Parse, Referendum ) {
+	"../models/Referendum",
+	"../models/ReferendumBallot"], function( $, _, Parse, Referendum, Ballot ) {
 
     var Collection = Parse.Collection.extend( {
-        model: Referendum,
+        model: Ballot,
         comparator: function (left, right) {
             var self = this;
             var l, r;
@@ -23,22 +24,16 @@ define([
             return 0;
         },
         
-        fetch: function (options) {
+        fetch: function (referendum) {
             var self = this;
-            var q = new Parse.Query(self.model);
-            q.equalTo("owner", options.referendum);
+            var q = new Parse.Query(self.model)
+                .equalTo("owner", referendum);
+            q.include("caster");
             var latest = [];
-            return q.each(function (patronage) {
-                latest.push(patronage);
+            return q.each(function (ballot) {
+                latest.push(ballot);
             }).then(function () {
-                if (options.add) {
-                    _.each(latest, function(l) {
-                        self.add(l);
-                    })
-                } else {
-                    self.reset(latest);
-                }
-                
+                self.reset(latest);
                 return Parse.Promise.as(self);
             })
         }

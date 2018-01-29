@@ -41,13 +41,17 @@ define([
                 referendum: self.model,
                 ballot_message: self.ballot_message,
                 ballot: self.ballot,
-                patronagestatus: self.patronagestatus
+                patronagestatus: self.patronagestatus,
+                ballots: self.ballots,
+                users: self.users
             }
         },
         initialize: function (options) {
             var self = this;
             self.ballot = options.ballot;
-            self.patronagestatus = options.patronagestatus
+            self.patronagestatus = options.patronagestatus;
+            self.ballots = options.ballots;
+            self.users = options.users;
         },
         events: {
             "click a": "cast_ballot"
@@ -85,7 +89,7 @@ define([
         template: _.template(referendum_html),
         regions: {
             description: "#referendum-description",
-            options: "#referendum-options",
+            options: "#referendum-options"
         },
         initialize: function(options) {
             var self = this;
@@ -94,10 +98,12 @@ define([
             var self = this;
             var referendum = options.referendum;
             var ballot = options.ballot;
+            var ballots = options.ballots;
             var patronagestatus = options.patronagestatus;
+            var users = options.users;
             self.render();
             self.showChildView('description', new DescriptionView({model: referendum}))
-            self.showChildView('options', new OptionsView({model: referendum, ballot: ballot, patronagestatus: patronagestatus}))
+            self.showChildView('options', new OptionsView({model: referendum, ballot: ballot, patronagestatus: patronagestatus, ballots: ballots, users: users}))
             
             return self;
         }
