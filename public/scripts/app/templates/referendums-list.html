@@ -1,0 +1,22 @@
+<form class="ui-filterable">
+    <input id="referendums-list-filter" data-type="search">
+</form>
+<ul data-role="listview" data-filter="true" data-input="#referendums-list-filter">
+    <% _.each(collection, function(e) { %>
+    <li class="ul-li-has-thumb">
+        <a name="<%= e.get('name') %>" backendId="<%= e.id %>" href="#" class="ui-btn ui-btn-icon-right ui-icon-carat-r referendum-listing">
+            <img src="<%= e.get_thumbnail_sync(128) %>" class="referendum-link-portrait"/>
+            <h2>
+                <%= e.get("name") %>
+                <% if (e.get("location")) { %>
+                 (<%= e.get("location") %>)
+                <% } %>
+            </h2>
+            <p><%= e.get("shortdescription") %></p>
+            <% if (_.trim(e.get("staffemail"))) { %>
+            <p><%= e.get("staffemail") %></p>
+            <% } %>
+        </a>
+    </li>
+    <% }); %>
+</ul>

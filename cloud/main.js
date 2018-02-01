@@ -1,3 +1,4 @@
+/* global Parse */
 var _ = require('lodash');
 var pretty = require('./prettyprint').pretty;
 var Vampire = Parse.Object.extend("Vampire");
@@ -16,7 +17,7 @@ Parse.Cloud.define("hello", function(request, response) {
 var create_thumbnail = function(portrait, input_image, size) {
     var promise = new Promise(
         function(resolve, reject) {
-            cb = function(err, buffer) {
+            var cb = function(err, buffer) {
                     if (err) reject(err);
                     else resolve(buffer);
                 }
@@ -28,7 +29,7 @@ var create_thumbnail = function(portrait, input_image, size) {
     }).then(function(image) {
         return new Promise(
             function(resolve, reject) {
-                cb = function(err, unused) {
+                var cb = function(err, unused) {
                     if (err) reject(err);
                     else resolve(image);
                 }
@@ -38,7 +39,7 @@ var create_thumbnail = function(portrait, input_image, size) {
     }).then(function (image) {
         return new Promise(
             function (resolve, reject) {
-                cb = function (err, buffer) {
+                var cb = function (err, buffer) {
                     if (err) reject(err);
                     else resolve(buffer);
                 }
@@ -103,6 +104,10 @@ Parse.Cloud.beforeSave("TroupePortrait", function(request, response) {
 });
 
 Parse.Cloud.beforeSave("CharacterPortrait", function(request, response) {
+    crop_and_thumb(request, response);
+});
+
+Parse.Cloud.beforeSave("ReferendumPortrait", function(request, response) {
     crop_and_thumb(request, response);
 });
 
@@ -560,4 +565,131 @@ Parse.Cloud.define("make_me_admin", function(request, response) {
     }, function(error) {
         response.error(error);
     });
+});
+
+Parse.Cloud.define("vote_for_referendum", function(request, response) {
+    var referendum_id = request.params.referendum_id;
+    if (_.isUndefined(request.user)) {
+        console.log("Cannot vote for a referendum unless logged in");
+        response.error("Cannot vote for a referendum unless logged in");
+        return;
+    }
+    console.log("The referendum_id " + referendum_id);
+    console.log("The user " + JSON.stringify(request.user));
+    
+    // Get the referendum
+    // Check their patronage
+    // Check for existing vote (not perfect will have to filter them in the results section)
+    // Cast the ballot!
+    /*
+    var referendum, patronage;
+    new Parse.Query("Referendum").get(referendum_id).then(function (found) {
+        referendum = found;
+        var q = new Parse.Query("Patronage")
+            .equalTo("owner", request.user)
+            .descending("expiresOn");
+        return q.first();
+    }, function (error) {
+        response.error("Couldn't find referendum " + referendum_id + " because of " + JSON.stringify(error));
+    }).then(function (found) {
+        patronage = found;
+        console.log("Patronage " + JSON.stringify(found));
+        response.success("I ate all of the cupcakes");
+    }, function (error) {
+        response.error("Couldn't find patronage " + JSON.stringify(error));
+    })
+    */
+    
+    var referendum, patronage, ballot;
+    new Parse.Query("Referendum").get(referendum_id).fail(function (error) {
+        response.error("Couldn't find referendum " + referendum_id + " because of " + JSON.stringify(error));
+    }).then(function (found) {
+        referendum = found;
+        var q = new Parse.Query("Patronage")
+            .equalTo("owner", request.user)
+            .descending("expiresOn");
+        return q.first({useMasterKey: true});
+    }).fail(function (error) {
+        response.error("Error finding patronage " + JSON.stringify(error));
+    }).then(function (found) {
+        if (_.isUndefined(found)) {
+            response.error("No patronage found");
+            return;
+        }
+        patronage = found;
+        
+        var expiredSeconds = new Date(patronage.get("expiresOn")).getTime();
+        var nowSeconds = new Date().getTime();
+        if (expiredSeconds < nowSeconds) {
+            response.error("Latest patronage is expired");
+            return;
+        }
+        
+        var q = new Parse.Query("ReferendumBallot")
+            .equalTo("owner", referendum)
+            .equalTo("caster", request.user);
+        return q.first({useMasterKey: true});
+    }).fail(function (error) {
+        response.error("Unknown failure trying to find existing ballots. " + JSON.stringify(error));
+    }).then(function (found) {
+        console.log("Hunted for referendums and now seeing what I found " + JSON.stringify(found));
+        if (!_.isUndefined(found)) {
+            response.error("Existing ballot found." + JSON.stringify(found));
+            return;
+        }
+        
+        console.log("Creating the ballot");
+        ballot = new Parse.Object("ReferendumBallot");
+        var acl = new Parse.ACL;
+        acl.setPublicReadAccess(false);
+        acl.setPublicWriteAccess(false);
+        acl.setRoleReadAccess("Administrator", true);
+        acl.setRoleWriteAccess("Administrator", true)
+        acl.setReadAccess(request.user, true);
+        acl.setWriteAccess(request.user, false);
+        ballot.setACL(acl);
+        ballot.set("owner", referendum);
+        ballot.set("caster", request.user);
+        ballot.set("casterpatronagestatus", true);
+        ballot.set("choice", request.params.ballot_option);
+        
+        console.log("Saving the ballot");
+        return ballot.save();
+    }).fail(function (error) {
+        console.log("Ballot failed to save");
+        response.error("Couldn't properly cast ballot because " + JSON.stringify(error));
+    }).then(function (saved) {
+        console.log("Ballot saved");
+        response.success("Ballot has been cast");
+    })
+});
+
+Parse.Cloud.define("get_my_patronage_status", function(request, response) {
+    if (_.isUndefined(request.user)) {
+        console.log("Cannot request patronage status unless logged in");
+        response.error("Cannot request patronage status unless loggen in");
+        return;
+    }
+    
+    var patronage;
+    var q = new Parse.Query("Patronage")
+        .equalTo("owner", request.user)
+        .descending("expiresOn");
+    q.first({useMasterKey: true}).fail(function (error) {
+        response.error("Error finding patronage " + JSON.stringify(error));
+    }).then(function (found) {
+        if (_.isUndefined(found)) {
+            response.success(false);
+            return;
+        }
+        patronage = found;
+        
+        var expiredSeconds = new Date(patronage.get("expiresOn")).getTime();
+        var nowSeconds = new Date().getTime();
+        if (expiredSeconds < nowSeconds) {
+            response.success(false);
+        } else {
+            response.success(true);
+        }
+    })
 });

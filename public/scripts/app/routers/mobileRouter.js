@@ -229,6 +229,11 @@ define([
             "administration/patronages/new/:userid": "administration_patronage_new",
             "administration/descriptions": "administration_descriptions",
 
+            // Referendums
+            "referendums": "referendums", // Listing of active referendums
+            "referendum/:id": "referendum", // Description of an individual referendum with the ballot questions
+            "administration/referendums": "administration_referendums", // Listing of active referendums
+            "administration/referendum/:id": "administration_referendum", // Admin view of a referendum
         },
 
         // Home method
@@ -1704,6 +1709,98 @@ define([
                 }).always(function() {
                     $.mobile.loading("hide");
                 }).fail(PromiseFailReport);
+            });
+        },
+        
+        referendums: function() {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#");
+            require(["../views/ReferendumsListView"], function (ReferendumsListView) {
+                self.enforce_logged_in().then(function() {
+                    self.referendumsListView = self.referendumsListView || new ReferendumsListView({el: "#referendums-list"}).render();
+                    return self.referendumsListView.register();
+                }).then(function () {
+                    $.mobile.changePage("#referendums-list", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                });
+            });
+        },
+
+        referendum: function(id) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#referendums");
+            require(["../models/Referendum", "../views/ReferendumView"], function (Referendum, ReferendumView) {
+                self.enforce_logged_in().then(function() {
+                    var q = new Parse.Query(Referendum);
+                    q.include("portrait");
+                    var ballotq = new Parse.Query("ReferendumBallot")
+                        .equalTo("owner", new Referendum({id: id}))
+                        .equalTo("caster", Parse.User.current());
+                    return Parse.Promise.when(
+                        q.get(id),
+                        ballotq.first(),
+                        Parse.Cloud.run("get_my_patronage_status"));
+                }).then(function (referendum, ballot, patronagestatus) {
+                    self.referendumView = self.referendumView || new ReferendumView({el: "#referendum"});
+                    return self.referendumView.setup({
+                        referendum: referendum,
+                        patronagestatus: patronagestatus,
+                        ballot: ballot
+                    });
+                }).then(function () {
+                    $.mobile.changePage("#referendum", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                });
+            });
+        },
+        
+        administration_referendums: function() {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#administration");
+            require(["../views/ReferendumsListView"], function (ReferendumsListView) {
+                self.enforce_logged_in().then(function() {
+                    self.referendumsListView = self.referendumsListView || new ReferendumsListView({el: "#referendums-list"}).render();
+                    return self.referendumsListView.register("#administration/referendum/<%= referendum_id %>");
+                }).then(function () {
+                    $.mobile.changePage("#referendums-list", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                });
+            });
+        },
+        
+        administration_referendum: function(id) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#administration/referendums");
+            require(["../models/Referendum", "../collections/ReferendumBallots", "../views/ReferendumView"], function (Referendum, Ballots, ReferendumView) {
+                self.enforce_logged_in().then(function() {
+                    var q = new Parse.Query(Referendum);
+                    q.include("portrait");
+                    var ballots = new Ballots;
+                    return Parse.Promise.when(
+                        q.get(id),
+                        ballots.fetch(new Referendum({id: id})),
+                        UserChannel.get_users(),
+                        Parse.Cloud.run("get_my_patronage_status"));
+                }).then(function (referendum, ballots, users, patronagestatus) {
+                    self.referendumView = self.referendumView || new ReferendumView({el: "#referendum"});
+                    return self.referendumView.setup({
+                        referendum: referendum,
+                        ballots: ballots,
+                        users: users,
+                        patronagestatus: patronagestatus
+                    });
+                }).then(function () {
+                    $.mobile.changePage("#referendum", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                });
             });
         },
 
