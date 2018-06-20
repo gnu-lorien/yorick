@@ -7,6 +7,10 @@ Develop ![Image of build status for branch develop](https://travis-ci.org/gnu-lo
 
 Master ![Image of build status for branch master](https://travis-ci.org/gnu-lorien/yorick.svg?branch=master)
 
+# Live Demo
+
+A live demo is running at https://stagingpatron.undergroundtheater.org/
+
 # Quickstart with Cloud9
 
 I've started using Cloud9 so there's also a quick start script for this.
