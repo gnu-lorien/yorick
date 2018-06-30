@@ -224,7 +224,7 @@ var isMeaningfulChange = function (vc) {
 }
 
 Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
-    console.log("beforeSave simpleTrait");
+    console.log("beforeSave SimpleTrait");
     var vc = new Parse.Object("VampireChange");
     var modified_trait = request.object;
     if (_.isUndefined(modified_trait.id)) {
@@ -271,10 +271,11 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
 
         console.log("beforeSave SimpleTrait Sending save acl vampire " + vampire.id);
         return vc.save({}, {useMasterKey: true});
-    }).then(function () {
+    }).then(function (vc) {
+        request.object.set("definition_change", vc);
         response.success();
         if (!request.object.id) {
-            console.log("Successfully beforeSave new SimpleTrait " + modified_trait.get("name") + " for " + modified_trait.get("owner").id);
+            console.log("Successfully beforeSave new SimpleTrait " + modified_trait.get("name") + " for " + modified_trait.get("owner").id + " with vc id " + vc.id);
         } else {
             console.log("Successfully beforeSave SimpleTrait " + request.object.id + " " + modified_trait.get("name") + " for " + modified_trait.get("owner").id);
         }
@@ -288,6 +289,19 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
         console.log(failStr);
         error.message = failStr;
         response.error(error);
+    });
+});
+
+Parse.Cloud.afterSave("SimpleTrait", function(request) {
+    console.log("afterSave SimpleTrait");
+    var q = new Parse.Query("VampireChange");
+    var modified_trait = request.object;
+    q.get(modified_trait.get("definition_change").id, {useMasterKey: true}).then(function (vc) {
+        return vc.save({"simple_trait_id": modified_trait.id}, {useMasterKey: true});
+    }, function (error) {
+        console.log("Error trying to find vc for " + modified_trait.id + " with id " + modified_trait.get("definition_change").id);
+    }).then(function (vc) {
+        console.log("afterSave SimpleTrait Added simple_trait_id " + modified_trait.id + " to change " + vc.id);
     });
 });
 
