@@ -12,7 +12,6 @@ var Model = Parse.Object.extend( "Troupe", {
         acl.setRoleWriteAccess("Administrator", true);
         self.setACL(acl);
         self.title_options = ["LST", "AST", "Narrator"];
-        //self.title_options = ["AST", "Narrator"];
     },
 
     get_staff: function() {
@@ -38,9 +37,7 @@ var Model = Parse.Object.extend( "Troupe", {
         var roles = {};
         var promises = _.map(self.title_options, function (title) {
             var q = new Parse.Query(Parse.Role);
-            console.log("In Troupe get_roles about to get title string");
             q.equalTo("name", title + "_" + self.id);
-            console.log("In Troupe get_roles title string is " + title + "_" + self.id);
             return q.first().then(function (role) {
                 roles[title] = role;
             });

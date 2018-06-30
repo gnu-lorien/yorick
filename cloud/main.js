@@ -731,18 +731,14 @@ Parse.Cloud.define("change_troupe_staff", function(request, response) {
     
     var alter_roles = function (roles) {
         _.each(roles_to_remove, function (title) {
-            console.log("In alter_roles about to getUsers");
             var u = roles[title].getUsers();
-            console.log("In alter_roles gotUsers next is the remove");
             u.remove(user_to_change);
         });
         _.each(roles_to_add, function (title) {
-            console.log("In alter_roles adding user roles");
             roles[title].getUsers().add(user_to_change);
         })
         var to_save = _.values(roles);
         var promises = _.map(to_save, function (s) {
-            console.log("In alter_roles gonna try to save the changes");
             return s.save({}, {useMasterKey: true}).fail(function (error) {
                 console.log("Failed to save role " + s.get("name") + " with " + JSON.stringify(error));
             });
