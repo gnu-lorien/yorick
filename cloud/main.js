@@ -3,10 +3,14 @@ var _ = require('lodash');
 var pretty = require('./prettyprint').pretty;
 var Vampire = Parse.Object.extend("Vampire");
 var Patronage = Parse.Object.extend("Patronage");
+var Troupe = require('./Troupe.js').Troupe;
 var Image = require("jimp");
 var request = require("request");
 var Promise = global.Promise;
 var moment = require("moment");
+
+/* FIXME Shouldn't just paste this class in here. Still need a way to sync between
+   the require world and the node world */
 
 // Use Parse.Cloud.define to define as many cloud functions as you want.
 // For example:
@@ -224,7 +228,7 @@ var isMeaningfulChange = function (vc) {
 }
 
 Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
-    console.log("beforeSave simpleTrait");
+    console.log("beforeSave SimpleTrait");
     var vc = new Parse.Object("VampireChange");
     var modified_trait = request.object;
     if (_.isUndefined(modified_trait.id)) {
@@ -271,10 +275,11 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
 
         console.log("beforeSave SimpleTrait Sending save acl vampire " + vampire.id);
         return vc.save({}, {useMasterKey: true});
-    }).then(function () {
+    }).then(function (vc) {
+        request.object.set("definition_change", vc);
         response.success();
         if (!request.object.id) {
-            console.log("Successfully beforeSave new SimpleTrait " + modified_trait.get("name") + " for " + modified_trait.get("owner").id);
+            console.log("Successfully beforeSave new SimpleTrait " + modified_trait.get("name") + " for " + modified_trait.get("owner").id + " with vc id " + vc.id);
         } else {
             console.log("Successfully beforeSave SimpleTrait " + request.object.id + " " + modified_trait.get("name") + " for " + modified_trait.get("owner").id);
         }
@@ -288,6 +293,19 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
         console.log(failStr);
         error.message = failStr;
         response.error(error);
+    });
+});
+
+Parse.Cloud.afterSave("SimpleTrait", function(request) {
+    console.log("afterSave SimpleTrait");
+    var q = new Parse.Query("VampireChange");
+    var modified_trait = request.object;
+    q.get(modified_trait.get("definition_change").id, {useMasterKey: true}).then(function (vc) {
+        return vc.save({"simple_trait_id": modified_trait.id}, {useMasterKey: true});
+    }, function (error) {
+        console.log("Error trying to find vc for " + modified_trait.id + " with id " + modified_trait.get("definition_change").id);
+    }).then(function (vc) {
+        console.log("afterSave SimpleTrait Added simple_trait_id " + modified_trait.id + " to change " + vc.id);
     });
 });
 
@@ -692,4 +710,116 @@ Parse.Cloud.define("get_my_patronage_status", function(request, response) {
             response.success(true);
         }
     })
+});
+
+function matchUserInRoles(all_roles_to_check, user_id) {
+    var role = _.first(all_roles_to_check);
+    var remaining_roles_to_check = _.tail(all_roles_to_check);
+    var users_relation = role.getUsers();
+    var uq = users_relation.query();
+    uq.equalTo("objectId", user_id);
+    return uq.get(user_id).then(function (user) {
+        console.log("Matched a user in the role! " + role.get("name") + " " + user.get("username"));
+        return Parse.Promise.as(user);
+    }, function (error) {
+        if (0 == remaining_roles_to_check.length) {
+            return Parse.Promise.error("Couldn't find user in appropriate roles");
+        } else {
+            return matchUserInRoles(remaining_roles_to_check, user_id);
+        }
+    })
+}
+
+Parse.Cloud.define("change_troupe_staff", function(request, response) {
+    if (_.isUndefined(request.user)) {
+        console.log("Cannot change staff without logging in");
+        response.error("Cannot change staff without logging in");
+        return;
+    }
+    var troupe_id = request.params.troupe_id;
+    var user_to_change_id = request.params.user_to_change_id;
+    var user_to_change = new Parse.User({id: user_to_change_id});
+    var roles_to_remove = request.params.roles_to_remove;
+    var roles_to_add = request.params.roles_to_add;
+    
+    var necessary_role_name = "LST_" + troupe_id;
+    
+    console.log("Require role: " + necessary_role_name);
+    
+    var alter_roles = function (roles) {
+        _.each(roles_to_remove, function (title) {
+            var u = roles[title].getUsers();
+            u.remove(user_to_change);
+        });
+        _.each(roles_to_add, function (title) {
+            roles[title].getUsers().add(user_to_change);
+        })
+        var to_save = _.values(roles);
+        var promises = _.map(to_save, function (s) {
+            return s.save({}, {useMasterKey: true}).fail(function (error) {
+                console.log("Failed to save role " + s.get("name") + " with " + JSON.stringify(error));
+            });
+        })
+        return Parse.Promise.when(promises);
+    }
+    
+    var all_roles_to_check = [];
+    var troupe = new Troupe({id: troupe_id});
+    troupe.fetch({useMasterKey: true}).then(function(t) {
+        return user_to_change.fetch({useMasterKey: true});
+    }).then(function (u) {
+        var hasNecessaryRole = false;
+        var q = new Parse.Query(Parse.Role);
+        q.equalTo("name", necessary_role_name);
+        return q.first({useMasterKey: true});
+    }).then(function (role) {
+        all_roles_to_check.push(role);
+        var roles_relation = role.getRoles();
+        var rq = roles_relation.query();
+        return rq.each(function (r) {
+            all_roles_to_check.push(r);
+            var rr = r.getRoles();
+            var rq2 = rr.query();
+            return rq2.each(function (twodeeprole) {
+                all_roles_to_check.push(twodeeprole);
+            });
+        });
+    }).then(function () {
+        return matchUserInRoles(all_roles_to_check, request.user.id);
+    }).then(function (user) {
+        console.log("Got user for relation " + user.get("username"));
+        return Parse.Promise
+            .when(troupe.get_roles())
+            .then(alter_roles)
+            .then(function () {
+                return troupe.get_generic_roles();
+            })
+            .then(alter_roles)
+    }).then(function() {
+        response.success();
+    }, function (error) {
+        console.log(JSON.stringify(error));
+        response.error(error);
+    });
+    return;
+    var markHasNecessaryOnRole = function (role) {
+        var users_relation = role.getUsers();
+        var uq = users_relation.query();
+        uq.equalTo("objectId", request.id);
+        return uq.each(function (user) {
+            roles.add(role);
+        }).fail(function (error) {
+            console.log("Failed in promise for " + role.get("name"));
+        });
+    };
+    q.each(function (role) {
+        var users_relation = role.getUsers();
+        var uq = users_relation.query();
+        uq.equalTo("objectId", request.id);
+        return uq.each(function (user) {
+            roles.add(role);
+        }).fail(function (error) {
+            console.log("Failed in promise for " + role.get("name"));
+        });
+    }).fail(PromiseFailReport);
 });

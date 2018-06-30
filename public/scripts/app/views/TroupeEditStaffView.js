@@ -143,38 +143,14 @@ define([
                 roles_to_add.push(role);
                 roles_to_remove = _.xor(roles_to_remove, roles_to_add);
             }
-
-            var alter_roles = function (roles) {
-                _.each(roles_to_remove, function (title) {
-                    var u = roles[title].getUsers();
-                    u.remove(self.user)/*.fail(function (error) {
-                        console.log("Failed to remove user from " + title + " with " + JSON.stringify(error));
-                    });*/
-                });
-                _.each(roles_to_add, function (title) {
-                    roles[title].getUsers().add(self.user)/*.fail(function (error) {
-                        console.log("Failed to add user user " + title + " with " + JSON.stringify(error));
-                    });*/
-                })
-                var to_save = _.values(roles);
-                var promises = _.map(to_save, function (s) {
-                    return s.save().fail(function (error) {
-                        console.log("Failed to save role " + s.get("name") + " with " + JSON.stringify(error));
-                    }).fail(PromiseFailReport);
-                })
-                return Parse.Promise.when(promises);
-            }
-
-            return Parse.Promise
-                .when(self.troupe.get_roles())
-                .then(alter_roles)
-                .then(function () {
-                    return self.troupe.get_generic_roles();
-                })
-                .then(alter_roles)
-                .always(function () {
-                    window.location.hash = "#troupe/" + self.troupe.id;
-                }).fail(PromiseFailReport);
+            return Parse.Cloud.run("change_troupe_staff", {
+                troupe_id: self.troupe.id,
+                user_to_change_id: self.user.id,
+                roles_to_add: roles_to_add,
+                roles_to_remove: roles_to_remove
+            }).always(function () {
+                window.location.hash = "#troupe/" + self.troupe.id;
+            }).fail(PromiseFailReport);
         },
 
         // Renders all of the Category models on the UI
