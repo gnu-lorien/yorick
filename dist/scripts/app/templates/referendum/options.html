@@ -22,7 +22,11 @@
 <% if (ballots) { %>
 <p>
 <% _.each(ballots.models, function(ballot) { %>
+<% if (_.isUndefined(ballot.get("caster"))) { %>
+"USER DELETED","USER REALNAME DELETED","USER EMAIL DELETED","<%= ballot.get("choice") %>","<%= ballot.updatedAt %>"<br/>
+<% } else { %>
 "<%= ballot.get("caster").get("username") %>","<%= ballot.get("caster").get("realname") %>","<%= ballot.get("caster").get("email") %>","<%= ballot.get("choice") %>","<%= ballot.updatedAt %>"<br/>
+<% } %>
 <% }); %>
 </p>
 <% } %>
