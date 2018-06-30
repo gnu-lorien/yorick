@@ -712,6 +712,23 @@ Parse.Cloud.define("get_my_patronage_status", function(request, response) {
     })
 });
 
+function matchUserInRoles(all_roles_to_check, user_id) {
+    var role = _.first(all_roles_to_check);
+    var remaining_roles_to_check = _.tail(all_roles_to_check);
+    var users_relation = role.getUsers();
+    var uq = users_relation.query();
+    uq.equalTo("objectId", user_id);
+    return uq.get(user_id).then(function (user) {
+        console.log("Matched a user in the role! " + role.get("name") + " " + user.get("username"));
+        return Parse.Promise.as(user);
+    }, function (error) {
+        if (0 == remaining_roles_to_check.length) {
+            return Parse.Promise.error("Couldn't find user in appropriate roles");
+        } else {
+            return matchUserInRoles(remaining_roles_to_check, user_id);
+        }
+    })
+}
 
 Parse.Cloud.define("change_troupe_staff", function(request, response) {
     if (_.isUndefined(request.user)) {
@@ -746,6 +763,7 @@ Parse.Cloud.define("change_troupe_staff", function(request, response) {
         return Parse.Promise.when(promises);
     }
     
+    var all_roles_to_check = [];
     var troupe = new Troupe({id: troupe_id});
     troupe.fetch({useMasterKey: true}).then(function(t) {
         return user_to_change.fetch({useMasterKey: true});
@@ -755,10 +773,19 @@ Parse.Cloud.define("change_troupe_staff", function(request, response) {
         q.equalTo("name", necessary_role_name);
         return q.first({useMasterKey: true});
     }).then(function (role) {
-        var users_relation = role.getUsers();
-        var uq = users_relation.query();
-        uq.equalTo("objectId", request.user.id);
-        return uq.get(request.user.id);
+        all_roles_to_check.push(role);
+        var roles_relation = role.getRoles();
+        var rq = roles_relation.query();
+        return rq.each(function (r) {
+            all_roles_to_check.push(r);
+            var rr = r.getRoles();
+            var rq2 = rr.query();
+            return rq2.each(function (twodeeprole) {
+                all_roles_to_check.push(twodeeprole);
+            });
+        });
+    }).then(function () {
+        return matchUserInRoles(all_roles_to_check, request.user.id);
     }).then(function (user) {
         console.log("Got user for relation " + user.get("username"));
         return Parse.Promise
