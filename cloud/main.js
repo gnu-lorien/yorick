@@ -3,10 +3,14 @@ var _ = require('lodash');
 var pretty = require('./prettyprint').pretty;
 var Vampire = Parse.Object.extend("Vampire");
 var Patronage = Parse.Object.extend("Patronage");
+var Troupe = require('./Troupe.js').Troupe;
 var Image = require("jimp");
 var request = require("request");
 var Promise = global.Promise;
 var moment = require("moment");
+
+/* FIXME Shouldn't just paste this class in here. Still need a way to sync between
+   the require world and the node world */
 
 // Use Parse.Cloud.define to define as many cloud functions as you want.
 // For example:
@@ -706,4 +710,93 @@ Parse.Cloud.define("get_my_patronage_status", function(request, response) {
             response.success(true);
         }
     })
+});
+
+
+Parse.Cloud.define("change_troupe_staff", function(request, response) {
+    if (_.isUndefined(request.user)) {
+        console.log("Cannot change staff without logging in");
+        response.error("Cannot change staff without logging in");
+        return;
+    }
+    var troupe_id = request.params.troupe_id;
+    var user_to_change_id = request.params.user_to_change_id;
+    var user_to_change = new Parse.User({id: user_to_change_id});
+    var roles_to_remove = request.params.roles_to_remove;
+    var roles_to_add = request.params.roles_to_add;
+    
+    var necessary_role_name = "LST_" + troupe_id;
+    
+    console.log("Require role: " + necessary_role_name);
+    
+    var alter_roles = function (roles) {
+        _.each(roles_to_remove, function (title) {
+            console.log("In alter_roles about to getUsers");
+            var u = roles[title].getUsers();
+            console.log("In alter_roles gotUsers next is the remove");
+            u.remove(user_to_change);
+        });
+        _.each(roles_to_add, function (title) {
+            console.log("In alter_roles adding user roles");
+            roles[title].getUsers().add(user_to_change);
+        })
+        var to_save = _.values(roles);
+        var promises = _.map(to_save, function (s) {
+            console.log("In alter_roles gonna try to save the changes");
+            return s.save({}, {useMasterKey: true}).fail(function (error) {
+                console.log("Failed to save role " + s.get("name") + " with " + JSON.stringify(error));
+            });
+        })
+        return Parse.Promise.when(promises);
+    }
+    
+    var troupe = new Troupe({id: troupe_id});
+    troupe.fetch({useMasterKey: true}).then(function(t) {
+        return user_to_change.fetch({useMasterKey: true});
+    }).then(function (u) {
+        var hasNecessaryRole = false;
+        var q = new Parse.Query(Parse.Role);
+        q.equalTo("name", necessary_role_name);
+        return q.first({useMasterKey: true});
+    }).then(function (role) {
+        var users_relation = role.getUsers();
+        var uq = users_relation.query();
+        uq.equalTo("objectId", request.user.id);
+        return uq.get(request.user.id);
+    }).then(function (user) {
+        console.log("Got user for relation " + user.get("username"));
+        return Parse.Promise
+            .when(troupe.get_roles())
+            .then(alter_roles)
+            .then(function () {
+                return troupe.get_generic_roles();
+            })
+            .then(alter_roles)
+    }).then(function() {
+        response.success();
+    }, function (error) {
+        console.log(JSON.stringify(error));
+        response.error(error);
+    });
+    return;
+    var markHasNecessaryOnRole = function (role) {
+        var users_relation = role.getUsers();
+        var uq = users_relation.query();
+        uq.equalTo("objectId", request.id);
+        return uq.each(function (user) {
+            roles.add(role);
+        }).fail(function (error) {
+            console.log("Failed in promise for " + role.get("name"));
+        });
+    };
+    q.each(function (role) {
+        var users_relation = role.getUsers();
+        var uq = users_relation.query();
+        uq.equalTo("objectId", request.id);
+        return uq.each(function (user) {
+            roles.add(role);
+        }).fail(function (error) {
+            console.log("Failed in promise for " + role.get("name"));
+        });
+    }).fail(PromiseFailReport);
 });
