@@ -1,2 +1,1813 @@
-define(["require","jquery","parse","pretty","jscookie","moment","backbone","../collections/CategoriesCollection","../views/CharactersListView","../models/Vampire","../models/Werewolf","../collections/Vampires","../views/CharacterView","../models/SimpleTrait","../models/VampireCreation","../views/CharacterCreateView","../views/CharacterNewView","../views/CharacterCostsView","../views/SimpleTextNewView","../views/SimpleTraitSpecializationView","../views/CharacterLogView","../views/SignupView","../views/LoginView","../views/CharacterExperienceView","../views/CharacterPortraitView","../views/CharacterDeleteView","../views/PlayerOptionsView","../views/TroupeEditStaffView","../models/Troupe","../helpers/PromiseFailReport","../views/TroupePortraitView","text!../templates/footer.html","../helpers/InjectAuthData","../collections/Patronages","../collections/Users","../models/Patronage","../helpers/UserWreqr","../views/CharacterRenameView","../views/SimpleTraitNewSpecializationView","../views/CharacterCreateSimpleTraitNewView","../views/DescriptionsView","../models/Werewolf","../views/CharactersSelectToPrintView","../views/CharacterLongTextView"],function(e,t,r,a,i,n,o,c,s,l,h,u,g,d,p,m,f,w,b,v,V,y,P,k,T,x,C,H,S,z,U,L,N,Q,R,I,A,E,q,j,D,h,O,W){var J=r.Router.extend({initialize:function(){this._character=null,_.bindAll(this,"get_character"),this.characters=new s({el:"#characters-all",collection:new u}),this.troupeCharacters=new s({el:"#troupe-characters-all",collection:new u}),this.characterMainPage=new g({el:"#character"}),this.simpleTextNewView=new b({el:"#simpletext-new"}),this.simpleTraitSpecializationView=new v({el:"#simpletrait-specialization"}),this.simpleTraitNewSpecializationView=new q({el:"#simpletrait-new-specialization"}),this.characterCreateSimpleTraitNewView=new j({el:"#character-create-simpletrait-new"}),this.characterCreateView=new m({el:"#character-create"}),this.characterNewView=new f({el:"#character-new-form"}),this.characterCostsView=new w({el:"#character-costs"}),this.characterLogView=new V({el:"#character-log"}),this.characterExperienceView=new k({el:"#experience-notations-all"}),this.characterPortraitView=new T({el:"#character-portrait"}),this.characterDeleteView=new x({el:"#character-delete"}),this.loginView=new P,this.signupView=new y,r.history.start()},routes:{"":"home",start:"home",about:"about",privacy:"privacy_policy",logout:"logout",signup:"signup",reset:"resetpassword",profile:"profile","category?:type":"category","victims?:type":"victims","characters?:type":"characters","character?:id":"character","simpletraits/:category/:cid/:type":"simpletraits","simpletrait/:category/:cid/:bid":"simpletrait","simpletrait/specialize/:category/:cid/:bid":"simpletraitspecialize","simpletrait/spacer/:category/:cid/:name/:value/:free_value/new":"simpletraitnew","simpletrait/specialize/:category/:cid/:name/:value/:free_value/new":"simpletrait_new_specialize","simpletext/:category/:target/:cid/pick":"simpletextpick","simpletext/:category/:target/:cid/unpick":"simpletextunpick","charactercreate/:cid":"charactercreate","charactercreate/simpletraits/:category/:cid/pick/:i":"charactercreatepicksimpletrait","charactercreate/simpletraits/:category/:cid/unpick/:stid/:i":"charactercreateunpicksimpletrait","charactercreate/simpletraits/:category/:cid/specialize/:stid/:i":"charactercreatespecializesimpletrait","charactercreate/simpletext/:category/:target/:cid/pick":"charactercreatepicksimpletext","charactercreate/simpletext/:category/:target/:cid/unpick":"charactercreateunpicksimpletext","charactercreate/complete/:cid":"charactercreatecomplete",characternew:"characternew","character/:cid/print":"characterprint","character/:cid/costs":"charactercosts","character/:cid/log/:start/:changeBy":"characterlog","character/:cid/history/:id":"characterhistory","character/:cid/portrait":"characterportrait","character/:cid/delete":"characterdelete","character/:cid/troupes":"character_list_troupes","character/:cid/troupes/leave":"character_pick_troupe_to_leave","character/:cid/troupes/join":"character_pick_troupe_to_join","character/:cid/troupe/:tid/join":"character_join_troupe","character/:cid/troupe/:tid/leave":"character_leave_troupe","character/:cid/troupe/:tid/show":"character_show_troupe","character/:cid/approval":"characterapproval","character/:cid/rename":"characterrename","character/:cid/approved":"character_show_approved","character/:cid/extendedprinttext":"character_extended_print_text","character/:cid/backgroundlt":"character_background_long_text","character/:cid/noteslt":"character_notes_long_text","character/:cid/experience/:start/:changeBy":"characterexperience","troupe/new":"troupenew",troupes:"troupes","troupe/:id":"troupe","troupe/:id/staff/add":"troupeaddstaff","troupe/:id/staff/edit/:uid":"troupeeditstaff","troupe/:id/characters/:type":"troupecharacters","troupe/:id/characters/summarize/:type":"troupesummarizecharacters","troupe/:id/characters/selecttoprint/:type":"troupe_select_to_print_characters","troupe/:id/characters/print/:type":"troupe_print_characters","troupe/:id/characters/relationships/network":"troupe_relationship_network","troupe/:id/character/:cid":"troupe_character","troupe/:id/portrait":"troupe_portrait",administration:"administration","administration/characters/all":"administration_characters_all","administration/characters/summarize":"administration_characters_summarize","administration/character/:id":"administration_character","administration/users/all":"administration_users","administration/user/:id":"administration_user","administration/patronages/user/:id":"administration_user_patronages","administration/patronages":"administration_patronages","administration/patronage/:id":"administration_patronage","administration/patronages/new":"administration_patronage_new","administration/patronages/new/:userid":"administration_patronage_new","administration/descriptions":"administration_descriptions",referendums:"referendums","referendum/:id":"referendum","administration/referendums":"administration_referendums","administration/referendum/:id":"administration_referendum"},home:function(){var e=this;this.enforce_logged_in().then(function(){var e=new r.Query(r.Role).equalTo("users",r.User.current());return e.count()}).then(function(e){var t=r.User.current();return 0<e?t.set("storytellerinterface",!0):t.set("storytellerinterface",!1),N(t),t.save()}).then(function(){e.playerOptionsView=e.playerOptionsView||new C({el:"#player-options"}).render(),t.mobile.changePage("#player-options",{reverse:!1,changeHash:!1})}).fail(z)},logout:function(){r.User.logOut().always(function(){return hello("facebook").logout()}).always(function(){window.location.hash="",window.location.reload()})},signup:function(){r.User.current()?window.location.hash="":t.mobile.changePage("#signup",{reverse:!1,changeHash:!1})},about:function(){t.mobile.changePage("#about",{reverse:!1,changeHash:!1})},privacy_policy:function(){var r=this;e(["../views/PrivacyPolicyView"],function(e){r.privacyPolicyView=r.privacyPolicyView||new e({el:"#privacy"}),r.privacyPolicyView.render(),t.mobile.changePage("#privacy",{reverse:!1,changeHash:!1})})},resetpassword:function(){var r=this;e(["../views/PasswordReset"],function(e){r.resetPasswordView=r.resetPasswordView||new e({el:"#user-reset-password"}),r.resetPasswordView.render(),t.mobile.changePage("#user-reset-password",{reverse:!1,changeHash:!1})})},profile:function(){var r=this;t.mobile.loading("show"),r.set_back_button("#"),e(["../views/UserSettingsProfileView"],function(e){r.enforce_logged_in().then(function(){return A.get_users()}).then(function(){r.userSettingsProfileView=r.userSettingsProfileView||(new e).setup(),t.mobile.changePage("#user-settings-profile",{reverse:!1,changeHash:!1})})})},set_back_button:function(e){t("#header-back-button").attr("href",e)},charactercosts:function(e){var r=this;t.mobile.loading("show"),r.set_back_button("#character?"+e),r.get_character(e,["skills","disciplines","backgrounds"]).done(function(e){r.characterCostsView.model=e,r.characterCostsView.render(),t.mobile.changePage("#character-costs",{reverse:!1,changeHash:!1})})},characterlog:function(e,r,a){var i=this;t.mobile.loading("show"),i.set_back_button("#character?"+e),i.get_character(e,"all").done(function(e){i.characterLogView.register(e,r,a);t(".ui-page-active").attr("id"),t.mobile.changePage("#character-log",{reverse:!1,changeHash:!1});t.mobile.loading("hide")})},characterexperience:function(e,r,a){var i=this;t.mobile.loading("show"),i.set_back_button("#character?"+e),i.get_character(e,"all").done(function(e){i.characterExperienceView.register(e,r,a);t(".ui-page-active").attr("id"),t.mobile.changePage("#experience-notations-all",{reverse:!1,changeHash:!1});t.mobile.loading("hide")})},characterhistory:function(r,a){var i=this;t.mobile.loading("show"),i.set_back_button("#character?"+r),e(["../views/CharacterHistoryView"],function(e){i.get_character(r,"all").then(function(t){return i.characterHistoryView=i.characterHistoryView||new e({el:"#character-history"}),i.characterHistoryView.register(t,a)}).then(function(){t(".ui-page-active").attr("id"),t.mobile.changePage("#character-history",{reverse:!1,changeHash:!1});t.mobile.loading("hide")}).fail(z)})},characterapproval:function(r){var a=this;t.mobile.loading("show"),a.set_back_button("#character?"+r),e(["../views/CharacterApprovalView"],function(e){a.get_character(r,"all").then(function(e){return e.fetch_long_text("extended_print_text")}).then(function(t){return a.characterApprovalView=a.characterApprovalView||new e({el:"#character-approval > div[role='main']"}),a.characterApprovalView.register(t)}).then(function(){t(".ui-page-active").attr("id"),t.mobile.changePage("#character-approval",{reverse:!1,changeHash:!1});t.mobile.loading("hide")}).fail(z)})},withCharacterPrintView:function(t){var r=this;e(["../views/CharacterPrintView"],function(e){r.characterPrintView=r.characterPrintView||new e({el:"#printable-sheet"}),t()})},character_show_approved:function(e){var r=this;t.mobile.loading("show"),r.set_back_button("#character?"+e),r.withCharacterPrintView(function(){r.get_character(e,"all").then(function(e){return e.fetch_long_text("extended_print_text")}).then(function(e){return e.get_transformed_last_approved()}).then(function(e){null==e?t.mobile.changePage("#character-print-no-approval",{reverse:!1,changeHash:!1}):(e.transform_description=[],r.characterPrintView.setup({character:e}),t.mobile.changePage("#printable-sheet",{reverse:!1,changeHash:!1}))}).fail(z)})},characterrename:function(e){var r=this;t.mobile.loading("show"),r.set_back_button("#character?"+e),r.get_character(e,"all").then(function(e){return r.characterRenameView=r.characterRenameView||new E({el:"#character-rename-main"}),r.characterRenameView.register(e)}).then(function(){t.mobile.changePage("#character-rename",{reverse:!1,changeHash:!1})}).always(function(){t.mobile.loading("hide")}).fail(z)},characterprint:function(e){var r=this;t.mobile.loading("show"),r.set_back_button("#character?"+e),r.withCharacterPrintView(function(){r.get_character(e,"all").then(function(e){return e.fetch_long_text("extended_print_text")}).then(function(e){e.transform_description=[],r.characterPrintView.setup({character:e}),t.mobile.changePage("#printable-sheet",{reverse:!1,changeHash:!1})}).fail(z)})},characternew:function(){var e=this;t.mobile.loading("show"),e.set_back_button("#characters?all"),e.characterNewView.render(),t.mobile.changePage("#character-new",{reverse:!1,changeHash:!1})},charactercreate:function(e){var r=this;t.mobile.loading("show"),r.set_back_button("#character?"+e),r.get_character(e,[]).then(function(e){return e.fetch_all_creation_elements()}).done(function(e){r.characterCreateView.model=e,r.characterCreateView.render(),r.characterCreateView.scroll_back_after_page_change(),t.mobile.changePage("#character-create",{reverse:!1,changeHash:!1}),t.mobile.loading("hide")}).fail(z)},charactercreatepicksimpletrait:function(e,r,a){var i=this;a=_.parseInt(a),t.mobile.loading("show"),i.set_back_button("#charactercreate/"+r),i.get_character(r,[e]).done(function(t){var r;return"disciplines"==e?r="in clan disciplines":"wta_gifts"==e&&(r=["affinity","show_only_value_1"]),i.characterCreateView.backToTop=document.documentElement.scrollTop||document.body.scrollTop,i.characterCreateSimpleTraitNewView.register(t,e,a,"#charactercreate/<%= self.character.id %>",r,"#charactercreate/simpletraits/<%= self.category %>/<%= self.character.id %>/specialize/<%= b.linkId() %>/"+a)}).then(function(){t.mobile.changePage("#character-create-simpletrait-new",{reverse:!1,changeHash:!1})})},charactercreatespecializesimpletrait:function(e,r,a,i){var n=this;i=_.parseInt(i),t.mobile.loading("show"),n.set_back_button("#charactercreate/"+r),n.get_character(r,[e]).then(function(t){return t.get_trait(e,a)}).then(function(t,r){return n.simpleTraitSpecializationView.register(r,t,e,window.location.hash,"#charactercreate/"+r.id)}).then(function(){t.mobile.changePage("#simpletrait-specialization",{reverse:!1,changeHash:!1})}).fail(function(e){console.log(e.message)})},charactercreateunpicksimpletrait:function(e,r,a,i){var n=this;i=_.parseInt(i),t.mobile.loading("show"),n.set_back_button("#charactercreate/"+r),n.get_character(r,[e]).then(function(t){return n.characterCreateView.backToTop=document.documentElement.scrollTop||document.body.scrollTop,t.unpick_from_creation(e,a,i)}).done(function(e){window.location.hash="#charactercreate/"+e.id}).fail(function(e){console.log(e.message)})},charactercreatepicksimpletext:function(e,r,a){var i=this;t.mobile.loading("show"),i.set_back_button("#charactercreate/"+a),i.get_character(a,[e]).then(function(t){return i.characterCreateView.backToTop=document.documentElement.scrollTop||document.body.scrollTop,i.simpleTextNewView.register(t,e,r,"#charactercreate/"+t.id)}).then(function(){t.mobile.changePage("#simpletext-new",{reverse:!1,changeHash:!1})})},charactercreateunpicksimpletext:function(e,r,a){var i=this;t.mobile.loading("show"),i.set_back_button("#charactercreate/"+a),i.get_character(a,[e]).then(function(e){return i.character.backToTop=document.documentElement.scrollTop||document.body.scrollTop,e.unpick_text(r)}).then(function(e){window.location.hash="#charactercreate/"+e.id}).fail(z)},charactercreatecomplete:function(e){var r=this;t.mobile.loading("show"),r.set_back_button("#charactercreate/"+e),r.get_character(e).done(function(e){return e.complete_character_creation()}).then(function(){window.location.hash="#character?"+e}).fail(function(t){alert(t.message),window.location.hash="#charactercreate/"+e}).fail(z)},characterportrait:function(e){var r=this;t.mobile.loading("show"),r.set_back_button("#character?"+e),r.get_character(e).done(function(e){return r.characterPortraitView.register(e)}).always(function(){t.mobile.changePage("#character-portrait",{reverse:!1,changeHash:!1})})},character_extended_print_text:function(e){var r=this;t.mobile.loading("show"),r.set_back_button("#character?"+e),r.get_character(e,"all").then(function(e){return e.fetch_long_text("extended_print_text")}).then(function(e){e.transform_description=[],r.cept=r.cept||new W({el:"#extended-print-text"}),r.cept.setup(e,{category:"extended_print_text",pretty:"Extended Print Text",description:"Additional text to display with your printed character sheet."}),t.mobile.changePage("#extended-print-text",{reverse:!1,changeHash:!1})}).fail(z)},character_background_long_text:function(e){var r=this;t.mobile.loading("show"),r.set_back_button("#character?"+e),r.get_character(e,"all").then(function(e){return e.fetch_long_text("background")}).then(function(e){e.transform_description=[],r.clt=r.clt||new W({el:"#long-text"}),r.clt.setup(e,{category:"background",pretty:"Background",description:"History and backstory for your character."}),t.mobile.changePage("#long-text",{reverse:!1,changeHash:!1})}).fail(z).always(function(){t.mobile.loading("hide")})},character_notes_long_text:function(e){var r=this;t.mobile.loading("show"),r.set_back_button("#character?"+e),r.get_character(e,"all").then(function(e){return e.fetch_long_text("notes")}).then(function(e){e.transform_description=[],r.clt=r.clt||new W({el:"#long-text"}),r.clt.setup(e,{category:"notes",pretty:"Notes",description:"Notes about your character's interactions and progression"}),t.mobile.changePage("#long-text",{reverse:!1,changeHash:!1})}).fail(z).always(function(){t.mobile.loading("hide")})},show_character_helper:function(e,r){var a=this;t.mobile.loading("show"),a.set_back_button(r),a.get_character(e).done(function(e){a.characterMainPage.model=e,a.characterMainPage.render(),a.characterMainPage.scroll_back_after_page_change(),t.mobile.changePage("#character",{reverse:!1,changeHash:!1})}).then(function(){t.mobile.loading("hide")}).fail(z).fail(function(){window.location.hash=r})},character:function(e){this.show_character_helper(e,"#characters?all")},troupe_character:function(e,t){this.show_character_helper(t,"#troupe/"+e+"/characters/all")},administration_character:function(e){this.show_character_helper(e,"#administration/characters/all")},administration_users:function(){var a=this;t.mobile.loading("show"),a.set_back_button("#administration"),e(["../views/UsersView"],function(e){a.enforce_logged_in().then(function(){var i=r.User.current().get("admininterface");i&&(a.troupeAddStaffView=a.troupeAddStaffView||new e({el:"#troupe-add-staff"}),a.troupeAddStaffView.register("#administration/user/<%= id %>"),t.mobile.changePage("#troupe-add-staff",{reverse:!1,changeHash:!1}))}).always(function(){t.mobile.loading("hide")})})},administration_user:function(a){var i=this;t.mobile.loading("show"),i.set_back_button("#administration/users/all"),e(["../views/AdministrationUserView"],function(e){i.enforce_logged_in().then(function(){return r.Promise.when(new r.Query("User").get(a),i.get_patronages(),A.get_users())}).then(function(n,o,c){var s=r.User.current().get("admininterface");if(s){var l=_.select(o.models,"attributes.owner.id",a);i.administrationUserView=i.administrationUserView||new e({patronages:o}),i.administrationUserView.register(n),i.administrationUserView.patronages.reset(l),t.mobile.changePage("#administration-user-view",{reverse:!1,changeHash:!1})}}).always(function(){t.mobile.loading("hide")}).fail(z)})},administration_user_patronages:function(a){var i=this;t.mobile.loading("show"),i.set_back_button("#administration/users/all"),e(["../views/AdministrationUserView"],function(e){i.enforce_logged_in().then(function(){return new r.Query("User").get(a)}).then(function(r){i.administrationUserPatronagesView=i.administrationUserPatronagesView||new e({el:"#administration-user-patronages-view"}),i.administrationUserPatronagesView.register(r),t.mobile.changePage("#administration-user-patronages-view",{reverse:!1,changeHash:!1})}).always(function(){t.mobile.loading("hide")}).fail(z)})},administration_patronages:function(){var a=this;t.mobile.loading("show"),a.set_back_button("#administration"),e(["../views/PatronagesView"],function(e){a.enforce_logged_in().then(function(){return r.Promise.when(a.get_patronages(),A.get_users())}).then(function(r,i){a.administrationPatronagesView=a.administrationPatronageView||new e({el:"#administration-patronages-view-list",collection:r}).render(),t.mobile.changePage("#administration-patronages-view",{reverse:!1,changeHash:!1})}).fail(z).fail(function(){t.mobile.loading("hide")})})},administration_patronage:function(a){var i=this;t.mobile.loading("show"),i.set_back_button("#administration/patronages"),e(["../views/PatronageView"],function(e){i.enforce_logged_in().then(function(){return r.Promise.when(i.get_patronage(a),A.get_users())}).then(function(r,a){i.administrationPatronageView&&i.administrationPatronageView.remove(),i.administrationPatronageView=new e({model:r}),i.administrationPatronageView.render(),t("#administration-patronage-view").find("div[role='main']").append(i.administrationPatronageView.el),t.mobile.changePage("#administration-patronage-view",{reverse:!1,changeHash:!1})}).fail(z).fail(function(){t.mobile.loading("hide")})})},administration_patronage_new:function(a){var i=this;t.mobile.loading("show"),i.set_back_button("#administration/patronages"),e(["../views/PatronageView"],function(e){i.enforce_logged_in().then(function(){return r.Promise.when(new I,A.get_users())}).then(function(r,n){i.administrationPatronageView&&i.administrationPatronageView.remove(),r.set("owner",n.get(a)),i.administrationPatronageView=new e({model:r}),i.administrationPatronageView.render(),t("#administration-patronage-view").find("div[role='main']").append(i.administrationPatronageView.el),t.mobile.changePage("#administration-patronage-view",{reverse:!1,changeHash:!1})}).fail(z).fail(function(){t.mobile.loading("hide")})})},administration_descriptions:function(){var e=this;e.set_back_button("#administration"),t.mobile.loading("show"),e.enforce_logged_in().then(function(){return e.administrationDescriptionsView=e.administrationDescriptionsView||(new D).setup(),e.administrationDescriptionsView.update_categories()}).then(function(){t.mobile.changePage("#administration-descriptions",{reverse:!1,changeHash:!1})}).fail(function(){t.mobile.loading("hide")}).fail(z)},characterdelete:function(e){var r=this;t.mobile.loading("show"),this.set_back_button("#character?"+e),r.get_character(e).done(function(e){r.characterDeleteView.register(e,"#characters?all",function(){return r.characters.collection.fetch({reset:!0})}),t.mobile.changePage("#character-delete",{reverse:!1,changeHash:!1})})},get_user_characters:function(){var e=this,t=[];"devuser"==r.User.current().get("username")&&(t.sortbycreated=!0);var a=r.Promise.as([]),i=new r.Query(l);return i.equalTo("owner",r.User.current()),i.include("portrait"),a=i.each(function(e){t.push(e)}).then(function(){e.characters.collection.reset(t)}),a.done(function(){return r.Promise.as(e.characters.collection)})},get_troupe_characters:function(e,t){var a=this;t=_.defaults({},t,{includedeleted:!1});var i=[];"devuser"==r.User.current().get("username")&&(i.sortbycreated=!0);var n=r.Promise.as([]),o=new r.Query(l);return o.equalTo("troupes",e),o.include("portrait"),o.include("owner"),n=o.each(function(e){var r=!0;console.log(JSON.stringify(t)),t.includedeleted||e.has("owner")||(r=!1),r&&i.push(e)}).then(function(){a.troupeCharacters.collection.reset(i)}),n.done(function(){return r.Promise.as(a.troupeCharacters.collection)})},get_troupe_summarize_characters:function(e,a){var i=[];"devuser"==r.User.current().get("username")&&(i.sortbycreated=!0);var n=r.Promise.as([]),o=new r.Query(h);o.equalTo("troupes",e),o.include("portrait"),o.include("owner"),o.equalTo("type","Werewolf"),_.each(h.all_simpletrait_categories(),function(e){o.include(e[0])}),t.mobile.loading("show",{text:"Fetching all characters",textVisible:!0}),n=o.each(function(e){return i.push(e),e.get_long_text("extended_print_text")});var c=new r.Query(l);return c.equalTo("troupes",e),c.include("portrait"),c.include("owner"),c.notEqualTo("type","Werewolf"),_.each(l.all_simpletrait_categories(),function(e){c.include(e[0])}),n=n.then(function(){return c.each(function(e){return i.push(e),e.get_long_text("extended_print_text")})}),n=n.then(function(){t.mobile.loading("show",{text:"Updating local character list",textVisible:!0}),a.reset(i)}),n.done(function(){return t.mobile.loading("show",{text:"Transitioning",textVisible:!0}),r.Promise.as(a)})},get_administrator_characters:function(){var e=this,t=[];"devuser"==r.User.current().get("username")&&(t.sortbycreated=!0);var a=r.Promise.as([]),i=new r.Query(h);i.exists("owner"),i.include("portrait"),i.include("owner"),i.equalTo("type","Werewolf"),a=i.each(function(e){t.push(e)});var n=new r.Query(l);return n.exists("owner"),n.include("portrait"),n.include("owner"),n.notEqualTo("type","Werewolf"),a=a.then(function(){return n.each(function(e){t.push(e)})}),a=a.then(function(){e.characters.collection.reset(t)}),a.done(function(){return r.Promise.as(e.characters.collection)})},get_administrator_summarize_characters:function(){var e=this,t=[];"devuser"==r.User.current().get("username")&&(t.sortbycreated=!0);var a=r.Promise.as([]),i=new r.Query(l);return i.exists("owner"),i.include("portrait"),i.include("owner"),_.each(l.all_simpletrait_categories(),function(e){i.include(e[0])}),_.each(h.all_simpletrait_categories(),function(e){i.include(e[0])}),a=i.each(function(e){t.push(e)}).then(function(){e.characters.collection.reset(t)}),a.done(function(){return r.Promise.as(e.characters.collection)})},get_patronages:function(){var e=this,t=t||{};return _.defaults(t,{update:!0}),e.patronages=e.patronages||new Q,e.patronages.fetch()},get_patronage:function(e){var t=this;if(!e)return r.Promise.as(new I);if(_.has(t,"patronages")){var a=t.patronages.get(e);if(a)return r.Promise.as(a)}return new r.Query("Patronage").get(e)},characters:function(e){var r=this;"all"==e&&(r.set_back_button("#"),t.mobile.loading("show"),r.enforce_logged_in().then(function(){return r.get_user_characters()}).then(function(e){r.characters.register("#character?<%= character_id %>"),t.mobile.changePage("#characters-all",{reverse:!1,changeHash:!1})}).fail(z).fail(function(){t.mobile.loading("hide")}))},enforce_logged_in:function(){var e=this;if(!r.User.current()){t.mobile.changePage("#login",{reverse:!1,changeHash:!1}),t.mobile.loading("hide");var a=new r.Error(r.Error.USERNAME_MISSING,"Not logged in");return r.Promise.error(a)}var i=r.User.current();t("#header-logout-button").attr("href","#logout"),t("#header-logout-button").text("Log Out "+i.get("username")),e.footerTemplate=_.template(L)(),t('div[data-role="footer"] > div[data-role="navbar"]').html(e.footerTemplate).trigger("create"),"undefined"!=typeof trackJs?trackJs.configure({userId:i.get("username"),sessionId:i.getSessionToken()}):console.log("Something is blocking trackJs. No user debugging available.");var n=!0;if(e.lastadminchecktime){var o=new Date,c=o-e.lastadminchecktime;c<3e5&&(n=!1)}if(n){e.lastadminchecktime=new Date;var s=new r.Query(r.Role).equalTo("users",r.User.current()).equalTo("name","Administrator"),l=new r.Query(r.Role).equalTo("users",r.User.current()).equalTo("name","SiteAdministrator"),h=r.Query.or(s,l);return h.count().then(function(e){var t=!!e,a=r.User.current();return a.get("admininterface")!=t?(a.set("admininterface",t),N(a),a.save()):r.Promise.as(r.User.current())})}return r.Promise.as(r.User.current())},get_character:function(e,t){var r=this;return r.enforce_logged_in().then(function(){return r._get_character(e,t)})},_check_character_mismatch:function(e){var a=e.get("owner");return _.isUndefined(a)||a.id==r.User.current().id?r.Promise.as(e):e.check_server_client_permissions_mismatch().then(function(){return e.is_mismatched?(t.mobile.loading("show",{text:"Server data mismatch. Attempting to correct.",textVisible:!0}),e.update_troupe_acls()):r.Promise.as(e)})},_get_character:function(e,t){var a=this;if(a.last_fetched_character_id==e){var i;return i="Werewolf"==a.last_fetched_character_type?h.get_character(e,t,a):l.get_character(e,t,a),i.then(a._check_character_mismatch)}var n=new r.Query("Vampire").select("type");return n.get(e).then(function(r){return a.last_fetched_character_id=e,a.last_fetched_character_type=r.get("type"),"Werewolf"==r.get("type")?h.get_character(e,t,a):l.get_character(e,t,a)}).then(a._check_character_mismatch)},withSimpleTraitChangeView:function(t){var r=this;e(["../views/SimpleTraitChangeView"],function(e){r.simpleTraitChangeView=r.simpleTraitChangeView||new e({el:"#simpletrait-change"}),t()})},simpletrait:function(e,r,a){var i=this;t.mobile.loading("show"),i.set_back_button("#simpletraits/"+e+"/"+r+"/all"),i.withSimpleTraitChangeView(function(){i.get_character(r,[e]).done(function(t){return t.get_trait(e,a)}).then(function(r,a){i.simpleTraitChangeView.register(a,r,e),t.mobile.changePage("#simpletrait-change",{reverse:!1,changeHash:!1})}).fail(function(e){console.log(e.message)})})},simpletraitspecialize:function(e,r,a){var i=this;i.set_back_button("#simpletraits/"+e+"/"+r+"/all"),i.get_character(r,[e]).done(function(t){return character=t,character.get_trait(e,a)}).then(function(t,r){return i.simpleTraitSpecializationView.register(r,t,e,"#simpletraits/<%= self.category %>/<%= self.character.id %>/all","#simpletraits/<%= self.category %>/<%= self.character.id %>/all")}).then(function(){t.mobile.changePage("#simpletrait-specialization",{reverse:!1,changeHash:!1})}).fail(function(e){console.log(e.message)})},simpletraitnew:function(e,r,a,i,n){var o=this;t.mobile.loading("show"),o.set_back_button("#simpletraits/"+e+"/"+r+"/all"),o.withSimpleTraitChangeView(function(){o.get_character(r,[e]).then(function(r){var c=new d({name:decodeURIComponent(a),value:_.parseInt(i),free_value:_.parseInt(n),category:e});o.simpleTraitChangeView.register(r,c,e),t.mobile.changePage("#simpletrait-change",{reverse:!1,changeHash:!1})}).fail(function(e){console.log(e.message)})})},simpletrait_new_specialize:function(e,r,a,i,n){var o=this;o.set_back_button("#simpletraits/"+e+"/"+r+"/all"),o.get_character(r,[e]).then(function(t){var c=new d({name:decodeURIComponent(a),value:_.parseInt(i),free_value:_.parseInt(n)});return o.simpleTraitNewSpecializationView.register(c,e,"#simpletraits/<%= self.category %>/"+r+"/all","#simpletrait/spacer/<%= self.category %>/"+r+"/<%= b.get('name') %>/<%= b.get('value') %>/<%= b.get('free_value') %>/new")}).then(function(){t.mobile.changePage("#simpletrait-new-specialization",{reverse:!1,changeHash:!1})}).fail(function(e){console.log(e.message)})},simpletextpick:function(e,r,a){var i=this;t.mobile.loading("show"),i.set_back_button("#character?"+a),i.get_character(a,[e]).then(function(t){return i.character.backToTop=document.documentElement.scrollTop||document.body.scrollTop,i.simpleTextNewView.register(t,e,r,"#character?"+t.id)}).then(function(){t.mobile.changePage("#simpletext-new",{reverse:!1,changeHash:!1})})},simpletextunpick:function(e,r,a){var i=this;t.mobile.loading("show"),i.set_back_button("#character?"+a),i.get_character(a,[e]).then(function(e){return i.character.backToTop=document.documentElement.scrollTop||document.body.scrollTop,e.unpick_text(r)}).then(function(e){window.location.hash="#character?"+e.id}).fail(z)},simpletraits:function(r,a,i){var n=this;"all"==i&&(t.mobile.loading("show"),n.set_back_button("#character?"+a),e(["../views/SimpleTraitCategoryView"],function(e){n.get_character(a,[r]).done(function(a){n.simpleTraitCategoryView=n.simpleTraitCategoryView||new e({el:"#simpletraitcategory-all"}),n.simpleTraitCategoryView.register(a,r),t.mobile.changePage("#simpletraitcategory-all",{reverse:!1,changeHash:!1})}).fail(function(e){console.log(e.message)})})),"new"==i&&(t.mobile.loading("show"),n.set_back_button("#simpletraits/"+r+"/"+a+"/all"),e(["../views/SimpleTraitNewView"],function(e){n.simpleTraitNewView=n.simpleTraitNewView||new e({el:"#simpletrait-new > div[role='main']"}),n.get_character(a,[r]).done(function(e){return n.simpleTraitNewView.register(e,r)}).then(function(){t.mobile.changePage("#simpletrait-new",{reverse:!1,changeHash:!1})}).fail(function(e){console.log(e.message)})}))},victims:function(e){"all"==e&&t.mobile.changePage("#victims-all",{reverse:!1,changeHash:!1})},category:function(e){var r=this[e+"View"];r.collection.length?t.mobile.changePage("#"+e,{reverse:!1,changeHash:!1}):(t.mobile.loading("show"),r.collection.fetch().done(function(){t.mobile.changePage("#"+e,{reverse:!1,changeHash:!1})}))},character_list_troupes:function(r){var a=this;t.mobile.loading("show"),a.set_back_button("#character?"+r),e(["../views/TroupesListView"],function(e){a.get_character(r).then(function(t){return a.characterListTroupesView=a.characterListTroupesView||new e({el:"#character-pick-troupe-to-show"}).render(),a.characterListTroupesView.register("#character/"+r+"/troupe/<%= troupe_id %>/show",function(e){e.containedIn("objectId",t.get_troupe_ids())})}).then(function(){t.mobile.changePage("#character-pick-troupe-to-show",{reverse:!1,changeHash:!1})}).always(function(){t.mobile.loading("hide");
-}).fail(z)})},character_pick_troupe_to_leave:function(r){var a=this;t.mobile.loading("show"),a.set_back_button("#character?"+r),e(["../views/TroupesListView"],function(e){a.get_character(r).then(function(t){return a.characterPickTroupeToLeaveView=a.characterPickTroupeToLeaveView||new e({el:"#character-pick-troupe-to-leave"}).render(),a.characterPickTroupeToLeaveView.register("#character/"+r+"/troupe/<%= troupe_id %>/leave",function(e){e.containedIn("objectId",t.get_troupe_ids())})}).then(function(){t.mobile.changePage("#character-pick-troupe-to-leave",{reverse:!1,changeHash:!1})}).always(function(){t.mobile.loading("hide")}).fail(z)})},character_pick_troupe_to_join:function(r){var a=this;t.mobile.loading("show"),a.set_back_button("#character?"+r),e(["../views/TroupesListView"],function(e){a.get_character(r).then(function(t){return a.characterPickTroupeToJoinView=a.characterPickTroupeToJoinView||new e({el:"#character-pick-troupe-to-join"}).render(),a.characterPickTroupeToJoinView.register("#character/"+r+"/troupe/<%= troupe_id %>/join",function(e){e.notContainedIn("objectId",t.get_troupe_ids())})}).then(function(){t.mobile.changePage("#character-pick-troupe-to-join",{reverse:!1,changeHash:!1})}).always(function(){t.mobile.loading("hide")}).fail(z)})},character_show_troupe:function(r,a){var i=this;t.mobile.loading("show"),i.set_back_button("#character?"+r),e(["../views/TroupeView"],function(e){var n,o;i.get_character(r).then(function(e){n=e;var t=new S({id:a});return t.fetch()}).then(function(r){o=r,i.troupeView=i.troupeView||new e({el:"#troupe"}),i.troupeView.register(o),t.mobile.changePage("#troupe",{reverse:!1,changeHash:!1})}).fail(function(){window.location.hash="#character?"+r}).always(function(){t.mobile.loading("hide")}).fail(z)})},character_join_troupe:function(r,a){var i=this;t.mobile.loading("show"),i.set_back_button("#character?"+r),e(["../views/TroupeView"],function(e){var n,o;i.get_character(r).then(function(e){n=e;var t=new S({id:a});return t.fetch()}).then(function(e){return o=e,n.join_troupe(e)}).then(function(){i.troupeView=i.troupeView||new e({el:"#troupe"}),i.troupeView.register(o),t.mobile.changePage("#troupe",{reverse:!1,changeHash:!1})}).fail(function(){window.location.hash="#character?"+r}).always(function(){t.mobile.loading("hide")}).fail(z)})},character_leave_troupe:function(e,r){var a=this;t.mobile.loading("show"),a.set_back_button("#character?"+e);var i,n;a.get_character(e).then(function(e){i=e;var t=new S({id:r});return t.fetch()}).then(function(e){return n=e,i.leave_troupe(e)}).always(function(){window.location.hash="#character?"+e,t.mobile.loading("hide")}).fail(z)},troupecharacters:function(e,a){var i=this;t.mobile.loading("show"),i.enforce_logged_in().then(function(){i.set_back_button("#troupe/"+e);var t=new r.Query("Troupe").include("portrait").get(e);return t}).then(function(e,t){return i.get_troupe_characters(e)}).then(function(){i.troupeCharacters=i.troupeCharacters||new s({el:"#troupe-characters-all",collection:new u}),i.troupeCharacters.register("#troupe/"+e+"/character/<%= character_id %>"),t.mobile.changePage("#troupe-characters-all",{reverse:!1,changeHash:!1})}).always(function(){t.mobile.loading("hide")}).fail(z)},troupesummarizecharacters:function(a,i){var n=this;t.mobile.loading("show"),n.set_back_button("#troupe/"+a),e(["../views/CharactersSummarizeListView"],function(e){n.enforce_logged_in().then(function(){var e=new r.Query("Troupe").include("portrait").get(a);return e}).then(function(t,r){return n.troupeSummarizeCharacters=n.troupeSummarizeCharacters||new e({collection:new u}).setup(),n.troupeCharacters.register("#troupe/"+a+"/character/<%= character_id %>"),n.get_troupe_summarize_characters(t,n.troupeSummarizeCharacters.collection)}).then(function(){t.mobile.changePage("#troupe-summarize-characters-all",{reverse:!1,changeHash:!1})}).always(function(){t.mobile.loading("hide")}).fail(z)})},get_troupe_print_options:function(){var e=this;return e.troupePrintOptions=e.troupePrintOptions||new o.Model({font_size:100,exclude_extended:!1}),e.troupePrintOptions},troupe_select_to_print_characters:function(e,a){var i=this;t.mobile.loading("show"),i.enforce_logged_in().then(function(){i.set_back_button("#troupe/"+e);var t=new r.Query("Troupe").include("portrait").get(e);return t}).then(function(t,r){return i.troupeSelectToPrintCharacters=i.troupeSelectToPrintCharacters||new O({collection:new u,el:"#troupe-select-to-print-characters-all > div[role='main']",print_options:i.get_troupe_print_options()}).setup(),i.troupeCharacters.register("#troupe/"+e+"/character/<%= character_id %>"),i.troupeSelectToPrintCharacters.submission_template=_.template("#troupe/"+e+"/characters/print/selected"),i.get_troupe_summarize_characters(t,i.troupeSelectToPrintCharacters.collection)}).then(function(){t.mobile.changePage("#troupe-select-to-print-characters-all",{reverse:!1,changeHash:!1})}).always(function(){t.mobile.loading("hide")}).fail(z)},troupe_print_characters:function(a,i){var n=this;t.mobile.loading("show"),"selected"==i?n.set_back_button("#troupe/"+a+"/characters/selecttoprint/all"):n.set_back_button("#troupe/"+a),e(["../views/CharactersPrintView"],function(e){n.enforce_logged_in().then(function(){var e=new r.Query("Troupe").include("portrait").get(a);return e}).then(function(t,r){return n.troupePrintCharacters=n.troupePrintCharacters||new e({collection:new u,el:"#troupe-print-characters-all > div[role='main']",print_options:n.get_troupe_print_options()}).setup(),n.troupeCharacters.register("#troupe/"+a+"/character/<%= character_id %>"),"selected"==i&&n.troupeSelectToPrintCharacters?void n.troupePrintCharacters.collection.reset(n.troupeSelectToPrintCharacters.get_filtered()):n.get_troupe_summarize_characters(t,n.troupePrintCharacters.collection)}).then(function(){t.mobile.changePage("#troupe-print-characters-all",{reverse:!1,changeHash:!1})}).always(function(){t.mobile.loading("hide")}).fail(z)})},troupe_portrait:function(e){var a=this;t.mobile.loading("show"),a.enforce_logged_in().then(function(){a.set_back_button("#troupe/"+e);var t=new r.Query("Troupe").include("portrait").get(e);return t}).then(function(e){a.troupePortraitView=a.troupePortraitView||new U({el:"#troupe-portrait"}),a.troupePortraitView.register(e),t.mobile.changePage("#troupe-portrait",{reverse:!1,changeHash:!1})}).always(function(){t.mobile.loading("hide")}).fail(z)},troupe_relationship_network:function(a){var i=this;t.mobile.loading("show"),i.set_back_button("#troupe/"+a),e(["../views/TroupeCharacterRelationshipsNetworkView"],function(e){i.enforce_logged_in().then(function(){var e=new r.Query("Troupe").include("portrait").get(a);return e}).then(function(e,t){return i.get_troupe_characters(e)}).then(function(t){return i.tcrnv=i.tcrnv||new e({el:"#troupe-character-relationships-network"}),i.tcrnv.register(t)}).always(function(){t.mobile.changePage("#troupe-character-relationships-network",{reverse:!1,changeHash:!1}),t.mobile.loading("hide")}).fail(z)})},troupeeditstaff:function(e,a){var i=this;t.mobile.loading("show"),i.enforce_logged_in().then(function(){i.set_back_button("#troupe/"+e);var t=new r.Query("Troupe").include("portrait").get(e),n=new r.Query("User").get(a);return r.Promise.when(t,n)}).then(function(e,t){return i.troupeEditStaffView=i.troupeEditStaffView||new H({el:"#troupe-edit-staff"}),i.troupeEditStaffView.register(e,t)}).then(function(){t.mobile.changePage("#troupe-edit-staff",{reverse:!1,changeHash:!1})}).always(function(){t.mobile.loading("hide")}).fail(function(e){_.isArray(e)?_.each(e,function(e){console.log("Something failed"+e.message)}):console.log("error updating experience"+e.message)})},troupeaddstaff:function(a){var i=this;t.mobile.loading("show"),i.set_back_button("#troupe/"+a),e(["../views/UsersView"],function(e){i.enforce_logged_in().then(function(){return new r.Query("Troupe").get(a)}).then(function(r){i.troupeAddStaffView=i.troupeAddStaffView||new e({el:"#troupe-add-staff"}),i.troupeAddStaffView.register("#troupe/"+r.id+"/staff/edit/<%= id %>"),t.mobile.changePage("#troupe-add-staff",{reverse:!1,changeHash:!1})}).always(function(){t.mobile.loading("hide")})})},troupe:function(a){var i=this;t.mobile.loading("show"),i.set_back_button("#troupes"),e(["../views/TroupeView"],function(e){i.enforce_logged_in().then(function(){return new r.Query("Troupe").get(a)}).then(function(a){i.troupeView=i.troupeView||new e({el:"#troupe"});var n=r.User.current().get("storytellerinterface"),o=r.User.current().get("admininterface");i.troupeView.register(a,!(n||o)),t.mobile.changePage("#troupe",{reverse:!1,changeHash:!1})}).always(function(){t.mobile.loading("hide")})})},troupes:function(){var r=this;t.mobile.loading("show"),r.set_back_button("#"),e(["../views/TroupesListView"],function(e){r.enforce_logged_in().then(function(){return r.troupesListView=r.troupesListView||new e({el:"#troupes-list"}).render(),r.troupesListView.register()}).then(function(){t.mobile.changePage("#troupes-list",{reverse:!1,changeHash:!1})}).always(function(){t.mobile.loading("hide")})})},troupenew:function(){var r=this;t.mobile.loading("show"),r.set_back_button("#troupes"),e(["../views/TroupeNewView"],function(e){r.enforce_logged_in().then(function(){r.troupeNewView=r.troupeNewView||new e({el:"#troupe-new"}).render(),t.mobile.changePage("#troupe-new",{reverse:!1,changeHash:!1})}).always(function(){t.mobile.loading("hide")})})},administration:function(){var e=this;e.enforce_logged_in().then(function(){e.set_back_button("#"),t.mobile.changePage("#administration",{reverse:!1,changeHash:!1})})},administration_characters_all:function(){var e=this;t.mobile.loading("show"),e.enforce_logged_in().then(function(){return e.set_back_button("#administration"),e.get_administrator_characters()}).then(function(){e.characters.register("#administration/character/<%= character_id %>"),t.mobile.changePage("#characters-all",{reverse:!1,changeHash:!1})}).always(function(){t.mobile.loading("hide")}).fail(z)},administration_characters_summarize:function(){var r=this;t.mobile.loading("show"),r.set_back_button("#administration"),e(["../views/CharactersSummarizeListView"],function(e){r.enforce_logged_in().then(function(){return r.get_administrator_summarize_characters()}).then(function(){r.administrationSummarizeCharacters=r.administrationSummarizeCharacters||new e({collection:r.characters.collection}).setup(),r.troupeCharacters.register("#administration/character/<%= character_id %>"),t.mobile.changePage("#troupe-summarize-characters-all",{reverse:!1,changeHash:!1})}).always(function(){t.mobile.loading("hide")}).fail(z)})},referendums:function(){var r=this;t.mobile.loading("show"),r.set_back_button("#"),e(["../views/ReferendumsListView"],function(e){r.enforce_logged_in().then(function(){return r.referendumsListView=r.referendumsListView||new e({el:"#referendums-list"}).render(),r.referendumsListView.register()}).then(function(){t.mobile.changePage("#referendums-list",{reverse:!1,changeHash:!1})}).always(function(){t.mobile.loading("hide")})})},referendum:function(a){var i=this;t.mobile.loading("show"),i.set_back_button("#referendums"),e(["../models/Referendum","../views/ReferendumView"],function(e,n){i.enforce_logged_in().then(function(){var t=new r.Query(e);t.include("portrait");var i=new r.Query("ReferendumBallot").equalTo("owner",new e({id:a})).equalTo("caster",r.User.current());return r.Promise.when(t.get(a),i.first(),r.Cloud.run("get_my_patronage_status"))}).then(function(e,t,r){return i.referendumView=i.referendumView||new n({el:"#referendum"}),i.referendumView.setup({referendum:e,patronagestatus:r,ballot:t})}).then(function(){t.mobile.changePage("#referendum",{reverse:!1,changeHash:!1})}).always(function(){t.mobile.loading("hide")})})},administration_referendums:function(){var r=this;t.mobile.loading("show"),r.set_back_button("#administration"),e(["../views/ReferendumsListView"],function(e){r.enforce_logged_in().then(function(){return r.referendumsListView=r.referendumsListView||new e({el:"#referendums-list"}).render(),r.referendumsListView.register("#administration/referendum/<%= referendum_id %>")}).then(function(){t.mobile.changePage("#referendums-list",{reverse:!1,changeHash:!1})}).always(function(){t.mobile.loading("hide")})})},administration_referendum:function(a){var i=this;t.mobile.loading("show"),i.set_back_button("#administration/referendums"),e(["../models/Referendum","../collections/ReferendumBallots","../views/ReferendumView"],function(e,n,o){i.enforce_logged_in().then(function(){var t=new r.Query(e);t.include("portrait");var i=new n;return r.Promise.when(t.get(a),i.fetch(new e({id:a})),A.get_users(),r.Cloud.run("get_my_patronage_status"))}).then(function(e,t,r,a){return i.referendumView=i.referendumView||new o({el:"#referendum"}),i.referendumView.setup({referendum:e,ballots:t,users:r,patronagestatus:a})}).then(function(){t.mobile.changePage("#referendum",{reverse:!1,changeHash:!1})}).always(function(){t.mobile.loading("hide")})})}});return J});
+// Mobile Router
+// =============
+
+/* global _ */
+// Includes file dependencies
+define([
+    "require",
+	"jquery",
+	"parse",
+    "pretty",
+    "jscookie",
+    "moment",
+    "backbone",
+	"../collections/CategoriesCollection",
+    "../views/CharactersListView",
+    "../models/Vampire",
+    "../models/Werewolf",
+    "../collections/Vampires",
+    "../views/CharacterView",
+    "../models/SimpleTrait",
+    "../models/VampireCreation",
+    "../views/CharacterCreateView",
+    "../views/CharacterNewView",
+    "../views/CharacterCostsView",
+    "../views/SimpleTextNewView",
+    "../views/SimpleTraitSpecializationView",
+    "../views/CharacterLogView",
+    "../views/SignupView",
+    "../views/LoginView",
+    "../views/CharacterExperienceView",
+    "../views/CharacterPortraitView",
+    "../views/CharacterDeleteView",
+    "../views/PlayerOptionsView",
+    "../views/TroupeEditStaffView",
+    "../models/Troupe",
+    "../helpers/PromiseFailReport",
+    "../views/TroupePortraitView",
+    "text!../templates/footer.html",
+    "../helpers/InjectAuthData",
+    "../collections/Patronages",
+    "../collections/Users",
+    "../models/Patronage",
+    "../helpers/UserWreqr",
+    "../views/CharacterRenameView",
+    "../views/SimpleTraitNewSpecializationView",
+    "../views/CharacterCreateSimpleTraitNewView",
+    "../views/DescriptionsView",
+    "../models/Werewolf",
+    "../views/CharactersSelectToPrintView",
+    "../views/CharacterLongTextView"
+], function (require,
+             $,
+             Parse,
+             pretty,
+             Cookie,
+             moment,
+             Backbone,
+             CategoriesCollection,
+             CharactersListView,
+             Vampire,
+             Werewolf,
+             Vampires,
+             CharacterView,
+             SimpleTrait,
+             VampireCreation,
+             CharacterCreateView,
+             CharacterNewView,
+             CharacterCostsView,
+             SimpleTextNewView,
+             SimpleTraitSpecializationView,
+             CharacterLogView,
+             SignupView,
+             LoginView,
+             CharacterExperienceView,
+             CharacterPortraitView,
+             CharacterDeleteView,
+             PlayerOptionsView,
+             TroupeEditStaffView,
+             Troupe,
+             PromiseFailReport,
+             TroupePortraitView,
+             footer_html,
+             InjectAuthData,
+             Patronages,
+             Users,
+             Patronage,
+             UserChannel,
+             CharacterRenameView,
+             SimpleTraitNewSpecializationView,
+             CharacterCreateSimpleTraitNewView,
+             DescriptionsView,
+             Werewolf,
+             CharactersSelectToPrintView,
+             CharacterLongTextView
+) {
+
+    // Extends Backbone.Router
+    var CategoryRouter = Parse.Router.extend( {
+
+        // The Router constructor
+        initialize: function() {
+
+            this._character = null;
+
+            _.bindAll(this, "get_character");
+
+            this.characters = new CharactersListView( {el: "#characters-all", collection: new Vampires});
+            this.troupeCharacters = new CharactersListView({el: "#troupe-characters-all", collection: new Vampires});
+
+            this.characterMainPage = new CharacterView({ el: "#character"});
+
+            this.simpleTextNewView = new SimpleTextNewView({el: "#simpletext-new"});
+            this.simpleTraitSpecializationView = new SimpleTraitSpecializationView({el: "#simpletrait-specialization"});
+            this.simpleTraitNewSpecializationView = new SimpleTraitNewSpecializationView({el: "#simpletrait-new-specialization"});
+            this.characterCreateSimpleTraitNewView = new CharacterCreateSimpleTraitNewView({el: "#character-create-simpletrait-new"});
+
+            this.characterCreateView = new CharacterCreateView({el: "#character-create"});
+            this.characterNewView = new CharacterNewView({el: "#character-new-form"});
+
+            this.characterCostsView = new CharacterCostsView({el: "#character-costs"});
+            this.characterLogView = new CharacterLogView({el: "#character-log"});
+            this.characterExperienceView = new CharacterExperienceView({el: "#experience-notations-all"});
+            this.characterPortraitView = new CharacterPortraitView({el: "#character-portrait"});
+            this.characterDeleteView = new CharacterDeleteView({el: "#character-delete"});
+
+            this.loginView = new LoginView();
+            this.signupView = new SignupView();
+
+            /*
+            if (!Parse.User.current()) {
+                Parse.User.logIn("devuser", "thedumbness");
+            }
+            */
+
+            // Tells Backbone to start watching for hashchange events
+            Parse.history.start();
+        },
+
+        // Backbone.js Routes
+        routes: {
+
+            // When there is no hash bang on the url, the home method is called
+            "": "home",
+            "start": "home",
+            
+            "about": "about",
+            "privacy": "privacy_policy",
+
+            "logout": "logout",
+            "signup": "signup",
+            "reset": "resetpassword",
+
+            "profile": "profile",
+
+            // When #category? is on the url, the category method is called
+            "category?:type": "category",
+
+            "victims?:type": "victims",
+
+            "characters?:type": "characters",
+
+            "character?:id": "character",
+
+            "simpletraits/:category/:cid/:type": "simpletraits",
+
+            "simpletrait/:category/:cid/:bid": "simpletrait",
+            "simpletrait/specialize/:category/:cid/:bid": "simpletraitspecialize",
+            "simpletrait/spacer/:category/:cid/:name/:value/:free_value/new": "simpletraitnew",
+            "simpletrait/specialize/:category/:cid/:name/:value/:free_value/new": "simpletrait_new_specialize",
+            
+            "simpletext/:category/:target/:cid/pick":   "simpletextpick",
+            "simpletext/:category/:target/:cid/unpick":   "simpletextunpick",
+
+            "charactercreate/:cid": "charactercreate",
+
+            "charactercreate/simpletraits/:category/:cid/pick/:i": "charactercreatepicksimpletrait",
+            "charactercreate/simpletraits/:category/:cid/unpick/:stid/:i": "charactercreateunpicksimpletrait",
+            "charactercreate/simpletraits/:category/:cid/specialize/:stid/:i": "charactercreatespecializesimpletrait",
+            "charactercreate/simpletext/:category/:target/:cid/pick": "charactercreatepicksimpletext",
+            "charactercreate/simpletext/:category/:target/:cid/unpick": "charactercreateunpicksimpletext",
+            "charactercreate/complete/:cid": "charactercreatecomplete",
+
+            "characternew": "characternew",
+
+            "character/:cid/print": "characterprint",
+            "character/:cid/costs": "charactercosts",
+            "character/:cid/log/:start/:changeBy": "characterlog",
+            "character/:cid/history/:id": "characterhistory",
+            "character/:cid/portrait": "characterportrait",
+            "character/:cid/delete": "characterdelete",
+            "character/:cid/troupes": "character_list_troupes",
+            "character/:cid/troupes/leave": "character_pick_troupe_to_leave",
+            "character/:cid/troupes/join": "character_pick_troupe_to_join",
+            "character/:cid/troupe/:tid/join": "character_join_troupe",
+            "character/:cid/troupe/:tid/leave": "character_leave_troupe",
+            "character/:cid/troupe/:tid/show": "character_show_troupe",
+            "character/:cid/approval": "characterapproval",
+            "character/:cid/rename": "characterrename",
+            "character/:cid/approved": "character_show_approved",
+            "character/:cid/extendedprinttext": "character_extended_print_text",
+            "character/:cid/backgroundlt": "character_background_long_text",
+            "character/:cid/noteslt": "character_notes_long_text",
+
+            "character/:cid/experience/:start/:changeBy": "characterexperience",
+
+            "troupe/new": "troupenew",
+            "troupes": "troupes",
+            "troupe/:id": "troupe",
+            "troupe/:id/staff/add": "troupeaddstaff",
+            "troupe/:id/staff/edit/:uid": "troupeeditstaff",
+            "troupe/:id/characters/:type": "troupecharacters",
+            "troupe/:id/characters/summarize/:type": "troupesummarizecharacters",
+            "troupe/:id/characters/selecttoprint/:type": "troupe_select_to_print_characters",
+            "troupe/:id/characters/print/:type": "troupe_print_characters",
+            "troupe/:id/characters/relationships/network": "troupe_relationship_network",
+            "troupe/:id/character/:cid": "troupe_character",
+            "troupe/:id/portrait": "troupe_portrait",
+
+            "administration": "administration",
+            "administration/characters/all": "administration_characters_all",
+            "administration/characters/summarize": "administration_characters_summarize",
+            "administration/character/:id": "administration_character",
+            "administration/users/all": "administration_users",
+            "administration/user/:id": "administration_user",
+            "administration/patronages/user/:id": "administration_user_patronages",
+            "administration/patronages": "administration_patronages",
+            "administration/patronage/:id": "administration_patronage",
+            "administration/patronages/new": "administration_patronage_new",
+            "administration/patronages/new/:userid": "administration_patronage_new",
+            "administration/descriptions": "administration_descriptions",
+
+            // Referendums
+            "referendums": "referendums", // Listing of active referendums
+            "referendum/:id": "referendum", // Description of an individual referendum with the ballot questions
+            "administration/referendums": "administration_referendums", // Listing of active referendums
+            "administration/referendum/:id": "administration_referendum", // Admin view of a referendum
+        },
+
+        // Home method
+        home: function() {
+            var self = this;
+            this.enforce_logged_in().then(function () {
+                var q = (new Parse.Query(Parse.Role)).equalTo("users", Parse.User.current());
+                return q.count();
+            }).then(function (count) {
+                var user = Parse.User.current();
+                if (0 < count) {
+                    user.set("storytellerinterface", true);
+                } else {
+                    user.set("storytellerinterface", false);
+                }
+                InjectAuthData(user);
+                return user.save();
+            }).then(function () {
+                self.playerOptionsView = self.playerOptionsView || new PlayerOptionsView({el: "#player-options"}).render();
+                $.mobile.changePage("#player-options", {reverse: false, changeHash: false});
+            }).fail(PromiseFailReport);
+        },
+
+        logout: function() {
+            Parse.User.logOut().always(function () {
+                return hello('facebook').logout();
+            }).always(function() {
+                window.location.hash = "";
+                window.location.reload();
+            });
+        },
+
+        signup: function() {
+            if (!Parse.User.current()) {
+                // Programatically changes to the categories page
+                $.mobile.changePage("#signup", {reverse: false, changeHash: false});
+            } else {
+                window.location.hash = "";
+            }
+        },
+        
+        about: function() {
+            $.mobile.changePage("#about", {reverse: false, changeHash: false})
+        },
+
+        privacy_policy: function() {
+            var self = this;
+            require(["../views/PrivacyPolicyView"], function (PrivacyPolicyView) {
+                self.privacyPolicyView = self.privacyPolicyView || new PrivacyPolicyView({el: "#privacy"});
+                self.privacyPolicyView.render();
+                $.mobile.changePage("#privacy", {reverse: false, changeHash: false});
+            });
+        },
+
+        resetpassword: function() {
+            var self = this;
+            require(["../views/PasswordReset"], function (PasswordResetView) {
+                self.resetPasswordView = self.resetPasswordView || new PasswordResetView({el: "#user-reset-password"});
+                self.resetPasswordView.render();
+                $.mobile.changePage("#user-reset-password", {reverse: false, changeHash: false});
+            });
+        },
+
+        profile: function() {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#");
+            require(["../views/UserSettingsProfileView"], function (UserSettingsProfileView) {
+                self.enforce_logged_in().then(function() {
+                    return UserChannel.get_users();
+                }).then(function() {
+                    self.userSettingsProfileView = self.userSettingsProfileView || new UserSettingsProfileView().setup();
+                    $.mobile.changePage("#user-settings-profile", {reverse: false, changeHash: false});
+                });
+            });
+        },
+
+        set_back_button: function(url) {
+            $("#header-back-button").attr("href", url);
+        },
+
+
+        charactercosts: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid, ["skills", "disciplines", "backgrounds"]).done(function (character) {
+                self.characterCostsView.model = character;
+                self.characterCostsView.render();
+                $.mobile.changePage("#character-costs", {reverse: false, changeHash: false});
+            });
+        },
+
+        characterlog: function(cid, start, changeBy) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid, "all").done(function (character) {
+                self.characterLogView.register(character, start, changeBy);
+                var activePage = $(".ui-page-active").attr("id");
+                var r = $.mobile.changePage("#character-log", {reverse: false, changeHash: false});
+                $.mobile.loading("hide");
+            });
+        },
+
+        characterexperience: function(cid, start, changeBy) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid, "all").done(function (character) {
+                self.characterExperienceView.register(character, start, changeBy);
+                var activePage = $(".ui-page-active").attr("id");
+                var r = $.mobile.changePage("#experience-notations-all", {reverse: false, changeHash: false});
+                $.mobile.loading("hide");
+            });
+        },
+
+        characterhistory: function(cid, id) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            require(["../views/CharacterHistoryView"], function (CharacterHistoryView) {
+                self.get_character(cid, "all").then(function (character) {
+                    self.characterHistoryView = self.characterHistoryView || new CharacterHistoryView({el: "#character-history"});
+                    return self.characterHistoryView.register(character, id);
+                }).then(function () {
+                    var activePage = $(".ui-page-active").attr("id");
+                    var r = $.mobile.changePage("#character-history", {reverse: false, changeHash: false});
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
+        },
+
+        characterapproval: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            require(["../views/CharacterApprovalView"], function (CharacterApprovalView) {
+                self.get_character(cid, "all").then(function (character) {
+                    return character.fetch_long_text("extended_print_text");
+                }).then(function (character) {
+                    self.characterApprovalView = self.characterApprovalView || new CharacterApprovalView({el: "#character-approval > div[role='main']"});
+                    return self.characterApprovalView.register(character);
+                }).then(function () {
+                    var activePage = $(".ui-page-active").attr("id");
+                    var r = $.mobile.changePage("#character-approval", {reverse: false, changeHash: false});
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
+        },
+
+        withCharacterPrintView: function(cb) {
+            var self = this;
+            require(["../views/CharacterPrintView"], function(CharacterPrintView) {
+                self.characterPrintView = self.characterPrintView || new CharacterPrintView({el: "#printable-sheet"});
+                cb();
+            });
+        },
+        
+        character_show_approved: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.withCharacterPrintView(function () {
+                self.get_character(cid, "all").then(function (character) {
+                    return character.fetch_long_text("extended_print_text");
+                }).then(function (character) {
+                    return character.get_transformed_last_approved();
+                }).then(function (transformed) {
+                    if (null == transformed) {
+                        $.mobile.changePage("#character-print-no-approval", {reverse: false, changeHash: false});
+                    } else {
+                        transformed.transform_description = [];
+                        self.characterPrintView.setup({
+                            character: transformed
+                        });
+                        $.mobile.changePage("#printable-sheet", {reverse: false, changeHash: false});
+                    }
+                }).fail(PromiseFailReport);
+            });
+        },
+
+        characterrename: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid, "all").then(function (character) {
+                self.characterRenameView = self.characterRenameView || new CharacterRenameView({el: "#character-rename-main"});
+                return self.characterRenameView.register(character);
+            }).then(function () {
+                $.mobile.changePage("#character-rename", {reverse: false, changeHash: false});
+            }).always(function () {
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
+        },
+
+        characterprint: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.withCharacterPrintView(function () {
+                self.get_character(cid, "all").then(function (character) {
+                    return character.fetch_long_text("extended_print_text");
+                }).then(function (character) {
+                    character.transform_description = [];
+                    self.characterPrintView.setup({
+                        character: character
+                    });
+                    $.mobile.changePage("#printable-sheet", {reverse: false, changeHash: false});
+                }).fail(PromiseFailReport);
+            });
+        },
+
+        characternew: function() {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#characters?all");
+            self.characterNewView.render();
+            $.mobile.changePage("#character-new", {reverse: false, changeHash: false});
+        },
+
+        charactercreate: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid, []).then(function (character) {
+                return character.fetch_all_creation_elements();
+            }).done(function (character) {
+                self.characterCreateView.model = character;
+                self.characterCreateView.render();
+                self.characterCreateView.scroll_back_after_page_change();
+                $.mobile.changePage("#character-create", {reverse: false, changeHash: false});
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
+        },
+
+        charactercreatepicksimpletrait: function(category, cid, i) {
+            var self = this;
+            i = _.parseInt(i);
+            $.mobile.loading("show");
+            self.set_back_button("#charactercreate/" + cid);
+            self.get_character(cid, [category]).done(function (c) {
+                var specialCategory;
+                if ("disciplines" == category) {
+                    specialCategory = "in clan disciplines";
+                } else if ("wta_gifts" == category) {
+                    specialCategory = ["affinity", "show_only_value_1"];
+                }
+                self.characterCreateView.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
+                return self.characterCreateSimpleTraitNewView.register(
+                    c,
+                    category,
+                    i,
+                    "#charactercreate/<%= self.character.id %>",
+                    specialCategory,
+                    "#charactercreate/simpletraits/<%= self.category %>/<%= self.character.id %>/specialize/<%= b.linkId() %>/" + i);
+            }).then(function () {
+                $.mobile.changePage("#character-create-simpletrait-new", {reverse: false, changeHash: false});
+            });
+        },
+
+
+        charactercreatespecializesimpletrait: function(category, cid, stid, i) {
+            var self = this;
+            i = _.parseInt(i);
+            $.mobile.loading("show");
+            self.set_back_button("#charactercreate/" + cid);
+            self.get_character(cid, [category]).then(function (character) {
+                return character.get_trait(category, stid);
+            }).then(function (trait, character) {
+                return self.simpleTraitSpecializationView.register(
+                    character,
+                    trait,
+                    category,
+                    window.location.hash,
+                    "#charactercreate/" + character.id
+                );
+            }).then(function () {
+                $.mobile.changePage("#simpletrait-specialization", {reverse: false, changeHash: false});
+            }).fail(function(error) {
+                console.log(error.message);
+            });
+        },
+
+        charactercreateunpicksimpletrait: function(category, cid, stid, i) {
+            var self = this;
+            i = _.parseInt(i);
+            $.mobile.loading("show");
+            self.set_back_button("#charactercreate/" + cid);
+            self.get_character(cid, [category]).then(function (character) {
+                self.characterCreateView.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
+                return character.unpick_from_creation(category, stid, i);
+            }).done(function (c) {
+                window.location.hash = "#charactercreate/" + c.id;
+            }).fail(function(error) {
+                console.log(error.message);
+            });
+        },
+
+        charactercreatepicksimpletext: function(category, target, cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#charactercreate/" + cid);
+            self.get_character(cid, [category]).then(function (c) {
+                self.characterCreateView.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
+                return self.simpleTextNewView.register(c, category, target, "#charactercreate/" + c.id);
+            }).then(function () {
+                $.mobile.changePage("#simpletext-new", {reverse: false, changeHash: false});
+            });
+        },
+        
+        charactercreateunpicksimpletext: function(category, target, cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#charactercreate/" + cid);
+            self.get_character(cid, [category]).then(function (character) {
+                self.character.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
+                return character.unpick_text(target);
+            }).then(function (c) {
+                window.location.hash = "#charactercreate/" + c.id;
+            }).fail(PromiseFailReport);
+        },
+        
+        charactercreatecomplete: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#charactercreate/" + cid);
+            self.get_character(cid).done(function (c) {
+                return c.complete_character_creation();
+            }).then(function () {
+                window.location.hash = "#character?" + cid;
+            }).fail(function (error) {
+                alert(error.message);
+                window.location.hash = "#charactercreate/" + cid;
+            }).fail(PromiseFailReport);
+        },
+
+        characterportrait: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid).done(function (c) {
+                return self.characterPortraitView.register(c);
+            }).always(function() {
+                $.mobile.changePage("#character-portrait", {reverse: false, changeHash: false});
+            });
+        },
+        
+        character_extended_print_text: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid, "all").then(function (character) {
+                return character.fetch_long_text("extended_print_text");
+            }).then(function (character) {
+                character.transform_description = [];
+                self.cept = self.cept || new CharacterLongTextView({
+                    el: "#extended-print-text",
+                });
+                self.cept.setup(
+                    character,
+                    {
+                        category: "extended_print_text",
+                        pretty: "Extended Print Text",
+                        description: "Additional text to display with your printed character sheet.",                       
+                    });
+                $.mobile.changePage("#extended-print-text", {reverse: false, changeHash: false});
+            }).fail(PromiseFailReport);
+        },
+        
+        character_background_long_text: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid, "all").then(function (character) {
+                return character.fetch_long_text("background");
+            }).then(function (character) {
+                character.transform_description = [];
+                self.clt = self.clt || new CharacterLongTextView({
+                    el: "#long-text",
+                });
+                self.clt.setup(
+                    character,
+                    {
+                        category: "background",
+                        pretty: "Background",
+                        description: "History and backstory for your character.",                       
+                    });
+                $.mobile.changePage("#long-text", {reverse: false, changeHash: false});
+            }).fail(PromiseFailReport).always(function() {
+                $.mobile.loading("hide");
+            });
+        },
+        
+        character_notes_long_text: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid, "all").then(function (character) {
+                return character.fetch_long_text("notes");
+            }).then(function (character) {
+                character.transform_description = [];
+                self.clt = self.clt || new CharacterLongTextView({
+                    el: "#long-text",
+                });
+                self.clt.setup(
+                    character,
+                    {
+                        category: "notes",
+                        pretty: "Notes",
+                        description: "Notes about your character's interactions and progression",
+                    });
+                $.mobile.changePage("#long-text", {reverse: false, changeHash: false});
+            }).fail(PromiseFailReport).always(function() {
+                $.mobile.loading("hide");
+            });
+        },
+        
+        show_character_helper: function(id, back_url) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button(back_url);
+            self.get_character(id).done(function (m) {
+                self.characterMainPage.model = m;
+                self.characterMainPage.render();
+                self.characterMainPage.scroll_back_after_page_change();
+                $.mobile.changePage("#character", {reverse: false, changeHash:false});
+            }).then(function () {
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport).fail(function () {
+                window.location.hash = back_url;
+            });
+        },
+
+        character: function(id) {
+            this.show_character_helper(id, "#characters?all");
+        },
+
+        troupe_character: function(id, cid) {
+            this.show_character_helper(cid, "#troupe/" + id + "/characters/all");
+        },
+
+        administration_character: function(id) {
+            this.show_character_helper(id, "#administration/characters/all");
+        },
+
+        administration_users: function() {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#administration");
+            require(["../views/UsersView"], function (UsersView) {
+                self.enforce_logged_in().then(function() {
+                    var is_ad = Parse.User.current().get("admininterface");
+                    if (is_ad) {
+                        self.troupeAddStaffView = self.troupeAddStaffView || new UsersView({el: "#troupe-add-staff"});
+                        self.troupeAddStaffView.register("#administration/user/<%= id %>");
+                        $.mobile.changePage("#troupe-add-staff", {reverse: false, changeHash: false});
+                    }
+                }).always(function() {
+                    $.mobile.loading("hide");
+                });
+            });
+        },
+        
+        administration_user: function(id) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#administration/users/all");
+            require(["../views/AdministrationUserView"], function (AdministrationUserView) {
+                self.enforce_logged_in().then(function() {
+                    return Parse.Promise.when(
+                        new Parse.Query("User").get(id),
+                        self.get_patronages(),
+                        UserChannel.get_users());
+                }).then(function (user, patronages, users) {
+                    var is_ad = Parse.User.current().get("admininterface");
+                    if (is_ad) {
+                        var my_patronages = _.select(patronages.models, "attributes.owner.id", id);
+                        self.administrationUserView = self.administrationUserView || new AdministrationUserView({patronages: patronages});
+                        self.administrationUserView.register(user);
+                        self.administrationUserView.patronages.reset(my_patronages);
+                        $.mobile.changePage("#administration-user-view", {reverse: false, changeHash: false});
+                    }
+                }).always(function() {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
+        },
+        
+        administration_user_patronages: function(id) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#administration/users/all");
+            require(["../views/AdministrationUserView"], function (AdministrationUserPatronagesView) {
+                self.enforce_logged_in().then(function() {
+                    return new Parse.Query("User").get(id);
+                }).then(function (user) {
+                    self.administrationUserPatronagesView = self.administrationUserPatronagesView || new AdministrationUserPatronagesView({el: "#administration-user-patronages-view"});
+                    self.administrationUserPatronagesView.register(user);
+                    $.mobile.changePage("#administration-user-patronages-view", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
+        },
+        
+        administration_patronages: function() {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#administration");
+            require(["../views/PatronagesView"], function (PatronagesView) {
+                self.enforce_logged_in().then(function () {
+                    return Parse.Promise.when(
+                        self.get_patronages(),
+                        UserChannel.get_users());
+                }).then(function (patronages, users) {
+                    self.administrationPatronagesView = self.administrationPatronageView ||
+                        new PatronagesView({el: "#administration-patronages-view-list", collection: patronages}).render();
+                    $.mobile.changePage("#administration-patronages-view", {reverse: false, changeHash: false});
+                }).fail(PromiseFailReport).fail(function () {
+                    $.mobile.loading("hide");
+                });
+            });
+        },
+
+        administration_patronage: function(id) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#administration/patronages");
+            require(["../views/PatronageView"], function (PatronageView) {
+                self.enforce_logged_in().then(function () {
+                    return Parse.Promise.when(
+                        self.get_patronage(id),
+                        UserChannel.get_users());
+                }).then(function (patronage, users) {
+                    if (self.administrationPatronageView) {
+                        self.administrationPatronageView.remove();
+                    }
+                    self.administrationPatronageView = new PatronageView({model: patronage});
+                    self.administrationPatronageView.render();
+                    $("#administration-patronage-view").find("div[role='main']").append(self.administrationPatronageView.el);
+                    $.mobile.changePage("#administration-patronage-view", {reverse: false, changeHash: false});
+                }).fail(PromiseFailReport).fail(function () {
+                    $.mobile.loading("hide");
+                });
+            });
+        },
+
+        administration_patronage_new: function(userid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#administration/patronages");
+            require(["../views/PatronageView"], function (PatronageView) {
+                self.enforce_logged_in().then(function () {
+                    return Parse.Promise.when(
+                        new Patronage,
+                        UserChannel.get_users());
+                }).then(function (patronage, users) {
+                    if (self.administrationPatronageView) {
+                        self.administrationPatronageView.remove();
+                    }
+                    patronage.set("owner", users.get(userid));
+                    self.administrationPatronageView = new PatronageView({model: patronage});
+                    self.administrationPatronageView.render();
+                    $("#administration-patronage-view").find("div[role='main']").append(self.administrationPatronageView.el);
+                    $.mobile.changePage("#administration-patronage-view", {reverse: false, changeHash: false});
+                }).fail(PromiseFailReport).fail(function () {
+                    $.mobile.loading("hide");
+                });
+            });
+        },
+
+        administration_descriptions: function() {
+            var self = this;
+            self.set_back_button("#administration");
+            $.mobile.loading("show");
+            self.enforce_logged_in().then(function () {
+                self.administrationDescriptionsView = self.administrationDescriptionsView ||
+                    new DescriptionsView().setup();
+                return self.administrationDescriptionsView.update_categories();
+            }).then(function () {
+                $.mobile.changePage("#administration-descriptions", {reverse: false, changeHash: false});
+            }).fail(function () {
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
+        },
+
+        characterdelete: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            this.set_back_button("#character?" + cid);
+            self.get_character(cid).done(function (c) {
+                self.characterDeleteView.register(c, "#characters?all", function () {
+                    return self.characters.collection.fetch({reset: true});
+                });
+                $.mobile.changePage("#character-delete", {reverse: false, changeHash: false});
+            })
+        },
+
+        get_user_characters: function() {
+            var self = this;
+            var c = [];
+            if (Parse.User.current().get("username") == "devuser") {
+                c.sortbycreated = true;
+            }
+            var p = Parse.Promise.as([]);
+            var q = new Parse.Query(Vampire);
+            q.equalTo("owner", Parse.User.current());
+            q.include("portrait");
+            p = q.each(function (character) {
+                c.push(character);
+            }).then(function () {
+                self.characters.collection.reset(c);
+            })
+            return p.done(function () {
+                return Parse.Promise.as(self.characters.collection);
+            })
+        },
+
+        get_troupe_characters: function(troupe, options) {
+            var self = this;
+            options = _.defaults({}, options, {
+                includedeleted: false
+            });
+            var c = [];
+            if (Parse.User.current().get("username") == "devuser") {
+                c.sortbycreated = true;
+            }
+            var p = Parse.Promise.as([]);
+            var q = new Parse.Query(Vampire);
+            q.equalTo("troupes", troupe);
+            q.include("portrait");
+            q.include("owner");
+            p = q.each(function (character) {
+                var shouldinclude = true;
+                console.log(JSON.stringify(options));
+                if (!options.includedeleted) {
+                    if (!character.has("owner")) {
+                        shouldinclude = false;
+                    }
+                }
+                if (shouldinclude) {
+                    c.push(character);
+                }
+            }).then(function () {
+                self.troupeCharacters.collection.reset(c);
+            })
+            return p.done(function () {
+                return Parse.Promise.as(self.troupeCharacters.collection);
+            })
+        },
+        
+        get_troupe_summarize_characters: function(troupe, collection) {
+            var self = this;
+            var c = [];
+            if (Parse.User.current().get("username") == "devuser") {
+                c.sortbycreated = true;
+            }
+            var p = Parse.Promise.as([]);
+            
+            var q = new Parse.Query(Werewolf);
+            q.equalTo("troupes", troupe);
+            q.include("portrait");
+            q.include("owner");
+            q.equalTo("type", "Werewolf");
+            _.each(Werewolf.all_simpletrait_categories(), function (e) {
+                q.include(e[0]);
+            });
+            
+            $.mobile.loading("show", {text: "Fetching all characters", textVisible: true});
+            p = q.each(function (character) {
+                c.push(character);
+                return character.get_long_text("extended_print_text");
+            })
+            
+            var vq = new Parse.Query(Vampire);
+            vq.equalTo("troupes", troupe);
+            vq.include("portrait");
+            vq.include("owner");
+            vq.notEqualTo("type", "Werewolf");
+            _.each(Vampire.all_simpletrait_categories(), function (e) {
+                vq.include(e[0]);
+            });
+
+            p = p.then(function() {
+                return vq.each(function (character) {
+                    c.push(character);
+                    return character.get_long_text("extended_print_text");
+                });
+            });
+            
+            p = p.then(function () {
+                $.mobile.loading("show", {text: "Updating local character list", textVisible: true});
+                collection.reset(c);
+            })
+            return p.done(function () {
+                $.mobile.loading("show", {text: "Transitioning", textVisible: true});
+                return Parse.Promise.as(collection);
+            })
+        },
+
+        get_administrator_characters: function() {
+            var self = this;
+            var c = [];
+            if (Parse.User.current().get("username") == "devuser") {
+                c.sortbycreated = true;
+            }
+            var p = Parse.Promise.as([]);
+            
+            var q = new Parse.Query(Werewolf);
+            q.exists("owner");
+            q.include("portrait");
+            q.include("owner");
+            q.equalTo("type", "Werewolf");
+            p = q.each(function (character) {
+                c.push(character);
+            })
+            
+            var vq = new Parse.Query(Vampire);
+            vq.exists("owner");
+            vq.include("portrait");
+            vq.include("owner");
+            vq.notEqualTo("type", "Werewolf");
+            p = p.then(function () {
+                return vq.each(function (character) {
+                    c.push(character);
+                });
+            });
+            
+            p = p.then(function () {
+                self.characters.collection.reset(c);
+            })
+            
+            return p.done(function () {
+                return Parse.Promise.as(self.characters.collection);
+            })
+        },
+        
+        get_administrator_summarize_characters: function() {
+            var self = this;
+            var c = [];
+            if (Parse.User.current().get("username") == "devuser") {
+                c.sortbycreated = true;
+            }
+            var p = Parse.Promise.as([]);
+            var q = new Parse.Query(Vampire);
+            //q.equalTo("owner", Parse.User.current());
+            q.exists("owner");
+            q.include("portrait");
+            q.include("owner");
+            _.each(Vampire.all_simpletrait_categories(), function (e) {
+                q.include(e[0]);
+            });
+            _.each(Werewolf.all_simpletrait_categories(), function (e) {
+                q.include(e[0]);
+            });
+            p = q.each(function (character) {
+                c.push(character);
+            }).then(function () {
+                self.characters.collection.reset(c);
+            })
+            return p.done(function () {
+                return Parse.Promise.as(self.characters.collection);
+            })
+        },
+
+        get_patronages: function() {
+            var self = this;
+            var options = options || {};
+            _.defaults(options, {update: true});
+            self.patronages = self.patronages || new Patronages;
+            return self.patronages.fetch();
+        },
+
+        get_patronage: function(id) {
+            var self = this;
+            if (!id) {
+                return Parse.Promise.as(new Patronage);
+            }
+            if (_.has(self, "patronages")) {
+                var have = self.patronages.get(id);
+                if (have) {
+                    return Parse.Promise.as(have);
+                }
+            }
+            return new Parse.Query("Patronage").get(id);
+        },
+
+        characters: function(type) {
+            var self = this;
+            if ("all" == type) {
+                self.set_back_button("#");
+                $.mobile.loading("show");
+                self.enforce_logged_in().then(function () {
+                    return self.get_user_characters();
+                }).then(function (characters) {
+                    self.characters.register("#character?<%= character_id %>");
+                    $.mobile.changePage("#characters-all", {reverse: false, changeHash: false});
+                }).fail(PromiseFailReport).fail(function () {
+                    $.mobile.loading("hide");
+                });
+            }
+        },
+
+        enforce_logged_in: function() {
+            var self = this;
+            if (!Parse.User.current()) {
+                $.mobile.changePage("#login", {reverse: false, changeHash: false});
+                $.mobile.loading("hide");
+                var e = new Parse.Error(Parse.Error.USERNAME_MISSING, "Not logged in");
+                return Parse.Promise.error(e);
+            }
+            var u = Parse.User.current();
+            $("#header-logout-button").attr("href", "#logout");
+            $("#header-logout-button").text("Log Out " + u.get("username"));
+            self.footerTemplate = _.template(footer_html)();
+            $('div[data-role="footer"] > div[data-role="navbar"]').html(self.footerTemplate).trigger('create');
+            if (typeof trackJs !== "undefined") {
+                trackJs.configure({
+                    userId: u.get("username"),
+                    sessionId: u.getSessionToken(),
+                });
+            } else {
+                console.log("Something is blocking trackJs. No user debugging available.");
+            }
+            var check_admin_status = true;
+            if (self.lastadminchecktime) {
+                var now = new Date();
+                var timediff = now - self.lastadminchecktime;
+                if (timediff < 300000) {
+                    check_admin_status = false;
+                }
+            }
+            if (check_admin_status) {
+                self.lastadminchecktime = new Date();
+                var adminq = (new Parse.Query(Parse.Role)).equalTo("users", Parse.User.current()).equalTo("name", "Administrator");
+                var siteadminq = (new Parse.Query(Parse.Role)).equalTo("users", Parse.User.current()).equalTo("name", "SiteAdministrator");
+                var q = Parse.Query.or(adminq, siteadminq);
+                return q.count().then(function (count) {
+                    var isadministrator = count ? true : false;
+                    var user = Parse.User.current();
+                    if (user.get("admininterface") != isadministrator) {
+                        user.set("admininterface", isadministrator);
+                        InjectAuthData(user);
+                        return user.save();
+                    }
+                    return Parse.Promise.as(Parse.User.current());
+                });
+            } else {
+                return Parse.Promise.as(Parse.User.current());
+            }
+        },
+
+        get_character: function(id, categories) {
+            var self = this;
+            return self.enforce_logged_in().then(function () {
+                return self._get_character(id, categories);
+            })
+        },
+
+        _check_character_mismatch: function(character) {
+            var owner = character.get("owner");
+            if (!_.isUndefined(owner) && owner.id != Parse.User.current().id) {
+                return character.check_server_client_permissions_mismatch().then(function () {
+                    if (character.is_mismatched) {
+                        $.mobile.loading("show", {
+                            text: "Server data mismatch. Attempting to correct.",
+                            textVisible: true
+                        });
+                        return character.update_troupe_acls();
+                    }
+                    return Parse.Promise.as(character);
+                });
+            }
+            return Parse.Promise.as(character);
+        },
+
+        _get_character: function(id, categories) {
+            var self = this;
+            if (self.last_fetched_character_id == id) {
+                var p;
+                if (self.last_fetched_character_type == "Werewolf") {
+                    p = Werewolf.get_character(id, categories, self);
+                } else {
+                    p = Vampire.get_character(id, categories, self);
+                }               
+                return p.then(self._check_character_mismatch);
+            } else {
+                var q = new Parse.Query("Vampire").select("type");
+                return q.get(id).then(function (c) {
+                    self.last_fetched_character_id = id;
+                    self.last_fetched_character_type = c.get("type");
+                    if (c.get("type") == "Werewolf") {
+                        return Werewolf.get_character(id, categories, self);
+                    } else {
+                        return Vampire.get_character(id, categories, self);
+                    }
+                }).then(self._check_character_mismatch);
+            }
+        },
+        
+        withSimpleTraitChangeView: function(cb) {
+            var self = this;
+            require(["../views/SimpleTraitChangeView"], function (SimpleTraitChangeView) {
+                self.simpleTraitChangeView = self.simpleTraitChangeView || new SimpleTraitChangeView({el: "#simpletrait-change"});
+                cb();
+            });
+        },
+        
+        simpletrait: function(category, cid, bid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#simpletraits/" + category + "/" + cid + "/all");
+            self.withSimpleTraitChangeView(function () {
+                self.get_character(cid, [category]).done(function(character) {
+                    return character.get_trait(category, bid);
+                }).then(function (trait, character) {
+                    self.simpleTraitChangeView.register(character, trait, category);
+                    $.mobile.changePage("#simpletrait-change", {reverse: false, changeHash: false});
+                }).fail(function(error) {
+                    console.log(error.message);
+                });
+            });
+        },
+
+        simpletraitspecialize: function(category, cid, bid) {
+            var self = this;
+            self.set_back_button("#simpletraits/" + category + "/" + cid + "/all");
+            self.get_character(cid, [category]).done(function(c) {
+                character = c;
+                return character.get_trait(category, bid);
+            }).then(function (trait, character) {
+                return self.simpleTraitSpecializationView.register(
+                    character,
+                    trait,
+                    category,
+                    "#simpletraits/<%= self.category %>/<%= self.character.id %>/all",
+                    "#simpletraits/<%= self.category %>/<%= self.character.id %>/all"
+                );
+            }).then(function () {
+                $.mobile.changePage("#simpletrait-specialization", {reverse: false, changeHash: false});
+            }).fail(function(error) {
+                console.log(error.message);
+            });
+        },
+        
+        simpletraitnew: function(category, cid, name, value, free_value) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#simpletraits/" + category + "/" + cid + "/all");
+            self.withSimpleTraitChangeView(function () {
+                self.get_character(cid, [category]).then(function (character) {
+                    var trait = new SimpleTrait({
+                        name: decodeURIComponent(name),
+                        value: _.parseInt(value),
+                        free_value: _.parseInt(free_value),
+                        category: category,
+                    });
+                    self.simpleTraitChangeView.register(character, trait, category);
+                    $.mobile.changePage("#simpletrait-change", {reverse: false, changeHash: false});
+                }).fail(function(error) {
+                    console.log(error.message);
+                });
+            });
+        },
+
+        simpletrait_new_specialize: function(category, cid, name, value, free_value) {
+            var self = this;
+            self.set_back_button("#simpletraits/" + category + "/" + cid + "/all");
+            self.get_character(cid, [category]).then(function (character) {
+                var trait = new SimpleTrait({
+                    name: decodeURIComponent(name),
+                    value: _.parseInt(value),
+                    free_value: _.parseInt(free_value)
+                })
+                return self.simpleTraitNewSpecializationView.register(
+                    trait,
+                    category,
+                    "#simpletraits/<%= self.category %>/" + cid + "/all",
+                    "#simpletrait/spacer/<%= self.category %>/" + cid + "/<%= b.get('name') %>/<%= b.get('value') %>/<%= b.get('free_value') %>/new"
+                );
+            }).then(function () {
+                $.mobile.changePage("#simpletrait-new-specialization", {reverse: false, changeHash: false});
+            }).fail(function(error) {
+                console.log(error.message);
+            });
+        },
+        
+        simpletextpick: function(category, target, cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid, [category]).then(function (c) {
+                self.character.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
+                return self.simpleTextNewView.register(c, category, target, "#character?" + c.id);
+            }).then(function () {
+                $.mobile.changePage("#simpletext-new", {reverse: false, changeHash: false});
+            });
+        },
+        
+        simpletextunpick: function(category, target, cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            self.get_character(cid, [category]).then(function (character) {
+                self.character.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
+                return character.unpick_text(target);
+            }).then(function (c) {
+                window.location.hash = "#character?" + c.id;
+            }).fail(PromiseFailReport);
+        },
+ 
+        simpletraits: function(category, cid, type) {
+            var self = this;
+            if ("all" == type) {
+                $.mobile.loading("show");
+                self.set_back_button("#character?" + cid);
+                require(["../views/SimpleTraitCategoryView"], function (SimpleTraitCategoryView) {
+                    self.get_character(cid, [category]).done(function (c) {
+                        self.simpleTraitCategoryView = self.simpleTraitCategoryView || new SimpleTraitCategoryView({el: "#simpletraitcategory-all"}); 
+                        self.simpleTraitCategoryView.register(c, category);
+                        $.mobile.changePage("#simpletraitcategory-all", {reverse: false, changeHash: false});
+                    }).fail(function(error) {
+                        console.log(error.message);
+                    });
+                });
+            }
+
+            if ("new" == type) {
+                $.mobile.loading("show");
+                self.set_back_button("#simpletraits/" + category + "/" + cid + "/all");
+                require(["../views/SimpleTraitNewView"], function (SimpleTraitNewView) {
+                    self.simpleTraitNewView = self.simpleTraitNewView || new SimpleTraitNewView({el: "#simpletrait-new > div[role='main']"});
+                    self.get_character(cid, [category]).done(function (c) {
+                        return self.simpleTraitNewView.register(c, category);
+                    }).then(function () {
+                        $.mobile.changePage("#simpletrait-new", {reverse: false, changeHash: false});
+                    }).fail(function(error) {
+                        console.log(error.message);
+                    });
+                });
+            }
+        },
+
+        victims: function(type) {
+            if ("all" == type) {
+                $.mobile.changePage( "#victims-all", {reverse: false, changeHash: false});
+            }
+        },
+
+        // Category method that passes in the type that is appended to the url hash
+        category: function(type) {
+
+            // Stores the current Category View  inside of the currentView variable
+            var currentView = this[ type + "View" ];
+
+            // If there are no collections in the current Category View
+            if(!currentView.collection.length) {
+
+                // Show's the jQuery Mobile loading icon
+                $.mobile.loading( "show" );
+
+                // Fetches the Collection of Category Models for the current Category View
+                currentView.collection.fetch().done( function() {
+
+                    // Programatically changes to the current categories page
+                    $.mobile.changePage( "#" + type, { reverse: false, changeHash: false } );
+
+                } );
+
+            }
+
+            // If there already collections in the current Category View
+            else {
+
+                // Programatically changes to the current categories page
+                $.mobile.changePage( "#" + type, { reverse: false, changeHash: false } );
+
+            }
+
+        },
+
+        character_list_troupes: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            require(["../views/TroupesListView"], function (TroupesListView) {
+                self.get_character(cid).then(function (c) {
+                    self.characterListTroupesView = self.characterListTroupesView || new TroupesListView({el: "#character-pick-troupe-to-show"}).render();
+                    return self.characterListTroupesView.register(
+                        "#character/" + cid + "/troupe/<%= troupe_id %>/show",
+                        function (q) {
+                            q.containedIn("objectId", c.get_troupe_ids());
+                        });
+                }).then(function () {
+                    $.mobile.changePage("#character-pick-troupe-to-show", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
+        },
+
+        character_pick_troupe_to_leave: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            require(["../views/TroupesListView"], function (TroupesListView) {
+                self.get_character(cid).then(function (c) {
+                    self.characterPickTroupeToLeaveView = self.characterPickTroupeToLeaveView || new TroupesListView({el: "#character-pick-troupe-to-leave"}).render();
+                    return self.characterPickTroupeToLeaveView.register(
+                        "#character/" + cid + "/troupe/<%= troupe_id %>/leave",
+                        function (q) {
+                            q.containedIn("objectId", c.get_troupe_ids());
+                        });
+                }).then(function () {
+                    $.mobile.changePage("#character-pick-troupe-to-leave", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
+        },
+
+        character_pick_troupe_to_join: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            require(["../views/TroupesListView"], function (TroupesListView) {
+                self.get_character(cid).then(function (c) {
+                    self.characterPickTroupeToJoinView = self.characterPickTroupeToJoinView || new TroupesListView({el: "#character-pick-troupe-to-join"}).render();
+                    return self.characterPickTroupeToJoinView.register(
+                        "#character/" + cid + "/troupe/<%= troupe_id %>/join",
+                        function (q) {
+                            q.notContainedIn("objectId", c.get_troupe_ids());
+                        });
+                }).then(function () {
+                    $.mobile.changePage("#character-pick-troupe-to-join", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
+        },
+
+        character_show_troupe: function(cid, tid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            require(["../views/TroupeView"], function (TroupeView) {
+                var character, troupe;
+                self.get_character(cid).then(function (c) {
+                    character = c;
+                    var t = new Troupe({id: tid});
+                    return t.fetch();
+                }).then(function (t) {
+                    troupe = t;
+                    self.troupeView = self.troupeView || new TroupeView({el: "#troupe"});
+                    self.troupeView.register(troupe);
+                    $.mobile.changePage("#troupe", {reverse: false, changeHash: false});
+                }).fail(function () {
+                    window.location.hash = "#character?" + cid;
+                }).always(function() {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
+        },
+
+        character_join_troupe: function(cid, tid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+                require(["../views/TroupeView"], function (TroupeView) {
+                var character, troupe;
+                self.get_character(cid).then(function (c) {
+                    character = c;
+                    var t = new Troupe({id: tid});
+                    return t.fetch();
+                }).then(function (t) {
+                    troupe = t;
+                    return character.join_troupe(t);
+                }).then(function () {
+                    self.troupeView = self.troupeView || new TroupeView({el: "#troupe"});
+                    self.troupeView.register(troupe);
+                    $.mobile.changePage("#troupe", {reverse: false, changeHash: false});
+                }).fail(function () {
+                    window.location.hash = "#character?" + cid;
+                }).always(function() {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
+        },
+
+        character_leave_troupe: function(cid, tid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            var character, troupe;
+            self.get_character(cid).then(function (c) {
+                character = c;
+                var t = new Troupe({id: tid});
+                return t.fetch();
+            }).then(function (t) {
+                troupe = t;
+                return character.leave_troupe(t);
+            }).always(function() {
+                window.location.hash = "#character?" + cid;
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
+        },
+
+        troupecharacters: function(id, type) {
+            var self = this;
+            $.mobile.loading("show");
+            self.enforce_logged_in().then(function() {
+                self.set_back_button("#troupe/" + id);
+                var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
+                return get_troupe;
+            }).then(function (troupe, user) {
+                return self.get_troupe_characters(troupe);
+            }).then(function() {
+                self.troupeCharacters = self.troupeCharacters || new CharactersListView({el: "#troupe-characters-all", collection: new Vampires});
+                self.troupeCharacters.register("#troupe/" + id + "/character/<%= character_id %>");
+                $.mobile.changePage("#troupe-characters-all", {reverse: false, changeHash: false});
+            }).always(function() {
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
+        },
+        
+        troupesummarizecharacters: function(id, type) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#troupe/" + id);
+            require(["../views/CharactersSummarizeListView"], function (CharactersSummarizeListView) {
+                self.enforce_logged_in().then(function() {
+                    var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
+                    return get_troupe;
+                }).then(function (troupe, user) {
+                    self.troupeSummarizeCharacters = self.troupeSummarizeCharacters || new CharactersSummarizeListView({collection: new Vampires}).setup();
+                    self.troupeCharacters.register("#troupe/" + id + "/character/<%= character_id %>");
+                    return self.get_troupe_summarize_characters(troupe, self.troupeSummarizeCharacters.collection);
+                }).then(function() {
+                    $.mobile.changePage("#troupe-summarize-characters-all", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
+        },
+        
+        get_troupe_print_options: function() {
+            var self = this;
+            self.troupePrintOptions = self.troupePrintOptions || new Backbone.Model({
+                font_size: 100,
+                exclude_extended: false               
+            });           
+            return self.troupePrintOptions;
+        },
+        
+        troupe_select_to_print_characters: function(id, type) {
+            var self = this;
+            $.mobile.loading("show");
+            self.enforce_logged_in().then(function() {
+                self.set_back_button("#troupe/" + id);
+                var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
+                return get_troupe;
+            }).then(function (troupe, user) {
+                self.troupeSelectToPrintCharacters = self.troupeSelectToPrintCharacters || new CharactersSelectToPrintView({
+                    collection: new Vampires,
+                    el: "#troupe-select-to-print-characters-all > div[role='main']",
+                    print_options: self.get_troupe_print_options()
+                }).setup();
+                self.troupeCharacters.register("#troupe/" + id + "/character/<%= character_id %>");
+                self.troupeSelectToPrintCharacters.submission_template = _.template("#troupe/" + id + "/characters/print/selected");
+                return self.get_troupe_summarize_characters(troupe, self.troupeSelectToPrintCharacters.collection);
+            }).then(function() {
+                $.mobile.changePage("#troupe-select-to-print-characters-all", {reverse: false, changeHash: false});
+            }).always(function() {
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
+        },
+        
+        troupe_print_characters: function(id, type) {
+            var self = this;
+            $.mobile.loading("show");
+            if ("selected" == type) {
+                self.set_back_button("#troupe/" + id + "/characters/selecttoprint/all");
+            } else {
+                self.set_back_button("#troupe/" + id);
+            }
+            require(["../views/CharactersPrintView"], function (CharactersPrintView) {
+                self.enforce_logged_in().then(function() {
+                    var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
+                    return get_troupe;
+                }).then(function (troupe, user) {
+                    self.troupePrintCharacters = self.troupePrintCharacters || new CharactersPrintView({
+                        collection: new Vampires,
+                        el: "#troupe-print-characters-all > div[role='main']",
+                        print_options: self.get_troupe_print_options()
+                    }).setup();
+                    self.troupeCharacters.register("#troupe/" + id + "/character/<%= character_id %>");
+                    if ("selected" == type && self.troupeSelectToPrintCharacters) {
+                        self.troupePrintCharacters.collection.reset(self.troupeSelectToPrintCharacters.get_filtered());
+                    } else {
+                        return self.get_troupe_summarize_characters(troupe, self.troupePrintCharacters.collection);
+                    }
+                }).then(function() {
+                    $.mobile.changePage("#troupe-print-characters-all", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
+        },
+
+        troupe_portrait: function(id) {
+            var self = this;
+            $.mobile.loading("show");
+            self.enforce_logged_in().then(function() {
+                self.set_back_button("#troupe/" + id);
+                var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
+                return get_troupe;
+            }).then(function (troupe) {
+                self.troupePortraitView = self.troupePortraitView || new TroupePortraitView({el: "#troupe-portrait"});
+                self.troupePortraitView.register(troupe);
+                $.mobile.changePage("#troupe-portrait", {reverse: false, changeHash: false});
+            }).always(function() {
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
+        },
+
+
+        troupe_relationship_network: function(id) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#troupe/" + id);
+            require(["../views/TroupeCharacterRelationshipsNetworkView"], function (TroupeCharacterRelationshipsNetworkView) {
+                self.enforce_logged_in().then(function() {
+                    var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
+                    return get_troupe;
+                }).then(function (troupe, user) {
+                    return self.get_troupe_characters(troupe);
+                }).then(function(characters) {
+                    self.tcrnv = self.tcrnv || new TroupeCharacterRelationshipsNetworkView({el: "#troupe-character-relationships-network"});
+                    return self.tcrnv.register(characters);
+                }).always(function() {
+                    $.mobile.changePage("#troupe-character-relationships-network", {reverse: false, changeHash: false});
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
+        },
+
+        troupeeditstaff: function(id, uid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.enforce_logged_in().then(function() {
+                self.set_back_button("#troupe/" + id);
+                var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
+                var get_user = new Parse.Query("User").get(uid);
+                return Parse.Promise.when(get_troupe, get_user);
+            }).then(function (troupe, user) {
+                self.troupeEditStaffView = self.troupeEditStaffView || new TroupeEditStaffView({el: "#troupe-edit-staff"});
+                return self.troupeEditStaffView.register(troupe, user);
+            }).then(function() {
+                $.mobile.changePage("#troupe-edit-staff", {reverse: false, changeHash: false});
+            }).always(function() {
+                $.mobile.loading("hide");
+            }).fail(function(error) {
+                if (_.isArray(error)) {
+                    _.each(error, function(e) {
+                        console.log("Something failed" + e.message);
+                    })
+                } else {
+                    console.log("error updating experience" + error.message);
+                }
+            });
+        },
+
+        troupeaddstaff: function(id) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#troupe/" + id);
+            require(["../views/UsersView"], function (UsersView) {
+                self.enforce_logged_in().then(function() {
+                    return new Parse.Query("Troupe").get(id);
+                }).then(function (troupe) {
+                    self.troupeAddStaffView = self.troupeAddStaffView || new UsersView({el: "#troupe-add-staff"});
+                    self.troupeAddStaffView.register("#troupe/" + troupe.id + "/staff/edit/<%= id %>");
+                    $.mobile.changePage("#troupe-add-staff", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                });
+            });
+        },
+
+        troupe: function(id) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#troupes");
+            require(["../views/TroupeView"], function (TroupeView) {
+                self.enforce_logged_in().then(function() {
+                    return new Parse.Query("Troupe").get(id);
+                }).then(function (troupe) {
+                    self.troupeView = self.troupeView || new TroupeView({el: "#troupe"});
+                    var is_st = Parse.User.current().get("storytellerinterface");
+                    var is_ad = Parse.User.current().get("admininterface");
+                    self.troupeView.register(troupe, !(is_st || is_ad));
+                    $.mobile.changePage("#troupe", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                });
+            });
+        },
+
+        troupes: function() {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#");
+            require(["../views/TroupesListView"], function (TroupesListView) {
+                self.enforce_logged_in().then(function() {
+                    self.troupesListView = self.troupesListView || new TroupesListView({el: "#troupes-list"}).render();
+                    return self.troupesListView.register();
+                }).then(function () {
+                    $.mobile.changePage("#troupes-list", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                });
+            });
+        },
+
+        troupenew: function() {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#troupes");
+            require(["../views/TroupeNewView"], function (TroupeNewView) {
+                self.enforce_logged_in().then(function() {
+                    self.troupeNewView = self.troupeNewView || new TroupeNewView({el: "#troupe-new"}).render();
+                    $.mobile.changePage("#troupe-new", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                });
+            });
+        },
+
+        administration: function() {
+            var self = this;
+            self.enforce_logged_in().then(function() {
+                self.set_back_button("#");
+                $.mobile.changePage("#administration", {reverse: false, changeHash: false});
+            })
+        },
+
+        administration_characters_all: function() {
+            var self = this;
+            $.mobile.loading("show");
+            self.enforce_logged_in().then(function() {
+                self.set_back_button("#administration");
+                return self.get_administrator_characters();
+            }).then(function() {
+                self.characters.register("#administration/character/<%= character_id %>");
+                $.mobile.changePage("#characters-all", {reverse: false, changeHash: false});
+            }).always(function() {
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
+        },
+        
+        administration_characters_summarize: function() {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#administration");
+            require(["../views/CharactersSummarizeListView"], function (CharactersSummarizeListView) {
+                self.enforce_logged_in().then(function() {
+                    return self.get_administrator_summarize_characters();
+                }).then(function() {
+                    self.administrationSummarizeCharacters = self.administrationSummarizeCharacters || new CharactersSummarizeListView({collection:  self.characters.collection}).setup();
+                    self.troupeCharacters.register("#administration/character/<%= character_id %>");
+                    $.mobile.changePage("#troupe-summarize-characters-all", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
+        },
+        
+        referendums: function() {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#");
+            require(["../views/ReferendumsListView"], function (ReferendumsListView) {
+                self.enforce_logged_in().then(function() {
+                    self.referendumsListView = self.referendumsListView || new ReferendumsListView({el: "#referendums-list"}).render();
+                    return self.referendumsListView.register();
+                }).then(function () {
+                    $.mobile.changePage("#referendums-list", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                });
+            });
+        },
+
+        referendum: function(id) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#referendums");
+            require(["../models/Referendum", "../views/ReferendumView"], function (Referendum, ReferendumView) {
+                self.enforce_logged_in().then(function() {
+                    var q = new Parse.Query(Referendum);
+                    q.include("portrait");
+                    var ballotq = new Parse.Query("ReferendumBallot")
+                        .equalTo("owner", new Referendum({id: id}))
+                        .equalTo("caster", Parse.User.current());
+                    return Parse.Promise.when(
+                        q.get(id),
+                        ballotq.first(),
+                        Parse.Cloud.run("get_my_patronage_status"));
+                }).then(function (referendum, ballot, patronagestatus) {
+                    self.referendumView = self.referendumView || new ReferendumView({el: "#referendum"});
+                    return self.referendumView.setup({
+                        referendum: referendum,
+                        patronagestatus: patronagestatus,
+                        ballot: ballot
+                    });
+                }).then(function () {
+                    $.mobile.changePage("#referendum", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                });
+            });
+        },
+        
+        administration_referendums: function() {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#administration");
+            require(["../views/ReferendumsListView"], function (ReferendumsListView) {
+                self.enforce_logged_in().then(function() {
+                    self.referendumsListView = self.referendumsListView || new ReferendumsListView({el: "#referendums-list"}).render();
+                    return self.referendumsListView.register("#administration/referendum/<%= referendum_id %>");
+                }).then(function () {
+                    $.mobile.changePage("#referendums-list", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                });
+            });
+        },
+        
+        administration_referendum: function(id) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#administration/referendums");
+            require(["../models/Referendum", "../collections/ReferendumBallots", "../views/ReferendumView"], function (Referendum, Ballots, ReferendumView) {
+                self.enforce_logged_in().then(function() {
+                    var q = new Parse.Query(Referendum);
+                    q.include("portrait");
+                    var ballots = new Ballots;
+                    return Parse.Promise.when(
+                        q.get(id),
+                        ballots.fetch(new Referendum({id: id})),
+                        UserChannel.get_users(),
+                        Parse.Cloud.run("get_my_patronage_status"));
+                }).then(function (referendum, ballots, users, patronagestatus) {
+                    self.referendumView = self.referendumView || new ReferendumView({el: "#referendum"});
+                    return self.referendumView.setup({
+                        referendum: referendum,
+                        ballots: ballots,
+                        users: users,
+                        patronagestatus: patronagestatus
+                    });
+                }).then(function () {
+                    $.mobile.changePage("#referendum", {reverse: false, changeHash: false});
+                }).always(function() {
+                    $.mobile.loading("hide");
+                });
+            });
+        },
+
+
+    } );
+
+    // Returns the Router class
+    return CategoryRouter;
+
+} );

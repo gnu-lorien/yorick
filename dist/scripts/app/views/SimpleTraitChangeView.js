@@ -1,1 +1,176 @@
-define(["jquery","backbone","../models/SimpleTrait","../helpers/PromiseFailReport"],function(e,t,a,i){var r=t.View.extend({initialize:function(){_.bindAll(this,"remove","update_value","update_free_value","update_specialty_name","save_clicked","render_view")},register:function(e,t,i){var r=this,n=!1;return e!==r.character&&(r.character&&r.stopListening(r.character),r.character=e,r.listenTo(r.character,"change",r.render_view),n=!0),t!==r.simpletrait&&(r.simpletrait=t,r.fauxtrait=new a(r.simpletrait.attributes),n=!0),_.isEqual(i,r.category)||(r.category=i,n=!0),n?r.render():r},events:{"click .remove":"remove","change .value-slider":"update_value","change .free-slider":"update_free_value","change .cost-modifier-slider":"update_experience_modifier_value","change #specialize-name":"update_specialty_name","change #experience-type-select":"update_experience_type","click .save":"save_clicked"},remove:function(t){var a=this;return t.preventDefault(),a.undelegateEvents(),e.mobile.loading("show"),console.log("remove value",a.category,a.simpletrait),a.character.remove_trait(a.simpletrait).fail(i).always(function(){window.location.hash="#simpletraits/"+a.category+"/"+a.character.id+"/all",a.delegateEvents()}),!1},update_value:function(e,t,a){var i=this;this.$(e.target).val();console.log("update value",i.category,i.fauxtrait,this.$(e.target).val()),this.fauxtrait.set("value",_.parseInt(this.$(e.target).val())),i.render_view()},update_free_value:function(e,t,a){var i=this;this.$(e.target).val();this.fauxtrait.set("free_value",_.parseInt(this.$(e.target).val())),i.render_view()},update_experience_modifier_value:function(e,t,a){var i=this,r=this.$(e.target).val();this.fauxtrait.set("experience_cost_modifier",_.parseInt(r)),i.render_view()},update_specialty_name:function(e){var t=this;this.$(e.target).val();t.fauxtrait.set_specialization(this.$(e.target).val()),t.render_view()},update_experience_type:function(e){var t=this,a=this.$(e.target)[0],i=a.options[a.selectedIndex].value;"automatic"==i&&(i=void 0),t.fauxtrait.set("experience_cost_type",i),_.isFinite(t.fauxtrait.get("experience_cost_modifier"))||t.fauxtrait.set("experience_cost_modifier",1),t.render_view()},save_clicked:function(t){var a=this;return t.preventDefault(),e.mobile.loading("show"),_.defer(function(){console.log("save clicked",a.category,a.fauxtrait),a.character.update_trait(a.fauxtrait.get("name"),a.fauxtrait.get("value"),a.fauxtrait.get("category"),a.fauxtrait.get("free_value"),!0,a.fauxtrait.get("experience_cost_type"),a.fauxtrait.get("experience_cost_modifier")).then(function(e){console.log("asaved",a.category,e),window.location.hash="#simpletraits/"+a.category+"/"+a.character.id+"/all"},i)}),!1},render_view:function(){this.view_template=_.template(e("script#simpleTraitChangeView").html())({c:this.character,character:this.character,b:this.fauxtrait,trait:this.fauxtrait}),this.$el.find("#simpletrait-viewing").html(this.view_template)},render:function(){return this.template=_.template(e("script#simpleTraitChangeChange").html())({c:this.character,b:this.fauxtrait,category:this.category,traitmax:this.character.max_trait_value(this.fauxtrait)}),this.render_view(),this.$el.find("#simpletrait-changing").html(this.template),this.$el.find("#simpletrait-changing").enhanceWithin(),this}});return r});
+// Category View
+// =============
+
+// Includes file dependencies
+define([
+	"jquery",
+	"backbone",
+	"../models/SimpleTrait",
+    "../helpers/PromiseFailReport"
+], function( $, Backbone, SimpleTrait, PromiseFailReport ) {
+
+    // Extends Backbone.View
+    var View = Backbone.View.extend({
+
+        // The View Constructor
+        initialize: function () {
+            _.bindAll(this, "remove", "update_value", "update_free_value", "update_specialty_name", "save_clicked", "render_view");
+        },
+
+        register: function (character, simpletrait, category) {
+            var self = this;
+            var changed = false;
+            if (character !== self.character) {
+                if (self.character)
+                    self.stopListening(self.character);
+                self.character = character;
+                self.listenTo(self.character, "change", self.render_view);
+                changed = true;
+            }
+
+            if (simpletrait !== self.simpletrait) {
+                self.simpletrait = simpletrait;
+                self.fauxtrait = new SimpleTrait(self.simpletrait.attributes);
+                changed = true;
+            }
+
+            if (!_.isEqual(category, self.category)) {
+                self.category = category;
+                changed = true;
+            }
+
+            if (changed) {
+                return self.render();
+            } else {
+                return self;
+            }
+        },
+
+        events: {
+            "click .remove": "remove",
+            "change .value-slider": "update_value",
+            "change .free-slider": "update_free_value",
+            "change .cost-modifier-slider": "update_experience_modifier_value",
+            "change #specialize-name": "update_specialty_name",
+            "change #experience-type-select": "update_experience_type",
+            "click .save": "save_clicked"
+        },
+
+        remove: function(e) {
+            var self = this;
+            e.preventDefault();
+            self.undelegateEvents();
+            $.mobile.loading("show");
+            console.log("remove value", self.category, self.simpletrait);
+            self.character.remove_trait(self.simpletrait).fail(PromiseFailReport).always(function() {
+                window.location.hash = "#simpletraits/" + self.category + "/" + self.character.id + "/all";
+                self.delegateEvents();
+            });
+
+            return false;
+        },
+
+        update_value: function(a, b, c) {
+            var self = this;
+            var v = this.$(a.target).val();
+            console.log("update value", self.category, self.fauxtrait, this.$(a.target).val());
+            this.fauxtrait.set("value", _.parseInt(this.$(a.target).val()));
+            self.render_view();
+        },
+
+        update_free_value: function(a, b, c) {
+            var self = this;
+            var v = this.$(a.target).val();
+            this.fauxtrait.set("free_value", _.parseInt(this.$(a.target).val()));
+            self.render_view();
+        },
+        
+        update_experience_modifier_value: function(a, b, c) {
+            var self = this;
+            var v = this.$(a.target).val();
+            this.fauxtrait.set("experience_cost_modifier", _.parseInt(v));
+            self.render_view();
+        },
+
+        update_specialty_name: function(a) {
+            var self = this;
+            var v = this.$(a.target).val();
+            self.fauxtrait.set_specialization(this.$(a.target).val());
+            self.render_view();
+        },
+        
+        update_experience_type: function(a) {
+            var self = this;
+            var elem = this.$(a.target)[0];
+            var v = elem.options[elem.selectedIndex].value;
+            if ("automatic" == v) {
+                v = undefined;
+            }
+            self.fauxtrait.set("experience_cost_type", v);
+            if (!_.isFinite(self.fauxtrait.get("experience_cost_modifier"))) {
+                self.fauxtrait.set("experience_cost_modifier", 1);
+            }
+            self.render_view();
+        },
+
+        save_clicked: function(e) {
+            var self = this;
+            e.preventDefault();
+            $.mobile.loading("show");
+            _.defer(function () {
+                console.log("save clicked", self.category, self.fauxtrait);
+                self.character.update_trait(
+                    self.fauxtrait.get("name"),
+                    self.fauxtrait.get("value"),
+                    self.fauxtrait.get("category"),
+                    self.fauxtrait.get("free_value"),
+                    true,
+                    self.fauxtrait.get("experience_cost_type"),
+                    self.fauxtrait.get("experience_cost_modifier")
+                ).then(function (newtrait) {
+                    console.log("asaved", self.category, newtrait);
+                    window.location.hash = "#simpletraits/" + self.category + "/" + self.character.id + "/all";
+                }, PromiseFailReport);
+            });
+            return false;
+        },
+
+        render_view: function() {
+            this.view_template = _.template($("script#simpleTraitChangeView").html())({
+                "c": this.character,
+                "character": this.character,
+                "b": this.fauxtrait,
+                "trait": this.fauxtrait,
+            });
+
+            this.$el.find("#simpletrait-viewing").html(this.view_template);
+        },
+
+        // Renders all of the Category models on the UI
+        render: function() {
+
+            // Sets the view's template property
+            this.template = _.template($("script#simpleTraitChangeChange").html())({
+                "c": this.character,
+                "b": this.fauxtrait,
+                "category": this.category,
+                "traitmax": this.character.max_trait_value(this.fauxtrait),
+            });
+
+            // Renders the view's template inside of the current listview element
+            this.render_view();
+            this.$el.find("#simpletrait-changing").html(this.template);
+            this.$el.find("#simpletrait-changing").enhanceWithin();
+
+
+            // Maintains chainability
+            return this;
+
+        }
+
+    } );
+
+    // Returns the View class
+    return View;
+
+} );

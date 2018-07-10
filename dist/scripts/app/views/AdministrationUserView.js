@@ -1,1 +1,162 @@
-define(["jquery","backbone","parse","backform","../forms/UserForm","marionette","../views/PatronagesView","../collections/Patronages"],function(e,t,n,r,i,a,s,o){var d=a.ItemView.extend({tagName:"form",template:_.template(""),initialize:function(){var a=this;a.errorModel=new t.Model,this.form=new i({errorModel:a.errorModel,model:new t.Model,events:{submit:function(t){var r=this;t.preventDefault(),r.undelegateEvents(),e.mobile.loading("show");var i=r.model;new n.Query(n.Role).equalTo("name","Administrator").first().then(function(e){return i.get("admininterface")?e.getUsers().add(i):e.getUsers().remove(i),e.save()}).then(function(){i.get("admininterface")?r.fields.get("submit").set({status:"success",message:"Made them an admin!"}):r.fields.get("submit").set({status:"success",message:"Removed their admin privileges!"})}).fail(function(e){r.fields.get("submit").set({status:"error",message:_.escape(e.message)})}).always(function(){r.$el.enhanceWithin(),e.mobile.loading("hide"),r.delegateEvents()})}}}),a.form.fields.each(function(e){e.set("disabled",!0)}),a.form.fields.add(new r.Field({name:"admininterface",label:"Administrator",control:"checkbox"})),a.form.fields.add(new r.Field({name:"submit",label:"Update",control:"button",id:"submit"}))},register:function(e){var t=this;if(t.user=e,t.form.model.id!=e.id){t.form.fields.get("submit").set({status:"",message:""});var r=new n.Query(n.Role).equalTo("users",e).equalTo("name","Administrator"),i=new n.Query(n.Role).equalTo("users",e).equalTo("name","SiteAdministrator"),a=n.Query.or(r,i);return a.count().then(function(n){e.set("admininterface",!!n);var r=t.form.errorModel;return t.form.model=e,t.form.model.errorModel=r,t.render()})}},onRender:function(){return this.form.setElement(this.$el),this.form.render(),this.$el.enhanceWithin(),this}}),l=a.ItemView.extend({tagName:"div",template:function(e){return _.template("<button>Reset Password</button><p class='message'></p>")(e)},events:{click:function(t){t.preventDefault();var r=this,i=r.model.get("email"),a=r.$("button"),s=r.$(".message");e.mobile.loading("show"),r.undelegateEvents(),a.attr("disabled",!0),n.User.requestPasswordReset(i).then(function(){s.text("Password Reset Email Sent")},function(e){s.text(_.escape(e.message))}).always(function(){r.$el.enhanceWithin(),r.$("button").removeAttr("disabled"),e.mobile.loading("hide"),r.delegateEvents()})}}}),m=a.ItemView.extend({tagName:"div",template:function(e){return _.template("<a href='#administration/patronages/new/<%= userid %>'>Add New Patronage</a>")(e)},modelEvents:{change:"render"}}),u=a.LayoutView.extend({el:"#administration-user-view",regions:{profile:"#abs-form",password:"#reset-password-view",patronage:"#patronage-list-region",patronage_new:"#patronage-new-for-user-button"},initialize:function(e){var n=this;n.patronages=new o,n.showChildView("profile",new d,e),n.showChildView("password",new l,e),n.showChildView("patronage",new s({el:"#patronage-list",collection:n.patronages})),n.showChildView("patronage_new",new m({model:new t.Model({userid:""})}))},register:function(e){var t=this;t.profile.currentView.register.apply(t.profile.currentView,arguments),t.password.currentView.model=e,t.patronage.currentView.render(),t.patronage_new.currentView.model.set("userid",e.id)}});return u});
+// Includes file dependencies
+define([
+    "jquery",
+    "backbone",
+    "parse",
+    "backform",
+    "../forms/UserForm",
+    "marionette",
+    "../views/PatronagesView",
+    "../collections/Patronages"
+], function ($, Backbone, Parse, Backform, UserForm, Marionette, PatronagesView, Patronages) {
+    // Extends Backbone.View
+    var View = Marionette.ItemView.extend({
+        tagName: 'form',
+        template: _.template(""),
+        initialize: function () {
+            var view = this;
+            view.errorModel = new Backbone.Model();
+            this.form = new UserForm({
+                errorModel: view.errorModel,
+                model: new Backbone.Model,
+                events: {
+                    "submit": function (e) {
+                        var self = this;
+                        e.preventDefault();
+                        self.undelegateEvents();
+                        $.mobile.loading("show");
+
+                        var user = self.model;
+                        new Parse.Query(Parse.Role).equalTo("name", "Administrator").first().then(function (role) {
+                            if (user.get("admininterface")) {
+                                // Make an admin
+                                role.getUsers().add(user);
+                            } else {
+                                // Destroy their admin rights
+                                role.getUsers().remove(user);
+                            }
+                            return role.save();
+                        }).then(function () {
+                            if (user.get("admininterface")) {
+                                self.fields.get("submit").set({status: "success", message: "Made them an admin!"});
+                            } else {
+                                self.fields.get("submit").set({status: "success", message: "Removed their admin privileges!"});
+                            }
+                        }).fail(function (error) {
+                            self.fields.get("submit").set({status: "error", message: _.escape(error.message)});
+                        }).always(function () {
+                            self.$el.enhanceWithin();
+                            $.mobile.loading("hide");
+                            self.delegateEvents();
+                        });
+                    }
+                }
+            });
+            view.form.fields.each(function(field) {
+                field.set("disabled", true);
+            });
+            view.form.fields.add(new Backform.Field({name: "admininterface", label: "Administrator", control: "checkbox"}));
+            view.form.fields.add(new Backform.Field({name: "submit", label: "Update", control: "button", id: "submit"}));
+        },
+
+        register: function (user) {
+            var self = this;
+            self.user = user;
+            //(new Parse.Query(Parse.Role)).equalTo("users", theUser).find()
+            if (self.form.model.id != user.id) {
+                self.form.fields.get("submit").set({status: "", message: ""});
+                var adminq = (new Parse.Query(Parse.Role)).equalTo("users", user).equalTo("name", "Administrator");
+                var siteadminq = (new Parse.Query(Parse.Role)).equalTo("users", user).equalTo("name", "SiteAdministrator");
+                var q = Parse.Query.or(adminq, siteadminq);
+                return q.count().then(function (isadministrator) {
+                    user.set("admininterface", isadministrator ? true : false);
+                    var errorModel = self.form.errorModel;
+                    self.form.model = user;
+                    self.form.model.errorModel = errorModel;
+                    return self.render();
+                });
+            }
+        },
+
+        onRender: function() {
+            this.form.setElement(this.$el);
+            this.form.render();
+            this.$el.enhanceWithin();
+
+            return this;
+        },
+    });
+
+    var ResetButtonView = Marionette.ItemView.extend({
+        tagName: 'div',
+        template: function(data) {
+            return _.template("<button>Reset Password</button><p class='message'></p>")(data);
+        },
+        events: {
+            "click": function (e) {
+                e.preventDefault();
+                var self = this;
+                var email = self.model.get("email");
+                var button = self.$("button");
+                var message = self.$(".message");
+                $.mobile.loading("show");
+                self.undelegateEvents();
+                button.attr("disabled", true);
+                Parse.User.requestPasswordReset(email).then(function () {
+                    message.text("Password Reset Email Sent");
+                }, function (error) {
+                    message.text(_.escape(error.message));
+                }).always(function () {
+                    self.$el.enhanceWithin();
+                    self.$("button").removeAttr("disabled");
+                    $.mobile.loading("hide");
+                    self.delegateEvents();
+                })
+            },
+        },
+    });
+    
+    var NewPatronButtonView = Marionette.ItemView.extend({
+        tagName: 'div',
+        template: function(data) {
+            return _.template("<a href='#administration/patronages/new/<%= userid %>'>Add New Patronage</a>")(data);
+        },
+        modelEvents: {
+            "change": "render"
+        }
+    });
+
+    var LayoutView = Marionette.LayoutView.extend({
+        el: "#administration-user-view",
+        regions: {
+            profile: "#abs-form",
+            password: "#reset-password-view",
+            patronage: "#patronage-list-region",
+            patronage_new: "#patronage-new-for-user-button"
+        },
+        initialize: function(options) {
+            var self = this;
+            self.patronages = new Patronages;
+            self.showChildView('profile', new View(), options);
+            self.showChildView('password', new ResetButtonView(), options);
+            self.showChildView('patronage', new PatronagesView({
+                el: "#patronage-list",
+                collection: self.patronages,
+            }))
+            self.showChildView('patronage_new', new NewPatronButtonView({
+                model: new Backbone.Model({userid: ""})
+            }));
+        },
+        register: function(user) {
+            var self = this;
+            self.profile.currentView.register.apply(self.profile.currentView, arguments);
+            self.password.currentView.model = user;
+            self.patronage.currentView.render();
+            self.patronage_new.currentView.model.set("userid", user.id);
+        }
+    });
+
+    // Returns the View class
+    return LayoutView;
+
+});

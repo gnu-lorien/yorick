@@ -1,1 +1,65 @@
-define(["jquery","backbone","text!../templates/choose-user.html","parse"],function(e,t,i,n){var l=t.View.extend({initialize:function(){_.bindAll(this,"render")},register:function(e){var t=this;t.click_template=_.template(e),t.collection=[];var i=new n.Query("User");i.select("id","username","realname","email"),i.each(function(e){t.collection.push(e)}).then(function(){t.render()},function(e){console.log("No users? "+e.message)})},events:{"click .user-listing":"clicked"},clicked:function(t){var i=this;t.preventDefault(),e.mobile.loading("show");var n=e(t.target).attr("backendId");window.location.hash=i.click_template({id:n})},render:function(){var e=this;return this.template=_.template(i)({collection:e.collection}),this.$el.find("div[role='main']").html(this.template),this.$el.enhanceWithin(),this}});return l});
+// Includes file dependencies
+define([
+    "jquery",
+    "backbone",
+    "text!../templates/choose-user.html",
+    "parse"
+], function( $, Backbone, choose_user_html, Parse) {
+
+    // Extends Backbone.View
+    var View = Backbone.View.extend( {
+
+        // The View Constructor
+        initialize: function () {
+            _.bindAll(this, "render");
+        },
+
+        register: function(click_template) {
+            var self = this;
+            self.click_template = _.template(click_template);
+            self.collection = [];
+            var q = new Parse.Query("User");
+            q.select("id", "username", "realname", "email");
+            q.each(function (t) {
+                self.collection.push(t);
+            }).then(function () {
+                self.render();
+            }, function (error) {
+                console.log("No users? " + error.message);
+            })
+        },
+
+        events: {
+            "click .user-listing": "clicked",
+        },
+
+        clicked: function(e) {
+            var self = this;
+            e.preventDefault();
+            $.mobile.loading("show");
+            var pickedId = $(e.target).attr("backendId");
+            window.location.hash = self.click_template({id: pickedId});
+        },
+
+        // Renders all of the Category models on the UI
+        render: function() {
+            var self = this;
+
+            // Sets the view's template property
+            this.template = _.template(choose_user_html)({collection: self.collection});
+
+            // Renders the view's template inside of the current div element
+            this.$el.find("div[role='main']").html(this.template);
+            this.$el.enhanceWithin();
+
+            // Maintains chainability
+            return this;
+
+        }
+
+    } );
+
+    // Returns the View class
+    return View;
+
+} );

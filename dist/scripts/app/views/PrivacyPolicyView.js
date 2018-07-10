@@ -1,1 +1,32 @@
-define(["jquery","backbone","text!../templates/privacy-policy.html"],function(e,t,i){var n=t.View.extend({initialize:function(){},render:function(){var e=this;return e.template=_.template(i)(),e.$el.find("div[role='main']").html(e.template),this}});return n});
+define([
+    "jquery",
+    "backbone",
+    "text!../templates/privacy-policy.html"
+], function( $, Backbone, privacy_policy_html) {
+
+    // Extends Backbone.View
+    var View = Backbone.View.extend( {
+
+        // The View Constructor
+        initialize: function () {
+            var self = this;
+        },
+
+        // Renders all of the Category models on the UI
+        render: function() {
+            var self = this;
+
+            self.template = _.template(privacy_policy_html)();
+            self.$el.find("div[role='main']").html(self.template);
+
+            // Maintains chainability
+            return this;
+
+        }
+
+    } );
+
+    // Returns the View class
+    return View;
+
+} );

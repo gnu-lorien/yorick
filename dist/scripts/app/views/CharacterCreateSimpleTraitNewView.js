@@ -1,1 +1,227 @@
-define(["jquery","backbone","parse","../helpers/Progress","../helpers/PromiseFailReport","../models/SimpleTrait","../collections/BNSMETV1_ClanRules","../helpers/DescriptionFetcher"],function(e,t,i,n,a,r,c,l){var o=t.View.extend({initialize:function(){_.bindAll(this,"register","update_collection_query_and_fetch")},switch_character_category_listening:function(){var e=this;e.character&&(e.stopListening(e.character),e.listenTo(e.character,"change:"+e.category,e.render))},register:function(e,t,n,a,r,c){var o=this;o.delegateEvents();var s=!1,a=a||"#simpletrait/<%= self.category %>/<%= self.character.id %>/<%= b.linkId() %>",c=c||"#simpletrait/specialize/<%= self.category %>/<%= self.character.id %>/<%= b.linkId() %>";a!=_&&a!=o.redirect&&(o.redirect=_.template(a),s=!0),c!=_&&c!=o.specializationRedirect&&(o.specializationRedirect=_.template(c)),o.filterRule!==r&&(_.isString(r)?o.filterRule=[r]:o.filterRule=r,s=!0),n!==o.free_value&&n!=_&&(o.free_value=n,s=!0),e!==o.character&&(o.character&&o.stopListening(o.character),o.character=e,o.listenTo(o.character,"change:"+t,o.render),s=!0);var u=i.Promise.as();return t!=o.category&&(o.category=t,o.switch_character_category_listening(),o.collection&&o.stopListening(o.collection),o.collection=l(t),o.listenTo(o.collection,"add",o.render),o.listenTo(o.collection,"reset",o.render),u=o.update_collection_query_and_fetch(),s=!0),s?u.then(function(){o.render()}):u.then(function(){return o})},update_collection_query_and_fetch:function(){var e=this;return n("Fetching "+e.category),e.collection.fetch_avoiding_wait().done(function(){n()}).fail(a)},render:function(){var t,i=this;i.requireSpecializations=_.chain(i.collection.models).select(function(e){return"requires_specialization"==e.get("requirement")}).pluck("attributes").pluck("name").value();var n=_(i.character.get(i.category)).pluck("attributes").pluck("name").without(i.requireSpecializations).value();if(_.contains(i.filterRule,"in clan disciplines")){var a=_.without(i.character.get_in_clan_disciplines(),void 0);t=_.chain(i.collection.models),0!=a.length&&(t=t.select(function(e){return!_.contains(n,e.get("name"))&&!!_.contains(a,e.get("name"))})),t=t.value()}else if(_.contains(i.filterRule,"affinity")){var a=_.without(i.character.get_affinities(),void 0);t=_.chain(i.collection.models),0!=a.length&&(t=t.select(function(e){return!_.contains(n,e.get("name"))&&_.some(_.map(_.range(1,4),function(t){return!!_.contains(a,e.get("affinity_"+t))}))})),t=t.value()}else t=_.chain(i.collection.models).select(function(e){return!_.contains(n,e.get("name"))}).value();return _.contains(i.filterRule,"show_only_value_1")&&(t=_.select(t,function(e){return 1==e.get("value")})),this.template=_.template(e("script#simpletraitcategoryDescriptionItems").html())({collection:t,character:this.character,category:this.category,free_value:this.free_value}),this.$el.find("div[role='main']").html(this.template),this.$el.enhanceWithin(),this},events:{"click .simpletrait":"clicked"},clicked:function(t){var i=this;t.preventDefault(),i.undelegateEvents(),e.mobile.loading("show");var n=e(t.target).attr("backendId"),a=i.collection.get(n),r=_.parseInt(a.get("value")),c=i.free_value;return r&&(c=r),i.character.update_trait(e(t.target).attr("name"),c,i.category,i.free_value).done(function(e){_.contains(i.requireSpecializations,e.get("name"))?window.location.hash=i.specializationRedirect({self:i,b:e}):window.location.hash=i.redirect({self:i,b:e})}).fail(function(e){console.log(e.message)}),!1}});return o});
+// Category View
+// =============
+
+// Includes file dependencies
+define([
+	"jquery",
+	"backbone",
+    "parse",
+    "../helpers/Progress",
+    "../helpers/PromiseFailReport",
+    "../models/SimpleTrait",
+    "../collections/BNSMETV1_ClanRules",
+    "../helpers/DescriptionFetcher"
+], function( $, Backbone, Parse, Progress, PromiseFailReport, SimpleTrait, ClanRules, DescriptionFetcher ) {
+
+    // Extends Backbone.View
+    var View = Backbone.View.extend( {
+
+        // The View Constructor
+        initialize: function() {
+
+            _.bindAll(this, "register", "update_collection_query_and_fetch");
+        },
+
+        switch_character_category_listening: function() {
+            var self = this;
+            if (!self.character) {
+                return;
+            }
+            self.stopListening(self.character);
+            self.listenTo(self.character, "change:" + self.category, self.render);
+        },
+
+        register: function(character, category, free_value, redirect, filterRule, specializationRedirect) {
+            var self = this;
+            self.delegateEvents();
+            var changed = false;
+            var redirect = redirect || "#simpletrait/<%= self.category %>/<%= self.character.id %>/<%= b.linkId() %>";
+            var specializationRedirect = specializationRedirect || "#simpletrait/specialize/<%= self.category %>/<%= self.character.id %>/<%= b.linkId() %>";
+
+            if (redirect != _ && redirect != self.redirect) {
+                self.redirect = _.template(redirect);
+                changed = true;
+            }
+
+            if (specializationRedirect != _ && specializationRedirect != self.specializationRedirect) {
+                self.specializationRedirect = _.template(specializationRedirect);
+            }
+
+            if (self.filterRule !== filterRule) {
+                if (_.isString(filterRule)) {
+                    self.filterRule = [filterRule];
+                } else {
+                    self.filterRule = filterRule;
+                }
+                changed = true;
+            }
+
+            if (free_value !== self.free_value && free_value != _) {
+                self.free_value = free_value;
+                changed = true;
+            }
+
+            if (character !== self.character) {
+                if (self.character)
+                    self.stopListening(self.character);
+                self.character = character;
+                //self.listenTo(self.character, "change:" + category, self.update_collection_query_and_fetch);
+                self.listenTo(self.character, "change:" + category, self.render);
+                changed = true;
+            }
+
+            var p = Parse.Promise.as();
+
+            if (category != self.category) {
+                self.category = category;
+                self.switch_character_category_listening();
+                if (self.collection)
+                    self.stopListening(self.collection);
+                self.collection = DescriptionFetcher(category);
+                self.listenTo(self.collection, "add", self.render);
+                self.listenTo(self.collection, "reset", self.render);
+                p = self.update_collection_query_and_fetch();
+                changed = true;
+            }
+
+            if (changed) {
+                return p.then(function() { self.render(); });
+            }
+            return p.then(function() { return self; });
+        },
+
+        update_collection_query_and_fetch: function () {
+            var self = this;
+            Progress("Fetching " + self.category);
+            return self.collection.fetch_avoiding_wait().done(function () {
+                Progress();
+            }).fail(PromiseFailReport);
+        },
+
+        // Renders all of the Category models on the UI
+        render: function() {
+            var self = this;
+
+            var descriptionItems;
+            self.requireSpecializations = _.chain(self.collection.models).select(function (model) {
+                if (model.get("requirement") == "requires_specialization") {
+                    return true;
+                }
+                return false;
+            }).pluck("attributes").pluck("name").value();
+            var traitNames = _(self.character.get(self.category))
+                .pluck("attributes")
+                .pluck("name")
+                .without(self.requireSpecializations)
+                .value();
+
+            if (_.contains(self.filterRule, "in clan disciplines")) {
+                var icd = _.without(self.character.get_in_clan_disciplines(), undefined);
+                descriptionItems = _.chain(self.collection.models);
+                if (0 != icd.length) {
+                    descriptionItems = descriptionItems.select(function (model) {
+                        if (_.contains(traitNames, model.get("name"))) {
+                            return false;
+                        }
+                        if (_.contains(icd, model.get("name"))) {
+                            return true;
+                        }
+                        return false;
+                    })
+                }
+                descriptionItems = descriptionItems.value();
+            } else if (_.contains(self.filterRule, "affinity")) {
+                var icd = _.without(self.character.get_affinities(), undefined);
+                descriptionItems = _.chain(self.collection.models);
+                if (0 != icd.length) {
+                    descriptionItems = descriptionItems.select(function (model) {
+                        if (_.contains(traitNames, model.get("name"))) {
+                            return false;
+                        }
+                        return _.some(_.map(_.range(1, 4), function (i) {
+                            if (_.contains(icd, model.get("affinity_" + i))) {
+                                return true;
+                            } else {
+                                return false;
+                            }
+                        }));
+                    })
+                }
+                descriptionItems = descriptionItems.value();
+            } else {
+                descriptionItems = _.chain(self.collection.models).select(function (model) {
+                    if (!_.contains(traitNames, model.get("name"))) {
+                        return true;
+                    }
+                    return false;
+                }).value();
+            }
+            
+            if (_.contains(self.filterRule, "show_only_value_1")) {
+                descriptionItems = _.select(descriptionItems, function (model) {
+                    return model.get("value") == 1;
+                });
+            }
+
+            // Sets the view's template property
+            this.template = _.template($("script#simpletraitcategoryDescriptionItems").html())({
+                "collection": descriptionItems,
+                "character": this.character,
+                "category": this.category,
+                "free_value": this.free_value
+            });
+
+            // Renders the view's template inside of the current listview element
+            this.$el.find("div[role='main']").html(this.template);
+
+            /*
+            this.headerTemplate = _.template($("script#headerTemplate").html())({
+                "character": this.character,
+                "title": this.category,
+            });
+
+            this.$el.find("div[data-role='header']").html(this.headerTemplate);
+            */
+
+            this.$el.enhanceWithin();
+
+            // Maintains chainability
+            return this;
+        },
+
+        events: {
+            "click .simpletrait": "clicked"
+        },
+
+        clicked: function(e) {
+            var self = this;
+            e.preventDefault();
+            self.undelegateEvents();
+            $.mobile.loading("show");
+            var pickedId = $(e.target).attr("backendId");
+            var description = self.collection.get(pickedId);
+            var valueField = _.parseInt(description.get("value"));
+            var cost = self.free_value;
+            if (valueField) {
+                cost = valueField;
+            }
+
+            self.character.update_trait($(e.target).attr("name"), cost, self.category, self.free_value).done(function(trait) {
+                if (_.contains(self.requireSpecializations, trait.get("name"))) {
+                    window.location.hash = self.specializationRedirect({self: self, b: trait});
+                } else {
+                    window.location.hash = self.redirect({self: self, b: trait});
+                }
+            }).fail(function (error) {
+                console.log(error.message);
+            })
+
+            return false;
+        }
+
+    } );
+
+    // Returns the View class
+    return View;
+
+} );

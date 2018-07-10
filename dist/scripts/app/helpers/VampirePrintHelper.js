@@ -1,1 +1,239 @@
-define(["jquery","backbone"],function(e,a,t){var r={format_simpletext:function(e){var a=this.character_override||this.character||this.model;if(this.model.transform_description){var t={name:e,category:"core"};if(_.find(this.model.transform_description,t)){var r=_(this.model.transform_description).select(t).reject({old_text:void 0}).reverse().map("old_text").map(function(e){return"<span style='color: indianred'><i class='fa fa-minus'></i>"+e+"</span>"}).value();return r.push("<span style='color: darkseagreen'><i class='fa fa-plus'></i>"+a.get(e)+"</span>"),r.join(" ")}}return a.get(e)},format_attribute_value:function(e){if(this.model.transform_description){var a={name:e.get("name"),category:"attributes"},t=_.find(this.model.transform_description,a);if(t){var r=_(this.model.transform_description).select(a).reject({fake:void 0}).reverse().map("fake").map(function(e){return"<span style='color: indianred'><i class='fa fa-minus'></i>"+e.get("value")+"</span>"}).value();return r.push("<span style='color: darkseagreen'><i class='fa fa-plus'></i>"+e.get("value")+"</span>"),r.join(" ")}}return e.get("value")},format_attribute_focus:function(e){var a=this,t=this.character_override||this.character||this.model,r="focus_"+e.toLowerCase()+"s";if(this.model.transform_description){var i={category:r},n=_.find(a.model.transform_description,i);if(n){var s=_.map(t.get(r),function(e){var t={category:r,name:e.get("name")},i=_.find(a.model.transform_description,t);if(i){var n=_(a.model.transform_description).select(t).reject({fake:void 0}).reverse().map("fake").map(function(a){return"<span style='color: indianred'><i class='fa fa-minus'></i>"+e.get("name")+"</span>"}).value();return e.is_deleted||n.push("<span style='color: darkseagreen'><i class='fa fa-plus'></i>"+e.get("name")+"</span>"),n.join(" ")}return e.get("name")});return s.join(" ")}}var o=_.map(t.get(r),function(e){return e.get("name")});return o.join(" ")},_format_skill_string:function(e,a){var t="O";_.isUndefined(a)&&(a=2);var r=e.get("name");if(0==a)return r;if(1==a)return e.has_specialization()?e.get_base_name()+" x"+e.get("value")+": "+e.get_specialization():r+" x"+e.get("value");if(2==a){var i=" x"+e.get("value")+" "+_.repeat(t,e.get("value"));return e.has_specialization()?e.get_base_name()+i+": "+e.get_specialization():r+i}if(3==a){var i=" "+_.repeat(t,e.get("value"));return e.has_specialization()?e.get_base_name()+i+": "+e.get_specialization():r+i}if(4==a)return e.has_specialization()?e.get_base_name()+" ("+e.get("value")+", "+e.get_specialization()+")":r+" ("+e.get("value")+")";if(5==a)return e.has_specialization()?e.get_base_name()+" ("+e.get_specialization()+")":r;if(6==a)return r+" ("+e.get("value")+")";if(7==a){var n;return n=e.has_specialization()?r+" ("+e.get_specialization()+")"+t:r+t,_.repeat(n,e.get("value"))}return 8==a?_.repeat(t,e.get("value")):9==a?e.get("value"):10==a?e.get_specialization():void 0},format_skill:function(e,a){var t=this,r=this._format_skill_string(e,a);if(this.model.transform_description){var i={name:e.get("name"),category:e.get("category")},n=_.find(this.model.transform_description,i);if(n){var s=_(this.model.transform_description).select(i).reject({fake:void 0}).reverse().map("fake").map(function(e){var r=t._format_skill_string(e,a);return"<span style='color: indianred'><i class='fa fa-minus'></i>"+r+"</span>"}).value();return e.is_deleted||s.push("<span style='color: darkseagreen'><i class='fa fa-plus'></i>"+r+"</span>"),s.join(" ")}}return r},format_specializations:function(e){var a=this,t=this.character_override||this.character||this.model;if(this.model.transform_description){var r={category:e},i=_.find(a.model.transform_description,r);if(i)return _.map(t.get(e),function(t){var r={category:e,name:t.get("name")},i=_.find(a.model.transform_description,r);if(i){var n=_(a.model.transform_description).select(r).reject({fake:void 0}).reverse().map("fake").map(function(e){return"<span style='color: indianred'><i class='fa fa-minus'></i>"+t.get("name")+"</span>"}).value();return t.is_deleted||n.push("<span style='color: darkseagreen'><i class='fa fa-plus'></i>"+t.get("name")+"</span>"),n.join(" ")}return t.get("name")})}return _.pluck(t.get(e),"attributes.name")}};return r});
+// Includes file dependencies
+define([
+    "jquery",
+    "backbone",
+], function( $, Backbone, character_print_view_html) {
+
+    var Mixin = {
+        format_simpletext: function(attrname) {
+            var character = this.character_override || this.character || this.model;
+            if (this.model.transform_description) {
+                var matcher = {
+                    name: attrname,
+                    category: "core"
+                }
+                if (_.find(this.model.transform_description, matcher)) {
+                    var updates = _(this.model.transform_description)
+                        .select(matcher)
+                        .reject({old_text: undefined})
+                        .reverse()
+                        .map("old_text")
+                        .map(function (t) {
+                            return "<span style='color: indianred'><i class='fa fa-minus'></i>" + t + "</span>";
+                        })
+                        .value();
+                    updates.push("<span style='color: darkseagreen'><i class='fa fa-plus'></i>" + character.get(attrname) + "</span>");
+                    return updates.join(" ");
+                }
+            }
+            return character.get(attrname);
+        },
+
+        format_attribute_value: function(attribute) {
+            if (this.model.transform_description) {
+                var matcher = {
+                    name: attribute.get("name"),
+                    category: "attributes"
+                }
+                var change = _.find(this.model.transform_description, matcher);
+                if (change) {
+                    var updates = _(this.model.transform_description)
+                        .select(matcher)
+                        .reject({fake: undefined})
+                        .reverse()
+                        .map("fake")
+                        .map(function (fake) {
+                            return "<span style='color: indianred'><i class='fa fa-minus'></i>" + fake.get("value") + "</span>";
+                        })
+                        .value();
+                    updates.push("<span style='color: darkseagreen'><i class='fa fa-plus'></i>" + attribute.get("value") + "</span>");
+                    return updates.join(" ");
+                }
+            }
+            return attribute.get("value");
+        },
+
+        format_attribute_focus: function(name) {
+            var self = this;
+            var character = this.character_override || this.character || this.model;
+            var focusName = "focus_" + name.toLowerCase() + "s";
+            if (this.model.transform_description) {
+                var matcher = {
+                    category: focusName,
+                }
+                var change = _.find(self.model.transform_description, matcher);
+                if (change) {
+                    var outputs = _.map(character.get(focusName), function (skill) {
+                        var matcher = {
+                            category: focusName,
+                            name: skill.get("name")
+                        }
+                        var change = _.find(self.model.transform_description, matcher);
+                        if (change) {
+                            var updates = _(self.model.transform_description)
+                                .select(matcher)
+                                .reject({fake: undefined})
+                                .reverse()
+                                .map("fake")
+                                .map(function (fake) {
+                                    return "<span style='color: indianred'><i class='fa fa-minus'></i>" + skill.get("name") + "</span>";
+                                })
+                                .value();
+                            if (!skill.is_deleted) {
+                                updates.push("<span style='color: darkseagreen'><i class='fa fa-plus'></i>" + skill.get("name") + "</span>");
+                            }
+                            return updates.join(" ");
+                        } else {
+                            return skill.get("name");
+                        }
+                    });
+                    return outputs.join(" ");
+                }
+            }
+            var focusNames = _.map(character.get(focusName), function (focus) {
+                return focus.get("name");
+            });
+            return focusNames.join(" ");
+        },
+
+        _format_skill_string: function(skill, style) {
+            var dot = "O";
+            if (_.isUndefined(style)) {
+                style = 2;
+            }
+            var name = skill.get("name");
+            if (0 == style) {
+                return name;
+            }
+            if (1 == style) {
+                if (!skill.has_specialization()) {
+                    return name + " x" + skill.get("value");
+                } else {
+                    return skill.get_base_name() + " x" + skill.get("value") + ": " + skill.get_specialization();
+                }
+            }
+            if (2 == style) {
+                var value = " x" + skill.get("value") + " " + _.repeat(dot, skill.get("value"));
+                if (!skill.has_specialization()) {
+                    return name + value;
+                } else {
+                    return skill.get_base_name() + value + ": " + skill.get_specialization();
+                }
+            }
+            if (3 == style) {
+                var value = " " + _.repeat(dot, skill.get("value"));
+                if (!skill.has_specialization()) {
+                    return name + value;
+                } else {
+                    return skill.get_base_name() + value + ": " + skill.get_specialization();
+                }
+            }
+            if (4 == style) {
+                if (!skill.has_specialization()) {
+                    return name + " (" + skill.get("value") + ")";
+                } else {
+                    return skill.get_base_name() + " (" + skill.get("value") + ", " + skill.get_specialization() + ")";
+                }
+            }
+            if (5 == style) {
+                if (!skill.has_specialization()) {
+                    return name;
+                } else {
+                    return skill.get_base_name() + " (" + skill.get_specialization() + ")";
+                }
+            }
+            if (6 == style) {
+                return name + " (" + skill.get("value") + ")";
+            }
+            if (7 == style) {
+                var thewords;
+                if (!skill.has_specialization()) {
+                    thewords = name + dot;
+                } else {
+                    thewords = name + " (" + skill.get_specialization() + ")" + dot;
+                }
+                return _.repeat(thewords, skill.get("value"));
+            }
+            if (8 == style) {
+                return _.repeat(dot, skill.get("value"));
+            }
+            if (9 == style) {
+                return skill.get("value");
+            }
+            if (10 == style) {
+                return skill.get_specialization();
+            }           
+        },
+        
+        format_skill: function(skill, style) {
+            var self = this;
+            var output = this._format_skill_string(skill, style);
+            if (this.model.transform_description) {
+                var matcher = {
+                    name: skill.get("name"),
+                    category: skill.get("category"),
+                }
+                var change = _.find(this.model.transform_description, matcher);
+                if (change) {
+                    var updates = _(this.model.transform_description)
+                        .select(matcher)
+                        .reject({fake: undefined})
+                        .reverse()
+                        .map("fake")
+                        .map(function (fake) {
+                            var fake_format = self._format_skill_string(fake, style);
+                            return "<span style='color: indianred'><i class='fa fa-minus'></i>" + fake_format + "</span>";
+                        })
+                        .value();
+                    if (!skill.is_deleted) {
+                        updates.push("<span style='color: darkseagreen'><i class='fa fa-plus'></i>" + output + "</span>");
+                    }
+                    return updates.join(" ");
+                }
+            }
+            return output;
+        },
+
+        format_specializations: function (name) {
+            var self = this;
+            var character = this.character_override || this.character || this.model;
+            if (this.model.transform_description) {
+                var matcher = {
+                    category: name,
+                }
+                var change = _.find(self.model.transform_description, matcher);
+                if (change) {
+                    return _.map(character.get(name), function (skill) {
+                        var matcher = {
+                            category: name,
+                            name: skill.get("name")
+                        }
+                        var change = _.find(self.model.transform_description, matcher);
+                        if (change) {
+                            var updates = _(self.model.transform_description)
+                                .select(matcher)
+                                .reject({fake: undefined})
+                                .reverse()
+                                .map("fake")
+                                .map(function (fake) {
+                                    return "<span style='color: indianred'><i class='fa fa-minus'></i>" + skill.get("name") + "</span>";
+                                })
+                                .value();
+                            if (!skill.is_deleted) {
+                                updates.push("<span style='color: darkseagreen'><i class='fa fa-plus'></i>" + skill.get("name") + "</span>");
+                            }
+                            return updates.join(" ");
+                        } else {
+                            return skill.get("name");
+                        }
+                    })
+                }
+            }
+            return _.pluck(character.get(name), "attributes.name");
+        },
+    };
+
+    // Returns the View class
+    return Mixin;
+
+} );

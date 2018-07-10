@@ -1,1 +1,161 @@
-define(function(){"use strict";var r=function(r,n,e,t){var o,u,i,c,a,s,f,b,p,d,g,l,j,h;return c=Object.prototype.toString,a={undefined:"undefined",number:"number","boolean":"boolean",string:"string","[object Function]":"function","[object RegExp]":"regexp","[object Array]":"array","[object Date]":"date","[object Error]":"error"},s=function(r){var n=a[typeof r]||a[c.call(r)]||(r?"object":"null");return n},f=function(r,n){var e,t="";for(e=0;e<n;e+=1)t+=r;return t},p=function(r,n){var e,t=[];n+=o;for(e in r)r.hasOwnProperty(e)&&t.push(n+'"'+e+'": '+j(r[e],n));return t.join(i)+u},d=function(r,n){var e,t=[];n+=o;for(e in r)r.hasOwnProperty(e)&&t.push(n+e+": "+j(r[e],n));return t.join(i)+u},g=function(r,n){var e,t=r.length,c=[];for(n+=o,e=0;e<t;e+=1)c.push(j(r[e],n,n));return c.join(i)+u},l=function(r){var n,e;return r=r.toString(),n=new RegExp("function\\s*.*\\s*\\(.*\\)"),e=n.exec(r),e=e?e[0]:"[object Function]",t?r:'"'+e+'"'},j=function(r,n,e){var t;if(t=s(r),e=e||"",h.indexOf(r)===-1)switch(t){case"array":return h.push(r),e+"["+u+g(r,n)+n+"]";case"boolean":return e+(r?"true":"false");case"date":return e+'"'+r.toString()+'"';case"number":return e+r;case"object":return h.push(r),e+"{"+u+b(r,n)+n+"}";case"string":return e+JSON.stringify(r);case"function":return e+l(r);case"undefined":return e+'"undefined"';default:return r.toString?e+'"'+r.toString()+'"':e+"<<<ERROR>>> Cannot get the string value of the element"}return e+"circular reference to "+r.toString()},r?(void 0===n&&(n=4),e=(e||"print").toLowerCase(),o=f("html"===e?"&nbsp;":" ",n),b="json"===e?p:d,u="html"===e?"<br/>":"\n",i=","+u,h=[],j(r,"")+u):"Error: no Javascript object provided"};return r});
+define(function () {
+    "use strict";
+
+    var pretty = function (jsObject, indentLength, outputTo, fullFunction) {
+        var indentString,
+            newLine,
+            newLineJoin,
+            TOSTRING,
+            TYPES,
+            valueType,
+            repeatString,
+            prettyObject,
+            prettyObjectJSON,
+            prettyObjectPrint,
+            prettyArray,
+            functionSignature,
+            pretty,
+            visited;
+
+        TOSTRING = Object.prototype.toString;
+
+        TYPES = {
+            'undefined': 'undefined',
+            'number': 'number',
+            'boolean': 'boolean',
+            'string': 'string',
+            '[object Function]': 'function',
+            '[object RegExp]': 'regexp',
+            '[object Array]': 'array',
+            '[object Date]': 'date',
+            '[object Error]': 'error'
+        };
+
+        valueType = function (o) {
+            var type = TYPES[typeof o] || TYPES[TOSTRING.call(o)] || (o ? 'object' : 'null');
+            return type;
+        };
+
+        repeatString = function (src, length) {
+            var dst = '',
+                index;
+            for (index = 0; index < length; index += 1) {
+                dst += src;
+            }
+
+            return dst;
+        };
+
+        prettyObjectJSON = function (object, indent) {
+            var value = [],
+                property;
+
+            indent += indentString;
+            for (property in object) {
+                if (object.hasOwnProperty(property)) {
+                    value.push(indent + '"' + property + '": ' + pretty(object[property], indent));
+                }
+            }
+
+            return value.join(newLineJoin) + newLine;
+        };
+
+        prettyObjectPrint = function (object, indent) {
+            var value = [],
+                property;
+
+            indent += indentString;
+            for (property in object) {
+                if (object.hasOwnProperty(property)) {
+                    value.push(indent + property + ': ' + pretty(object[property], indent));
+                }
+            }
+
+            return value.join(newLineJoin) + newLine;
+        };
+
+        prettyArray = function (array, indent) {
+            var index,
+                length = array.length,
+                value = [];
+
+            indent += indentString;
+            for (index = 0; index < length; index += 1) {
+                value.push(pretty(array[index], indent, indent));
+            }
+
+            return value.join(newLineJoin) + newLine;
+        };
+
+        functionSignature = function (element) {
+            var signatureExpression,
+                signature;
+
+            element = element.toString();
+            signatureExpression = new RegExp('function\\s*.*\\s*\\(.*\\)');
+            signature = signatureExpression.exec(element);
+            signature = signature ? signature[0] : '[object Function]';
+            return fullFunction ? element : '"' + signature + '"';
+        };
+
+        pretty = function (element, indent, fromArray) {
+            var type;
+
+            type = valueType(element);
+            fromArray = fromArray || '';
+            if (visited.indexOf(element) === -1) {
+                switch (type) {
+                    case 'array':
+                        visited.push(element);
+                        return fromArray + '[' + newLine + prettyArray(element, indent) + indent + ']';
+
+                    case 'boolean':
+                        return fromArray + (element ? 'true' : 'false');
+
+                    case 'date':
+                        return fromArray + '"' + element.toString() + '"';
+
+                    case 'number':
+                        return fromArray + element;
+
+                    case 'object':
+                        visited.push(element);
+                        return fromArray + '{' + newLine + prettyObject(element, indent) + indent + '}';
+
+                    case 'string':
+                        return fromArray + JSON.stringify(element);
+
+                    case 'function':
+                        return fromArray + functionSignature(element);
+
+                    case 'undefined':
+                        return fromArray + '"undefined"';
+
+                    default:
+                        if (element.toString) {
+                            return fromArray + '"' + element.toString() + '"';
+                        }
+                        return fromArray + '<<<ERROR>>> Cannot get the string value of the element';
+                }
+            }
+            return fromArray + 'circular reference to ' + element.toString();
+        };
+
+        if (jsObject) {
+            if (indentLength === undefined) {
+                indentLength = 4;
+            }
+
+            outputTo = (outputTo || 'print').toLowerCase();
+            indentString = repeatString(outputTo === 'html' ? '&nbsp;' : ' ', indentLength);
+            prettyObject = outputTo === 'json' ? prettyObjectJSON : prettyObjectPrint;
+            newLine = outputTo === 'html' ? '<br/>' : '\n';
+            newLineJoin = ',' + newLine;
+            visited = [];
+            return pretty(jsObject, '') + newLine;
+        }
+
+        return 'Error: no Javascript object provided';
+    };
+    return pretty;
+});

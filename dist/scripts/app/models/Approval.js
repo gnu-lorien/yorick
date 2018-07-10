@@ -1,1 +1,18 @@
-define(["jquery","parse"],function(e,r){var n=r.Object.extend("VampireApproval",{});return n});
+// Category Model
+// ==============
+
+// Includes file dependencies
+define([
+	"jquery",
+	"parse"
+], function( $, Parse ) {
+
+    // The Model constructor
+    var Model = Parse.Object.extend( "VampireApproval", {
+
+    } );
+
+    // Returns the Model class
+    return Model;
+
+} );

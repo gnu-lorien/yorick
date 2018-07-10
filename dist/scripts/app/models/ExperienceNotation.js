@@ -1,1 +1,18 @@
-define(["jquery","parse"],function(e,n){var r=n.Object.extend("ExperienceNotation",{});return r});
+// Category Model
+// ==============
+
+// Includes file dependencies
+define([
+	"jquery",
+	"parse"
+], function( $, Parse ) {
+
+    // The Model constructor
+    var Model = Parse.Object.extend( "ExperienceNotation", {
+
+    } );
+
+    // Returns the Model class
+    return Model;
+
+} );

@@ -1,1 +1,68 @@
-define(["jquery","backbone"],function(e,t){var r=t.View.extend({initialize:function(e){var t=this;t.character=e.character,t.category=e.category},register:function(e,t){var r=this,a=!1;return e!==r.character&&(r.character&&r.stopListening(r.character),r.character=e,r.listenTo(r.character,"change:"+t,r.render),a=!0),t!=r.category&&(r.category=t,r.stopListening(r.character),r.listenTo(r.character,"change:"+t,r.render),a=!0),a?r.render():r},render:function(){return this.template=_.template(e("script#simpleTraitCategoryView").html())({character:this.character,category:this.category}),this.$el.find("div[role='main']").html(this.template),this.$el.enhanceWithin(),this}});return r});
+// Category View
+// =============
+
+// Includes file dependencies
+define([
+	"jquery",
+	"backbone"
+], function( $, Backbone ) {
+
+    // Extends Backbone.View
+    var View = Backbone.View.extend( {
+
+        // The View Constructor
+        initialize: function(options) {
+            var self = this;
+            self.character = options.character;
+            self.category = options.category;
+        },
+
+        register: function(character, category) {
+            var self = this;
+            var changed = false;
+            if (character !== self.character) {
+                if (self.character)
+                    self.stopListening(self.character);
+                self.character = character;
+                self.listenTo(self.character, "change:" + category, self.render);
+                changed = true;
+            }
+
+            if (category != self.category) {
+                self.category = category;
+                self.stopListening(self.character);
+                self.listenTo(self.character, "change:" + category, self.render);
+                changed = true;
+            }
+
+            if (changed) {
+                return self.render();
+            }
+            return self;
+        },
+
+        // Renders all of the Category models on the UI
+        render: function() {
+
+            // Sets the view's template property
+            this.template = _.template( $( "script#simpleTraitCategoryView" ).html())({
+                "character": this.character,
+                "category": this.category
+            } );
+
+            // Renders the view's template inside of the current listview element
+            this.$el.find("div[role='main']").html(this.template);
+
+            this.$el.enhanceWithin();
+
+            // Maintains chainability
+            return this;
+
+        }
+
+    } );
+
+    // Returns the View class
+    return View;
+
+} );

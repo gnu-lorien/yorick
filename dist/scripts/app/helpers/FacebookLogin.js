@@ -1,1 +1,37 @@
-define(["jquery","underscore","parse","hello","../helpers/InjectAuthData"],function(e,n,a,t,o){var r=function(e){return a.FacebookUtils.logIn("email").then(function(e){return t("facebook").api("/me")}).then(function(e){return a.Cloud.run("submit_facebook_profile_data",e)}).then(function(e){return new a.Query("UserFacebookData").get(e)}).then(function(e){var n=e.attributes,r=a.User.current();return console.log(r.get("authData").facebook.access_token),r.has("username")||r.set("username",n.name),r.has("email")||r.set("email",n.email),r.has("realname")||r.set("realname",n.name),o(r),console.log(r.get("authData").facebook.access_token),console.log(t("facebook").getAuthResponse().access_token),r.save()}).fail(function(e){return a.Promise.error(e)})};return r});
+define([
+    "jquery",
+    "underscore",
+    "parse",
+    "hello",
+    "../helpers/InjectAuthData"
+], function( $, _, Parse, hello, InjectAuthData ) {
+
+    var func = function (user) {
+        return Parse.FacebookUtils.logIn("email").then(function (user) {
+            return hello('facebook').api('/me');
+        }).then(function (r) {
+            return Parse.Cloud.run("submit_facebook_profile_data", r);
+        }).then(function (id) {
+            return new Parse.Query("UserFacebookData").get(id);
+        }).then(function (storage) {
+            var r = storage.attributes;
+            var user = Parse.User.current();
+            console.log(user.get("authData").facebook.access_token);
+            if (!user.has("username"))
+                user.set("username", r.name);
+            if (!user.has("email"))
+                user.set("email", r.email);
+            if (!user.has("realname"))
+                user.set("realname", r.name);
+            InjectAuthData(user);
+
+            console.log(user.get("authData").facebook.access_token);
+            console.log(hello('facebook').getAuthResponse().access_token);
+            return user.save();
+        }).fail(function (error) {
+            return Parse.Promise.error(error);
+        });
+    };
+
+    return func;
+} );

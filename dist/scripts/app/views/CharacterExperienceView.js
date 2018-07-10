@@ -1,1 +1,240 @@
-define(["jquery","backbone","moment","../models/ExperienceNotation","../collections/ExperienceNotationCollection","../collections/VampireChangeCollection"],function(e,t,n,i,a,o){var r="L LTS",p=t.View.extend({initialize:function(){var e=this;e.start=0,e.changeBy=10},register:function(t,n,i){var a=this,o=Parse.Promise.as([]);return t!==a.character&&(a.character&&(a.stopListening(a.character),a.stopListening(a.collection)),a.character=t,o=a.character.get_experience_notations(function(t){a.stopListening(t),a.listenTo(t,"add reset remove change:reason",a.render),a.listenTo(a.character,"begin_experience_notation_propagation",function(){e.mobile.loading("show")}),a.listenTo(a.character,"finish_experience_notation_propagation",function(){a.render(),e.mobile.loading("hide")}),a.collection=t},function(e){a.render()})),o.then(function(){Parse.Promise.as(a)})},events:{"click .previous":"previous","click .next":"next","click .add":"add","click .experience-notation-edit":"edit_experience_notation","submit #edit-entered-popup-form":"submit_experience_notation_entered","submit #edit-reason-popup-form":"submit_experience_notation_reason","submit #edit-alteration-popup-form":"submit_experience_notation_alteration","click .experience-notation-delete":"delete_experience_notation"},submit_experience_notation_entered:function(t,i,a,o,p){var c=this;t.preventDefault();var l=c.$("#popupEditEntered #date-id").val(),p=c.$("#popupEditEntered #date-input").val(),s=c.collection.getByCid(l),d=n(p,r);d.isValid()&&(s.set("entered",d.toDate()),s.save(),e("#popupEditEntered").popup("close"))},submit_experience_notation_reason:function(t){var n=this;t.preventDefault();var i=n.$("#popupEditReason #reason-id").val(),a=n.$("#popupEditReason #reason-input").val(),o=n.collection.getByCid(i);o.set("reason",a),o.save(),e("#popupEditReason").popup("close")},submit_experience_notation_alteration:function(t){var n=this;t.preventDefault();var i=n.$("#alterationpopupEdit #alteration-id").val(),a=_.parseInt(n.$("#alterationpopupEdit #alteration-input").val());a=_.isFinite(a)?a:0;var o=n.collection.getByCid(i),r=n.$("#alterationpopupEdit #alteration-type").val();o.set("alteration_"+r,a),o.save(),e("#alterationpopupEdit").popup("close")},edit_experience_notation:function(t){var i=this,a=i.$(t.target),o=a.attr("notation-id"),p=a.attr("header"),c=i.collection.getByCid(o);if(t.preventDefault(),"entered"===p){var l=e("#popupEditEntered");e("#popupEditEntered #date-input").val(n(c.get("entered")).format(r)),e("#popupEditEntered #date-id").val(o),l.enhanceWithin().popup("open")}else if("reason"===p){var l=e("#popupEditReason");e("#popupEditReason #reason-input").val(c.get("reason")),e("#popupEditReason #reason-id").val(o),l.enhanceWithin().popup("open")}else if("alteration_spent"===p){var l=e("#alterationpopupEdit");e("#alterationpopupEdit #alteration-input").val(c.get("alteration_spent")),e("#alterationpopupEdit #alteration-id").val(o),e("#alterationpopupEdit #alteration-type").val("spent"),l.enhanceWithin().popup("open")}else if("alteration_earned"===p){var l=e("#alterationpopupEdit");e("#alterationpopupEdit #alteration-input").val(c.get("alteration_earned")),e("#alterationpopupEdit #alteration-id").val(o),e("#alterationpopupEdit #alteration-type").val("earned"),l.enhanceWithin().popup("open")}},delete_experience_notation:function(e){e.preventDefault();var t=this,n=t.$(e.target),i=n.attr("notation-id"),a=(t.collection.getByCid(i),t.collection.get(i),t.collection.getByCid(i)||t.collection.get(i));return a?void t.character.remove_experience_notation(a):t},previous:function(){var t=this,n=this.start-this.changeBy;this.start=_.max([0,n]),window.location.hash="#character/"+t.character.id+"/experience/"+this.start+"/10",e.mobile.loading("show"),this.update_collection_query_and_fetch().then(function(){e.mobile.loading("hide")})},next:function(){var t=this;this.start+=t.changeBy,window.location.hash="#character/"+t.character.id+"/experience/"+this.start+"/10",e.mobile.loading("show"),this.update_collection_query_and_fetch().then(function(){e.mobile.loading("hide")})},add:function(){var e=this;e.character.add_experience_notation({reason:"Unspecified reason"})},update_collection_query_and_fetch:function(){var e=this,t={reset:!0},n=new Parse.Query(i);return n.equalTo("owner",e.character).addDescending("entered").addDescending("createdAt"),e.collection.query=n,e.collection.fetch(t).then(function(){var n=new Parse.Query(VampireChange);return n.equalTo("owner",e.character).addAscending("createdAt").limit(1e3),e.changes.query=n,e.changes.fetch(t)})},format_entry:function(e,t){if(e.has(t)){var i=e.get(t);return _.isDate(i)?n(i).format(r):e.get(t)}var a=e[t];return _.isDate(a)?n(a).format(r):a},render:function(){return this.template=_.template(e("script#experienceNotationsAllView").html())({character:this.character,logs:this.collection.models,format_entry:this.format_entry}),this.$el.find("div[role='main']").html(this.template),this.$el.enhanceWithin(),this}});return p});
+// Category View
+// =============
+
+// Includes file dependencies
+define([
+	"jquery",
+	"backbone",
+    "moment",
+    "../models/ExperienceNotation",
+    "../collections/ExperienceNotationCollection",
+    "../collections/VampireChangeCollection"
+], function( $, Backbone, moment, ExperienceNotation, ExperienceNotationCollection, VampireChangeCollection) {
+
+    var MOMENT_FORMAT = "L LTS";
+    // Extends Backbone.View
+    var View = Backbone.View.extend( {
+
+        // The View Constructor
+        initialize: function() {
+            var self = this;
+
+            self.start = 0;
+            self.changeBy = 10;
+        },
+
+        register: function(character, start, changeBy) {
+            var self = this;
+            var p = Parse.Promise.as([]);
+
+            if (character !== self.character) {
+                if (self.character) {
+                    self.stopListening(self.character);
+                    self.stopListening(self.collection);
+                }
+                self.character = character;
+                p = self.character.get_experience_notations(function (rc) {
+                    self.stopListening(rc);
+                    self.listenTo(rc, "add reset remove change:reason", self.render);
+                    self.listenTo(self.character, "begin_experience_notation_propagation", function() {
+                        $.mobile.loading("show");
+                    });
+                    self.listenTo(self.character, "finish_experience_notation_propagation", function() {
+                        self.render();
+                        $.mobile.loading("hide");
+                    })
+                    self.collection = rc;
+                }, function (rc) {
+                    self.render();
+                });
+            }
+
+            return p.then(function () {
+                Parse.Promise.as(self);
+            });
+        },
+
+        events: {
+            "click .previous": "previous",
+            "click .next": "next",
+            "click .add": "add",
+            "click .experience-notation-edit": "edit_experience_notation",
+            "submit #edit-entered-popup-form": "submit_experience_notation_entered",
+            "submit #edit-reason-popup-form": "submit_experience_notation_reason",
+            "submit #edit-alteration-popup-form": "submit_experience_notation_alteration",
+            "click .experience-notation-delete": "delete_experience_notation"
+        },
+
+        submit_experience_notation_entered: function(event, a, b, c, d) {
+            var self = this;
+            event.preventDefault();
+            var id = self.$("#popupEditEntered #date-id").val();
+            var d = self.$("#popupEditEntered #date-input").val();
+            var en = self.collection.getByCid(id);
+            var updatedEntered = moment(d, MOMENT_FORMAT);
+            if (updatedEntered.isValid()) {
+                en.set("entered", updatedEntered.toDate());
+                en.save();
+                $("#popupEditEntered").popup("close");
+            } else {
+                // Can't do validation this way because then we would have to watch for
+                // change to update the state ourselves
+                //self.$("#popupEditEntered #date-input")[0].setCustomValidity("Can't parse date and/or time input");
+            }
+        },
+
+        submit_experience_notation_reason: function(event) {
+            var self = this;
+            event.preventDefault();
+            var id = self.$("#popupEditReason #reason-id").val();
+            var txt = self.$("#popupEditReason #reason-input").val();
+            var en = self.collection.getByCid(id);
+            en.set("reason", txt);
+            en.save();
+            $("#popupEditReason").popup("close");
+        },
+
+        submit_experience_notation_alteration: function(event) {
+            var self = this;
+            event.preventDefault();
+            var id = self.$("#alterationpopupEdit #alteration-id").val();
+            var n = _.parseInt(self.$("#alterationpopupEdit #alteration-input").val());
+            n = _.isFinite(n) ? n : 0;
+            var en = self.collection.getByCid(id);
+            var type = self.$("#alterationpopupEdit #alteration-type").val();
+            en.set("alteration_" + type, n);
+            en.save();
+            $("#alterationpopupEdit").popup("close");
+        },
+
+        edit_experience_notation: function(event) {
+            var self = this;
+            var t = self.$(event.target);
+            var clickedNotationId = t.attr("notation-id");
+            var headerName = t.attr("header");
+            var en = self.collection.getByCid(clickedNotationId);
+            event.preventDefault();
+            if ("entered" === headerName) {
+                var popup = $("#popupEditEntered");
+                $("#popupEditEntered #date-input").val(moment(en.get("entered")).format(MOMENT_FORMAT));
+                //self.$("#popupEditEntered #date-input")[0].setCustomValidity("");
+                $("#popupEditEntered #date-id").val(clickedNotationId);
+                popup.enhanceWithin().popup("open");
+            } else if ("reason" === headerName) {
+                var popup = $("#popupEditReason");
+                $("#popupEditReason #reason-input").val(en.get("reason"));
+                $("#popupEditReason #reason-id").val(clickedNotationId);
+                popup.enhanceWithin().popup("open");
+            } else if ("alteration_spent" === headerName) {
+                var popup = $("#alterationpopupEdit");
+                $("#alterationpopupEdit #alteration-input").val(en.get("alteration_spent"));
+                $("#alterationpopupEdit #alteration-id").val(clickedNotationId);
+                $("#alterationpopupEdit #alteration-type").val("spent");
+                popup.enhanceWithin().popup("open");
+            } else if ("alteration_earned" === headerName) {
+                var popup = $("#alterationpopupEdit");
+                $("#alterationpopupEdit #alteration-input").val(en.get("alteration_earned"));
+                $("#alterationpopupEdit #alteration-id").val(clickedNotationId);
+                $("#alterationpopupEdit #alteration-type").val("earned");
+                popup.enhanceWithin().popup("open");
+            }
+        },
+
+        delete_experience_notation: function(event) {
+            event.preventDefault();
+            var self = this;
+            var t = self.$(event.target);
+            var clickedNotationId = t.attr("notation-id");
+            var cidgot = self.collection.getByCid(clickedNotationId);
+            var idgot = self.collection.get(clickedNotationId);
+            var en = self.collection.getByCid(clickedNotationId) || self.collection.get(clickedNotationId);
+            if (!en) {
+                return self;
+            }
+            self.character.remove_experience_notation(en);
+        },
+
+        previous: function() {
+            var self = this;
+            var incr = this.start - this.changeBy;
+            this.start = _.max([0, incr]);
+            window.location.hash = "#character/" + self.character.id + "/experience/" + this.start + "/10";
+            $.mobile.loading("show");
+            this.update_collection_query_and_fetch().then(function() {
+                $.mobile.loading("hide");
+            })
+        },
+
+        next: function() {
+            var self = this;
+            this.start += self.changeBy;
+            window.location.hash = "#character/" + self.character.id + "/experience/" + this.start + "/10";
+            $.mobile.loading("show");
+            this.update_collection_query_and_fetch().then(function() {
+                $.mobile.loading("hide");
+            })
+        },
+
+        add: function() {
+            var self = this;
+            self.character.add_experience_notation({reason: "Unspecified reason"});
+        },
+
+        update_collection_query_and_fetch: function () {
+            var self = this;
+            var options = {reset: true};
+            var q = new Parse.Query(ExperienceNotation);
+            q.equalTo("owner", self.character).addDescending("entered").addDescending("createdAt");
+            /*
+            q.skip(self.start);
+            q.limit(self.changeBy);
+            */
+            self.collection.query = q;
+            return self.collection.fetch(options).then(function () {
+                var q = new Parse.Query(VampireChange);
+                q.equalTo("owner", self.character).addAscending("createdAt").limit(1000);
+                self.changes.query = q;
+                return self.changes.fetch(options);
+            });
+        },
+
+        format_entry: function(log, entry) {
+            if (log.has(entry)) {
+                var v = log.get(entry);
+                if (_.isDate(v)) {
+                    return moment(v).format(MOMENT_FORMAT);
+                }
+                return log.get(entry);
+            }
+            var attr = log[entry];
+            if (_.isDate(attr)) {
+                return moment(attr).format(MOMENT_FORMAT);
+            }
+            return attr;
+        },
+
+        // Renders all of the Category models on the UI
+        render: function() {
+            // Sets the view's template property
+            this.template = _.template(
+                $( "script#experienceNotationsAllView" ).html())(
+                { "character": this.character,
+                  "logs": this.collection.models,
+                  "format_entry": this.format_entry} );
+
+            // Renders the view's template inside of the current listview element
+            this.$el.find("div[role='main']").html(this.template);
+
+            this.$el.enhanceWithin();
+
+            // Maintains chainability
+            return this;
+
+        }
+
+    } );
+
+    // Returns the View class
+    return View;
+
+} );

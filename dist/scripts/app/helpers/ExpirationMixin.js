@@ -1,1 +1,30 @@
-define([],function(){var e={isActive:function(){return!!this.has("expiresOn")&&this.get("expiresOn")>Date.now()},isExpired:function(){return!!this.has("expiresOn")&&this.get("expiresOn")<Date.now()},status:function(){return this.isActive()?"Active":"Expired"}};return e});
+// Includes file dependencies
+define([
+], function() {
+
+    var Mixin = {
+        isActive: function() {
+            if (this.has("expiresOn")) {
+                return this.get("expiresOn") > Date.now();
+            }
+            return false;
+        },
+        isExpired: function() {
+            if (this.has("expiresOn")) {
+                return this.get("expiresOn") < Date.now();
+            }
+            return false;
+        },
+        status: function() {
+            if (this.isActive()) {
+                return "Active";
+            } else {
+                return "Expired";
+            }
+        }
+    };
+
+    // Returns the View class
+    return Mixin;
+
+} );

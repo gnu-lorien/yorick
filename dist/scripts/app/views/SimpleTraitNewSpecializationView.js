@@ -1,1 +1,107 @@
-define(["jquery","backbone","../models/Description","../collections/DescriptionCollection"],function(e,i,t,a){var n=i.View.extend({initialize:function(e){_.bindAll(this,"remove","update_value","save_clicked"),this.collection=new a},register:function(e,i,a,n){var r=this,l=!1;if(this.redirectRemove=_.template(a),this.redirectSave=_.template(n),e!==r.simpletrait&&(r.simpletrait=e,l=!0),!_.isEqual(i,r.category)){r.category=i;var s=new Parse.Query(t);return s.equalTo("category",r.category).startsWith("name",r.simpletrait.get_base_name()),r.collection.query=s,r.collection.fetch({reset:!0}).then(function(){return r.render()})}return l?Parse.Promise.as(r.render()):Parse.Promise.as(r)},events:{"click .cancel":"cancel",change:"update_value","click .save":"save_clicked",submit:"save_clicked"},cancel:function(i,t,a){var n=this;return e.mobile.loading("show"),window.location.hash=n.redirectRemove({self:n}),!1},update_value:function(e,i,t){},save_clicked:function(i){var t=this;i.preventDefault(),e.mobile.loading("show");var a=t.$el.find('input[name="specialization"]').val();return t.simpletrait.set_specialization(a),window.location.hash=t.redirectSave({self:t,b:t.simpletrait}),!1},render:function(){return this.template=_.template(e("script#simpleTraitSpecialization").html())({model:this.simpletrait,name:this.simpletrait.get_base_name(),specialization:this.simpletrait.get_specialization(),description:this.collection.first()}),this.$el.find("div[role='main']").html(this.template),this.$el.enhanceWithin(),this}});return n});
+// Category View
+// =============
+
+// Includes file dependencies
+define([
+	"jquery",
+	"backbone",
+    "../models/Description",
+    "../collections/DescriptionCollection",
+], function( $, Backbone, Description, DescriptionCollection ) {
+
+    // Extends Backbone.View
+    var View = Backbone.View.extend({
+
+        // The View Constructor
+        initialize: function (options) {
+            _.bindAll(this, "remove", "update_value", "save_clicked");
+            this.collection = new DescriptionCollection;
+        },
+
+        register: function (simpletrait, category, redirectRemove, redirectSave) {
+            var self = this;
+            var changed = false;
+
+            this.redirectRemove = _.template(redirectRemove);
+            this.redirectSave = _.template(redirectSave);
+
+            if (simpletrait !== self.simpletrait) {
+                self.simpletrait = simpletrait;
+                changed = true;
+            }
+
+            if (!_.isEqual(category, self.category)) {
+                self.category = category;
+                var q = new Parse.Query(Description);
+                q
+                    .equalTo("category", self.category)
+                    .startsWith("name", self.simpletrait.get_base_name());
+                self.collection.query = q;
+                return self.collection.fetch({reset: true}).then(function () {
+                    return self.render();
+                });
+            }
+
+            if (changed) {
+                return Parse.Promise.as(self.render());
+            } else {
+                return Parse.Promise.as(self);
+            }
+        },
+
+        events: {
+            "click .cancel": "cancel",
+            "change": "update_value",
+            "click .save": "save_clicked",
+            "submit": "save_clicked"
+        },
+
+        cancel: function(a, b, c) {
+            var self = this;
+            $.mobile.loading("show");
+            window.location.hash = self.redirectRemove({"self": self});
+
+            return false;
+        },
+
+        update_value: function(a, b, c) {
+            var self = this;
+        },
+
+        save_clicked: function(e) {
+            var self = this;
+            e.preventDefault();
+            $.mobile.loading("show");
+            var v = self.$el.find('input[name="specialization"]').val();
+            self.simpletrait.set_specialization(v);
+            window.location.hash = self.redirectSave({'self': self, 'b': self.simpletrait});
+            return false;
+        },
+
+        // Renders all of the Category models on the UI
+        render: function() {
+
+            // Sets the view's template property
+            this.template = _.template( $( "script#simpleTraitSpecialization" ).html())({
+                "model": this.simpletrait,
+                "name": this.simpletrait.get_base_name(),
+                "specialization": this.simpletrait.get_specialization(),
+                "description": this.collection.first()
+            } );
+
+            // Renders the view's template inside of the current listview element
+            this.$el.find("div[role='main']").html(this.template);
+
+            this.$el.enhanceWithin();
+
+            // Maintains chainability
+            return this;
+
+        }
+
+    } );
+
+    // Returns the View class
+    return View;
+
+} );

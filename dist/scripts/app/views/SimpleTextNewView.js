@@ -1,1 +1,113 @@
-define(["jquery","backbone","parse","../helpers/Progress","../helpers/PromiseFailReport","../helpers/DescriptionFetcher"],function(e,t,r,c,i,n){var a=t.View.extend({initialize:function(){_.bindAll(this,"register","update_collection_query_and_fetch")},register:function(e,t,c,i){var a=this,o=!1;a.redirect!==i&&(a.redirect=i,o=!0),c!==a.targetValue&&(a.targetValue=c,o=!0),e!==a.character&&(a.character&&a.stopListening(a.character),a.character=e,a.listenTo(a.character,"change:"+t,a.update_collection_query_and_fetch),o=!0);var l=r.Promise.as();return t!=a.category&&(a.category=t,a.stopListening(a.character),a.listenTo(a.character,"change:"+t,a.update_collection_query_and_fetch),a.collection&&a.stopListening(a.collection),a.collection=n(t),a.listenTo(a.collection,"add",a.render),a.listenTo(a.collection,"reset",a.render),l=a.update_collection_query_and_fetch(),o=!0),o?l.then(function(){return a.render()}):l.then(function(){return a})},update_collection_query_and_fetch:function(){var e=this;return c("Fetching "+e.category),e.collection.fetch_avoiding_wait().done(function(){c()}).fail(i)},render:function(){return this.template=_.template(e("script#simpletextcategoryDescriptionItems").html())({collection:this.collection,character:this.character,category:this.category,targetValue:this.targetValue}),this.$el.find("div[role='main']").html(this.template),this.$el.enhanceWithin(),this},events:{"click .simpletext":"clicked"},clicked:function(t){var r=this;return e.mobile.loading("show"),r.character.update_text(r.targetValue,e(t.target).attr("name")).done(function(e){window.location.hash=r.redirect}),!1}});return a});
+// Category View
+// =============
+
+// Includes file dependencies
+define([
+	"jquery",
+	"backbone",
+    "parse",
+    "../helpers/Progress",
+    "../helpers/PromiseFailReport",
+    "../helpers/DescriptionFetcher"
+], function( $, Backbone, Parse, Progress, PromiseFailReport, DescriptionFetcher ) {
+
+    // Extends Backbone.View
+    var View = Backbone.View.extend( {
+
+        // The View Constructor
+        initialize: function() {
+
+            _.bindAll(this, "register", "update_collection_query_and_fetch");
+
+        },
+
+        register: function(character, category, targetValue, redirect) {
+            var self = this;
+            var changed = false;
+
+            if (self.redirect !== redirect) {
+                self.redirect = redirect;
+                changed = true;
+            }
+
+            if (targetValue !== self.targetValue) {
+                self.targetValue = targetValue;
+                changed = true;
+            }
+
+            if (character !== self.character) {
+                if (self.character)
+                    self.stopListening(self.character);
+                self.character = character;
+                self.listenTo(self.character, "change:" + category, self.update_collection_query_and_fetch);
+                changed = true;
+            }
+
+            var p = Parse.Promise.as();
+            
+            if (category != self.category) {
+                self.category = category;
+                self.stopListening(self.character);
+                self.listenTo(self.character, "change:" + category, self.update_collection_query_and_fetch);
+                if (self.collection)
+                    self.stopListening(self.collection);
+                self.collection = DescriptionFetcher(category);
+                self.listenTo(self.collection, "add", self.render);
+                self.listenTo(self.collection, "reset", self.render);
+                p = self.update_collection_query_and_fetch();
+                changed = true;
+            }
+
+            if (changed) {
+                return p.then(function() { return self.render(); });
+            }
+            return p.then(function() { return self; });
+        },
+
+        update_collection_query_and_fetch: function () {
+            var self = this;
+            Progress("Fetching " + self.category);
+            return self.collection.fetch_avoiding_wait().done(function () {
+                Progress();
+            }).fail(PromiseFailReport);
+        },
+
+        // Renders all of the Category models on the UI
+        render: function() {
+
+            // Sets the view's template property
+            this.template = _.template($("script#simpletextcategoryDescriptionItems").html())({
+                "collection": this.collection,
+                "character": this.character,
+                "category": this.category,
+                "targetValue": this.targetValue
+            });
+
+            // Renders the view's template inside of the current listview element
+            this.$el.find("div[role='main']").html(this.template);
+            this.$el.enhanceWithin();
+
+            // Maintains chainability
+            return this;
+        },
+
+        events: {
+            "click .simpletext": "clicked"
+        },
+
+        clicked: function(e) {
+            var self = this;
+            $.mobile.loading("show");
+            self.character.update_text(self.targetValue, $(e.target).attr("name")).done(function(b) {
+                window.location.hash = self.redirect;
+            });
+
+            return false;
+        }
+
+    } );
+
+    // Returns the View class
+    return View;
+
+} );

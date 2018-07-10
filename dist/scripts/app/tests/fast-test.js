@@ -1,1 +1,259 @@
-define(["underscore","jquery","parse","../models/Vampire","backbone","marionette","../models/Troupe","../models/SimpleTrait","../testsiteconfig","../models/Werewolf"],function(e,t,n,o,i,c,a,l,u,r){jasmine.DEFAULT_TIMEOUT_INTERVAL=6e4;var s=function(){n.$=t,n.initialize("APPLICATION_ID","yymp8UWnJ7Va32Y2Q4uzvWxfPTYuDvZSA8kdhmdR"),n.serverURL=u.serverURL},f=[{name:"Vampire",template:o},{name:"Werewolf",template:r}];describe("A suite",function(){it("contains spec with an expectation",function(){expect(!0).toBe(!0)})});var g=function(){return s(),e.eq(n.User.current().get("username"),"devuser")?n.Promise.as(n.User.current()):n.User.logIn("devuser","thedumbness")};describe("Parse",function(){beforeAll(function(){s(),n.User.current()&&n.User.logOut()}),it("isn't logged in",function(){expect(n.User.current()).toBe(null)}),it("can fail to log in",function(e){n.User.logIn("devuser","thewrongness").then(function(t){e.fail("Logged in with bad password")},function(t,n){e(n)})}),it("can log in",function(e){n.User.logIn("devuser","thedumbness").then(function(t){e()},function(t,n){e.fail(n)})})}),e.each([f[0]],function(t){describe("A "+t.name+"'s long texts",function(){var n,o;beforeAll(function(e){g().then(function(){return t.template.create_test_character("longtexts"+t.name)}).then(function(e){return o=5,t.template.get_character(e.id)}).then(function(t){n=t,e()},function(t){e.fail(t)})}),it("return null when getting non-existent",function(e){n.get_long_text("some ridiculous thing we'd never have").then(function(t){expect(t).toBe(null),e()}).fail(function(t){e.fail(t)})}),it("return null when removing non-existent",function(e){n.remove_long_text("some ridiculous thing we'd never have").then(function(t){expect(t).toBe(null),e()}).fail(function(t){e.fail(t)})}),it("can be updated",function(e){var t="I'm awesome";n.update_long_text("background",t).then(function(e){return expect(e).toBeDefined(),expect(e.get("owner").id).toBe(n.id),expect(e.get("text")).toEqual(t),expect(e.get("category")).toEqual("background"),expect(n.has_fetched_long_text("background")).toBe(!0),n.has_long_text("background")}).then(function(t){expect(t).toBe(!0),e()}).fail(function(t){e.fail(t)})}),it("can be removed",function(e){var t="Nothing extra needed";n.update_long_text("something_else",t).then(function(e){return expect(e).toBeDefined(),expect(e.get("owner")).toBe(n),expect(e.get("text")).toEqual(t),expect(e.get("category")).toEqual("something_else"),expect(n.has_fetched_long_text("something_else")).toBe(!0),n.has_long_text("something_else")}).then(function(e){return expect(e).toBe(!0),n.remove_long_text("something_else")}).then(function(){return expect(n.has_fetched_long_text("something_else")).toBe(!1),n.has_long_text("something_else")}).then(function(e){return expect(e).toBe(!1),n.get_long_text("something_else")}).then(function(t){expect(t).toBe(null),e()}).fail(function(t){e.fail(t)})}),it("can be cleared to save memory",function(e){n.update_long_text("extra_printed","The clocks only come out at nine").then(function(t){expect(n.has_fetched_long_text("extra_printed")).toBe(!0),n.free_fetched_long_text("extra_printed"),expect(n.has_fetched_long_text("extra_printed")).toBe(!1),e()}).fail(function(t){e.fail(t)})}),it("notifies when updated",function(t){var o="I'm awesome",c=i.View.extend({initialize:function(){e.bindAll(this,"finish")},finish:function(e){this.stopListening(),expect(e).toBeDefined(),expect(e.get("owner").id).toBe(n.id),expect(e.get("text")).toEqual(o),expect(e.get("category")).toEqual("background"),expect(n.has_fetched_long_text("background")).toBe(!0),n.has_long_text("background").then(function(e){expect(e).toBe(!0),t()}).fail(function(e){t.fail(e)})}}),a=new c;a.listenTo(n,"change:longtextbackground",a.finish),n.update_long_text("background",o).fail(function(e){t.fail(e)})}),it("notifies when removed",function(t){var o="I'm awesome",c=i.View.extend({initialize:function(){e.bindAll(this,"finish")},finish:function(e){this.stopListening(),expect(n.has_fetched_long_text("something_else")).toBe(!1),n.has_long_text("something_else").then(function(e){return expect(e).toBe(!1),n.get_long_text("something_else")}).then(function(e){expect(e).toBe(null),t()}).fail(function(e){t.fail(e)})}}),a=new c;n.update_long_text("something_else",o).then(function(){return a.listenTo(n,"change:longtextsomething_else",a.finish),n.remove_long_text("something_else",{update:!1})}).fail(function(e){t.fail(e)})})})})});
+/**
+ *
+ * Created by Andrew on 11/7/2015.
+ */
+
+/* global expect */
+/* global beforeAll */
+/* global jasmine */
+
+define([
+    "underscore",
+    "jquery",
+    "parse",
+    "../models/Vampire",
+    "backbone",
+    "marionette",
+    "../models/Troupe",
+    "../models/SimpleTrait",
+    "../testsiteconfig",
+    "../models/Werewolf"
+],function (
+    _,
+    $,
+    Parse,
+    Vampire,
+    Backbone,
+    Marionette,
+    Troupe,
+    SimpleTrait,
+    siteconfig,
+    Werewolf
+) {
+    jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
+    var ParseInit = function() {
+        Parse.$ = $;
+        Parse.initialize("APPLICATION_ID", "yymp8UWnJ7Va32Y2Q4uzvWxfPTYuDvZSA8kdhmdR");
+        Parse.serverURL = siteconfig.serverURL;
+    }
+    
+    var character_types = [
+        {
+            name: "Vampire",
+            template: Vampire
+        },{
+            name: "Werewolf",
+            template: Werewolf
+        }
+    ];
+
+    describe("A suite", function() {
+        it("contains spec with an expectation", function() {
+            expect(true).toBe(true);
+        });
+    });
+    var ParseStart = function() {
+        ParseInit();
+        if (!_.eq(Parse.User.current().get("username"), "devuser")) {
+            return Parse.User.logIn("devuser", "thedumbness");
+        }
+        return Parse.Promise.as(Parse.User.current());
+    };
+
+    var MemberParseStart = function () {
+        ParseInit();
+        if (!_.eq(Parse.User.current().get("username"), "sampmem")) {
+            return Parse.User.logIn("sampmem", "sampmem");
+        }
+        return Parse.Promise.as(Parse.User.current());
+    };
+
+    var ASTParseStart = function () {
+        ParseInit();
+        if (!_.eq(Parse.User.current().get("username"), "sampast")) {
+            return Parse.User.logIn("sampast", "sampast");
+        }
+        return Parse.Promise.as(Parse.User.current());
+    };
+
+    describe("Parse", function() {
+        beforeAll(function() {
+            ParseInit();
+            if (Parse.User.current()) {
+                Parse.User.logOut();
+            }
+        });
+
+        it("isn't logged in", function() {
+            expect(Parse.User.current()).toBe(null);
+        });
+        it("can fail to log in", function(done) {
+            Parse.User.logIn("devuser", "thewrongness").then(function(user) {
+                done.fail("Logged in with bad password");
+            }, function(user, error) {
+                done(error);
+            });
+        });
+        it("can log in", function(done) {
+            Parse.User.logIn("devuser", "thedumbness").then(function(user) {
+                done();
+            }, function(user, error) {
+                done.fail(error);
+            });
+        });
+    });
+
+    _.each([character_types[0]], function (character_type) {
+        describe("A " + character_type.name + "'s long texts", function() {
+            var vampire;
+            var expected_change_length;
+    
+            beforeAll(function (done) {
+                ParseStart().then(function () {
+                    return character_type.template.create_test_character("longtexts" + character_type.name);
+                }).then(function (v) {
+                    expected_change_length = 5;
+                    return character_type.template.get_character(v.id);
+                }).then(function (v) {
+                    vampire = v;
+                    done();
+                }, function (error) {
+                    done.fail(error);
+                });
+            });
+    
+            it("return null when getting non-existent", function (done) {
+                vampire.get_long_text("some ridiculous thing we'd never have").then(function (lt) {
+                    expect(lt).toBe(null);
+                    done();
+                }).fail(function(error) {
+                    done.fail(error);
+                })
+            });
+            
+            it("return null when removing non-existent", function (done) {
+                vampire.remove_long_text("some ridiculous thing we'd never have").then(function (lt) {
+                    expect(lt).toBe(null);
+                    done();
+                }).fail(function(error) {
+                    done.fail(error);
+                })
+            });
+            
+            it("can be updated", function(done) {
+                var the_text = "I'm awesome";
+                vampire.update_long_text("background", the_text).then(function (lt) {
+                    expect(lt).toBeDefined();
+                    expect(lt.get("owner").id).toBe(vampire.id);
+                    expect(lt.get("text")).toEqual(the_text);
+                    expect(lt.get("category")).toEqual("background");
+                    expect(vampire.has_fetched_long_text("background")).toBe(true);
+                    return vampire.has_long_text("background");
+                }).then(function (result) {
+                    expect(result).toBe(true);
+                    done();
+                }).fail(function(error) {
+                    done.fail(error);
+                });
+            });
+            
+            it("can be removed", function(done) {
+                var the_text = "Nothing extra needed";
+                vampire.update_long_text("something_else", the_text).then(function (lt) {
+                    expect(lt).toBeDefined();
+                    expect(lt.get("owner")).toBe(vampire);
+                    expect(lt.get("text")).toEqual(the_text);
+                    expect(lt.get("category")).toEqual("something_else");
+                    expect(vampire.has_fetched_long_text("something_else")).toBe(true);
+                    return vampire.has_long_text("something_else");
+                }).then(function (result) {
+                    expect(result).toBe(true);
+                    return vampire.remove_long_text("something_else");
+                }).then(function () {
+                    expect(vampire.has_fetched_long_text("something_else")).toBe(false);
+                    return vampire.has_long_text("something_else");
+                }).then(function (result) {
+                    expect(result).toBe(false);
+                    return vampire.get_long_text("something_else");
+                }).then(function (lt) {
+                    expect(lt).toBe(null);
+                    done();
+                }).fail(function(error) {
+                    done.fail(error);
+                });               
+            });
+            
+            it("can be cleared to save memory", function(done) {
+                vampire.update_long_text("extra_printed", "The clocks only come out at nine").then(function (lt) {
+                    expect(vampire.has_fetched_long_text("extra_printed")).toBe(true);
+                    vampire.free_fetched_long_text("extra_printed");
+                    expect(vampire.has_fetched_long_text("extra_printed")).toBe(false);
+                    done();
+                }).fail(function (error) {
+                    done.fail(error);
+                })
+            });
+            
+            it("notifies when updated", function(done) {
+                var the_text = "I'm awesome";
+                var Listener = Backbone.View.extend({
+                    initialize: function() {
+                        _.bindAll(this, "finish");
+                    },
+                    finish: function(lt) {
+                        this.stopListening();
+                        expect(lt).toBeDefined();
+                        expect(lt.get("owner").id).toBe(vampire.id);
+                        expect(lt.get("text")).toEqual(the_text);
+                        expect(lt.get("category")).toEqual("background");
+                        expect(vampire.has_fetched_long_text("background")).toBe(true);
+                        vampire.has_long_text("background").then(function (result) {
+                            expect(result).toBe(true);
+                            done();
+                        }).fail(function(error) {
+                            done.fail(error);
+                        });
+                    }
+                }); 
+                
+                var l = new Listener;
+                l.listenTo(vampire, "change:longtextbackground", l.finish);
+                vampire.update_long_text("background", the_text).fail(function(error) {
+                    done.fail(error);
+                });
+            });
+            
+            it("notifies when removed", function(done) {
+                var the_text = "I'm awesome";
+                var Listener = Backbone.View.extend({
+                    initialize: function() {
+                        _.bindAll(this, "finish");
+                    },
+                    finish: function(lt) {
+                        this.stopListening();
+                        expect(vampire.has_fetched_long_text("something_else")).toBe(false);
+                        vampire.has_long_text("something_else").then(function (result) {
+                            expect(result).toBe(false);
+                            return vampire.get_long_text("something_else");
+                        }).then(function (lt) {
+                            expect(lt).toBe(null);
+                            done();
+                        }).fail(function(error) {
+                            done.fail(error);
+                        });               
+                    }
+                }); 
+               
+                var l = new Listener;
+                vampire.update_long_text("something_else", the_text).then(function () {
+                    l.listenTo(vampire, "change:longtextsomething_else", l.finish);
+                    return vampire.remove_long_text("something_else", {update: false});
+                }).fail(function(error) {
+                    done.fail(error);
+                });
+            });
+            
+            //it("fetching properly primes the cache")
+        });
+    });
+});

@@ -1,1 +1,43 @@
-define(["jquery","underscore","parse","../models/Referendum","../models/ReferendumBallot"],function(e,r,n,t,o){var u=n.Collection.extend({model:o,comparator:function(e,n){var t,o;return t=e.get("order"),o=n.get("order"),r.gt(t,o)?1:r.lt(t,o)?-1:0},fetch:function(e){var r=this,t=new n.Query(r.model).equalTo("owner",e);t.include("caster");var o=[];return t.each(function(e){o.push(e)}).then(function(){return r.reset(o),n.Promise.as(r)})}});return u});
+// Category Collection
+// ===================
+
+// Includes file dependencies
+define([
+	"jquery",
+    "underscore",
+	"parse",
+	"../models/Referendum",
+	"../models/ReferendumBallot"], function( $, _, Parse, Referendum, Ballot ) {
+
+    var Collection = Parse.Collection.extend( {
+        model: Ballot,
+        comparator: function (left, right) {
+            var self = this;
+            var l, r;
+            l = left.get("order");
+            r = right.get("order");
+            if (_.gt(l, r)) {
+                return 1;
+            } else if (_.lt(l, r)){
+                return -1;
+            }
+            return 0;
+        },
+        
+        fetch: function (referendum) {
+            var self = this;
+            var q = new Parse.Query(self.model)
+                .equalTo("owner", referendum);
+            q.include("caster");
+            var latest = [];
+            return q.each(function (ballot) {
+                latest.push(ballot);
+            }).then(function () {
+                self.reset(latest);
+                return Parse.Promise.as(self);
+            })
+        }
+    } );
+    return Collection;
+
+} );

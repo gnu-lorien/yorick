@@ -1,1 +1,18 @@
-define(["jquery","underscore","parse","../models/Description","../collections/DescriptionCollection"],function(e,r,n,o,t){var c={},i=function(e){var i=r.get(c,e,new t);return i.query=new n.Query(o).equalTo("category",e),c[e]=i,i};return i});
+define([
+    "jquery",
+    "underscore",
+    "parse",
+    "../models/Description",
+    "../collections/DescriptionCollection"
+], function( $, _, Parse, Description, DescriptionCollection ) {
+
+    var descriptions = {};
+    var collection_for_category = function(category) {
+        var collection = _.get(descriptions, category, new DescriptionCollection);
+        collection.query = (new Parse.Query(Description)).equalTo("category", category);
+        descriptions[category] = collection;
+        return collection;
+    };
+
+    return collection_for_category;
+} );

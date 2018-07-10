@@ -1,1 +1,53 @@
-define(["jquery","underscore","parse","backbone","marionette","../collections/Users"],function(e,r,n,t,s,u){var a=t.Model.extend({initialize:function(){var e=this;e.channel=t.Wreqr.radio.channel("user"),e.users=new u,t.Wreqr.radio.reqres.setHandler("user","get",function(r){return e.users.get(r)}),t.Wreqr.radio.reqres.setHandler("user","all",function(){var r=n.User.current().get("storytellerinterface"),t=n.User.current().get("admininterface");if(t||r)return e.users;var s=new u;return s.models.push(e.users.get(n.User.current().id)),s})},get_users:function(){var e=this,n=n||{};return r.defaults(n,{update:!0}),e.users.fetch()},get_latest_patronage:function(e){var r,t=new n.Query("Patronage").equalTo("owner",e).descending("expiresOn");return t.first().then(function(e){r=e}).always(function(){return n.Promise.as(r)})}});return new a});
+define([
+    "jquery",
+    "underscore",
+    "parse",
+    "backbone",
+    "marionette",
+    "../collections/Users",
+], function( $, _, Parse, Backbone, Marionette, Users ) {
+
+    var UserHelper = Backbone.Model.extend({
+        initialize: function() {
+            var self = this;
+
+            self.channel = Backbone.Wreqr.radio.channel('user');
+            self.users = new Users;
+
+            Backbone.Wreqr.radio.reqres.setHandler("user", "get", function (id) {
+                return self.users.get(id);
+            })
+            Backbone.Wreqr.radio.reqres.setHandler("user", "all", function () {
+                var is_st = Parse.User.current().get("storytellerinterface");
+                var is_ad = Parse.User.current().get("admininterface");
+                if (is_ad || is_st) {
+                    return self.users;
+                } else {
+                    var onlyone = new Users;
+                    onlyone.models.push(self.users.get(Parse.User.current().id))
+                    return onlyone;
+                }
+            })
+        },
+        get_users: function() {
+            var self = this;
+            var options = options || {};
+            _.defaults(options, {update: true});
+            return self.users.fetch();
+        },
+
+        get_latest_patronage: function(user) {
+            var q = new Parse.Query("Patronage")
+                .equalTo("owner", user)
+                .descending("expiresOn");
+            var patronage;
+            return q.first().then(function (p) {
+                patronage = p;
+            }).always(function () {
+                return Parse.Promise.as(patronage);
+            })
+        },
+    });
+
+    return new UserHelper;
+} );

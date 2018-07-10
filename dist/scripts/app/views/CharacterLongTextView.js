@@ -1,1 +1,211 @@
-define(["jquery","backbone","parse","backform","marionette","../helpers/PromiseFailReport","text!../templates/character-long-text-parent.html"],function(e,t,i,n,r,o,a){var s=r.ItemView.extend({tagName:"form",template:_.template(""),initialize:function(t){var i=this;i.character=t.character,this.form=new n.Form({el:this.$el,model:i.model,fields:[{name:"text",label:t.pretty,control:"textarea",helpMessage:t.description},{name:"preview",label:"Live Preview Changes",control:"checkbox"},{name:"submit",label:"Update",control:"button",disabled:!0,id:"submit"}],events:{change:function(e){e.preventDefault(),this.model.errorModel.clear(),this.fields.get("submit").set({status:"",message:"",disabled:!1}),this.$el.enhanceWithin()},submit:function(n){var r=this;return n.preventDefault(),e.mobile.loading("show"),r.undelegateEvents(),r.model.errorModel.clear(),i.character.update_long_text(t.category,r.model.get("text")).then(function(){r.fields.get("submit").set({status:"success",message:"Successfully Updated",disabled:!0}),r.$el.enhanceWithin()},function(e){r.fields.get("submit").set({status:"error",message:_.escape(e.message),disabled:!1}),r.$el.enhanceWithin()}).always(function(){e.mobile.loading("hide"),r.delegateEvents()}),!1}}})},onRender:function(){return this.form.render(),this.$el.enhanceWithin(),this}}),l=r.ItemView.extend({tagName:"div",template:_.template("<h1>Preview</h1><p><%= inputtext %></p>"),templateHelpers:function(){var e=this,t="";if(e.model.get("preview"))t=e.model.get("text");else{var i=e.options.character.get_fetched_long_text(e.options.category);i&&i.has("text")&&(t=i.get("text"))}return t=_.template(t)({character:e.options.character}),{inputtext:t}},initialize:function(e){var t=this;t.options=e,t.listenTo(t.options.character,"change:longtext"+t.options.category,t.render),t.listenTo(t.model,"change:text",t.renderIfLive),_.bindAll(t,"renderIfLive","templateHelpers")},renderIfLive:function(){var e=this;if(e.model.get("preview"))return e.render()},onRender:function(){this.$el.enhanceWithin()}}),c=r.ItemView.extend({tagName:"div",template:_.template("<p><%= inputtext %></p>"),templateHelpers:function(){var e=this;return{inputtext:e.options.description}},initialize:function(e){var t=this;t.options=e,_.bindAll(t,"templateHelpers")},onRender:function(){this.$el.enhanceWithin()}}),p=r.LayoutView.extend({template:_.template(a),regions:{top:"#top",edit:"#edit",preview:"#preview"},setup_regions:function(){var e=this,t={};e.showChildView("top",new c({description:e.options.description})),e.showChildView("edit",new s({character:e.character,category:e.options.category,pretty:e.options.pretty,model:e.editingoptions}),t),e.showChildView("preview",new l({character:e.character,category:e.options.category,model:e.editingoptions}),t)},onRender:function(){this.setup_regions()},initialize:function(e){_.bindAll(this,"setup_regions")},setup:function(e,i){var n=this;n.options=i||n.options,n.character=e,n.editingoptions=new t.Model({preview:!0});var r=n.character.get_fetched_long_text(i.category);return r&&r.has("text")&&n.editingoptions.set("text",r.get("text")),n.render(),n}});return p});
+// Includes file dependencies
+/* global _ */
+define([
+    "jquery",
+    "backbone",
+    "parse",
+    "backform",
+    "marionette",
+    "../helpers/PromiseFailReport",
+    "text!../templates/character-long-text-parent.html",
+], function (
+    $,
+    Backbone,
+    Parse,
+    Backform,
+    Marionette,
+    PromiseFailReport, 
+    character_long_text_parent_html
+) {
+
+    var EditForm = Marionette.ItemView.extend({
+        tagName: 'form',
+        template: _.template(""),
+        initialize: function (options) {
+            var view = this;
+            view.character = options.character;
+            
+            this.form = new Backform.Form({
+                el: this.$el,
+                model: view.model,
+                fields: [
+                    {
+                        name: "text",
+                        label: options.pretty,
+                        control: "textarea",
+                        helpMessage: options.description
+                    },{
+                        name: "preview",
+                        label: "Live Preview Changes",
+                        control: "checkbox",
+                    },{
+                        name: "submit",
+                        label: "Update",
+                        control: "button",
+                        disabled: true,
+                        id: "submit"
+                    }
+                ],
+                events: {
+                    "change": function(e) {
+                        e.preventDefault();
+                        this.model.errorModel.clear();
+                        this.fields.get("submit").set({status: "", message: "", disabled: false});
+                        this.$el.enhanceWithin();
+                    },
+                    "submit": function (e) {
+                        var self = this;
+                        e.preventDefault();
+                        $.mobile.loading("show");
+                        self.undelegateEvents();
+                        self.model.errorModel.clear();
+
+                        view.character.update_long_text(options.category, self.model.get("text")).then(function () {
+                            self.fields.get("submit").set({status: "success", message: "Successfully Updated", disabled: true});
+                            self.$el.enhanceWithin();
+                        }, function (error) {
+                            self.fields.get("submit").set({status: "error", message: _.escape(error.message), disabled: false});
+                            self.$el.enhanceWithin();
+                        }).always(function () {
+                            $.mobile.loading("hide");
+                            self.delegateEvents();
+                        });
+
+                        return false;
+                    }
+                }
+            });
+        },
+
+        onRender: function() {
+            this.form.render();
+
+            this.$el.enhanceWithin();
+            return this;
+        }
+    });
+
+    var Preview = Marionette.ItemView.extend({
+        tagName: 'div',
+        template: _.template("<h1>Preview</h1><p><%= inputtext %></p>"),
+        templateHelpers: function () {
+            var self = this;
+            var inputtext = "";
+            if (self.model.get("preview")) {
+                inputtext = self.model.get("text")
+            } else {
+                var lt = self.options.character.get_fetched_long_text(self.options.category)
+                if (lt && lt.has("text")) {
+                    inputtext = lt.get("text");
+                }
+            }
+            inputtext = _.template(inputtext)({
+                character: self.options.character
+            });
+            return {
+                inputtext: inputtext
+            }
+        },
+        initialize: function(options) {
+            var self = this;
+            self.options = options;
+            // Listen to the character and always render when that changes
+            self.listenTo(
+                self.options.character,
+                "change:longtext" + self.options.category,
+                self.render);
+            // Listen to the option object but only render if live preview is on
+            self.listenTo(
+                self.model,
+                "change:text",
+                self.renderIfLive);
+                
+            _.bindAll(
+                self,
+                "renderIfLive",
+                "templateHelpers");
+        },
+        renderIfLive: function() {
+            var self = this;
+            if (self.model.get("preview")) {
+                return self.render();
+            }
+        },
+        onRender: function() {
+            this.$el.enhanceWithin();
+        }
+    });
+    
+    var Description = Marionette.ItemView.extend({
+        tagName: 'div',
+        template: _.template("<p><%= inputtext %></p>"),
+        templateHelpers: function () {
+            var self = this;
+            return {
+                inputtext: self.options.description
+            };
+        },
+        initialize: function(options) {
+            var self = this;
+            self.options = options;
+            _.bindAll(
+                self,
+                "templateHelpers");
+        },
+        onRender: function() {
+            this.$el.enhanceWithin();
+        }
+    });
+
+    var LayoutView = Marionette.LayoutView.extend({
+        template: _.template(character_long_text_parent_html),
+        regions: {
+            top: "#top",
+            edit: "#edit",
+            preview: "#preview"
+        },
+        setup_regions: function() {
+            var self = this;
+            var options = {};
+            
+            self.showChildView('top', new Description({
+                description: self.options.description
+            }));
+            self.showChildView('edit', new EditForm({
+                character: self.character,
+                category: self.options.category,
+                pretty: self.options.pretty,
+                model: self.editingoptions
+            }), options);
+            self.showChildView('preview', new Preview({
+                character: self.character,
+                category: self.options.category,
+                model: self.editingoptions
+            }), options);
+        },
+        onRender: function() {
+            this.setup_regions();
+        },
+        initialize: function(options) {
+            _.bindAll(this, "setup_regions");
+        },
+        setup: function(character, options) {
+            var self = this;
+            self.options = options || self.options;
+            self.character = character;
+            self.editingoptions = new Backbone.Model({
+                preview: true
+            });
+            var lt = self.character.get_fetched_long_text(options.category);
+            if (lt && lt.has("text")) {
+                self.editingoptions.set("text", lt.get("text"));
+            }
+            self.render();
+            return self;
+        }
+    });
+
+    // Returns the View class
+    return LayoutView;
+
+});

@@ -1,1 +1,115 @@
-define(["jquery","backbone","backform","../models/Troupe","../forms/TroupeForm"],function(e,s,t,o,r){var n=s.View.extend({initialize:function(){var s=this;_.bindAll(this,"render"),s.form=new r({el:"#troupe-new-form",model:new o,events:{submit:function(t){t.preventDefault();var o;e.mobile.loading("show"),this.model.save().then(function(e){console.log("Saved the troupe"),o=e;var s=new Parse.Query(Parse.Role);return s.equalTo("name","Administrator"),s.first()}).then(function(e){var s=new Parse.ACL;s.setPublicReadAccess(!0),s.setPublicWriteAccess(!1),s.setRoleReadAccess("Administrator",!0),s.setRoleWriteAccess("Administrator",!0);var t=new Parse.Role("LST_"+o.id,s);t.getRoles().add(e);var r=new Parse.ACL;r.setPublicReadAccess(!0),r.setPublicWriteAccess(!1),r.setRoleReadAccess("Administrator",!0),r.setRoleWriteAccess("Administrator",!0),r.setRoleReadAccess(t,!0),r.setRoleWriteAccess(t,!0);var n=new Parse.Role("AST_"+o.id,r);n.getRoles().add(e);var a=new Parse.ACL;a.setPublicReadAccess(!0),a.setPublicWriteAccess(!1),a.setRoleReadAccess("Administrator",!0),a.setRoleWriteAccess("Administrator",!0),a.setRoleReadAccess(t,!0),a.setRoleWriteAccess(t,!0),a.setRoleReadAccess(n,!0),a.setRoleWriteAccess(n,!0);var i=new Parse.Role("Narrator_"+o.id,a);return i.getRoles().add(e),Parse.Object.saveAll([t,n,i])}).then(function(e){console.log("Saved roles");var s=e[0],t=e[1],o=e[2];return t.getRoles().add(s),o.getRoles().add([s,t]),Parse.Object.saveAll([s,t,o])}).then(function(e){var s=e[0],t=o.getACL();return t.setRoleReadAccess(s,!0),t.setRoleWriteAccess(s,!0),o.save()}).then(function(e){console.log("Saved troupe again"),s.render(),window.location.hash="#troupe/"+e.id}).fail(function(e){console.log("Failed to save troupe "+e.message),window.location.hash="#administration"}).always(function(){e.mobile.loading("hide")})}}}),s.form.fields.add(new t.Field({control:"button",label:"Add New"}))},render:function(){var e=this;return e.form.model=new o,e.form.render(),this.$el.enhanceWithin(),this}});return n});
+// Includes file dependencies
+define([
+    "jquery",
+    "backbone",
+    "backform",
+    "../models/Troupe",
+    "../forms/TroupeForm"
+], function( $, Backbone, Backform, Troupe, TroupeForm) {
+
+    // Extends Backbone.View
+    var View = Backbone.View.extend({
+
+        // The View Constructor
+        initialize: function () {
+            var self = this;
+            _.bindAll(this, "render");
+            self.form = new TroupeForm({
+                el: "#troupe-new-form",
+                model: new Troupe(),
+                events: {
+                    "submit": function (e) {
+                        e.preventDefault();
+                        var troupe;
+                        $.mobile.loading("show");
+                        this.model.save().then(function (t) {
+                            console.log("Saved the troupe");
+                            troupe = t;
+                            var q = new Parse.Query(Parse.Role);
+                            q.equalTo("name", "Administrator");
+                            return q.first();
+                        }).then(function (adminRole) {
+                            var roleACL = new Parse.ACL();
+                            roleACL.setPublicReadAccess(true);
+                            roleACL.setPublicWriteAccess(false);
+                            roleACL.setRoleReadAccess("Administrator", true);
+                            roleACL.setRoleWriteAccess("Administrator", true);
+                            var lst_role = new Parse.Role("LST_" + troupe.id, roleACL);
+                            lst_role.getRoles().add(adminRole);
+
+                            var ast_acl = new Parse.ACL();
+                            ast_acl.setPublicReadAccess(true);
+                            ast_acl.setPublicWriteAccess(false);
+                            ast_acl.setRoleReadAccess("Administrator", true);
+                            ast_acl.setRoleWriteAccess("Administrator", true);
+                            ast_acl.setRoleReadAccess(lst_role, true);
+                            ast_acl.setRoleWriteAccess(lst_role, true);
+                            var ast_role = new Parse.Role("AST_" + troupe.id, ast_acl);
+                            ast_role.getRoles().add(adminRole);
+
+                            var nar_acl = new Parse.ACL();
+                            nar_acl.setPublicReadAccess(true);
+                            nar_acl.setPublicWriteAccess(false);
+                            nar_acl.setRoleReadAccess("Administrator", true);
+                            nar_acl.setRoleWriteAccess("Administrator", true);
+                            nar_acl.setRoleReadAccess(lst_role, true);
+                            nar_acl.setRoleWriteAccess(lst_role, true);
+                            nar_acl.setRoleReadAccess(ast_role, true);
+                            nar_acl.setRoleWriteAccess(ast_role, true);
+                            var nar_role = new Parse.Role("Narrator_" + troupe.id, nar_acl);
+                            nar_role.getRoles().add(adminRole);
+                            return Parse.Object.saveAll([lst_role, ast_role, nar_role]);
+                        }).then(function (saved_roles) {
+                            console.log("Saved roles");
+                            var lst_role = saved_roles[0],
+                                ast_role = saved_roles[1],
+                                nar_role = saved_roles[2];
+                            ast_role.getRoles().add(lst_role);
+                            nar_role.getRoles().add([lst_role, ast_role]);
+                            return Parse.Object.saveAll([lst_role, ast_role, nar_role]);
+                        }).then(function (saved_roles) {
+                            var lst_role = saved_roles[0];
+                            var acl = troupe.getACL();
+                            acl.setRoleReadAccess(lst_role, true);
+                            acl.setRoleWriteAccess(lst_role, true);
+                            return troupe.save();
+                        }).then(function (t) {
+                            console.log("Saved troupe again");
+                            self.render();
+                            window.location.hash = "#troupe/" + t.id;
+                        }).fail(function (error) {
+                            console.log("Failed to save troupe " + error.message);
+                            window.location.hash = "#administration";
+                        }).always(function () {
+                            $.mobile.loading("hide");
+                        })
+                    }
+                }
+            });
+            self.form.fields.add(new Backform.Field({control: "button", label: "Add New"}))
+        },
+
+        // Renders all of the Category models on the UI
+        render: function() {
+            var self = this;
+
+            // Sets the view's template property
+            //this.template = _.template(player_options_html)();
+            self.form.model = new Troupe();
+            self.form.render();
+
+            // Renders the view's template inside of the current div element
+            //this.$el.find("div[role='main']").html(this.template);
+            this.$el.enhanceWithin();
+
+            // Maintains chainability
+            return this;
+
+        }
+
+    } );
+
+    // Returns the View class
+    return View;
+
+} );
