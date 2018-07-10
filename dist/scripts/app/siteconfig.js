@@ -1,1 +1,1 @@
-define([],function(){var r={serverURL:"https://stagingapi.undergroundtheater.org/parse",facebookAppId:"1606746326305984",redirect_uri:"https://stagingpatron.undergroundtheater.org/index.html"};return r});
+define([],function(){var r={serverURL:"https://api.undergroundtheater.org/parse",facebookAppId:"1606746326305984",redirect_uri:"https://patron.undergroundtheater.org"};return r});
