@@ -1,12 +1,1 @@
-define([
-	"jquery",
-	"parse"
-], function( $, Parse ) {
-
-    var Model = Parse.Object.extend( "LongText", {
-
-    } );
-
-    return Model;
-
-} );
+define(["jquery","parse"],function(e,n){var r=n.Object.extend("LongText",{});return r});
