@@ -4998,7 +4998,9 @@
       // Copy server data
       var tempServerData = {};
       Parse._objectEach(serverData, function(value, key) {
-        tempServerData[key] = Parse._decode(key, value);
+        if (key !== "_email_verify_token") {
+          tempServerData[key] = Parse._decode(key, value);
+        }
       });
       this._serverData = tempServerData;
 
