@@ -261,12 +261,12 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
         });
 
         if (!isMeaningfulChange(vc)) {
-            console.log("Update does not actually encode a change for trait " + modified_trait.id ? modified_trait.get("name") : modified_trait.id);
+            console.log("Update does not actually encode a change for trait " + (modified_trait.id ? modified_trait.get("name") : modified_trait.id));
             response.success();
             return;
         }
 
-        console.log("beforeSave SimpleTrait Sending query for the vampire " + vc.get("owner").id + " because " + modified_trait.id ? modified_trait.get("name") : modified_trait.id);
+        console.log("beforeSave SimpleTrait Sending query for the vampire " + vc.get("owner").id + " because " + (modified_trait.id ? modified_trait.get("name") : modified_trait.id));
         return new Parse.Query("Vampire").get(vc.get("owner").id, {useMasterKey: true});
     }).then(function(vampire) {
         console.log("beforeSave SimpleTrait Getting acl vampire " + vampire.id);
