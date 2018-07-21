@@ -300,6 +300,11 @@ Parse.Cloud.afterSave("SimpleTrait", function(request) {
     console.log("afterSave SimpleTrait");
     var q = new Parse.Query("VampireChange");
     var modified_trait = request.object;
+    if (!modified_trait.has("definition_change"))
+    {
+        console.log("afterSave SimpleTrait older change that wasn't really updated and doesn't have new source value");
+        return;
+    }
     q.get(modified_trait.get("definition_change").id, {useMasterKey: true}).then(function (vc) {
         return vc.save({"simple_trait_id": modified_trait.id}, {useMasterKey: true});
     }, function (error) {
