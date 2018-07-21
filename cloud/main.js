@@ -261,12 +261,12 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
         });
 
         if (!isMeaningfulChange(vc)) {
-            console.log("Update does not actually encode a change for trait " + modified_trait.id ? modified_trait.get("name") : modified_trait.id);
+            console.log("Update does not actually encode a change for trait " + (modified_trait.id ? modified_trait.get("name") : modified_trait.id));
             response.success();
             return;
         }
 
-        console.log("beforeSave SimpleTrait Sending query for the vampire " + vc.get("owner").id + " because " + modified_trait.id ? modified_trait.get("name") : modified_trait.id);
+        console.log("beforeSave SimpleTrait Sending query for the vampire " + vc.get("owner").id + " because " + (modified_trait.id ? modified_trait.get("name") : modified_trait.id));
         return new Parse.Query("Vampire").get(vc.get("owner").id, {useMasterKey: true});
     }).then(function(vampire) {
         console.log("beforeSave SimpleTrait Getting acl vampire " + vampire.id);
@@ -300,6 +300,11 @@ Parse.Cloud.afterSave("SimpleTrait", function(request) {
     console.log("afterSave SimpleTrait");
     var q = new Parse.Query("VampireChange");
     var modified_trait = request.object;
+    if (!modified_trait.has("definition_change"))
+    {
+        console.log("afterSave SimpleTrait older change that wasn't really updated and doesn't have new source value");
+        return;
+    }
     q.get(modified_trait.get("definition_change").id, {useMasterKey: true}).then(function (vc) {
         return vc.save({"simple_trait_id": modified_trait.id}, {useMasterKey: true});
     }, function (error) {
