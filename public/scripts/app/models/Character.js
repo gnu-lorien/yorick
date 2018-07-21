@@ -816,7 +816,13 @@ define([
                 })
             }).then(function () {
                 self.progress("Saving trait permissions");
-                return Parse.Object.saveAll(allsts);
+                var simple_trait_saving_promises = _.map(allsts, function (st) {
+                    var name = st.get("name");
+                    return st.save().fail(function (error) {
+                        return new Parse.Error(Parse.Error.OTHER_CAUSE, "Could not save " + name);
+                    })
+                });
+                return Parse.Promise.when(simple_trait_saving_promises);
             }).then(function () {
                 self.progress("Fetching experience notations");
                 return self.get_experience_notations();
