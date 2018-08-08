@@ -50,6 +50,7 @@
     "url": "https://github.com/gnu-lorien/yorick.git"
   },
   "scripts": {
-    "test": "./node_modules/.bin/karma start public/karma.conf.js --single-run --browsers PhantomJS"
+    "test": "./node_modules/.bin/karma start public/karma.conf.js --single-run --browsers PhantomJS",
+    "start": "node index.js"
   }
 }
