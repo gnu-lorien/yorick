@@ -17,7 +17,7 @@ var settings = {
   "cloud": process.env.CLOUD_CODE_MAIN || "/home/ubuntu/workspace/cloud/main.js",
   "verbose": true,
   "publicServerURL": process.env.PUBLIC_SERVER_URL || "https://yorick-latest-parse-server-gnu-lorien.c9users.io/parse/1",
-  "serverURL": process.env.SERVER_URL || "http://0.0.0.0/parse/1"
+  "serverURL": "http://0.0.0.0:" + process.env.PORT + "/parse/1"
 }
 
 var api = new ParseServer(settings);
@@ -53,4 +53,4 @@ app.post('/deez', function (req, res) {
     res.send("I found something");
 })
 
-http.createServer(app).listen(80, '0.0.0.0');
+http.createServer(app).listen(process.env.PORT, '0.0.0.0');
