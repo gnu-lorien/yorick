@@ -149,6 +149,17 @@ define([
             });
     
     
+            /* RAS FIXME: This entire test is the core of what needs to be redone in order to support
+            having traits with the same name. We need to make it impossible to pass a bare string to
+            Character::update_trait and then test for everywhere that does this. */
+            // RAS TODO: Test an update using the old style to guarantee that it throws an exception
+            /* RAS TODO: Pass a trait that doesn't exist on the character and ensure that it's added
+            This code will need require that the trait *doesn't* have an id if it's being used as a
+            trait. The code may already do this while trying to catch passing a trait directly between
+            characters. */
+            // RAS TODO: Make sure that the test still effectively covers updating an old trait
+            /* RAS TODO: See what happens during character creation once we've implemented the error
+            I strongly suspect that code is what depends on being able to create a trait by name */
             it("can be renamed", function (done) {
                 var start_check = expected_change_length;
                 var first_trait_id = undefined;
@@ -260,6 +271,7 @@ define([
                 })
             });
     
+            // RAS FIXME: We're explicitly adding this functionality in this branch
             it("can't be renamed to collide", function (done) {
                 var classic_trait, not_classic_trait;
                 vampire.update_trait("Retainers: Classic", 1, "backgrounds", 0, true).done(function (trait) {
@@ -278,6 +290,8 @@ define([
                 })
             });
     
+            /* RAS FIXME: Can't get trait by name anymore. We'll have to store the previous reference
+            and verify that it's still on the list */
             it("can fail to be removed", function (done) {
                 // Change the prototype of simpletrait to make destroy fail
                 var old_destroy = SimpleTrait.prototype.destroy;
@@ -305,6 +319,8 @@ define([
                 });
             });
             
+             /* RAS FIXME: Can't get trait by name anymore. We'll have to store the previous reference
+            and verify that it's still on the list */           
             it("can be removed", function (done) {
                 vampire.get_trait_by_name("backgrounds", "Haven").then(function (st) {
                     expect(st).toBeDefined();
