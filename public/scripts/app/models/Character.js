@@ -223,15 +223,7 @@ define([
                 });
             })
         },
-
-        get_trait_by_name: function(category, name) {
-            var self = this;
-            var models = self.get(category);
-            name = "" + name;
-            var st = _.find(models, "attributes.name", name);
-            return Parse.Promise.as(st, self);
-        },
-        
+       
         get_trait: function(category, id) {
             var self = this;
             var models = self.get(category);
