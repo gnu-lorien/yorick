@@ -17,7 +17,8 @@ var settings = {
   "cloud": process.env.CLOUD_CODE_MAIN || "/home/ubuntu/workspace/cloud/main.js",
   "verbose": true,
   "publicServerURL": process.env.PUBLIC_SERVER_URL || "https://yorick-latest-parse-server-gnu-lorien.c9users.io/parse/1",
-  "serverURL": "http://0.0.0.0:" + process.env.PORT + "/parse/1"
+  "serverURL": "http://0.0.0.0:" + process.env.PORT + "/parse/1",
+  "facebookAppIds": process.env.FACEBOOK_APP_IDS || ""
 }
 
 var api = new ParseServer(settings);
