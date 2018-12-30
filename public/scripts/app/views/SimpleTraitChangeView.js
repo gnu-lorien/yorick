@@ -1,5 +1,4 @@
-// Category View
-// =============
+/* global _ */
 
 // Includes file dependencies
 define([
@@ -119,15 +118,32 @@ define([
             $.mobile.loading("show");
             _.defer(function () {
                 console.log("save clicked", self.category, self.fauxtrait);
-                self.character.update_trait(
-                    self.fauxtrait.get("name"),
-                    self.fauxtrait.get("value"),
-                    self.fauxtrait.get("category"),
-                    self.fauxtrait.get("free_value"),
-                    true,
-                    self.fauxtrait.get("experience_cost_type"),
-                    self.fauxtrait.get("experience_cost_modifier")
-                ).then(function (newtrait) {
+                var up = undefined;
+                if (_.has(self.simpletrait, "id")) {
+                    // To support inline specialization updates we have to change
+                    // the name of the original trait
+                    var new_values = {
+                        "name": self.fauxtrait.get("name"),
+                        "value": self.fauxtrait.get("value"),
+                        "category": self.fauxtrait.get("category"),
+                        "free_value": self.fauxtrait.get("free_value"),
+                        "experience_cost_type": self.fauxtrait.get("experience_cost_type"),
+                        "experience_cost_modifier": self.fauxtrait.get("experience_cost_modifier")
+                    }
+                    self.simpletrait.set(new_values);
+                    up = self.character.update_trait(self.simpletrait);
+                } else {
+                    up = self.character.update_trait(
+                        self.fauxtrait.get("name"),
+                        self.fauxtrait.get("value"),
+                        self.fauxtrait.get("category"),
+                        self.fauxtrait.get("free_value"),
+                        true,
+                        self.fauxtrait.get("experience_cost_type"),
+                        self.fauxtrait.get("experience_cost_modifier")
+                    )
+                };
+                up.then(function (newtrait) {
                     console.log("asaved", self.category, newtrait);
                     window.location.hash = "#simpletraits/" + self.category + "/" + self.character.id + "/all";
                 }, PromiseFailReport);

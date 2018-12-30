@@ -224,6 +224,7 @@ define([
             "administration/user/:id": "administration_user",
             "administration/patronages/user/:id": "administration_user_patronages",
             "administration/patronages": "administration_patronages",
+            "administration/patronagescsv": "administration_patronages_csv",
             "administration/patronage/:id": "administration_patronage",
             "administration/patronages/new": "administration_patronage_new",
             "administration/patronages/new/:userid": "administration_patronage_new",
@@ -758,6 +759,26 @@ define([
                 });
             });
         },
+        
+        administration_patronages_csv: function() {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#administration");
+            require(["../views/PatronagesCSVView"], function (PatronagesCSVView) {
+                self.enforce_logged_in().then(function () {
+                    return Parse.Promise.when(
+                        self.get_patronages(),
+                        UserChannel.get_users());
+                }).then(function (patronages, users) {
+                    self.administrationPatronagesCSVView = self.administrationPatronageCSVView ||
+                        new PatronagesCSVView({el: "#administration-patronages-view-csv-list", collection: patronages}).render();
+                    $.mobile.changePage("#administration-patronages-view-csv", {reverse: false, changeHash: false});
+                }).fail(PromiseFailReport).fail(function () {
+                    $.mobile.loading("hide");
+                });
+            });
+        },
+
 
         administration_patronage: function(id) {
             var self = this;

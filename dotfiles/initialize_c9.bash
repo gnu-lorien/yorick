@@ -12,7 +12,7 @@ mongod --nojournal --fork --syslog
 export NVM_DIR="/home/ubuntu/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" # This loads nvm
 
-nvm install v4.4.5
+nvm install v8.4.0
 npm install -g parse-server parse-dashboard
 
 cat > run.bash << EOF
@@ -34,7 +34,7 @@ cat > parse-dashboard-config.json << EOF
       "appId": "APPLICATION_ID",
       "masterKey": "MASTER_KEY",
       "appName": "Yorick",
-      "allowInsecureHTTP": true,
+      "allowInsecureHTTP": true
     }
   ],
   "users": [
@@ -82,7 +82,7 @@ define([
     };
 
     var Config = {
-        serverURL: "https://yorick-undergroundtheater-gnu-lorien.c9users.io/parse",
+        serverURL: "https://${C9_HOSTNAME}/parse",
         redirect_uri: "https://${C9_HOSTNAME}/index.html",
         SAMPLE_TROUPE_ID: "zCQcZnlFx5"
     };

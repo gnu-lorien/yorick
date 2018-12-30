@@ -102,8 +102,8 @@ define([
             });
         });
     });
-
-    _.each(character_types, function (character_type) {
+    
+        _.each(character_types, function (character_type) {
         describe("A " + character_type.name + "'s traits", function() {
             var vampire;
             var expected_change_length;
@@ -151,12 +151,16 @@ define([
     
             it("can be renamed", function (done) {
                 var start_check = expected_change_length;
+                var first_trait_id = undefined;
+                var second_trait_id = undefined;
+                var third_trait_id = undefined;
                 vampire.update_trait("Retainers", 1, "backgrounds", 0, true).done(function (trait) {
                     expected_change_length++;
                     trait.set("name", "Retainers: Specialized Now");
                     return vampire.update_trait(trait);
                 }).done(function(trait) {
                     expected_change_length++;
+                    first_trait_id = trait.id;
                     trait.set("name", "Retainers: Specialized Again");
                     trait.set("value", 4);
                     return vampire.update_trait(trait);
@@ -167,10 +171,12 @@ define([
                 }).done(function(){
                     expected_change_length++;
                     return vampire.update_trait("Retainers: Specialized Now", 2, "backgrounds", 0);
-                }).done(function(){
+                }).done(function(trait){
+                    second_trait_id = trait.id;
                     expected_change_length++;
                     return vampire.update_trait("Retainers", 3, "backgrounds", 0);
-                }).done(function(){
+                }).done(function(trait){
+                    third_trait_id = trait.id;
                     expected_change_length++;
                     return vampire.update_trait("Retainers: Specialized Now", 4, "backgrounds", 0);
                 }).done(function(){
@@ -190,18 +196,21 @@ define([
                                 expect(change.get("type")).toBe("define");
                                 expect(change.get("value")).toBe(1);
                                 expect(change.get("cost")).toBe(1);
+                                expect(change.get("simple_trait_id")).toBe(first_trait_id);
                             } else if (1 == i) {
                                 expect(change.get("type")).toBe("update");
                                 expect(change.get("value")).toBe(1);
                                 expect(change.get("cost")).toBe(1);
                                 expect(change.get("name")).toBe("Retainers: Specialized Now");
                                 expect(change.get("old_text")).toBe("Retainers");
+                                expect(change.get("simple_trait_id")).toBe(first_trait_id);
                             } else if (2 == i) {
                                 expect(change.get("type")).toBe("update");
                                 expect(change.get("value")).toBe(4);
                                 expect(change.get("cost")).toBe(10);
                                 expect(change.get("name")).toBe("Retainers: Specialized Again");
                                 expect(change.get("old_text")).toBe("Retainers: Specialized Now");
+                                expect(change.get("simple_trait_id")).toBe(first_trait_id);
                             } else if (3 == i) {
                                 expect(change.get("type")).toBe("update");
                                 expect(change.get("old_value")).toBe(4);
@@ -210,16 +219,19 @@ define([
                                 expect(change.get("cost")).toBe(15);
                                 expect(change.get("name")).toBe("Retainers: Specialized Again");
                                 expect(change.get("old_text")).toBe("Retainers: Specialized Again");
+                                expect(change.get("simple_trait_id")).toBe(first_trait_id);
                             } else if (4 == i) {
                                 expect(change.get("type")).toBe("define");
                                 expect(change.get("value")).toBe(2);
                                 expect(change.get("cost")).toBe(3);
                                 expect(change.get("name")).toBe("Retainers: Specialized Now");
+                                expect(change.get("simple_trait_id")).toBe(second_trait_id);
                             } else if (5 == i) {
                                 expect(change.get("type")).toBe("define");
                                 expect(change.get("value")).toBe(3);
                                 expect(change.get("cost")).toBe(6);
                                 expect(change.get("name")).toBe("Retainers");
+                                expect(change.get("simple_trait_id")).toBe(third_trait_id);
                             } else if (6 == i) {
                                 expect(change.get("type")).toBe("update");
                                 expect(change.get("value")).toBe(4);
@@ -228,6 +240,7 @@ define([
                                 expect(change.get("cost")).toBe(10);
                                 expect(change.get("name")).toBe("Retainers: Specialized Now");
                                 expect(change.get("old_text")).toBe("Retainers: Specialized Now");
+                                expect(change.get("simple_trait_id")).toBe(second_trait_id);
                             } else if (7 == i) {
                                 expect(change.get("type")).toBe("update");
                                 expect(change.get("value")).toBe(4);
@@ -236,6 +249,7 @@ define([
                                 expect(change.get("cost")).toBe(10);
                                 expect(change.get("name")).toBe("Retainers");
                                 expect(change.get("old_text")).toBe("Retainers");
+                                expect(change.get("simple_trait_id")).toBe(third_trait_id);
                             }
                         }
                     })

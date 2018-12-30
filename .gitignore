@@ -101,3 +101,4 @@ node_modules
 .parse.local
 .parse.project
 /statusview/
+gitflow/
