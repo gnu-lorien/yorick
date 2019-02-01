@@ -125,6 +125,18 @@ define([
             "change": "render"
         }
     });
+    
+    var RoleView = Marionette.ItemView.extend({
+        template: function (serialized_model) {
+            return _.template("The one: <%= attributes.name %>")(serialized_model);
+        }
+    });
+    
+    var RolesView = Marionette.CollectionView.extend({
+        tagName: 'div',
+        childView: RoleView
+    });
+
 
     var LayoutView = Marionette.LayoutView.extend({
         el: "#administration-user-view",
@@ -132,7 +144,8 @@ define([
             profile: "#abs-form",
             password: "#reset-password-view",
             patronage: "#patronage-list-region",
-            patronage_new: "#patronage-new-for-user-button"
+            patronage_new: "#patronage-new-for-user-button",
+            roles: "#administration-user-roles-available"
         },
         initialize: function(options) {
             var self = this;
@@ -146,6 +159,10 @@ define([
             self.showChildView('patronage_new', new NewPatronButtonView({
                 model: new Backbone.Model({userid: ""})
             }));
+            self.roles = new Backbone.Collection();
+            self.showChildView('roles', new RolesView({
+                collection: self.roles
+            }), options);
         },
         register: function(user) {
             var self = this;
@@ -153,6 +170,17 @@ define([
             self.password.currentView.model = user;
             self.patronage.currentView.render();
             self.patronage_new.currentView.model.set("userid", user.id);
+            var q = new Parse.Query(Parse.Role);
+            q.each(function (role) {
+                var users_relation = role.getUsers();
+                var uq = users_relation.query();
+                uq.equalTo("objectId", user.id);
+                return uq.each(function (user) {
+                    self.roles.add(role);
+                }).fail(function (error) {
+                    console.log("Failed in promise for " + role.get("name"));
+                });
+            });
         }
     });
 
