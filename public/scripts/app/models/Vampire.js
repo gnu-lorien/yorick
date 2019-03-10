@@ -59,7 +59,7 @@ define([
         get_sum_creation_categories: function() {
             return SUM_CREATION_CATEGORIES;
         },
-        _update_creation: function(category, modified_trait, freeValue) {
+        update_creation_rules_for_changed_trait: function(category, modified_trait, freeValue) {
             var self = this;
             if (!_.contains(["merits", "flaws"], category)) {
                 if (!freeValue) {

@@ -161,7 +161,7 @@ define([
                     self.increment("change_count");
                     self.addUnique(category, modified_trait, {silent: true});
     
-                    var minimumPromise = self._update_creation(category, modified_trait, free_value).then(function() {
+                    var minimumPromise = self.update_creation_rules_for_changed_trait(category, modified_trait, free_value).then(function() {
                         return self.save();
                     }).then(function() {
                         if (0 != spend) {
