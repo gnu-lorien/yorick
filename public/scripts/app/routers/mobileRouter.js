@@ -46,7 +46,8 @@ define([
     "../views/CharacterCreateSimpleTraitNewView",
     "../models/Werewolf",
     "../views/CharactersSelectToPrintView",
-    "../views/CharacterLongTextView"
+    "../views/CharacterLongTextView",
+    "../models/ChangelingBetaSlice"
 ], function (require,
              $,
              Parse,
@@ -89,7 +90,8 @@ define([
              CharacterCreateSimpleTraitNewView,
              Werewolf,
              CharactersSelectToPrintView,
-             CharacterLongTextView
+             CharacterLongTextView,
+             ChangelingBetaSlice
 ) {
 
     // Extends Backbone.Router
@@ -1157,6 +1159,8 @@ define([
                 var p;
                 if (self.last_fetched_character_type == "Werewolf") {
                     p = Werewolf.get_character(id, categories, self);
+                } else if (self.last_fetched_character_type == "ChangelingBetaSlice") {
+                    p = ChangelingBetaSlice.get_character(id, categories, self);
                 } else {
                     p = Vampire.get_character(id, categories, self);
                 }               
@@ -1168,6 +1172,8 @@ define([
                     self.last_fetched_character_type = c.get("type");
                     if (c.get("type") == "Werewolf") {
                         return Werewolf.get_character(id, categories, self);
+                    } else if (c.get("type") == "ChangelingBetaSlice") {
+                        return ChangelingBetaSlice.get_character(id, categories, self);
                     } else {
                         return Vampire.get_character(id, categories, self);
                     }
