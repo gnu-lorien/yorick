@@ -12,12 +12,12 @@ define([
     "../collections/VampireChangeCollection",
     "../collections/ExperienceNotationCollection",
     "../models/ExperienceNotation",
-    "../helpers/BNSCTDBS_ChangelingCosts",
+    "../helpers/BNSCTDBS_ChangelingCostsFetcher",
     "../helpers/PromiseFailReport",
     "../helpers/ExpirationMixin",
     "../helpers/UserWreqr",
     "../models/Character"
-], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSCTDBS_ChangelingCosts, PromiseFailReport, ExpirationMixin, UserChannel, Character ) {
+], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSCTDBS_ChangelingCostsFetcher, PromiseFailReport, ExpirationMixin, UserChannel, Character ) {
 
     var ALL_SIMPLETRAIT_CATEGORIES = [
         ["attributes", "Attributes", "Attributes"],
@@ -175,6 +175,11 @@ define([
         has_seeming: function() {
             return !_.isUndefined(this._raw_seeming());
         },
+        
+        realms: function() {
+            var self = this;
+            return self.get("ctdbs_realms");
+        }
  
         calculate_trait_cost: function(trait) {
             var self = this;
@@ -224,10 +229,10 @@ define([
         initialize_costs: function() {
             var self = this;
             if (_.isUndefined(self.Costs)) {
-                self.Costs = new BNSCTDBS_ChangelingCosts;
-                return self.Costs.initialize().then(function () {
+                return BNSCTDBS_ChangelingCostsFetcher().then(function (costs) {
+                    self.Costs = costs;
                     return Parse.Promise.as(self);
-                });
+                })
             }
             return Parse.Promise.as(self);
         },
@@ -257,6 +262,7 @@ define([
             q.include("owner");
             q.include("ctdbs_backgrounds");
             q.include("ctdbs_arts_affinities_links");
+            q.include("ctdbs_realms");
             return q.get(id).then(function(m) {
                 character_cache._character = m;
                 return Model.get_character(id, categories, character_cache);
