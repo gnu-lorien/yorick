@@ -179,7 +179,7 @@ define([
         realms: function() {
             var self = this;
             return self.get("ctdbs_realms");
-        }
+        },
  
         calculate_trait_cost: function(trait) {
             var self = this;
@@ -322,7 +322,7 @@ define([
         return UserChannel.get_latest_patronage(Parse.User.current()).then(function (patronage) {
             var changes = {
                 name: name,
-                type: "Werewolf",
+                type: "ChangelingBetaSlice",
                 owner: Parse.User.current(),
                 change_count: 0
             };
