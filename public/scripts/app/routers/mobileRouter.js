@@ -44,7 +44,6 @@ define([
     "../views/CharacterRenameView",
     "../views/SimpleTraitNewSpecializationView",
     "../views/CharacterCreateSimpleTraitNewView",
-    "../views/DescriptionsView",
     "../models/Werewolf",
     "../views/CharactersSelectToPrintView",
     "../views/CharacterLongTextView"
@@ -88,7 +87,6 @@ define([
              CharacterRenameView,
              SimpleTraitNewSpecializationView,
              CharacterCreateSimpleTraitNewView,
-             DescriptionsView,
              Werewolf,
              CharactersSelectToPrintView,
              CharacterLongTextView
@@ -229,6 +227,7 @@ define([
             "administration/patronages/new": "administration_patronage_new",
             "administration/patronages/new/:userid": "administration_patronage_new",
             "administration/descriptions": "administration_descriptions",
+            "administration/bnsctdbs_kith_rules": "administration_bnsctdbs_kith_rules",
 
             // Referendums
             "referendums": "referendums", // Listing of active referendums
@@ -831,16 +830,36 @@ define([
             var self = this;
             self.set_back_button("#administration");
             $.mobile.loading("show");
-            self.enforce_logged_in().then(function () {
-                self.administrationDescriptionsView = self.administrationDescriptionsView ||
-                    new DescriptionsView().setup();
-                return self.administrationDescriptionsView.update_categories();
-            }).then(function () {
-                $.mobile.changePage("#administration-descriptions", {reverse: false, changeHash: false});
-            }).fail(function () {
-                $.mobile.loading("hide");
-            }).fail(PromiseFailReport);
+            require(["../views/DescriptionsView"], function (DescriptionsView) {
+                self.enforce_logged_in().then(function () {
+                    self.administrationDescriptionsView = self.administrationDescriptionsView ||
+                        new DescriptionsView().setup();
+                    return self.administrationDescriptionsView.update_categories();
+                }).then(function () {
+                    $.mobile.changePage("#administration-descriptions", {reverse: false, changeHash: false});
+                }).fail(function () {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
         },
+
+        administration_bnsctdbs_kith_rules: function() {
+            var self = this;
+            self.set_back_button("#administration");
+            $.mobile.loading("show");
+            require(["../views/BNSCTDBSKithRules"], function (BNSCTDBSKithRules) {
+                self.enforce_logged_in().then(function () {
+                    self.administrationBNSCTDBSKithRules = self.administrationBNSCTDBSKithRules ||
+                        new BNSCTDBSKithRules().setup();
+                    return self.administrationBNSCTDBSKithRules.update_categories();
+                }).then(function () {
+                    $.mobile.changePage("#administration-descriptions", {reverse: false, changeHash: false});
+                }).fail(function () {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
+        },
+
 
         characterdelete: function(cid) {
             var self = this;
