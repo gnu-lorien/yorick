@@ -2,7 +2,7 @@ define([
     "jquery",
     "underscore",
     "parse",
-    "../collections/BNSCTDBS_ChangelingCosts"
+    "../helpers/BNSCTDBS_ChangelingCosts"
 ], function( $, _, Parse, ChangelingBetaSliceCosts ) {
 
     var globalCosts = null;
@@ -11,7 +11,7 @@ define([
             return Parse.Promise.as(globalCosts);
         } else {
             globalCosts = new ChangelingBetaSliceCosts;
-            return globalCosts.inialize();
+            return globalCosts.initialize();
         }
     }
 
