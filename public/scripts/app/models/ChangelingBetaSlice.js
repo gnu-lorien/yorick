@@ -45,6 +45,7 @@ define([
     ];
     
     var TEXT_ATTRIBUTES = ["archetype", "ctdbs_kith", "ctdbs_fealty_court", "ctdbs_noble_house", "ctdbs_kith_group_type", "antecedence"];
+    var TEXT_ATTRIBUTES_PRETTY_NAMES = ["Archetype", "Kith", "Court", "House", function(character) { return "Group"; }, "Primary, Secondary, or NPC"];
     
     var SUM_CREATION_CATEGORIES = ["ctdbs_merits", "ctdbs_flaws"];
     
@@ -154,6 +155,10 @@ define([
         
         all_text_attributes: function() {
             return TEXT_ATTRIBUTES;
+        },
+        
+        all_text_attributes_pretty_names: function() {
+            return TEXT_ATTRIBUTES_PRETTY_NAMES;
         },
  
         _raw_seeming: function() {
@@ -365,6 +370,10 @@ define([
 
     Model.all_text_attributes = function () {
         return TEXT_ATTRIBUTES;
+    };
+    
+    Model.all_text_attributes_pretty_names = function () {
+        return TEXT_ATTRIBUTES_PRETTY_NAMES;
     };
 
     // Returns the Model class
