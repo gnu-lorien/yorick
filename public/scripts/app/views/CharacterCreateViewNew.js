@@ -14,7 +14,9 @@ define([
     "../helpers/VampirePrintHelper",
     "text!../templates/create/description.html",
     "text!../templates/create/simpletexts.html",
-    "text!../templates/create/therest.html"
+    "text!../templates/create/therestvampire.html",
+    "text!../templates/create/therestwerewolf.html",
+    "text!../templates/create/therestchangelingbetaslice.html"
 ], function(
     $,
     Backbone,
@@ -25,7 +27,9 @@ define([
     VampirePrintHelper,
     description_html,
     simpletexts_html,
-    therest_html
+    therestvampire_html,
+    therestwerewolf_html,
+    therestchangelingbetaslice_html
 ) {
 
     var Description = Marionette.ItemView.extend({
@@ -67,11 +71,20 @@ define([
     _.extend(SimpleTexts.prototype, VampirePrintHelper);
     
     var TheRest = Marionette.ItemView.extend({
-        template: _.template(therest_html),
+        getTemplate: function() {
+            if ("Werewolf" == this.model.get("type")) {
+                return _.template(therestwerewolf_html);
+            } else if ("ChangelingBetaSlice" == this.model.get("type")) {
+                return _.template(therestchangelingbetaslice_html);
+            } else {
+                return _.template(therestvampire_html);
+            }
+        },
         templateHelpers: function() {
             var self = this;
+            var creation = self.model.get("creation");
             return {
-                creation: self.model.get("creation"),
+                creation: creation,
                 character: self.model
             }
         },
@@ -79,7 +92,7 @@ define([
             _.bindAll(
                 this,
                 "render",
-                "template"
+                "getTemplate"
             );
         }
     });

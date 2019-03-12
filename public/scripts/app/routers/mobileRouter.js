@@ -19,7 +19,6 @@ define([
     "../views/CharacterView",
     "../models/SimpleTrait",
     "../models/VampireCreation",
-    "../views/CharacterCreateView",
     "../views/CharacterNewView",
     "../views/CharacterCostsView",
     "../views/SimpleTextNewView",
@@ -63,7 +62,6 @@ define([
              CharacterView,
              SimpleTrait,
              VampireCreation,
-             CharacterCreateView,
              CharacterNewView,
              CharacterCostsView,
              SimpleTextNewView,
@@ -114,7 +112,6 @@ define([
             this.simpleTraitNewSpecializationView = new SimpleTraitNewSpecializationView({el: "#simpletrait-new-specialization"});
             this.characterCreateSimpleTraitNewView = new CharacterCreateSimpleTraitNewView({el: "#character-create-simpletrait-new"});
 
-            this.characterCreateView = new CharacterCreateView({el: "#character-create"});
             this.characterNewView = new CharacterNewView({el: "#character-new-form"});
 
             this.characterCostsView = new CharacterCostsView({el: "#character-costs"});
@@ -172,7 +169,6 @@ define([
             "simpletext/:category/:target/:cid/unpick":   "simpletextunpick",
 
             "charactercreate/:cid": "charactercreate",
-            "charactercreatenew/:cid": "charactercreatenew",
 
             "charactercreate/simpletraits/:category/:cid/pick/:i": "charactercreatepicksimpletrait",
             "charactercreate/simpletraits/:category/:cid/unpick/:stid/:i": "charactercreateunpicksimpletrait",
@@ -387,6 +383,18 @@ define([
                 }).fail(PromiseFailReport);
             });
         },
+        
+        withCharacterCreateView: function() {
+            var self = this;
+            var p = new Parse.Promise;
+            require(["../views/CharacterCreateViewNew"], function (CharacterCreateViewNew) {
+                self.characterCreateView = self.characterCreateView || new CharacterCreateViewNew({
+                    el: "#character-create"
+                });
+                p.resolve(self.characterCreateView);
+            });
+            return p;
+        },
 
         withCharacterPrintView: function(cb) {
             var self = this;
@@ -462,37 +470,19 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
-            self.get_character(cid, []).then(function (character) {
+            self.withCharacterCreateView().then(function () {
+                return self.get_character(cid, []);
+            }).then(function (character) {
                 return character.fetch_all_creation_elements();
-            }).done(function (character) {
-                self.characterCreateView.model = character;
-                self.characterCreateView.render();
+            }).then(function (character) {
+                self.characterCreateView.setup({
+                    character: character
+                })
                 self.characterCreateView.scroll_back_after_page_change();
                 $.mobile.changePage("#character-create", {reverse: false, changeHash: false});
+            }).always(function () {
                 $.mobile.loading("hide");
             }).fail(PromiseFailReport);
-        },
-        
-        charactercreatenew: function(cid) {
-            var self = this;
-            $.mobile.loading("show");
-            self.set_back_button("#character?" + cid);
-            require(["../views/CharacterCreateViewNew"], function (CharacterCreateViewNew) {
-                self.get_character(cid, []).then(function (character) {
-                    return character.fetch_all_creation_elements();
-                }).then(function (character) {
-                    self.characterCreateViewNew = self.characterCreateViewNew || new CharacterCreateViewNew({
-                        el: "#character-create-new"
-                    });
-                    self.characterCreateViewNew.setup({
-                        character: character
-                    })
-                    self.characterCreateView.scroll_back_after_page_change();
-                    $.mobile.changePage("#character-create-new", {reverse: false, changeHash: false});
-                }).always(function () {
-                    $.mobile.loading("hide");
-                }).fail(PromiseFailReport);
-            });
         },
 
         charactercreatepicksimpletrait: function(category, cid, i) {
@@ -500,7 +490,9 @@ define([
             i = _.parseInt(i);
             $.mobile.loading("show");
             self.set_back_button("#charactercreate/" + cid);
-            self.get_character(cid, [category]).done(function (c) {
+            self.withCharacterCreateView().then(function () {
+                return self.get_character(cid, [category]);
+            }).done(function (c) {
                 var specialCategory;
                 if ("disciplines" == category) {
                     specialCategory = "in clan disciplines";
@@ -548,7 +540,9 @@ define([
             i = _.parseInt(i);
             $.mobile.loading("show");
             self.set_back_button("#charactercreate/" + cid);
-            self.get_character(cid, [category]).then(function (character) {
+            self.withCharacterCreateView().then(function () {
+                return self.get_character(cid, [category]);
+            }).then(function (character) {
                 self.characterCreateView.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
                 return character.unpick_from_creation(category, stid, i);
             }).done(function (c) {
@@ -562,7 +556,9 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#charactercreate/" + cid);
-            self.get_character(cid, [category]).then(function (c) {
+            self.withCharacterCreateView().then(function () {
+                return self.get_character(cid, [category])
+            }).then(function (c) {
                 self.characterCreateView.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
                 return self.simpleTextNewView.register(c, category, target, "#charactercreate/" + c.id);
             }).then(function () {
