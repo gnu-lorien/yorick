@@ -17,7 +17,8 @@ define([
     "text!../templates/create/therestvampire.html",
     "text!../templates/create/therestwerewolf.html",
     "text!../templates/create/therestchangelingbetaslice.html",
-    "text!../templates/create/attributes.html"
+    "text!../templates/create/attributes.html",
+    "text!../templates/create/focuses.html"
 ], function(
     $,
     Backbone,
@@ -31,7 +32,8 @@ define([
     therestvampire_html,
     therestwerewolf_html,
     therestchangelingbetaslice_html,
-    attributes_html
+    attributes_html,
+    focuses_html
 ) {
 
     var Description = Marionette.ItemView.extend({
@@ -106,6 +108,34 @@ define([
     });
     _.extend(Attributes.prototype, VampirePrintHelper);
     
+    var Focuses = Marionette.ItemView.extend({
+        template: _.template(focuses_html),
+        templateHelpers: function() {
+            var self = this;
+            var creation = self.model.get("creation");
+            return {
+                creation: creation,
+                character: self.model
+            }
+        },
+        onRender: function() {
+            this.$el.enhanceWithin();
+        },
+        initialize: function(options) {
+            var self = this;
+            self.listenTo(self.model, "change:focus_physicals", self.render);
+            self.listenTo(self.model, "change:focus_mentals", self.render);
+            self.listenTo(self.model, "change:focus_socials", self.render);
+            _.bindAll(
+                this,
+                "render",
+                "getTemplate",
+                "onRender"
+            );
+        }
+    });
+    _.extend(Focuses.prototype, VampirePrintHelper);
+    
     var TheRest = Marionette.ItemView.extend({
         getTemplate: function() {
             if ("Werewolf" == this.model.get("type")) {
@@ -146,6 +176,7 @@ define([
             description: "#ccv-description",
             simpletext: "#ccv-simpletext",
             nextone: "#ccv-next-one",
+            nexttwo: "#ccv-next-two",
             therest: "#ccv-therest"
         },
         setup_regions: function() {
@@ -160,6 +191,9 @@ define([
                 model: character
             }), options);
             self.showChildView("nextone", new Attributes({
+                model: character
+            }), options);
+            self.showChildView("nextone", new Focuses({
                 model: character
             }), options);
             self.showChildView("therest", new TheRest({
