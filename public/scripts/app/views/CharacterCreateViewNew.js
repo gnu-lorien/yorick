@@ -19,7 +19,8 @@ define([
     "text!../templates/create/therestchangelingbetaslice.html",
     "text!../templates/create/attributes.html",
     "text!../templates/create/focuses.html",
-    "text!../templates/create/skills.html"
+    "text!../templates/create/skills.html",
+    "text!../templates/create/backgrounds.html"
 ], function(
     $,
     Backbone,
@@ -35,7 +36,8 @@ define([
     therestchangelingbetaslice_html,
     attributes_html,
     focuses_html,
-    skills_html
+    skills_html,
+    backgrounds_html
 ) {
 
     var Description = Marionette.ItemView.extend({
@@ -164,6 +166,44 @@ define([
     });
     _.extend(Skills.prototype, VampirePrintHelper);
     
+    var Backgrounds = Marionette.ItemView.extend({
+        template: _.template(backgrounds_html),
+        templateHelpers: function() {
+            var self = this;
+            var creation = self.model.get("creation");
+            var description_category = self.getDescriptionCategory();
+            return {
+                creation: creation,
+                character: self.model,
+                description_category: description_category
+            }
+        },
+        getDescriptionCategory: function () {
+            if ("Werewolf" == this.model.get("type")) {
+                return "wta_backgrounds";
+            } else if ("ChangelingBetaSlice" == this.model.get("type")) {
+                return "ctdbs_backgrounds";
+            } else {
+                return "backgrounds";
+            }
+        },
+        onRender: function() {
+            this.$el.enhanceWithin();
+        },
+        initialize: function(options) {
+            var self = this;
+            self.listenTo(self.model, "change:" + self.getDescriptionCategory(), self.render);
+            _.bindAll(
+                this,
+                "render",
+                "getTemplate",
+                "onRender",
+                "getDescriptionCategory"
+            );
+        }
+    });
+    _.extend(Backgrounds.prototype, VampirePrintHelper);
+    
     var TheRest = Marionette.ItemView.extend({
         getTemplate: function() {
             if ("Werewolf" == this.model.get("type")) {
@@ -206,6 +246,7 @@ define([
             nextone: "#ccv-next-one",
             nexttwo: "#ccv-next-two",
             nextthree: "#ccv-next-three",
+            nextfour: "#ccv-next-four",
             therest: "#ccv-therest"
         },
         setup_regions: function() {
@@ -226,6 +267,9 @@ define([
                 model: character
             }), options);
             self.showChildView("nextthree", new Skills({
+                model: character
+            }), options);
+            self.showChildView("nextfour", new Backgrounds({
                 model: character
             }), options);
             self.showChildView("therest", new TheRest({
