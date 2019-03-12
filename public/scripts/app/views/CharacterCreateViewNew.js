@@ -42,6 +42,8 @@ define([
             }
         },
         initialize: function(options) {
+            var self = this;
+            self.listenTo(self.model, "change", self.render);
             _.bindAll(
                 this,
                 "render",
@@ -60,11 +62,17 @@ define([
                 character: self.model
             }
         },
+        onRender: function() {
+            this.$el.enhanceWithin();
+        },
         initialize: function(options) {
+            var self = this;
+            self.listenTo(self.model, "change", self.render);
             _.bindAll(
                 this,
                 "render",
-                "template"
+                "template",
+                "onRender"
             );
         }
     });
@@ -88,11 +96,17 @@ define([
                 character: self.model
             }
         },
+        onRender: function() {
+            this.$el.enhanceWithin();
+        },
         initialize: function(options) {
+            var self = this;
+            self.listenTo(self.model, "change", self.render);
             _.bindAll(
                 this,
                 "render",
-                "getTemplate"
+                "getTemplate",
+                "onRender"
             );
         }
     });
