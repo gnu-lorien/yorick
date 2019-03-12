@@ -16,7 +16,8 @@ define([
     "text!../templates/create/simpletexts.html",
     "text!../templates/create/therestvampire.html",
     "text!../templates/create/therestwerewolf.html",
-    "text!../templates/create/therestchangelingbetaslice.html"
+    "text!../templates/create/therestchangelingbetaslice.html",
+    "text!../templates/create/attributes.html"
 ], function(
     $,
     Backbone,
@@ -29,7 +30,8 @@ define([
     simpletexts_html,
     therestvampire_html,
     therestwerewolf_html,
-    therestchangelingbetaslice_html
+    therestchangelingbetaslice_html,
+    attributes_html
 ) {
 
     var Description = Marionette.ItemView.extend({
@@ -78,6 +80,32 @@ define([
     });
     _.extend(SimpleTexts.prototype, VampirePrintHelper);
     
+    var Attributes = Marionette.ItemView.extend({
+        template: _.template(attributes_html),
+        templateHelpers: function() {
+            var self = this;
+            var creation = self.model.get("creation");
+            return {
+                creation: creation,
+                character: self.model
+            }
+        },
+        onRender: function() {
+            this.$el.enhanceWithin();
+        },
+        initialize: function(options) {
+            var self = this;
+            self.listenTo(self.model, "change:attributes", self.render);
+            _.bindAll(
+                this,
+                "render",
+                "getTemplate",
+                "onRender"
+            );
+        }
+    });
+    _.extend(Attributes.prototype, VampirePrintHelper);
+    
     var TheRest = Marionette.ItemView.extend({
         getTemplate: function() {
             if ("Werewolf" == this.model.get("type")) {
@@ -117,6 +145,7 @@ define([
         regions: {
             description: "#ccv-description",
             simpletext: "#ccv-simpletext",
+            nextone: "#ccv-next-one",
             therest: "#ccv-therest"
         },
         setup_regions: function() {
@@ -128,6 +157,9 @@ define([
                 model: character
             }), options);
             self.showChildView("simpletext", new SimpleTexts({
+                model: character
+            }), options);
+            self.showChildView("nextone", new Attributes({
                 model: character
             }), options);
             self.showChildView("therest", new TheRest({
