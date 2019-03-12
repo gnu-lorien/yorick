@@ -1,0 +1,11 @@
+<% _.each(character.all_text_attributes(), function (st) { %>
+<% var ust = st[0].toUpperCase() + st.substr(1); %>
+<ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+    <% if (creation.get(st)) { %>
+    <li data-role="list-divider"><%= ust %><p><%= character.get(st) %></p></li>
+    <li><a href="#charactercreate/simpletext/<%= st %>s/<%= st %>/<%= character.id %>/pick">Repick <%= ust %></a></li>
+    <% } else { %>
+    <li><a href="#charactercreate/simpletext/<%= st %>s/<%= st %>/<%= character.id %>/pick">Pick <%= ust %></a></li>
+    <% } %>
+</ul>
+<% }) %>

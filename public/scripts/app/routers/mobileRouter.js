@@ -172,6 +172,7 @@ define([
             "simpletext/:category/:target/:cid/unpick":   "simpletextunpick",
 
             "charactercreate/:cid": "charactercreate",
+            "charactercreatenew/:cid": "charactercreatenew",
 
             "charactercreate/simpletraits/:category/:cid/pick/:i": "charactercreatepicksimpletrait",
             "charactercreate/simpletraits/:category/:cid/unpick/:stid/:i": "charactercreateunpicksimpletrait",
@@ -470,6 +471,28 @@ define([
                 $.mobile.changePage("#character-create", {reverse: false, changeHash: false});
                 $.mobile.loading("hide");
             }).fail(PromiseFailReport);
+        },
+        
+        charactercreatenew: function(cid) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            require(["../views/CharacterCreateViewNew"], function (CharacterCreateViewNew) {
+                self.get_character(cid, []).then(function (character) {
+                    return character.fetch_all_creation_elements();
+                }).then(function (character) {
+                    self.characterCreateViewNew = self.characterCreateViewNew || new CharacterCreateViewNew({
+                        el: "#character-create-new"
+                    });
+                    self.characterCreateViewNew.setup({
+                        character: character
+                    })
+                    self.characterCreateView.scroll_back_after_page_change();
+                    $.mobile.changePage("#character-create-new", {reverse: false, changeHash: false});
+                }).always(function () {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
         },
 
         charactercreatepicksimpletrait: function(category, cid, i) {
