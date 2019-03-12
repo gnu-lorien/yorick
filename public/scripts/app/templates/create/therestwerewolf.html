@@ -1,21 +1,4 @@
 <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-    <li data-role="list-divider">Skills<span class="ui-li-count"><%= creation.remaining_picks("skills") %></span></li>
-    <% _.each(_.range(4, 0, -1), function(i) { %>
-    <% var n = "skills_" + i + "_remaining"; %>
-    <% _.each(creation.get("skills_" + i + "_picks"), function(st) { %>
-    <li data-icon="delete">
-        <a href="javascript: void(0)"><%= st.get("name") %> x<%= st.get("value") %></a>
-        <a href="#charactercreate/simpletraits/skills/<%= character.id %>/unpick/<%= st.linkId() %>/<%= i %>">Delete</a>
-    </li>
-    <% }); %>
-    <% _.each(_.range(creation.get(n)), function() { %>
-    <li><a href="#charactercreate/simpletraits/skills/<%= character.id %>/pick/<%= i %>">Pick skill at rating <%= i %></a></li>
-    <% }) %>
-    <% }); %>
-</ul>
-
-
-<ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
     <li data-role="list-divider">Backgrounds<span class="ui-li-count"><%= creation.remaining_picks("wta_backgrounds") %></span></li>
     <% _.each(_.range(3, 0, -1), function(i) { %>
     <% var n = "wta_backgrounds_" + i + "_remaining"; %>

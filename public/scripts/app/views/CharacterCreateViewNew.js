@@ -18,7 +18,8 @@ define([
     "text!../templates/create/therestwerewolf.html",
     "text!../templates/create/therestchangelingbetaslice.html",
     "text!../templates/create/attributes.html",
-    "text!../templates/create/focuses.html"
+    "text!../templates/create/focuses.html",
+    "text!../templates/create/skills.html"
 ], function(
     $,
     Backbone,
@@ -33,7 +34,8 @@ define([
     therestwerewolf_html,
     therestchangelingbetaslice_html,
     attributes_html,
-    focuses_html
+    focuses_html,
+    skills_html
 ) {
 
     var Description = Marionette.ItemView.extend({
@@ -136,6 +138,32 @@ define([
     });
     _.extend(Focuses.prototype, VampirePrintHelper);
     
+    var Skills = Marionette.ItemView.extend({
+        template: _.template(skills_html),
+        templateHelpers: function() {
+            var self = this;
+            var creation = self.model.get("creation");
+            return {
+                creation: creation,
+                character: self.model
+            }
+        },
+        onRender: function() {
+            this.$el.enhanceWithin();
+        },
+        initialize: function(options) {
+            var self = this;
+            self.listenTo(self.model, "change:skills", self.render);
+            _.bindAll(
+                this,
+                "render",
+                "getTemplate",
+                "onRender"
+            );
+        }
+    });
+    _.extend(Skills.prototype, VampirePrintHelper);
+    
     var TheRest = Marionette.ItemView.extend({
         getTemplate: function() {
             if ("Werewolf" == this.model.get("type")) {
@@ -177,6 +205,7 @@ define([
             simpletext: "#ccv-simpletext",
             nextone: "#ccv-next-one",
             nexttwo: "#ccv-next-two",
+            nextthree: "#ccv-next-three",
             therest: "#ccv-therest"
         },
         setup_regions: function() {
@@ -193,7 +222,10 @@ define([
             self.showChildView("nextone", new Attributes({
                 model: character
             }), options);
-            self.showChildView("nextone", new Focuses({
+            self.showChildView("nexttwo", new Focuses({
+                model: character
+            }), options);
+            self.showChildView("nextthree", new Skills({
                 model: character
             }), options);
             self.showChildView("therest", new TheRest({
