@@ -75,7 +75,9 @@ define([
         },
         initialize: function(options) {
             var self = this;
-            self.listenTo(self.model, "change", self.render);
+            _.each(self.model.all_text_attributes(), function (st) {
+                self.listenTo(self.model, "change:" + st, self.render);
+            });
             _.bindAll(
                 this,
                 "render",
@@ -204,6 +206,32 @@ define([
     });
     _.extend(Backgrounds.prototype, VampirePrintHelper);
     
+    var Arts = Marionette.ItemView.extend({
+        template: _.template(arts_html),
+        templateHelpers: function() {
+            var self = this;
+            var creation = self.model.get("creation");
+            return {
+                creation: creation,
+                character: self.model
+            }
+        },
+        onRender: function() {
+            this.$el.enhanceWithin();
+        },
+        initialize: function(options) {
+            var self = this;
+            self.listenTo(self.model, "change", self.render);
+            _.bindAll(
+                this,
+                "render",
+                "getTemplate",
+                "onRender"
+            );
+        }
+    });
+    _.extend(Arts.prototype, VampirePrintHelper);
+    
     var TheRest = Marionette.ItemView.extend({
         getTemplate: function() {
             if ("Werewolf" == this.model.get("type")) {
@@ -247,6 +275,7 @@ define([
             nexttwo: "#ccv-next-two",
             nextthree: "#ccv-next-three",
             nextfour: "#ccv-next-four",
+            nextfive: "#ccv-next-five",
             therest: "#ccv-therest"
         },
         setup_regions: function() {
@@ -272,6 +301,14 @@ define([
             self.showChildView("nextfour", new Backgrounds({
                 model: character
             }), options);
+            var fiveview;
+            if ("Werewolf" == character.get("type")) {
+                fiveview = new Gifts({model: character});
+            } else if ("ChangelingBetaSlice" == character.get("type")) {
+                fiveview = new Arts({model:character});
+            } else {
+                fiveview = new Disciplines({model:character});
+            }
             self.showChildView("therest", new TheRest({
                 model: character
             }), options);
