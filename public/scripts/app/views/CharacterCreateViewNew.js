@@ -14,16 +14,16 @@ define([
     "../helpers/VampirePrintHelper",
     "text!../templates/create/description.html",
     "text!../templates/create/simpletexts.html",
-    "text!../templates/create/therestvampire.html",
-    "text!../templates/create/therestwerewolf.html",
-    "text!../templates/create/therestchangelingbetaslice.html",
     "text!../templates/create/attributes.html",
     "text!../templates/create/focuses.html",
     "text!../templates/create/skills.html",
     "text!../templates/create/backgrounds.html",
     "text!../templates/create/arts.html",
     "text!../templates/create/disciplines.html",
-    "text!../templates/create/gifts.html"
+    "text!../templates/create/gifts.html",
+    "text!../templates/create/merits.html",
+    "text!../templates/create/flaws.html",
+    "text!../templates/create/complete.html"
 ], function(
     $,
     Backbone,
@@ -34,16 +34,16 @@ define([
     VampirePrintHelper,
     description_html,
     simpletexts_html,
-    therestvampire_html,
-    therestwerewolf_html,
-    therestchangelingbetaslice_html,
     attributes_html,
     focuses_html,
     skills_html,
     backgrounds_html,
     arts_html,
     disciplines_html,
-    gifts_html
+    gifts_html,
+    merits_html,
+    flaws_html,
+    complete_html
 ) {
 
     var Description = Marionette.ItemView.extend({
@@ -292,16 +292,83 @@ define([
     });
     _.extend(Gifts.prototype, VampirePrintHelper);
     
-    var TheRest = Marionette.ItemView.extend({
-        getTemplate: function() {
-            if ("Werewolf" == this.model.get("type")) {
-                return _.template(therestwerewolf_html);
-            } else if ("ChangelingBetaSlice" == this.model.get("type")) {
-                return _.template(therestchangelingbetaslice_html);
-            } else {
-                return _.template(therestvampire_html);
+    var Merits = Marionette.ItemView.extend({
+        template: _.template(merits_html),
+        templateHelpers: function() {
+            var self = this;
+            var creation = self.model.get("creation");
+            var description_category = self.getDescriptionCategory();
+            return {
+                creation: creation,
+                character: self.model,
+                description_category: description_category
             }
         },
+        getDescriptionCategory: function () {
+            if ("Werewolf" == this.model.get("type")) {
+                return "wta_merits";
+            } else if ("ChangelingBetaSlice" == this.model.get("type")) {
+                return "ctdbs_merits";
+            } else {
+                return "merits";
+            }
+        },
+        onRender: function() {
+            this.$el.enhanceWithin();
+        },
+        initialize: function(options) {
+            var self = this;
+            self.listenTo(self.model, "change", self.render);
+            _.bindAll(
+                this,
+                "render",
+                "getTemplate",
+                "onRender",
+                "getDescriptionCategory"
+            );
+        }
+    });
+    _.extend(Merits.prototype, VampirePrintHelper);
+    
+    var Flaws = Marionette.ItemView.extend({
+        template: _.template(flaws_html),
+        templateHelpers: function() {
+            var self = this;
+            var creation = self.model.get("creation");
+            var description_category = self.getDescriptionCategory();
+            return {
+                creation: creation,
+                character: self.model,
+                description_category: description_category
+            }
+        },
+        getDescriptionCategory: function () {
+            if ("Werewolf" == this.model.get("type")) {
+                return "wta_flaws";
+            } else if ("ChangelingBetaSlice" == this.model.get("type")) {
+                return "ctdbs_flaws";
+            } else {
+                return "flaws";
+            }
+        },
+        onRender: function() {
+            this.$el.enhanceWithin();
+        },
+        initialize: function(options) {
+            var self = this;
+            self.listenTo(self.model, "change", self.render);
+            _.bindAll(
+                this,
+                "render",
+                "getTemplate",
+                "onRender"
+            );
+        }
+    });
+    _.extend(Flaws.prototype, VampirePrintHelper);
+    
+    var Complete = Marionette.ItemView.extend({
+        template: _.template(complete_html),
         templateHelpers: function() {
             var self = this;
             var creation = self.model.get("creation");
@@ -324,7 +391,7 @@ define([
             );
         }
     });
-    _.extend(TheRest.prototype, VampirePrintHelper);
+    _.extend(Complete.prototype, VampirePrintHelper);
 
     var LayoutView = Marionette.LayoutView.extend({
         template: _.template(parent_html),
@@ -336,7 +403,9 @@ define([
             nextthree: "#ccv-next-three",
             nextfour: "#ccv-next-four",
             nextfive: "#ccv-next-five",
-            therest: "#ccv-therest"
+            nextsix: "#ccv-next-six",
+            nextseven: "#ccv-next-seven",
+            nexteight: "#ccv-next-eight",
         },
         setup_regions: function() {
             var self = this;
@@ -370,7 +439,13 @@ define([
                 fiveview = new Disciplines({model:character});
             }
             self.showChildView("nextfive", fiveview, options);
-            self.showChildView("therest", new TheRest({
+            self.showChildView("nextsix", new Merits({
+                model: character
+            }), options);
+            self.showChildView("nextseven", new Flaws({
+                model: character
+            }), options);
+            self.showChildView("nexteight", new Complete({
                 model: character
             }), options);
         },
