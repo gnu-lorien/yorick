@@ -227,6 +227,7 @@ define([
         },
         initialize: function(options) {
             var self = this;
+            self.listenTo(self.model.get("creation"), "saved", self.render);
             self.listenTo(self.model, "change", self.render);
             _.bindAll(
                 this,
@@ -318,6 +319,7 @@ define([
         },
         initialize: function(options) {
             var self = this;
+            self.listenTo(self.model.get("creation"), "saved", self.render);
             self.listenTo(self.model, "change", self.render);
             _.bindAll(
                 this,
@@ -356,6 +358,7 @@ define([
         },
         initialize: function(options) {
             var self = this;
+            self.listenTo(self.model.get("creation"), "saved", self.render);
             self.listenTo(self.model, "change", self.render);
             _.bindAll(
                 this,
