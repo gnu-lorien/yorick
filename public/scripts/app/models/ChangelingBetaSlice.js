@@ -108,6 +108,7 @@ define([
                 "attributes_7_remaining": 1,
                 "attributes_5_remaining": 1,
                 "attributes_3_remaining": 1,
+                "ctdbs_arts_1_remaining": 3,
                 "focus_mentals_1_remaining": 1,
                 "focus_socials_1_remaining": 1,
                 "focus_physicals_1_remaining": 1,

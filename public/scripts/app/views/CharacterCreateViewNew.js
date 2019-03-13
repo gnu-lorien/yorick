@@ -20,7 +20,10 @@ define([
     "text!../templates/create/attributes.html",
     "text!../templates/create/focuses.html",
     "text!../templates/create/skills.html",
-    "text!../templates/create/backgrounds.html"
+    "text!../templates/create/backgrounds.html",
+    "text!../templates/create/arts.html",
+    "text!../templates/create/disciplines.html",
+    "text!../templates/create/gifts.html"
 ], function(
     $,
     Backbone,
@@ -37,7 +40,10 @@ define([
     attributes_html,
     focuses_html,
     skills_html,
-    backgrounds_html
+    backgrounds_html,
+    arts_html,
+    disciplines_html,
+    gifts_html
 ) {
 
     var Description = Marionette.ItemView.extend({
@@ -232,6 +238,60 @@ define([
     });
     _.extend(Arts.prototype, VampirePrintHelper);
     
+    var Disciplines = Marionette.ItemView.extend({
+        template: _.template(disciplines_html),
+        templateHelpers: function() {
+            var self = this;
+            var creation = self.model.get("creation");
+            return {
+                creation: creation,
+                character: self.model
+            }
+        },
+        onRender: function() {
+            this.$el.enhanceWithin();
+        },
+        initialize: function(options) {
+            var self = this;
+            self.listenTo(self.model.get("creation"), "saved", self.render);
+            self.listenTo(self.model, "change", self.render);
+            _.bindAll(
+                this,
+                "render",
+                "getTemplate",
+                "onRender"
+            );
+        }
+    });
+    _.extend(Disciplines.prototype, VampirePrintHelper);
+    
+    var Gifts = Marionette.ItemView.extend({
+        template: _.template(gifts_html),
+        templateHelpers: function() {
+            var self = this;
+            var creation = self.model.get("creation");
+            return {
+                creation: creation,
+                character: self.model
+            }
+        },
+        onRender: function() {
+            this.$el.enhanceWithin();
+        },
+        initialize: function(options) {
+            var self = this;
+            self.listenTo(self.model.get("creation"), "saved", self.render);
+            self.listenTo(self.model, "change", self.render);
+            _.bindAll(
+                this,
+                "render",
+                "getTemplate",
+                "onRender"
+            );
+        }
+    });
+    _.extend(Gifts.prototype, VampirePrintHelper);
+    
     var TheRest = Marionette.ItemView.extend({
         getTemplate: function() {
             if ("Werewolf" == this.model.get("type")) {
@@ -309,6 +369,7 @@ define([
             } else {
                 fiveview = new Disciplines({model:character});
             }
+            self.showChildView("nextfive", fiveview, options);
             self.showChildView("therest", new TheRest({
                 model: character
             }), options);
