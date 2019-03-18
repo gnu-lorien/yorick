@@ -23,6 +23,12 @@ define([
             return icds;
         },
 
+        get_arts_affinities_for_kith: function(kith) {
+            var self = this;
+            var icds = self.KithRules.get_arts_affinities_for_kith(kith);
+            return icds;
+        },
+
         art_is_affinity: function(character, trait) {
             var self = this;
             var icds = self.get_arts_affinities(character);

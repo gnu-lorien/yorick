@@ -262,9 +262,8 @@ define([
                     return arts.get("name") == aa;
                 });
                 if (thisart) {
-                    self._updateTraitWrapper = self._updateTraitWrapper.then(function() {
-                        self.unpick_from_creation("ctdbs_arts", thisart.id, 1);
-                    });
+                    console.log("Calling unpick_from in _unpick_previous_arts " + thisart.get("name"));
+                    self.unpick_from_creation("ctdbs_arts", thisart.id, 1);
                 }
             })
             .value();
@@ -274,35 +273,27 @@ define([
  
         update_text: function(target, value) {
             var self = this;
-            self._testWrapper = self._testWrapper || Parse.Promise.as();
-            self._testWrapper = self._testWrapper.always(function() {
-                console.log("Running the first one");
-                return Parse.Promise.as(1);
-            });
-            self._testWrapper = self._testWrapper.then(function(shouldbeone) {
-                console.log("Running the second one. Should be one " + shouldbeone);
-                return Parse.Promise.as(2).then(function(shouldbetwo) {
-                    console.log("Running the sub one. Should be two " + shouldbetwo);
-                })
-            })
-            self._testWrapper.always(function() {
-                console.log("Final. Don't get anything.");
-            })
-            return self._testWrapper
             self._updateTraitWrapper = self._updateTraitWrapper || Parse.Promise.as();
             self._updateTraitWrapper = self._updateTraitWrapper.always(function () {
+                console.log("Fetching all arts if needed");
                 return Parse.Object.fetchAllIfNeeded(self.get("ctdbs_arts") || []);
             });
             self._unpick_previous_arts(self.get_arts_affinities());
             self._updateTraitWrapper = self._updateTraitWrapper.then(function () {
+                console.log("Saving the changeling.");
+                return self.save();
+            });
+            self._updateTraitWrapper = self._updateTraitWrapper.then(function () {
+                console.log("Applying the original update text");
                 return self.constructor.__super__.update_text.apply(self, [target, value]);
             });
-            self._updateTraitWrapper = self._updateTraitWrapper.then(function () {
-                _.each(self.get_arts_affinities(), function (aa) {
-                    self.update_trait(aa, 1, "ctdbs_arts", 1);
-                });
+            console.log("About to add affinities for kith " + value);
+            _.each(self.Costs.get_arts_affinities_for_kith(value), function (aa) {
+                console.log("Updating trait for new art affinity " + aa);
+                self.update_trait(aa, 1, "ctdbs_arts", 1);
             });
             self._updateTraitWrapper = self._updateTraitWrapper.then(function () {
+                console.log("Saving creation after doing the Changeling update text");
                 return self.get("creation").save();
             });
             return self._updateTraitWrapper;
