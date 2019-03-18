@@ -262,7 +262,7 @@ define([
             });
         },
 
-        unpick_from_creation: function(category, picked_trait_id, pick_index, wait) {
+        unpick_from_creation: function(category, picked_trait_id, pick_index) {
             var self = this;
             self._updateTraitWrapper = self._updateTraitWrapper || Parse.Promise.as();
             self._updateTraitWrapper = self._updateTraitWrapper.always(function () {
@@ -279,11 +279,9 @@ define([
                     } else {
                         creation.increment(remaining_name, 1);
                     }
-                    var promises = Parse.Promise.when(creation.save(), self.remove_trait(picked_trait));
-                    if (!wait) {
-                        return Parse.Promise.as(self);
-                    }
-                    return promises.then(function () {
+                    return creation.save().then(function() {
+                        return self.remove_trait(picked_trait);
+                    }).then(function () {
                         return Parse.Promise.as(self);
                     })
                 })
