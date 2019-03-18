@@ -26,15 +26,12 @@ define([
     var instance_methods = _.extend({
         remove_trait: function (trait) {
             var self = this;
-            console.log("Calling trait destroy " + trait.get("name"));
             return trait.destroy().then(function () {
                 var en_options = {
                     alteration_spent: (trait.get("cost") || 0) * -1,
                     reason: "Removed " + trait.get("name"),
                 };
-                console.log("Calling trait remove from category " + trait.get("name"));
                 self.remove(trait.get("category"), trait);
-                console.log("Incrementing trait_count in remove_trait");
                 self.increment("change_count");
                 return self.add_experience_notation(en_options);
             });
@@ -107,7 +104,6 @@ define([
                     name = nameOrTrait;
                 };
                 if (_.isUndefined(wait)) {
-                    console.log("Setting wait to true as the default in update_trait");
                     wait = true;
                 }
                 self.ensure_category(category);
@@ -270,15 +266,12 @@ define([
             var self = this;
             self._updateTraitWrapper = self._updateTraitWrapper || Parse.Promise.as();
             self._updateTraitWrapper = self._updateTraitWrapper.always(function () {
-                console.log("Getting all creation elements");
                 return self.fetch_all_creation_elements().then(function() {
-                    console.log("Got all creation elements. Getting trait. " + category + " " + picked_trait_id);
                     return self.get_trait(category, picked_trait_id);
                 }).then(function (picked_trait) {
                     var picks_name = category + "_" + pick_index + "_picks";
                     var remaining_name = category + "_" + pick_index + "_remaining";
                     var creation = self.get("creation");
-                    console.log("Calling remove from creation " + picks_name + " " + picked_trait.get("name"));
                     creation.remove(picks_name, picked_trait);
                     if (_.contains(self.get_sum_creation_categories(), category)) {
                         var sum = _.sum(creation.get(picks_name), "attributes.value");
@@ -286,12 +279,9 @@ define([
                     } else {
                         creation.increment(remaining_name, 1);
                     }
-                    console.log("Calling creation save in unpick_from");
                     return creation.save().then(function() {
-                        console.log("Done saving creation. Calling remove_trait in unpick_from " + picked_trait.get("name"));
                         return self.remove_trait(picked_trait);
                     }).then(function () {
-                        console.log("Removed trait in unpick_from. Return as self");
                         return Parse.Promise.as(self);
                     })
                 })
@@ -460,10 +450,8 @@ define([
             self._addExperienceEntryWrapper = self._addExperienceEntryWrapper || Parse.Promise.as();
             
             self._addExperienceEntryWrapper = self._addExperienceEntryWrapper.always(function () {
-                console.log("Getting experience notations");
                 return self.get_experience_notations();
             }).then(function (ens) {
-                console.log("got experience notations");
                 var en = self._default_experience_notation(options);
                 // Silence the notification
                 ens.add(en, {silent: true});
@@ -478,7 +466,6 @@ define([
                 }
                 var altered_ens = self._propagate_experience_notation_change(ens, index);
                 return Parse.Object.saveAll(altered_ens).then(function() {
-                    console.log("Saved all altered experience notations");
                     model.trigger('add', model, ens, {index: index});
                     self.trigger("finish_experience_notation_propagation");
                 });

@@ -99,7 +99,6 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.character.update_text(self.targetValue, $(e.target).attr("name")).done(function(b) {
-                console.log("Redirecting to " + self.redirect);
                 window.location.hash = self.redirect;
             });
 
