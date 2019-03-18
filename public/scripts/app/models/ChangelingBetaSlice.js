@@ -274,6 +274,21 @@ define([
  
         update_text: function(target, value) {
             var self = this;
+            self._testWrapper = self._testWrapper || Parse.Promise.as();
+            self._testWrapper = self._testWrapper.always(function() {
+                console.log("Running the first one");
+                return Parse.Promise.as(1);
+            });
+            self._testWrapper = self._testWrapper.then(function(shouldbeone) {
+                console.log("Running the second one. Should be one " + shouldbeone);
+                return Parse.Promise.as(2).then(function(shouldbetwo) {
+                    console.log("Running the sub one. Should be two " + shouldbetwo);
+                })
+            })
+            self._testWrapper.always(function() {
+                console.log("Final. Don't get anything.");
+            })
+            return self._testWrapper
             self._updateTraitWrapper = self._updateTraitWrapper || Parse.Promise.as();
             self._updateTraitWrapper = self._updateTraitWrapper.always(function () {
                 return Parse.Object.fetchAllIfNeeded(self.get("ctdbs_arts") || []);
