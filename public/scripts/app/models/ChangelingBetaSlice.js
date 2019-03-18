@@ -247,6 +247,61 @@ define([
             var self = this;
             return self.Costs.get_arts_affinities(self);
         },
+        
+        _unpick_previous_arts: function(arts_to_remove)
+        {
+            var self = this;
+            self._updateTraitWrapper = self._updateTraitWrapper || Parse.Promise.as();
+            if (arts_to_remove.length == 0) {
+                return self._updateTraitWrapper;
+            }
+            _
+            .chain(self.get_arts_affinities())
+            .each(function (aa) {
+                var thisart = _.find(self.get("ctdbs_arts"), function (arts) {
+                    return arts.get("name") == aa;
+                });
+                if (thisart) {
+                    self._updateTraitWrapper = self._updateTraitWrapper.then(function() {
+                        self.unpick_from_creation("ctdbs_arts", thisart.id, 1);
+                    });
+                }
+            })
+            .value();
+
+            return self._updateTraitWrapper;
+        },
+ 
+        update_text: function(target, value) {
+            var self = this;
+            self._updateTraitWrapper = self._updateTraitWrapper || Parse.Promise.as();
+            self._updateTraitWrapper = self._updateTraitWrapper.always(function () {
+                return Parse.Object.fetchAllIfNeeded(self.get("ctdbs_arts") || []);
+            });
+            self._unpick_previous_arts(self.get_arts_affinities());
+            self._updateTraitWrapper = self._updateTraitWrapper.then(function () {
+                return self.constructor.__super__.update_text.apply(self, [target, value]);
+            });
+            self._updateTraitWrapper = self._updateTraitWrapper.then(function () {
+                _.each(self.get_arts_affinities(), function (aa) {
+                    self.update_trait(aa, 1, "ctdbs_arts", 1);
+                });
+            });
+            self._updateTraitWrapper = self._updateTraitWrapper.then(function () {
+                return self.get("creation").save();
+            });
+            return self._updateTraitWrapper;
+        },
+        
+        unpick_text: function(target) {
+            var self = this;
+            self._updateTraitWrapper = self._updateTraitWrapper || Parse.Promise.as();
+            self._updateTraitWrapper = self._updateTraitWrapper.always(function () {
+                return self.constructor.__super__.unpick_text.apply(self, target);
+            });
+            return self._updateTraitWrapper;
+        },
+
     }, ExpirationMixin );
     
     _.extend(instance_methods, Character);
