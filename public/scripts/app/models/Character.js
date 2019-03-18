@@ -160,6 +160,7 @@ define([
                     modified_trait.set("cost", cost);
                     self.increment("change_count");
                     self.addUnique(category, modified_trait, {silent: true});
+                    self.progress("Updating trait " + modified_trait.get("name"));
     
                     var minimumPromise = self.update_creation_rules_for_changed_trait(category, modified_trait, free_value).then(function() {
                         return self.save();
@@ -279,6 +280,7 @@ define([
                     } else {
                         creation.increment(remaining_name, 1);
                     }
+                    self.progress("Removing creation trait");
                     return creation.save().then(function() {
                         return self.remove_trait(picked_trait);
                     }).then(function () {

@@ -273,6 +273,10 @@ define([
  
         update_text: function(target, value) {
             var self = this;
+            if (target != "ctdbs_kith") {
+                return self.constructor.__super__.update_text.apply(self, [target, value]);
+            }
+
             self._updateTraitWrapper = self._updateTraitWrapper || Parse.Promise.as();
             self._updateTraitWrapper = self._updateTraitWrapper.always(function () {
                 console.log("Fetching all arts if needed");
@@ -294,6 +298,7 @@ define([
             });
             self._updateTraitWrapper = self._updateTraitWrapper.then(function () {
                 console.log("Saving creation after doing the Changeling update text");
+                self.progress("Saving the creation after updating Arts for Kith " + value);
                 return self.get("creation").save();
             });
             return self._updateTraitWrapper;
