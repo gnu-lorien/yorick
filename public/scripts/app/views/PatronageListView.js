@@ -24,6 +24,9 @@ define([
                 },
                 status: function () {
                     return self.model.status();
+                },
+                link_url: function () {
+                    return "#administration/patronage/" + self.model.id;
                 }
             }
         },
