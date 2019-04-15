@@ -3,12 +3,11 @@ define([
 	"jquery",
 	"backbone",
     "marionette",
-    "text!../templates/patronage-list-item.html",
     "backform",
     "bootstrap-datepicker",
     "moment",
     "../helpers/UserWreqr"
-], function( $, Backbone, Marionette, patronage_html, Backform, datepicker, moment, UserChannel ) {
+], function( $, Backbone, Marionette, Backform, datepicker, moment, UserChannel ) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {

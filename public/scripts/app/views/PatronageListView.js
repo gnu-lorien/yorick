@@ -11,6 +11,10 @@ define([
     // Extends Backbone.View
     var View = Marionette.ItemView.extend( {
         tagName: 'li',
+        initialize: function (options) {
+            var self = this;
+            self.options = options;
+        },
         template: function(serialized_model) {
             var self = this;
             return _.template(patronage_html)(serialized_model);
@@ -24,6 +28,9 @@ define([
                 },
                 status: function () {
                     return self.model.status();
+                },
+                link_url: function () {
+                    return self.options.back_url_base + self.model.id;
                 }
             }
         },

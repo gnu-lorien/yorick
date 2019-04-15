@@ -11,8 +11,16 @@ define([
 
     // Extends Backbone.View
     var View = Marionette.CollectionView.extend( {
-        childView: PatronageListView
-
+        childView: PatronageListView,
+        initialize: function(options) {
+            this.options = options;
+        },
+        childViewOptions: function () {
+            var self = this;
+            return {
+                back_url_base: self.options.back_url_base
+            } 
+        }
     } );
 
     // Returns the View class
