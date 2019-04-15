@@ -152,6 +152,8 @@ define([
 
             "profile": "profile",
 
+            "patronage/:id": "a_patronage",
+
             // When #category? is on the url, the category method is called
             "category?:type": "category",
 
@@ -308,6 +310,29 @@ define([
                 }).then(function() {
                     self.userSettingsProfileView = self.userSettingsProfileView || new UserSettingsProfileView().setup();
                     $.mobile.changePage("#user-settings-profile", {reverse: false, changeHash: false});
+                });
+            });
+        },
+        
+        a_patronage: function(id) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#profile");
+            require(["../views/PatronageView"], function (PatronageView) {
+                self.enforce_logged_in().then(function () {
+                    return Parse.Promise.when(
+                        self.get_patronage(id),
+                        UserChannel.get_users());
+                }).then(function (patronage, users) {
+                    if (self.administrationPatronageView) {
+                        self.administrationPatronageView.remove();
+                    }
+                    self.administrationPatronageView = new PatronageView({model: patronage});
+                    self.administrationPatronageView.render();
+                    $("#administration-patronage-view").find("div[role='main']").append(self.administrationPatronageView.el);
+                    $.mobile.changePage("#administration-patronage-view", {reverse: false, changeHash: false});
+                }).fail(PromiseFailReport).fail(function () {
+                    $.mobile.loading("hide");
                 });
             });
         },
@@ -752,7 +777,11 @@ define([
                         UserChannel.get_users());
                 }).then(function (patronages, users) {
                     self.administrationPatronagesView = self.administrationPatronageView ||
-                        new PatronagesView({el: "#administration-patronages-view-list", collection: patronages}).render();
+                        new PatronagesView({
+                            el: "#administration-patronages-view-list",
+                            collection: patronages,
+                            back_url_base: "#administration/patronage/"
+                        }).render();
                     $.mobile.changePage("#administration-patronages-view", {reverse: false, changeHash: false});
                 }).fail(PromiseFailReport).fail(function () {
                     $.mobile.loading("hide");

@@ -155,6 +155,7 @@ define([
             self.showChildView('patronage', new PatronagesView({
                 el: "#patronage-list",
                 collection: self.patronages,
+                back_url_base: "#administration/patronage/"
             }))
             self.showChildView('patronage_new', new NewPatronButtonView({
                 model: new Backbone.Model({userid: ""})
