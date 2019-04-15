@@ -173,7 +173,7 @@ define([
             self.showChildView('patronage', new PatronagesView({
                 el: "#usp-patronage-list",
                 collection: self.patronages,
-                back_url_base: "#patronage/"
+                back_url_base: "#profile/"
             }), options);
             
             var roles = new Backbone.Collection();

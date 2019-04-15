@@ -757,9 +757,12 @@ define([
                 self.enforce_logged_in().then(function() {
                     return new Parse.Query("User").get(id);
                 }).then(function (user) {
-                    self.administrationUserPatronagesView = self.administrationUserPatronagesView || new AdministrationUserPatronagesView({el: "#administration-user-patronages-view"});
-                    self.administrationUserPatronagesView.register(user);
-                    $.mobile.changePage("#administration-user-patronages-view", {reverse: false, changeHash: false});
+                    var is_ad = Parse.User.current().get("admininterface");
+                    if (is_ad) {
+                        self.administrationUserPatronagesView = self.administrationUserPatronagesView || new AdministrationUserPatronagesView({el: "#administration-user-patronages-view"});
+                        self.administrationUserPatronagesView.register(user);
+                        $.mobile.changePage("#administration-user-patronages-view", {reverse: false, changeHash: false});
+                    }
                 }).always(function() {
                     $.mobile.loading("hide");
                 }).fail(PromiseFailReport);
@@ -776,13 +779,16 @@ define([
                         self.get_patronages(),
                         UserChannel.get_users());
                 }).then(function (patronages, users) {
-                    self.administrationPatronagesView = self.administrationPatronageView ||
-                        new PatronagesView({
-                            el: "#administration-patronages-view-list",
-                            collection: patronages,
-                            back_url_base: "#administration/patronage/"
-                        }).render();
-                    $.mobile.changePage("#administration-patronages-view", {reverse: false, changeHash: false});
+                    var is_ad = Parse.User.current().get("admininterface");
+                    if (is_ad) {
+                        self.administrationPatronagesView = self.administrationPatronageView ||
+                            new PatronagesView({
+                                el: "#administration-patronages-view-list",
+                                collection: patronages,
+                                back_url_base: "#administration/patronage/"
+                            }).render();
+                        $.mobile.changePage("#administration-patronages-view", {reverse: false, changeHash: false});
+                    }
                 }).fail(PromiseFailReport).fail(function () {
                     $.mobile.loading("hide");
                 });
@@ -799,9 +805,12 @@ define([
                         self.get_patronages(),
                         UserChannel.get_users());
                 }).then(function (patronages, users) {
-                    self.administrationPatronagesCSVView = self.administrationPatronageCSVView ||
-                        new PatronagesCSVView({el: "#administration-patronages-view-csv-list", collection: patronages}).render();
-                    $.mobile.changePage("#administration-patronages-view-csv", {reverse: false, changeHash: false});
+                    var is_ad = Parse.User.current().get("admininterface");
+                    if (is_ad) {
+                        self.administrationPatronagesCSVView = self.administrationPatronageCSVView ||
+                            new PatronagesCSVView({el: "#administration-patronages-view-csv-list", collection: patronages}).render();
+                        $.mobile.changePage("#administration-patronages-view-csv", {reverse: false, changeHash: false});
+                    }
                 }).fail(PromiseFailReport).fail(function () {
                     $.mobile.loading("hide");
                 });
