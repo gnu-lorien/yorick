@@ -1,0 +1,12 @@
+name,category,order,realm,art_1,art_2,art_3,chosen_art_1,chosen_art_2,chosen_art_3
+Boggans,ctdbs_kiths,1,Scene,Inglenook,Metamorphosis,Soothsay,,,
+Clurichaun,ctdbs_kiths,2,Condition,Naming,Oakenshield,Skullduggery,,,
+Eshu,ctdbs_kiths,3,Scene,Soothsay,Talecraft,Wayfare,,,
+Ghillie Dhu,ctdbs_kiths,4,Nature,Arboreal,Oakenshield,Primal,,,
+Inanimae,ctdbs_kiths,5,Nature,Metamorphosis,Naming,,Oakenshield,Primal,Wayfare
+Pooka,ctdbs_kiths,6,Actor,Metamorphosis,Skullduggery,Wayfare,,,
+Redcaps,ctdbs_kiths,7,Condition,Dread,Primal,Wayfare,,,
+Satyrs,ctdbs_kiths,8,Actor,Metamorphosis,Revelry,Primal,,,
+Sidhe,ctdbs_kiths,10,Time,Soothsay,Sovereign,Wayfare,,,
+Sluagh,ctdbs_kiths,11,Scene,Chicanery,Dread,Soothsay,,,
+Trolls,ctdbs_kiths,12,Fae,Primal,Oakenshield,Metamorphosis,,,
