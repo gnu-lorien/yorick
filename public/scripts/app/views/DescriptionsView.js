@@ -22,7 +22,8 @@ define([
             {
                 name: "descriptiondata",
                 label: "Descriptions",
-                control: "textarea"
+                control: "textarea",
+                maxlength: 100000
             }
         ],
         events: {
@@ -33,6 +34,11 @@ define([
                 console.log(results);               
                 if (0 != results.errors.length) {
                     console.log(JSON.stringify(results.errors));
+                    _.each(results.errors, function(e) {
+                        if (e.row) {
+                            console.log("Row " + e.row + " has bad data " + e.message);
+                        }
+                    });
                     return;
                 }
                 
