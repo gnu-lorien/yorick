@@ -251,7 +251,7 @@ define([
                 InjectAuthData(user);
                 return user.save();
             }).then(function () {
-                self.playerOptionsView = self.playerOptionsView || new PlayerOptionsView({el: "#player-options"}).render();
+                self.playerOptionsView = self.playerOptionsView || new PlayerOptionsView({el: "#player-options"}).setup();
                 $.mobile.changePage("#player-options", {reverse: false, changeHash: false});
             }).fail(PromiseFailReport);
         },
