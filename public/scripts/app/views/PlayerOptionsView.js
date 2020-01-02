@@ -7,22 +7,27 @@ define([
     "parse",
     "../helpers/RoleWreqr",
     "../helpers/TroupeWreqr",
-    "../collections/Troupes"
-], function( Backbone, Marionette, player_options_html, PromiseFailReport, Parse, RoleHelper, TroupeHelper, Troupes) {
+    "../collections/Troupes",
+    "text!../templates/troupe-list-entry.html"
+], function( Backbone, Marionette, player_options_html, PromiseFailReport, Parse, RoleHelper, TroupeHelper, Troupes, troupe_list_entry_html) {
 
     var NoView = Marionette.ItemView.extend({
         template: _.template("Loading Your Troupes...")
     });
 
     var TroupeView = Marionette.ItemView.extend({
-        template: function (serialized_model) {
-            return _.template("<a class='ui-btn' href='#troupe/<%= objectId %>/characters/all'><%= name %></a>")(serialized_model);
+        tagName: 'li',
+        className: 'ul-li-has-thumb',
+        template: _.template(troupe_list_entry_html),
+        templateHelpers: function() {
+            return {"e": this.model};
         }
     });
 
-    var TroupesView = Marionette.CollectionView.extend({
-        tagName: 'div',
+    var TroupesView = Marionette.CompositeView.extend({
+        template: _.template('<h2>Troupe Characters All</h2><ul data-role="listview"></ul>'),
         childView: TroupeView,
+        childViewContainer: "ul",
         emptyView: NoView
     });
 
