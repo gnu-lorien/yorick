@@ -4,11 +4,12 @@ define([
     "marionette",
     "text!../templates/player_options.html",
     "../helpers/PromiseFailReport",
-    "parse"
-], function( Backbone, Marionette, player_options_html, PromiseFailReport, Parse) {
+    "parse",
+    "../helpers/RoleWreqr"
+], function( Backbone, Marionette, player_options_html, PromiseFailReport, Parse, RoleHelper) {
 
     var NoRolesView = Marionette.ItemView.extend({
-        template: _.template("Loading Available Troupes...")
+        template: _.template("Loading Your Troupes...")
     });
 
     var RoleView = Marionette.ItemView.extend({
@@ -35,26 +36,8 @@ define([
         initialize: function(options) {
             var self = this;
             self.options = options || {};
-            self.roles = new Backbone.Collection();
-            _.bindAll(this, "setup", "update_roles");
-        },
-        update_roles: function() {
-            var self = this;
-            self._updateRoleWrapper = self._updateRoleWrapper || Parse.Promise.as();
-            self._updateRoleWrapper = self._updateRoleWrapper.always(function () {
-                var q = new Parse.Query(Parse.Role);
-                q.each(function (role) {
-                    var users_relation = role.getUsers();
-                    var uq = users_relation.query();
-                    uq.equalTo("objectId", Parse.User.current().id);
-                    return uq.each(function (user) {
-                        self.roles.add(role);
-                    }).fail(function (error) {
-                        console.log("Failed in promise for " + role.get("name"));
-                    });
-                }).fail(PromiseFailReport);
-            });
-            return self._updateRoleWrapper;
+            self.roles = RoleHelper.channel.reqres.request("all");
+            _.bindAll(this, "setup");
         },
         setup: function() {
             var self = this;
@@ -71,7 +54,7 @@ define([
             self.showChildView('troupcharactersquickaccess', new RolesView({
                 collection: self.roles
             }), options);
-            self.update_roles();
+            RoleHelper.get_current_roles().fail(PromiseFailReport);
 
             return self;
         },
