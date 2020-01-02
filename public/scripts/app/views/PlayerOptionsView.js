@@ -7,6 +7,10 @@ define([
     "parse"
 ], function( Backbone, Marionette, player_options_html, PromiseFailReport, Parse) {
 
+    var NoRolesView = Marionette.ItemView.extend({
+        template: _.template("Loading Available Troupes...")
+    });
+
     var RoleView = Marionette.ItemView.extend({
         template: function (serialized_model) {
             var id = serialized_model.attributes.name;
@@ -19,7 +23,8 @@ define([
 
     var RolesView = Marionette.CollectionView.extend({
         tagName: 'div',
-        childView: RoleView
+        childView: RoleView,
+        emptyView: NoRolesView
     });
 
     var View = Marionette.LayoutView.extend( {
