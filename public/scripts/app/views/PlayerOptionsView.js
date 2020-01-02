@@ -9,7 +9,11 @@ define([
 
     var RoleView = Marionette.ItemView.extend({
         template: function (serialized_model) {
-            return _.template("The one: <%= attributes.name %>")(serialized_model);
+            var id = serialized_model.attributes.name;
+            id = id.split('_');
+            id = id[1];
+            serialized_model.troupe_id = id;
+            return _.template("<a class='ui-btn' href='#troupe/<%= troupe_id %>/characters/all'><%= attributes.name %></a>")(serialized_model);
         }
     });
 
