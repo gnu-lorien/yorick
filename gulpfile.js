@@ -89,8 +89,8 @@ gulp.task('indexbust', function () {
         .pipe(gulp.dest('dist'));
 })
 
-gulp.task('pubstorm', gulp.series('minify-html', 'copy-print-templates', 'copy-referendum-templates', 'copy-html-templates', 'minify-css', 'images', 'siteconfig-pubstorm', 'appbust', 'indexbust'));
+gulp.task('pubstorm', gulp.series('clean', 'minify-html', 'copy-print-templates', 'copy-referendum-templates', 'copy-html-templates', 'minify-css', 'images', 'minify-js', 'siteconfig-pubstorm', 'appbust', 'indexbust'));
 
-gulp.task('patron', gulp.series('minify-html', 'copy-print-templates', 'copy-referendum-templates', 'copy-html-templates', 'minify-css', 'images', 'siteconfig-patron', 'appbust', 'indexbust'));
+gulp.task('patron', gulp.series('clean', 'minify-html', 'copy-print-templates', 'copy-referendum-templates', 'copy-html-templates', 'minify-css', 'images', 'minify-js', 'siteconfig-patron', 'appbust', 'indexbust'));
 
-gulp.task('heroku', gulp.series('minify-html', 'copy-print-templates', 'copy-referendum-templates', 'copy-html-templates', 'minify-css', 'images', 'siteconfig-heroku', 'appbust', 'indexbust'));
+gulp.task('heroku', gulp.series('clean', 'minify-html', 'copy-print-templates', 'copy-referendum-templates', 'copy-html-templates', 'minify-css', 'images', 'minify-js', 'siteconfig-heroku', 'appbust', 'indexbust'));
