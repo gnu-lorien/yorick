@@ -25,7 +25,7 @@ define([
 
     var TroupesView = Marionette.CompositeView.extend({
         template: function(serialized_model) {
-            return _.template('<h2>Troupe Characters All</h2><% if (loading) { %> <p>Loading Your Troupes...</p><% } %><ul data-role="listview"></ul>')(serialized_model);
+            return _.template('<h3>Troupe View All Characters</h3><% if (loading) { %> <p>Loading Your Troupes...</p><% } %><ul data-role="listview"></ul>')(serialized_model);
         },
         initialize: function(options) {
             var self = this;
