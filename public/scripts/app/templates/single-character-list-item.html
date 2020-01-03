@@ -7,6 +7,11 @@
 <p><%= e.get("wta_faction") %> <%= e.get("archetype") %> <%= e.get("wta_camp") %></p>
 <p><%= e.get("antecedence") %></p>
 <% } else if (e.get("type") == "ChangelingBetaSlice") { %>
+<% if (e.get("ctdbs_kith") || e.get("ctdbs_fealty_court") || e.get("archetype")) { %>
+<p><%= e.get("ctdbs_kith") %> <%= e.get("ctdbs_fealty_court") %> <%= e.get("archetype") %></p>
+<% } %>
+<p><%= e.get("ctdbs_kith_group_type") %> <%= e.get("ctdbs_noble_house") %></p>
+<p><%= e.get("antecedence") %></p>
 <% } else { %>
 <p><%= e.get("sect") %> <%= e.get("archetype") %> <%= e.get("clan") %></p>
 <% if (e.get("antecedence") || e.get("faction") || e.get("title")) { %>
