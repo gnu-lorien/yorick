@@ -308,7 +308,7 @@ define([
             var self = this;
             self._updateTraitWrapper = self._updateTraitWrapper || Parse.Promise.as();
             self._updateTraitWrapper = self._updateTraitWrapper.always(function () {
-                return self.constructor.__super__.unpick_text.apply(self, target);
+                return self.constructor.__super__.unpick_text.apply(self, [target]);
             });
             return self._updateTraitWrapper;
         },
