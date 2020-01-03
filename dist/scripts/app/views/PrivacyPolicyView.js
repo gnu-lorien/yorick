@@ -1,0 +1,1 @@
+define(["jquery","backbone","text!../templates/privacy-policy.html"],function(e,t,i){var n=t.View.extend({initialize:function(){},render:function(){var e=this;return e.template=_.template(i)(),e.$el.find("div[role='main']").html(e.template),this}});return n});
