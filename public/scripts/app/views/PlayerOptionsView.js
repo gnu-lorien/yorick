@@ -11,24 +11,40 @@ define([
     "text!../templates/troupe-list-entry.html"
 ], function( Backbone, Marionette, player_options_html, PromiseFailReport, Parse, RoleHelper, TroupeHelper, Troupes, troupe_list_entry_html) {
 
-    var NoView = Marionette.ItemView.extend({
-        template: _.template("Loading Your Troupes...")
-    });
-
     var TroupeView = Marionette.ItemView.extend({
         tagName: 'li',
         className: 'ul-li-has-thumb',
         template: _.template(troupe_list_entry_html),
         templateHelpers: function() {
             return {"e": this.model};
+        },
+        onRender: function () {
+            this.$el.enhanceWithin();
         }
     });
 
     var TroupesView = Marionette.CompositeView.extend({
-        template: _.template('<h2>Troupe Characters All</h2><ul data-role="listview"></ul>'),
+        template: function(serialized_model) {
+            return _.template('<h2>Troupe Characters All</h2><% if (loading) { %> <p>Loading Your Troupes...</p><% } %><ul data-role="listview"></ul>')(serialized_model);
+        },
+        initialize: function(options) {
+            var self = this;
+            self.options = options;
+            this.listenTo(self.model, "change", self.render);
+        },
         childView: TroupeView,
         childViewContainer: "ul",
-        emptyView: NoView
+        onRender: function () {
+            this.$el.enhanceWithin();
+        },
+        collectionEvents: {
+            "reset": function() {
+                var self = this;
+                _.defer(function () {
+                    self.$el.enhanceWithin();
+                });
+            }
+        }
     });
 
     var View = Marionette.LayoutView.extend( {
@@ -73,12 +89,19 @@ define([
             if (!is_ad && !is_st)
                 return self;
 
+            var setupState = new Backbone.Model;
+            setupState.set("loading", true);
             self.showChildView('troupcharactersquickaccess', new TroupesView({
+                model: setupState,
                 collection: self.troupes
             }), options);
             // Get the troupes first so we have them when the roles start
-            TroupeHelper.get_troupes().fail(PromiseFailReport);
-            RoleHelper.get_current_roles().fail(PromiseFailReport);;
+            var loadingPromises = [];
+            loadingPromises.push(TroupeHelper.get_troupes());
+            loadingPromises.push(RoleHelper.get_current_roles());
+            Parse.Promise.when(loadingPromises).fail(PromiseFailReport).always(function () {
+                setupState.set("loading", false);
+            });
 
             return self;
         },

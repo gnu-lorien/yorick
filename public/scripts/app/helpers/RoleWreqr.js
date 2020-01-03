@@ -30,7 +30,7 @@ define([
                 }
                 self.last_user_id = Parse.User.current().id;
                 var q = new Parse.Query(Parse.Role);
-                q.each(function (role) {
+                return q.each(function (role) {
                     var users_relation = role.getUsers();
                     var uq = users_relation.query();
                     uq.equalTo("objectId", Parse.User.current().id);
