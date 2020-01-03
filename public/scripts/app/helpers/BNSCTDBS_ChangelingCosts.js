@@ -118,7 +118,7 @@ define([
                 return self.get_trait_cost_on_table(skill_ct, trait);
             }
             
-            if ("realms" == category) {
+            if ("ctdbs_realms" == category) {
                 var realms = character.realms().length;
                 return self.get_cost_on_table(self.get_cost_table(8), realms);
             }
