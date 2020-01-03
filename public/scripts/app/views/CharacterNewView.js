@@ -1,6 +1,8 @@
 // Category View
 // =============
 
+/* global _ */
+
 // Includes file dependencies
 define([
 	"jquery",
@@ -8,7 +10,8 @@ define([
     "../models/Vampire",
     "backform",
     "../models/Werewolf",
-], function( $, Backbone, Vampire, Backform, Werewolf ) {
+    "../models/ChangelingBetaSlice"
+], function( $, Backbone, Vampire, Backform, Werewolf, ChangelingBetaSlice ) {
 
     // Extends Backbone.View
     var View = Backform.Form.extend({
@@ -42,7 +45,8 @@ define([
                 control: "select",
                 options: [
                     {label: "Vampire", value: "Vampire"},
-                    {label: "Werewolf", value: "Werewolf"}
+                    {label: "Werewolf", value: "Werewolf"},
+                    {label: "Changeling", value: "ChangelingBetaSlice"}
                 ]
             },
             {
@@ -77,14 +81,21 @@ define([
                     window.location.hash = self.redirectSave({"character": populated_character});
                 }, function(error) {
                     console.log("Failed to save a character", error.message);
-                })               
-            } else {
+                })
+            } else if (self.model.get("type") == "Werewolf") {
                 $.mobile.loading("show");
                 Werewolf.create(self.model.get("name")).then(function(populated_character) {
                     window.location.hash = self.redirectSave({"character": populated_character});
                 }, function(error) {
                     console.log("Failed to save a character", error.message);
-                })               
+                })
+            } else {
+                $.mobile.loading("show");
+                ChangelingBetaSlice.create(self.model.get("name")).then(function(populated_character) {
+                    window.location.hash = self.redirectSave({"character": populated_character});
+                }, function(error) {
+                    console.log("Failed to save a character", error.message);
+                })
             }
             
             return false;

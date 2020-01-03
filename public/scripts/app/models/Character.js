@@ -160,8 +160,9 @@ define([
                     modified_trait.set("cost", cost);
                     self.increment("change_count");
                     self.addUnique(category, modified_trait, {silent: true});
+                    self.progress("Updating trait " + modified_trait.get("name"));
     
-                    var minimumPromise = self._update_creation(category, modified_trait, free_value).then(function() {
+                    var minimumPromise = self.update_creation_rules_for_changed_trait(category, modified_trait, free_value).then(function() {
                         return self.save();
                     }).then(function() {
                         if (0 != spend) {
@@ -262,7 +263,7 @@ define([
             });
         },
 
-        unpick_from_creation: function(category, picked_trait_id, pick_index, wait) {
+        unpick_from_creation: function(category, picked_trait_id, pick_index) {
             var self = this;
             self._updateTraitWrapper = self._updateTraitWrapper || Parse.Promise.as();
             self._updateTraitWrapper = self._updateTraitWrapper.always(function () {
@@ -279,11 +280,10 @@ define([
                     } else {
                         creation.increment(remaining_name, 1);
                     }
-                    var promises = Parse.Promise.when(creation.save(), self.remove_trait(picked_trait));
-                    if (!wait) {
-                        return Parse.Promise.as(self);
-                    }
-                    return promises.then(function () {
+                    self.progress("Removing creation trait");
+                    return creation.save().then(function() {
+                        return self.remove_trait(picked_trait);
+                    }).then(function () {
                         return Parse.Promise.as(self);
                     })
                 })

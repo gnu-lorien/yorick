@@ -1,0 +1,15 @@
+<% _.each(_.zip(character.all_text_attributes(), character.all_text_attributes_pretty_names()), function (thispair) { %>
+<% var st = thispair[0]; %>
+<% var ust = thispair[1]; %>
+<% if (_.isFunction(ust)) { %>
+<%     ust = ust(character) %>
+<% } %>
+<ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+    <% if (character.get(st)) { %>
+    <li data-role="list-divider"><%= ust %><p><%= character.get(st) %></p></li>
+    <li><a href="#charactercreate/simpletext/<%= st %>s/<%= st %>/<%= character.id %>/pick">Repick <%= ust %></a></li>
+    <% } else { %>
+    <li><a href="#charactercreate/simpletext/<%= st %>s/<%= st %>/<%= character.id %>/pick">Pick <%= ust %></a></li>
+    <% } %>
+</ul>
+<% }) %>

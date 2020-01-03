@@ -3,15 +3,15 @@ define([
     "underscore",
 	"jquery",
 	"backbone",
+	"parse",
     "text!../templates/character-summarize-list-item.html",
     "marionette",
-    "../models/Vampire",
     "backform",
     "text!../templates/character-summarize-list-item-csv.html",
     "text!../templates/character-summarize-list-item-csv-header-grouped.html",
     "../helpers/PromiseFailReport",
     "papaparse"
-], function( _, $, Backbone, character_summarize_list_item_html, Marionette, Vampire, Backform, character_summarize_list_item_csv_html, character_summarize_list_item_csv_header_grouped_html, PromiseFailReport, Papa ) {
+], function( _, $, Backbone, Parse, character_summarize_list_item_html, Marionette, Backform, character_summarize_list_item_csv_html, character_summarize_list_item_csv_header_grouped_html, PromiseFailReport, Papa ) {
 
     var DataForm = Backform.Form.extend({
         fields: [
@@ -22,8 +22,7 @@ define([
             {
                 name: "descriptiondata",
                 label: "Descriptions",
-                control: "textarea",
-                maxlength: 100000
+                control: "textarea"
             }
         ],
         events: {
@@ -34,17 +33,12 @@ define([
                 console.log(results);               
                 if (0 != results.errors.length) {
                     console.log(JSON.stringify(results.errors));
-                    _.each(results.errors, function(e) {
-                        if (e.row) {
-                            console.log("Row " + e.row + " has bad data " + e.message);
-                        }
-                    });
                     return;
                 }
                 
                 var promises = _.map(results.data, function(d, i) {
                     // Find any existing data that matches the category and name
-                    var q = new Parse.Query("Description")
+                    var q = new Parse.Query("bnsctdbs_KithRule")
                         .equalTo("category", d.category)
                         .equalTo("name", d.name);
                     var disguy;
@@ -52,7 +46,7 @@ define([
                         // If found, use that as the update object
                         // Otherwise create a new update object
                         if (!toupdate) {
-                            toupdate = new Parse.Object("Description", {
+                            toupdate = new Parse.Object("bnsctdbs_KithRule", {
                                 name: d.name,
                                 category: d.category
                             });
@@ -134,9 +128,9 @@ define([
             var self = this
             var q;
             if (formvalues.get("category") == "All") {
-                q = new Parse.Query("Description");
+                q = new Parse.Query("bnsctdbs_KithRule");
             } else {
-                q = new Parse.Query("Description").equalTo("category", formvalues.get("category"));
+                q = new Parse.Query("bnsctdbs_KithRule").equalTo("category", formvalues.get("category"));
             }
             var descriptions = [];
             return q.each(function (d) {
@@ -204,7 +198,7 @@ define([
         },
         update_categories: function () {
             var self = this;
-            var q = new Parse.Query("Description");
+            var q = new Parse.Query("bnsctdbs_KithRule");
             q.select("category");
             var categories = {};
             return q.each(function (d) {

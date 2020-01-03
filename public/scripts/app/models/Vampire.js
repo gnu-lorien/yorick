@@ -51,6 +51,7 @@ define([
     ];
     
     var TEXT_ATTRIBUTES = ["clan", "archetype", "sect", "faction", "title", "antecedence"];
+    var TEXT_ATTRIBUTES_PRETTY_NAMES = ["Clan", "Archetype", "Sect", function (character) { return "Faction"; }, "Title", "Primary, Secondary, or NPC"];
     
     var SUM_CREATION_CATEGORIES = ["merits", "flaws"];
     
@@ -59,7 +60,7 @@ define([
         get_sum_creation_categories: function() {
             return SUM_CREATION_CATEGORIES;
         },
-        _update_creation: function(category, modified_trait, freeValue) {
+        update_creation_rules_for_changed_trait: function(category, modified_trait, freeValue) {
             var self = this;
             if (!_.contains(["merits", "flaws"], category)) {
                 if (!freeValue) {
@@ -163,6 +164,10 @@ define([
             return TEXT_ATTRIBUTES;
         },
         
+        all_text_attributes_pretty_names: function() {
+            return TEXT_ATTRIBUTES_PRETTY_NAMES;
+        },
+ 
         _raw_generation: function() {
             var self = this;
             var generation;
@@ -397,6 +402,11 @@ define([
     Model.all_text_attributes = function () {
         return TEXT_ATTRIBUTES;
     };
+    
+    Model.all_text_attributes_pretty_names = function () {
+        return TEXT_ATTRIBUTES_PRETTY_NAMES;
+    };
+
 
     // Returns the Model class
     return Model;

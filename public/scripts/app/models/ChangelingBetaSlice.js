@@ -12,12 +12,12 @@ define([
     "../collections/VampireChangeCollection",
     "../collections/ExperienceNotationCollection",
     "../models/ExperienceNotation",
-    "../helpers/BNSWTAV1_WerewolfCosts",
+    "../helpers/BNSCTDBS_ChangelingCostsFetcher",
     "../helpers/PromiseFailReport",
     "../helpers/ExpirationMixin",
     "../helpers/UserWreqr",
     "../models/Character"
-], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSWTAV1_WerewolfCosts, PromiseFailReport, ExpirationMixin, UserChannel, Character ) {
+], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSCTDBS_ChangelingCostsFetcher, PromiseFailReport, ExpirationMixin, UserChannel, Character ) {
 
     var ALL_SIMPLETRAIT_CATEGORIES = [
         ["attributes", "Attributes", "Attributes"],
@@ -26,31 +26,28 @@ define([
         ["focus_socials", "Social Focus", "Attributes"],
         ["health_levels", "Health Levels", "Expended"],
         ["willpower_sources", "Willpower", "Expended"],
-        ["wta_gnosis_sources", "Gnosis", "Expended"],
         ["skills", "Skills", "Skills"],
         ["lore_specializations", "Lore Specializations", "Skills"],
         ["academics_specializations", "Academics Specializations", "Skills"],
         ["drive_specializations", "Drive Specializations", "Skills"],
         ["linguistics_specializations", "Languages", "Skills"],
-        ["wta_gifts", "Gifts", "Gifts"],
-        ["extra_affinity_links", "Extra Affinities", "Gifts"],
-        ["wta_backgrounds", "Backgrounds", "Backgrounds"],
-        ["wta_territory_specializations", "Territory Specializations", "Backgrounds"],
+        ["ctdbs_arts", "Arts", "Arts"],
+        ["ctdbs_arts_affinities_links", "Arts Affinities", "Arts"],
+        ["ctdbs_realms", "Realms", "Arts"],
+        ["ctdbs_backgrounds", "Backgrounds", "Backgrounds"],
+        ["ctdbs_holdings_specializations", "Holdings Specializations", "Backgrounds"],
         ["contacts_specializations", "Contacts Specializations", "Backgrounds"],
         ["allies_specializations", "Allies Specializations", "Backgrounds"],
         ["influence_elite_specializations", "Influence: Elite", "Backgrounds"],
         ["influence_underworld_specializations", "Influence: Underworld", "Backgrounds"],
-        ["wta_rites", "Rites", "Backgrounds"],
-        ["wta_monikers", "Monikers", "Backgrounds"],
-        ["wta_merits", "Merits", "Merits and Flaws"],
-        ["wta_flaws", "Flaws", "Merits and Flaws"],
-        ["wta_totem_bonus_traits", "Totem Bonuses", "Pack"]
+        ["ctdbs_merits", "Merits", "Merits and Flaws"],
+        ["ctdbs_flaws", "Flaws", "Merits and Flaws"],
     ];
     
-    var TEXT_ATTRIBUTES = ["archetype", "archetype_2", "wta_breed", "wta_auspice", "wta_tribe", "wta_camp", "wta_faction", "antecedence"];
-    var TEXT_ATTRIBUTES_PRETTY_NAMES = ["Archetype", "Second Archetype", "Breed", "Auspice", "Tribe", "Camp", "Faction", "Primary, Secondary, or NPC"];
+    var TEXT_ATTRIBUTES = ["archetype", "ctdbs_kith", "ctdbs_fealty_court", "ctdbs_noble_house", "ctdbs_kith_group_type", "antecedence"];
+    var TEXT_ATTRIBUTES_PRETTY_NAMES = ["Archetype", "Kith", "Court", "House", function(character) { return "Group"; }, "Primary, Secondary, or NPC"];
     
-    var SUM_CREATION_CATEGORIES = ["wta_merits", "wta_flaws"];
+    var SUM_CREATION_CATEGORIES = ["ctdbs_merits", "ctdbs_flaws"];
     
     // The Model constructor
     var instance_methods = _.extend({
@@ -59,13 +56,14 @@ define([
         },
         update_creation_rules_for_changed_trait: function(category, modified_trait, freeValue) {
             var self = this;
-            if (!_.contains(["wta_merits", "wta_flaws"], category)) {
+            // The creation model doesn't need to change for merits without free values
+            if (!_.contains(["ctdbs_merits", "ctdbs_flaws"], category)) {
                 if (!freeValue) {
                     return Parse.Promise.as(self);
                 }
             }
             /* FIXME Move to the creation model */
-            if (!_.contains(["wta_flaws", "wta_merits", "focus_mentals", "focus_physicals", "focus_socials", "attributes", "skills", "wta_gifts", "wta_backgrounds"], category)) {
+            if (!_.contains(["ctdbs_flaws", "ctdbs_merits", "focus_mentals", "focus_physicals", "focus_socials", "attributes", "skills", "ctdbs_arts", "ctdbs_backgrounds"], category)) {
                 return Parse.Promise.as(self);
             }
             return Parse.Object.fetchAllIfNeeded([self.get("creation")]).then(function (creations) {
@@ -73,7 +71,7 @@ define([
                 var stepName = category + "_" + freeValue + "_remaining";
                 var listName = category + "_" + freeValue + "_picks";
                 creation.addUnique(listName, modified_trait);
-                if (_.contains(["wta_merits", "wta_flaws"], category)) {
+                if (_.contains(["ctdbs_merits", "ctdbs_flaws"], category)) {
                     var sum = _.sum(creation.get(listName), "attributes.value");
                     creation.set(stepName, 7 - sum);
                 } else {
@@ -104,18 +102,18 @@ define([
                 "skills_3_remaining": 2,
                 "skills_2_remaining": 3,
                 "skills_1_remaining": 4,
-                "wta_backgrounds_3_remaining": 1,
-                "wta_backgrounds_2_remaining": 1,
-                "wta_backgrounds_1_remaining": 1,
-                "wta_gifts_1_remaining": 3,
+                "ctdbs_backgrounds_3_remaining": 1,
+                "ctdbs_backgrounds_2_remaining": 1,
+                "ctdbs_backgrounds_1_remaining": 1,
                 "attributes_7_remaining": 1,
                 "attributes_5_remaining": 1,
                 "attributes_3_remaining": 1,
+                "ctdbs_arts_1_remaining": 3,
                 "focus_mentals_1_remaining": 1,
                 "focus_socials_1_remaining": 1,
                 "focus_physicals_1_remaining": 1,
-                "wta_merits_0_remaining": 7,
-                "wta_flaws_0_remaining": 7,
+                "ctdbs_merits_0_remaining": 7,
+                "ctdbs_flaws_0_remaining": 7,
                 "phase_1_finished": false,
                 "initial_xp": 30,
                 "phase_2_finished": false,
@@ -135,7 +133,7 @@ define([
             var self = this;
             return self.ensure_creation_rules_exist().then(function () {
                 var creation = self.get("creation");
-                var listCategories = ["wta_flaws", "wta_merits", "focus_mentals", "focus_physicals", "focus_socials", "attributes", "skills", "wta_backgrounds", "wta_gifts"];
+                var listCategories = ["ctdbs_flaws", "ctdbs_merits", "focus_mentals", "focus_physicals", "focus_socials", "attributes", "skills", "ctdbs_backgrounds", "ctdbs_arts"];
                 var objectIds = [];
                 _.each(listCategories, function(category) {
                     _.each(_.range(-1, 10), function(i) {
@@ -164,33 +162,31 @@ define([
             return TEXT_ATTRIBUTES_PRETTY_NAMES;
         },
  
-        _raw_rank: function() {
+        _raw_seeming: function() {
             var self = this;
-            var rank;
-            _.each(self.get("wta_backgrounds"), function(b) {
-                if (b.get_base_name() == "Rank") {
-                    rank = b.get("value");
+            var seeming;
+            _.each(self.get("ctdbs_backgrounds"), function(b) {
+                if (b.get_base_name() == "Seeming") {
+                    seeming = b.get("value");
                 }
             });
 
-            return rank;
+            return seeming;
         },
 
-        rank: function() {
-            return this._raw_rank() || 0;
+        seeming: function() {
+            return this._raw_seeming() || 0;
         },
 
-        has_rank: function() {
-            return !_.isUndefined(this._raw_rank());
+        has_seeming: function() {
+            return !_.isUndefined(this._raw_seeming());
         },
         
-        get_gnosis_total: function() {
+        realms: function() {
             var self = this;
-            var wps = self.get("wta_gnosis_sources");
-            var total = _.sum(wps, "attributes.value");
-            return total;
+            return self.get("ctdbs_realms");
         },
-
+ 
         calculate_trait_cost: function(trait) {
             var self = this;
             return self.Costs.calculate_trait_cost(self, trait);
@@ -207,10 +203,10 @@ define([
             var self = this;
             var current_categories = [
                 "skills",
-                "wta_backgrounds",
-                "wta_gifts",
+                "ctdbs_backgrounds",
+                "ctdbs_arts",
                 "attributes",
-                "wta_merits"
+                "ctdbs_merits"
                 ];
             var response = {};
             var objectIds = _.chain(current_categories).map(function(category) {
@@ -239,26 +235,84 @@ define([
         initialize_costs: function() {
             var self = this;
             if (_.isUndefined(self.Costs)) {
-                self.Costs = new BNSWTAV1_WerewolfCosts;
-                return self.Costs.initialize().then(function () {
+                return BNSCTDBS_ChangelingCostsFetcher().then(function (costs) {
+                    self.Costs = costs;
                     return Parse.Promise.as(self);
-                });
+                })
             }
             return Parse.Promise.as(self);
         },
         
-        get_affinities: function() {
+        get_arts_affinities: function() {
             var self = this;
-            var affinities = [
-                self.get("wta_tribe"),
-                self.get("wta_auspice"),
-                self.get("wta_breed"),
-            ];
-            affinities = _.without(affinities, undefined);
-            var extra_affinities = _.map(self.get('extra_affinity_links'), "attributes.name");
-            extra_affinities = _.without(extra_affinities, undefined);
-            return [].concat(affinities, extra_affinities);
+            return self.Costs.get_arts_affinities(self);
         },
+        
+        _unpick_previous_arts: function(arts_to_remove)
+        {
+            var self = this;
+            self._updateTraitWrapper = self._updateTraitWrapper || Parse.Promise.as();
+            if (arts_to_remove.length == 0) {
+                return self._updateTraitWrapper;
+            }
+            _
+            .chain(self.get_arts_affinities())
+            .each(function (aa) {
+                var thisart = _.find(self.get("ctdbs_arts"), function (arts) {
+                    return arts.get("name") == aa;
+                });
+                if (thisart) {
+                    console.log("Calling unpick_from in _unpick_previous_arts " + thisart.get("name"));
+                    self.unpick_from_creation("ctdbs_arts", thisart.id, 1);
+                }
+            })
+            .value();
+
+            return self._updateTraitWrapper;
+        },
+ 
+        update_text: function(target, value) {
+            var self = this;
+            if (target != "ctdbs_kith") {
+                return self.constructor.__super__.update_text.apply(self, [target, value]);
+            }
+
+            self._updateTraitWrapper = self._updateTraitWrapper || Parse.Promise.as();
+            self._updateTraitWrapper = self._updateTraitWrapper.always(function () {
+                console.log("Fetching all arts if needed");
+                return Parse.Object.fetchAllIfNeeded(self.get("ctdbs_arts") || []);
+            });
+            self._unpick_previous_arts(self.get_arts_affinities());
+            self._updateTraitWrapper = self._updateTraitWrapper.then(function () {
+                console.log("Saving the changeling.");
+                return self.save();
+            });
+            self._updateTraitWrapper = self._updateTraitWrapper.then(function () {
+                console.log("Applying the original update text");
+                return self.constructor.__super__.update_text.apply(self, [target, value]);
+            });
+            console.log("About to add affinities for kith " + value);
+            _.each(self.Costs.get_arts_affinities_for_kith(value), function (aa) {
+                console.log("Updating trait for new art affinity " + aa);
+                self.update_trait(aa, 1, "ctdbs_arts", 1);
+            });
+            self._updateTraitWrapper = self._updateTraitWrapper.then(function () {
+                console.log("Saving creation after doing the Changeling update text");
+                self.progress("Saving the creation after updating Arts for Kith " + value);
+                return self.get("creation").save();
+            });
+            return self._updateTraitWrapper;
+        },
+        
+        unpick_text: function(target) {
+            var self = this;
+            self._updateTraitWrapper = self._updateTraitWrapper || Parse.Promise.as();
+            self._updateTraitWrapper = self._updateTraitWrapper.always(function () {
+                return self.constructor.__super__.unpick_text.apply(self, target);
+            });
+            return self._updateTraitWrapper;
+        },
+
     }, ExpirationMixin );
     
     _.extend(instance_methods, Character);
@@ -278,8 +332,9 @@ define([
             //q.equalTo("owner", Parse.User.current());
             q.include("portrait");
             q.include("owner");
-            q.include("wta_backgrounds");
-            q.include("extra_affinity_links");
+            q.include("ctdbs_backgrounds");
+            q.include("ctdbs_arts_affinities_links");
+            q.include("ctdbs_realms");
             return q.get(id).then(function(m) {
                 character_cache._character = m;
                 return Model.get_character(id, categories, character_cache);
@@ -339,7 +394,7 @@ define([
         return UserChannel.get_latest_patronage(Parse.User.current()).then(function (patronage) {
             var changes = {
                 name: name,
-                type: "Werewolf",
+                type: "ChangelingBetaSlice",
                 owner: Parse.User.current(),
                 change_count: 0
             };
@@ -365,9 +420,6 @@ define([
             progress("Adding Willpower");
             return populated_character.update_trait("Willpower", 6, "willpower_sources", 6, true);
         }).then(function () {
-            progress("Adding Gnosis");
-            return populated_character.update_trait("Gnosis", 10, "wta_gnosis_sources", 6, true);
-        }).then(function () {
             progress("Done!");
             return Parse.Promise.as(populated_character);
         });
@@ -390,7 +442,6 @@ define([
     Model.all_text_attributes_pretty_names = function () {
         return TEXT_ATTRIBUTES_PRETTY_NAMES;
     };
-
 
     // Returns the Model class
     return Model;
