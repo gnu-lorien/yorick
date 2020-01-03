@@ -1,0 +1,32 @@
+<% if (!patronagestatus) { %>
+<p>You are not currently a Patron of Underground Theater so you are not eligible to vote.</p>
+<% } else if (ballot_message || ballot) { %>
+<% if (ballot_message) { %>
+<p><%= ballot_message.message %></p>
+<% } %>
+<% if (ballot) { %>
+<p>On <%= ballot.createdAt %> you voted for <%= referendum.get(ballot.get("choice")) %></p>
+<% } %>
+<% } else { %>
+<% _.each(_.range(0, 4), function(i) { %>
+<% var optstr = "option_" + i; %>
+<% if (optstr && referendum.get(optstr)) { %>
+<p>
+<a name="<%= optstr %>" href="#" class="ui-btn">
+    <%= referendum.get(optstr) %>
+</a>
+</p>
+<% } %>
+<% }); %>
+<% } %>
+<% if (ballots) { %>
+<p>
+<% _.each(ballots.models, function(ballot) { %>
+<% if (_.isUndefined(ballot.get("caster"))) { %>
+"USER DELETED","USER REALNAME DELETED","USER EMAIL DELETED","<%= ballot.get("choice") %>","<%= ballot.updatedAt %>"<br/>
+<% } else { %>
+"<%= ballot.get("caster").get("username") %>","<%= ballot.get("caster").get("realname") %>","<%= ballot.get("caster").get("email") %>","<%= ballot.get("choice") %>","<%= ballot.updatedAt %>"<br/>
+<% } %>
+<% }); %>
+</p>
+<% } %>

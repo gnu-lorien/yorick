@@ -1,0 +1,28 @@
+<% collection.each(function(e) { %>
+<li class="ui-li-has-thumb">
+    <a href="<%= _.template(click_url)({character_id: e.id}) %>" backendId="<%= e.id %>" class="ui-btn ui-btn-icon-right ui-icon-carat-r character-list-item">
+        <img src="<%= e.get_thumbnail_sync(128) %>" class="character-link-portrait"/>
+        <h2><%= e.get("name") %></h2>
+        <% if (e.get("type") == "Werewolf") { %>
+        <% if (e.get("wta_tribe") || e.get("wta_breed") || e.get("wta_auspice")) { %>
+        <p><%= e.get("wta_tribe") %> <%= e.get("wta_breed") %> <%= e.get("wta_auspice") %></p>
+        <% } %>
+        <p><%= e.get("wta_faction") %> <%= e.get("archetype") %> <%= e.get("wta_camp") %></p>
+        <p><%= e.get("antecedence") %></p>
+        <% } else { %>
+        <p><%= e.get("sect") %> <%= e.get("archetype") %> <%= e.get("clan") %></p>
+        <% if (e.get("antecedence") || e.get("faction") || e.get("title")) { %>
+        <p><%= e.get("antecedence") %> <%= e.get("faction") %> <%= e.get("title") %></p>
+        <% } %>
+        <% } %>
+        <% if (e.has("owner")) { %>
+        <% if (e.get("owner").get("username")) { %>
+            <% var user = e.get("owner"); %>
+            <p><%= user.get("realname") %> <%= user.get("email") %> <%= user.get("username") %></p>
+        <% }} else { %>
+            <p>DELETED</p>
+        <% } %>
+        <p>Patronage: <%= e.status() %></p>
+    </a>
+</li>
+<% }); %>

@@ -1,0 +1,15 @@
+"<%= e.get("name").replace(new RegExp("\"", "g"), "\"\"") %>","<%= e.get("sect") %>","<%= e.get("archetype") %>","<%= e.get("clan") %>",
+"<%= e.get("antecedence") %>","<%= e.get("faction") %>","<%= e.get("title") %>",
+    <% if (e.has("owner")) { %>
+    <% if (e.get("owner").get("username")) { %>
+        <% var user = e.get("owner"); %>
+"<%= user.get("realname") %>","<%= user.get("email") %>","<%= user.get("username") %>","<%= user.get("massmailauthorization") %>",
+    <% }} else { %>
+"","","","",
+    <% } %>
+"<%= e.status() %>",
+    <% if (mode && e.get(mode) && e.get(mode).length != 0) { %>
+        <% _.each(_.sortBy(e.get(mode), "attributes.name"), function (st) { %>
+"<%= st.get("name")%>","<%= st.get("value") %>",
+        <% }) %>
+    <% } %>
