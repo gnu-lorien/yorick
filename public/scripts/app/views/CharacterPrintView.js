@@ -674,7 +674,7 @@ define([
                         format: 4
                     },{
                         display: "Monikers",
-                        name: "monikers",
+                        name: "wta_monikers",
                         format: 4
                     }]
                 }), options);
