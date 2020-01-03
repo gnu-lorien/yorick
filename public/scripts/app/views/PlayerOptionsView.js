@@ -71,7 +71,9 @@ define([
                     var id = role.attributes.attributes.name;
                     id = id.split('_');
                     id = id[1];
-                    troupes.push(TroupeHelper.channel.reqres.request("get", id));
+                    var matching_troupe = TroupeHelper.channel.reqres.request("get", id);
+                    if (matching_troupe)
+                        troupes.push(matching_troupe);
                 });
                 self.troupes.reset(troupes);
             });
