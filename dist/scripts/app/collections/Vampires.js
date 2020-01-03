@@ -1,1 +1,0 @@
-define(["jquery","underscore","parse","../models/Vampire"],function(e,t,r,a){var n=r.Collection.extend({model:a,comparator:function(e,r){var a,n,o=this;return t.has(o,"sortbycreated")?(a=r.createdAt,n=e.createdAt):(a=e.get("name"),n=r.get("name")),t.gt(a,n)?1:t.lt(a,n)?-1:0}});return n});

@@ -1,1 +1,0 @@
-define(["jquery","backbone","text!../templates/single-character-list-item.html"],function(t,e,i){var n=e.View.extend({template:_.template(i),initialize:function(t){this.character=t},render:function(){return this.$el.html(this.template({e:this.character})),this}});return n});

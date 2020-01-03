@@ -1,1 +1,0 @@
-define(["jquery","parse","../models/VampireChange"],function(e,n,r){var o=n.Collection.extend({model:r});return o});

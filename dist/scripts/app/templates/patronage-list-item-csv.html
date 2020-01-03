@@ -1,9 +1,0 @@
-<% var u = user() %>
-<% if (u) {%>
-    "<%= owner.objectId %>","<%= u.get("username") %>","<%= u.get("realname") %>","<%= u.get("email") %>",
-<% } else { %>
-    "","","","",
-<% } %>
-"<%= moment(paidOn.iso).format('MM/DD/YYYY') %>",
-"<%= moment(expiresOn.iso).format('MM/DD/YYYY') %>",
-"<%= status() %>"

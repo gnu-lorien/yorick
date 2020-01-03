@@ -1,1 +1,0 @@
-define(["jquery","backbone"],function(e,t){var n=t.View.extend({initialize:function(){},render:function(){var t=this;return this.model.calculate_total_cost().then(function(n){t.template=_.template(e("script#characterCostsView").html())({character:t.model,costs:n}),t.$el.find("div[role='main']").html(t.template),t.$el.enhanceWithin()}),this}});return n});

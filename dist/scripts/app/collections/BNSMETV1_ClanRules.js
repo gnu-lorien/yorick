@@ -1,1 +1,0 @@
-define(["underscore","parse","../models/BNSMETV1_ClanRule"],function(e,n,i){var t=n.Collection.extend({model:i,get_in_clan_disciplines:function(n){var i=this,t=n.get("clan"),l=e.find(i.models,function(e){return e.get("clan")==t});return l?[l.get("discipline_1"),l.get("discipline_2"),l.get("discipline_3")]:[]}});return t});

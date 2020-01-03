@@ -1,7 +1,0 @@
-<a href="#troupe/<%= troupe.id %>/portrait">
-    <% if (troupe.get('portrait')) { %>
-        <img src="<%= troupe.get('portrait').get('original').url() %>"/>
-    <% } else { %>
-        Add Portrait
-    <% } %>
-</a>

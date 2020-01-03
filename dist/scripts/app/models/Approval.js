@@ -1,1 +1,0 @@
-define(["jquery","parse"],function(e,r){var n=r.Object.extend("VampireApproval",{});return n});

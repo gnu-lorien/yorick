@@ -1,1 +1,0 @@
-define(["jquery","parse","../models/ExperienceNotation"],function(e,n,r){var t=n.Collection.extend({model:r,comparator:function(e,n){var r=e.get("entered"),t=n.get("entered");return r>t?-1:t>r?1:0}});return t});
