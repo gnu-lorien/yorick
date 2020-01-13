@@ -1,2 +1,2 @@
 web: npm start
-web: npm dashboard
+web: npm run dashboard
