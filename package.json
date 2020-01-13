@@ -19,6 +19,7 @@
     "lodash": "^4.17.10",
     "moment": "^2.22.2",
     "parse": "^1.9.0",
+    "parse-dashboard": "^2.0.5",
     "parse-server": "=2.2.21",
     "parse-server-nodemailer-adapter": "^1.0.0",
     "paypal-ipn": "^3.0.0",
@@ -51,6 +52,7 @@
   },
   "scripts": {
     "test": "./node_modules/.bin/karma start public/karma.conf.js --single-run --browsers PhantomJS",
-    "start": "node index.js"
+    "start": "node index.js",
+    "dashboard": "node ./node_modules/parse-dashboard/bin/parse-dashboard"
   }
 }
