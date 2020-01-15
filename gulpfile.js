@@ -78,7 +78,7 @@ gulp.task('siteconfig-heroku', function () {
         .pipe(gulp.dest('dist/scripts/app'));
 });
 
-gulp.task('siteconfig-heroku', function () {
+gulp.task('siteconfig-after-twilight', function () {
     return gulp.src('./public/scripts/app/siteconfig.js')
         .pipe(replace('return ConfigGnuLorienDev;', 'return ConfigAfterTwilight;'))
         .pipe(uglify({outSourceMap: true}))
