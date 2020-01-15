@@ -229,6 +229,10 @@ define([
             "administration/patronages/new/:userid": "administration_patronage_new",
             "administration/descriptions": "administration_descriptions",
             "administration/bnsctdbs_kith_rules": "administration_bnsctdbs_kith_rules",
+            "administration/bnsmetv1_clan_rules": "administration_bnsmetv1_clan_rules",
+            "administration/bnsmetv1_elder_discipline_rules": "administration_bnsmetv1_elder_discipline_rules",
+            "administration/bnsmetv1_technique_rules": "administration_bnsmetv1_technique_rules",
+            "administration/bnsmetv1_ritual_rules": "administration_bnsmetv1_ritual_rules",
 
             // Referendums
             "referendums": "referendums", // Listing of active referendums
@@ -906,11 +910,84 @@ define([
             var self = this;
             self.set_back_button("#administration");
             $.mobile.loading("show");
-            require(["../views/BNSCTDBSKithRules"], function (BNSCTDBSKithRules) {
+            require(["../views/EditRules"], function (EditRules) {
                 self.enforce_logged_in().then(function () {
-                    self.administrationBNSCTDBSKithRules = self.administrationBNSCTDBSKithRules ||
-                        new BNSCTDBSKithRules().setup();
-                    return self.administrationBNSCTDBSKithRules.update_categories();
+                    self.administrationEditRules = self.administrationEditRules ||
+                        new EditRules().setup();
+                    self.administrationEditRules.update_rule_name("bnsctdbs_KithRule");
+                    return self.administrationEditRules.update_categories();
+                }).then(function () {
+                    $.mobile.changePage("#administration-descriptions", {reverse: false, changeHash: false});
+                }).fail(function () {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
+        },
+
+        administration_bnsmetv1_clan_rules: function() {
+            var self = this;
+            self.set_back_button("#administration");
+            $.mobile.loading("show");
+            require(["../views/EditRules"], function (EditRules) {
+                self.enforce_logged_in().then(function () {
+                    self.administrationEditRules = self.administrationEditRules ||
+                        new EditRules().setup();
+                    self.administrationEditRules.update_rule_name("bnsmetv1_ClanRule");
+                    return self.administrationEditRules.update_categories();
+                }).then(function () {
+                    $.mobile.changePage("#administration-descriptions", {reverse: false, changeHash: false});
+                }).fail(function () {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
+        },
+
+        administration_bnsmetv1_elder_discipline_rules: function() {
+            var self = this;
+            self.set_back_button("#administration");
+            $.mobile.loading("show");
+            require(["../views/EditRules"], function (EditRules) {
+                self.enforce_logged_in().then(function () {
+                    self.administrationEditRules = self.administrationEditRules ||
+                        new EditRules().setup();
+                    self.administrationEditRules.update_rule_name("bnsmetv1_ElderDisciplineRule");
+                    return self.administrationEditRules.update_categories();
+                }).then(function () {
+                    $.mobile.changePage("#administration-descriptions", {reverse: false, changeHash: false});
+                }).fail(function () {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
+        },
+
+        administration_bnsmetv1_technique_rules: function() {
+            var self = this;
+            self.set_back_button("#administration");
+            $.mobile.loading("show");
+            require(["../views/EditRules"], function (EditRules) {
+                self.enforce_logged_in().then(function () {
+                    self.administrationEditRules = self.administrationEditRules ||
+                        new EditRules().setup();
+                    self.administrationEditRules.update_rule_name("bnsmetv1_TechniqueRule");
+                    return self.administrationEditRules.update_categories();
+                }).then(function () {
+                    $.mobile.changePage("#administration-descriptions", {reverse: false, changeHash: false});
+                }).fail(function () {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
+        },
+
+        administration_bnsmetv1_ritual_rules: function() {
+            var self = this;
+            self.set_back_button("#administration");
+            $.mobile.loading("show");
+            require(["../views/EditRules"], function (EditRules) {
+                self.enforce_logged_in().then(function () {
+                    self.administrationEditRules = self.administrationEditRules ||
+                        new EditRules().setup();
+                    self.administrationEditRules.update_rule_name("bnsmetv1_RitualRule");
+                    return self.administrationEditRules.update_categories();
                 }).then(function () {
                     $.mobile.changePage("#administration-descriptions", {reverse: false, changeHash: false});
                 }).fail(function () {

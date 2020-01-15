@@ -1,9 +1,9 @@
 // Includes file dependencies
 define([
     "underscore",
-	"jquery",
-	"backbone",
-	"parse",
+    "jquery",
+    "backbone",
+    "parse",
     "text!../templates/character-summarize-list-item.html",
     "marionette",
     "backform",
@@ -12,6 +12,8 @@ define([
     "../helpers/PromiseFailReport",
     "papaparse"
 ], function( _, $, Backbone, Parse, character_summarize_list_item_html, Marionette, Backform, character_summarize_list_item_csv_html, character_summarize_list_item_csv_header_grouped_html, PromiseFailReport, Papa ) {
+
+    var ruleName = "";
 
     var DataForm = Backform.Form.extend({
         fields: [
@@ -30,15 +32,15 @@ define([
                 var self = this;
                 e.preventDefault();
                 var results = Papa.parse(self.model.get("descriptiondata"), {header: true});
-                console.log(results);               
+                console.log(results);
                 if (0 != results.errors.length) {
                     console.log(JSON.stringify(results.errors));
                     return;
                 }
-                
+
                 var promises = _.map(results.data, function(d, i) {
                     // Find any existing data that matches the category and name
-                    var q = new Parse.Query("bnsctdbs_KithRule")
+                    var q = new Parse.Query(ruleName)
                         .equalTo("category", d.category)
                         .equalTo("name", d.name);
                     var disguy;
@@ -46,7 +48,7 @@ define([
                         // If found, use that as the update object
                         // Otherwise create a new update object
                         if (!toupdate) {
-                            toupdate = new Parse.Object("bnsctdbs_KithRule", {
+                            toupdate = new Parse.Object(self.ruleName, {
                                 name: d.name,
                                 category: d.category
                             });
@@ -54,7 +56,7 @@ define([
                         } else {
                             console.log("Found existing object for " + d.category + " " + d.name);
                         }
-                        
+
                         // Set the ACL to be writable by administrators
                         var acl = new Parse.ACL;
                         acl.setPublicReadAccess(true);
@@ -62,7 +64,7 @@ define([
                         acl.setRoleReadAccess("Administrator", true);
                         acl.setRoleWriteAccess("Administrator", true);
                         toupdate.setACL(acl);
-                        
+
                         var final = _.omit(d, function(key) {
                             if (_.includes(["name", "category"], key)) {
                                 return true;
@@ -70,10 +72,10 @@ define([
                             if ("" == key) {
                                 return true;
                             }
-                            
+
                             return false;
                         })
-                        
+
                         _.each(final, function(value, key) {
                             if (key == "order") {
                                 toupdate.set(key, _.parseInt(value));
@@ -90,7 +92,7 @@ define([
                     })
                     // Return the promise so we can wait on them all
                 });
-                
+
                 Parse.Promise.when(promises).then(function() {
                     console.log(JSON.stringify(arguments));
                     console.log("Saved all of that");
@@ -102,7 +104,7 @@ define([
             }
         }
     });
-    
+
     var Form = Backform.Form.extend({
         fields: [
             {
@@ -113,9 +115,9 @@ define([
             }
         ]
     });
-    
+
     var View = Marionette.LayoutView.extend({
-        el: "#administration-descriptions > div[data-role='main']", 
+        el: "#administration-descriptions > div[data-role='main']",
         regions: {
             sections: "#descriptions-sections",
             list: "#administration-descriptions-list"
@@ -128,9 +130,9 @@ define([
             var self = this
             var q;
             if (formvalues.get("category") == "All") {
-                q = new Parse.Query("bnsctdbs_KithRule");
+                q = new Parse.Query(ruleName);
             } else {
-                q = new Parse.Query("bnsctdbs_KithRule").equalTo("category", formvalues.get("category"));
+                q = new Parse.Query(ruleName).equalTo("category", formvalues.get("category"));
             }
             var descriptions = [];
             return q.each(function (d) {
@@ -153,7 +155,7 @@ define([
                     fields: all_fields,
                     data: descriptions}));
             }).fail(PromiseFailReport);
-            
+
             this.$el.enhanceWithin();
         },
         getColumnNames: function(category) {
@@ -196,9 +198,12 @@ define([
             this.$el.enhanceWithin();
             return self;
         },
+        update_rule_name: function(inRuleName) {
+            ruleName = inRuleName;
+        },
         update_categories: function () {
             var self = this;
-            var q = new Parse.Query("bnsctdbs_KithRule");
+            var q = new Parse.Query(ruleName);
             q.select("category");
             var categories = {};
             return q.each(function (d) {
@@ -215,7 +220,7 @@ define([
                 });
                 so = _.sortBy(so, 'label');
                 so.push({label: "All", value: "All"});
-                
+
                 firstSelect.set("options", so);
                 return Parse.Promise.as(form.render());
             })
