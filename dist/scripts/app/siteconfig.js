@@ -1,1 +1,1 @@
-define([],function(){var r={serverURL:"https://api.undergroundtheater.org/parse",facebookAppId:"1606746326305984",redirect_uri:"https://patron.undergroundtheater.org"};return r});
+define([],function(){var e={serverURL:"https://after-twilight-yorick.herokuapp.com/parse",facebookAppId:"202279720650237",redirect_uri:"https://sheets.ourislandgeorgia.net/index.html",SAMPLE_TROUPE_ID:"mXhRByDNxX"};return e});
