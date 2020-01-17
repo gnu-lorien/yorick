@@ -154,9 +154,6 @@ define([
         template: _.template(user_settings_profile_html),
         regions: {
             profile: "#user-settings-profile-abs-form",
-            facebook: "#facebook-account-linking",
-            patronage: "#usp-patronage-list-region",
-            paypal: "#usp-paypal-button",
             roles: "#user-roles-available"
         },
         initialize: function(options) {
@@ -168,14 +165,7 @@ define([
             var options = self.options || {};
             self.render();
             self.showChildView('profile', new View(), options);
-            self.showChildView('facebook', new FacebookLinkButtonView(), options);
-            self.showChildView('paypal', new PaypalButton(), options);
-            self.showChildView('patronage', new PatronagesView({
-                el: "#usp-patronage-list",
-                collection: self.patronages,
-                back_url_base: "#profile/"
-            }), options);
-            
+
             var roles = new Backbone.Collection();
             var q = new Parse.Query(Parse.Role);
             q.each(function (role) {
