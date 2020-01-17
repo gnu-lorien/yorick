@@ -120,15 +120,15 @@ define([
                 "merits_0_remaining": 7,
                 "flaws_0_remaining": 7,
                 "phase_1_finished": false,
-                "initial_xp": 30,
+                "initial_xp": 30 + 50,
                 "phase_2_finished": false,
             });
             return creation.save().then(function (newCreation) {
                 self.set("creation", newCreation);
                 return self.add_experience_notation({
                     reason: "Character Creation XP",
-                    alteration_earned: 30,
-                    earned: 30});
+                    alteration_earned: 30 + 50,
+                    earned: 30 + 50});
             }).then(function (en) {
                 return Parse.Promise.as(self);
             });
