@@ -1,0 +1,15 @@
+<ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+    <li data-role="list-divider">Arts<span class="ui-li-count"><%= creation.remaining_picks("ctdbs_arts") %></span></li>
+    <% _.each(_.range(2, 0, -1), function(i) { %>
+    <% var n = "ctdbs_arts_" + i + "_remaining"; %>
+    <% _.each(creation.get("ctdbs_arts_" + i + "_picks"), function(st) { %>
+    <li data-icon="delete">
+        <a href="javascript: void(0)"><%= st.get("name") %> x<%= st.get("value") %></a>
+        <a href="#charactercreate/simpletraits/ctdbs_arts/<%= character.id %>/unpick/<%= st.linkId() %>/<%= i %>">Delete</a>
+    </li>
+    <% }); %>
+    <% _.each(_.range(creation.get(n)), function() { %>
+    <li><a href="#charactercreate/simpletraits/ctdbs_arts/<%= character.id %>/pick/<%= i %>">Pick Art at rating <%= i %></a></li>
+    <% }); %>
+    <% }); %>
+</ul>

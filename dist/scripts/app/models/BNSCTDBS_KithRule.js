@@ -1,0 +1,1 @@
+define(["parse"],function(e){var n=e.Object.extend("bnsctdbs_KithRule",{});return n});

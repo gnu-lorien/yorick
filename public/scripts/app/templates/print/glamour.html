@@ -1,0 +1,21 @@
+<div>
+    <% var bptLookup = {1: 14, 2: 13, 3: 12, 4: 11, 5: 10 } %>
+    <h4 class="ui-bar ui-bar-a ui-corner-all">Glamour</h4>
+    <% if (0 != character.seeming()) { %>
+    <% _.each(_.range(1, bptLookup[character.seeming()] + 1), function(i) { %>
+    <i class="fa fa-square-o"></i>
+    <% if (0 == i % 5) { %>
+    &nbsp;
+    <% } %>
+    <% if (0 == i % 10) { %>
+    <br/>
+    <% } %>
+    <% }); %>
+    <% } %>
+    <% if (0 == character.seeming()) { %>
+    Kinain
+    <% } else { %>
+    <br/>
+    <%= bptLookup[character.seeming()] %>
+    <% } %>
+</div>

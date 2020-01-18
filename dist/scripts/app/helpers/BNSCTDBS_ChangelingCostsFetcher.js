@@ -1,0 +1,1 @@
+define(["jquery","underscore","parse","../helpers/BNSCTDBS_ChangelingCosts"],function(e,n,r,i){var s=null,u=function(){return s?r.Promise.as(s):(s=new i,s.initialize())};return u});

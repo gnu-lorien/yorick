@@ -30,6 +30,8 @@ define([
 
             if ("Werewolf" == this.model.get("type")) {
                 this.template = _.template(werewolf_create_view_html)({ "character": this.model } );
+            } else if ("ChangelingBetaSlice" == this.model.get("type")) {
+                this.template = _.template(changelinge_beta_slice_create_view_html)({ "character": this.model } );
             } else {
                 this.template = _.template(character_create_view_html)({ "character": this.model } );
             }

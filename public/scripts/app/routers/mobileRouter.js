@@ -19,7 +19,6 @@ define([
     "../views/CharacterView",
     "../models/SimpleTrait",
     "../models/VampireCreation",
-    "../views/CharacterCreateView",
     "../views/CharacterNewView",
     "../views/CharacterCostsView",
     "../views/SimpleTextNewView",
@@ -44,10 +43,10 @@ define([
     "../views/CharacterRenameView",
     "../views/SimpleTraitNewSpecializationView",
     "../views/CharacterCreateSimpleTraitNewView",
-    "../views/DescriptionsView",
     "../models/Werewolf",
     "../views/CharactersSelectToPrintView",
-    "../views/CharacterLongTextView"
+    "../views/CharacterLongTextView",
+    "../models/ChangelingBetaSlice"
 ], function (require,
              $,
              Parse,
@@ -63,7 +62,6 @@ define([
              CharacterView,
              SimpleTrait,
              VampireCreation,
-             CharacterCreateView,
              CharacterNewView,
              CharacterCostsView,
              SimpleTextNewView,
@@ -88,10 +86,10 @@ define([
              CharacterRenameView,
              SimpleTraitNewSpecializationView,
              CharacterCreateSimpleTraitNewView,
-             DescriptionsView,
              Werewolf,
              CharactersSelectToPrintView,
-             CharacterLongTextView
+             CharacterLongTextView,
+             ChangelingBetaSlice
 ) {
 
     // Extends Backbone.Router
@@ -114,7 +112,6 @@ define([
             this.simpleTraitNewSpecializationView = new SimpleTraitNewSpecializationView({el: "#simpletrait-new-specialization"});
             this.characterCreateSimpleTraitNewView = new CharacterCreateSimpleTraitNewView({el: "#character-create-simpletrait-new"});
 
-            this.characterCreateView = new CharacterCreateView({el: "#character-create"});
             this.characterNewView = new CharacterNewView({el: "#character-new-form"});
 
             this.characterCostsView = new CharacterCostsView({el: "#character-costs"});
@@ -231,6 +228,11 @@ define([
             "administration/patronages/new": "administration_patronage_new",
             "administration/patronages/new/:userid": "administration_patronage_new",
             "administration/descriptions": "administration_descriptions",
+            "administration/bnsctdbs_kith_rules": "administration_bnsctdbs_kith_rules",
+            "administration/bnsmetv1_clan_rules": "administration_bnsmetv1_clan_rules",
+            "administration/bnsmetv1_elder_discipline_rules": "administration_bnsmetv1_elder_discipline_rules",
+            "administration/bnsmetv1_technique_rules": "administration_bnsmetv1_technique_rules",
+            "administration/bnsmetv1_ritual_rules": "administration_bnsmetv1_ritual_rules",
 
             // Referendums
             "referendums": "referendums", // Listing of active referendums
@@ -255,7 +257,7 @@ define([
                 InjectAuthData(user);
                 return user.save();
             }).then(function () {
-                self.playerOptionsView = self.playerOptionsView || new PlayerOptionsView({el: "#player-options"}).render();
+                self.playerOptionsView = self.playerOptionsView || new PlayerOptionsView({el: "#player-options"}).setup();
                 $.mobile.changePage("#player-options", {reverse: false, changeHash: false});
             }).fail(PromiseFailReport);
         },
@@ -410,6 +412,18 @@ define([
                 }).fail(PromiseFailReport);
             });
         },
+        
+        withCharacterCreateView: function() {
+            var self = this;
+            var p = new Parse.Promise;
+            require(["../views/CharacterCreateViewNew"], function (CharacterCreateViewNew) {
+                self.characterCreateView = self.characterCreateView || new CharacterCreateViewNew({
+                    el: "#character-create"
+                });
+                p.resolve(self.characterCreateView);
+            });
+            return p;
+        },
 
         withCharacterPrintView: function(cb) {
             var self = this;
@@ -485,13 +499,17 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
-            self.get_character(cid, []).then(function (character) {
+            self.withCharacterCreateView().then(function () {
+                return self.get_character(cid, []);
+            }).then(function (character) {
                 return character.fetch_all_creation_elements();
-            }).done(function (character) {
-                self.characterCreateView.model = character;
-                self.characterCreateView.render();
+            }).then(function (character) {
+                self.characterCreateView.setup({
+                    character: character
+                })
                 self.characterCreateView.scroll_back_after_page_change();
                 $.mobile.changePage("#character-create", {reverse: false, changeHash: false});
+            }).always(function () {
                 $.mobile.loading("hide");
             }).fail(PromiseFailReport);
         },
@@ -501,7 +519,9 @@ define([
             i = _.parseInt(i);
             $.mobile.loading("show");
             self.set_back_button("#charactercreate/" + cid);
-            self.get_character(cid, [category]).done(function (c) {
+            self.withCharacterCreateView().then(function () {
+                return self.get_character(cid, [category]);
+            }).done(function (c) {
                 var specialCategory;
                 if ("disciplines" == category) {
                     specialCategory = "in clan disciplines";
@@ -549,7 +569,9 @@ define([
             i = _.parseInt(i);
             $.mobile.loading("show");
             self.set_back_button("#charactercreate/" + cid);
-            self.get_character(cid, [category]).then(function (character) {
+            self.withCharacterCreateView().then(function () {
+                return self.get_character(cid, [category]);
+            }).then(function (character) {
                 self.characterCreateView.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
                 return character.unpick_from_creation(category, stid, i);
             }).done(function (c) {
@@ -563,7 +585,9 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#charactercreate/" + cid);
-            self.get_character(cid, [category]).then(function (c) {
+            self.withCharacterCreateView().then(function () {
+                return self.get_character(cid, [category])
+            }).then(function (c) {
                 self.characterCreateView.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
                 return self.simpleTextNewView.register(c, category, target, "#charactercreate/" + c.id);
             }).then(function () {
@@ -869,16 +893,109 @@ define([
             var self = this;
             self.set_back_button("#administration");
             $.mobile.loading("show");
-            self.enforce_logged_in().then(function () {
-                self.administrationDescriptionsView = self.administrationDescriptionsView ||
-                    new DescriptionsView().setup();
-                return self.administrationDescriptionsView.update_categories();
-            }).then(function () {
-                $.mobile.changePage("#administration-descriptions", {reverse: false, changeHash: false});
-            }).fail(function () {
-                $.mobile.loading("hide");
-            }).fail(PromiseFailReport);
+            require(["../views/DescriptionsView"], function (DescriptionsView) {
+                self.enforce_logged_in().then(function () {
+                    self.administrationDescriptionsView = self.administrationDescriptionsView ||
+                        new DescriptionsView().setup();
+                    return self.administrationDescriptionsView.update_categories();
+                }).then(function () {
+                    $.mobile.changePage("#administration-descriptions", {reverse: false, changeHash: false});
+                }).fail(function () {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
         },
+
+        administration_bnsctdbs_kith_rules: function() {
+            var self = this;
+            self.set_back_button("#administration");
+            $.mobile.loading("show");
+            require(["../views/EditRules"], function (EditRules) {
+                self.enforce_logged_in().then(function () {
+                    self.administrationEditRules = self.administrationEditRules ||
+                        new EditRules().setup();
+                    self.administrationEditRules.update_rule_name("bnsctdbs_KithRule");
+                    return self.administrationEditRules.update_categories();
+                }).then(function () {
+                    $.mobile.changePage("#administration-descriptions", {reverse: false, changeHash: false});
+                }).fail(function () {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
+        },
+
+        administration_bnsmetv1_clan_rules: function() {
+            var self = this;
+            self.set_back_button("#administration");
+            $.mobile.loading("show");
+            require(["../views/EditRules"], function (EditRules) {
+                self.enforce_logged_in().then(function () {
+                    self.administrationEditRules = self.administrationEditRules ||
+                        new EditRules().setup();
+                    self.administrationEditRules.update_rule_name("bnsmetv1_ClanRule");
+                    return self.administrationEditRules.update_categories();
+                }).then(function () {
+                    $.mobile.changePage("#administration-descriptions", {reverse: false, changeHash: false});
+                }).fail(function () {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
+        },
+
+        administration_bnsmetv1_elder_discipline_rules: function() {
+            var self = this;
+            self.set_back_button("#administration");
+            $.mobile.loading("show");
+            require(["../views/EditRules"], function (EditRules) {
+                self.enforce_logged_in().then(function () {
+                    self.administrationEditRules = self.administrationEditRules ||
+                        new EditRules().setup();
+                    self.administrationEditRules.update_rule_name("bnsmetv1_ElderDisciplineRule");
+                    return self.administrationEditRules.update_categories();
+                }).then(function () {
+                    $.mobile.changePage("#administration-descriptions", {reverse: false, changeHash: false});
+                }).fail(function () {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
+        },
+
+        administration_bnsmetv1_technique_rules: function() {
+            var self = this;
+            self.set_back_button("#administration");
+            $.mobile.loading("show");
+            require(["../views/EditRules"], function (EditRules) {
+                self.enforce_logged_in().then(function () {
+                    self.administrationEditRules = self.administrationEditRules ||
+                        new EditRules().setup();
+                    self.administrationEditRules.update_rule_name("bnsmetv1_TechniqueRule");
+                    return self.administrationEditRules.update_categories();
+                }).then(function () {
+                    $.mobile.changePage("#administration-descriptions", {reverse: false, changeHash: false});
+                }).fail(function () {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
+        },
+
+        administration_bnsmetv1_ritual_rules: function() {
+            var self = this;
+            self.set_back_button("#administration");
+            $.mobile.loading("show");
+            require(["../views/EditRules"], function (EditRules) {
+                self.enforce_logged_in().then(function () {
+                    self.administrationEditRules = self.administrationEditRules ||
+                        new EditRules().setup();
+                    self.administrationEditRules.update_rule_name("bnsmetv1_RitualRule");
+                    return self.administrationEditRules.update_categories();
+                }).then(function () {
+                    $.mobile.changePage("#administration-descriptions", {reverse: false, changeHash: false});
+                }).fail(function () {
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
+        },
+
 
         characterdelete: function(cid) {
             var self = this;
@@ -1176,6 +1293,8 @@ define([
                 var p;
                 if (self.last_fetched_character_type == "Werewolf") {
                     p = Werewolf.get_character(id, categories, self);
+                } else if (self.last_fetched_character_type == "ChangelingBetaSlice") {
+                    p = ChangelingBetaSlice.get_character(id, categories, self);
                 } else {
                     p = Vampire.get_character(id, categories, self);
                 }               
@@ -1187,6 +1306,8 @@ define([
                     self.last_fetched_character_type = c.get("type");
                     if (c.get("type") == "Werewolf") {
                         return Werewolf.get_character(id, categories, self);
+                    } else if (c.get("type") == "ChangelingBetaSlice") {
+                        return ChangelingBetaSlice.get_character(id, categories, self);
                     } else {
                         return Vampire.get_character(id, categories, self);
                     }

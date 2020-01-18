@@ -1,0 +1,13 @@
+<a name="<%= e.get('name') %>" backendId="<%= e.id %>" href="#troupe/<%= e.id %>/characters/all" class="ui-btn ui-btn-icon-right ui-icon-carat-r troupe-listing">
+    <img src="<%= e.get_thumbnail_sync(128) %>" class="troupe-link-portrait"/>
+    <h2>
+        <%= e.get("name") %>
+        <% if (e.get("location")) { %>
+        (<%= e.get("location") %>)
+        <% } %>
+    </h2>
+    <p><%= e.get("shortdescription") %></p>
+    <% if (_.trim(e.get("staffemail"))) { %>
+    <p><%= e.get("staffemail") %></p>
+    <% } %>
+</a>

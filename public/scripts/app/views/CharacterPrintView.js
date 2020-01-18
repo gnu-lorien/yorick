@@ -20,7 +20,8 @@ define([
     "text!../templates/print/gnosis.html",
     "text!../templates/print/total.html",
     "text!../templates/print/fixed-blood.html",
-    "../forms/PrintSettingsForm"
+    "../forms/PrintSettingsForm",
+    "text!../templates/print/glamour.html",
 ], function(
     $,
     Backbone,
@@ -38,7 +39,8 @@ define([
     gnosis_html,
     total_html,
     fixed_blood_html,
-    PrintSettingsForm
+    PrintSettingsForm,
+    glamour_html
 ) {
 
     var HeaderView = Marionette.ItemView.extend({
@@ -213,6 +215,37 @@ define([
     });
     _.extend(FixedBloodView.prototype, VampirePrintHelper);
     
+    var GlamourView = Marionette.ItemView.extend({
+        template: _.template(glamour_html),
+        templateHelpers: function() {
+            var self = this;
+            return {
+                character: self.model
+            }
+        },
+        initialize: function(options) {
+            var self = this;
+
+            self.listenTo(self.model, "change:backgrounds", self.render);
+
+            _.bindAll(this,
+                "render",
+                "template",
+                "format_simpletext",
+                "format_attribute_value",
+                "format_attribute_focus",
+                "format_skill",
+                "format_specializations"
+            );
+        },
+        onRender: function () {
+            this.$el = this.$el.children();
+            this.$el.unwrap();
+            this.setElement(this.$el);
+        }
+    });
+    _.extend(GlamourView.prototype, VampirePrintHelper);
+
     var WillpowerView = Marionette.ItemView.extend({
         template: _.template(willpower_html),
         templateHelpers: function() {
@@ -641,7 +674,7 @@ define([
                         format: 4
                     },{
                         display: "Monikers",
-                        name: "monikers",
+                        name: "wta_monikers",
                         format: 4
                     }]
                 }), options);
@@ -668,6 +701,128 @@ define([
                     sections: [{
                         display: "Rituals",
                         name: "rituals",
+                        format: 0
+                    }]
+                }), options);
+                
+                self.showChildView('bottom_two_c', new SectionsView({
+                    model: character,
+                    sections: [{
+                        display: "Languages",
+                        name: "linguistics_specializations",
+                        format: 0
+                    },{
+                        display: "Drive",
+                        name: "drive_specializations",
+                        format: 0
+                    }]
+                }), options);
+            
+            } else if (character.get("type") == "ChangelingBetaSlice") {
+                self.showChildView('header', new HeaderView({model: character}), options);
+                self.showChildView('firstbar', new TextBarView({
+                    model: character,
+                    fields: [{
+                        name: "ctdbs_kith",
+                        display: "Kith"
+                    },{
+                        name: "archetype",
+                        display: "Archetype",
+                    },{
+                        name:"antecedence",
+                        display: "Antecedence"
+                    }]
+                }), options);
+                self.showChildView('secondbar', new TextBarView({
+                    model: character,
+                    fields: [{
+                        name: "ctdbs_fealty_court",
+                        display: "Court"
+                    },{
+                        name: "ctdbs_noble_house",
+                        display: "Noble House" 
+                    },{
+                        name:"ctdbs_kith_group_type",
+                        display: "Group"
+                    }]
+                }), options);
+                self.showChildView('attributeRegion', new AttributesView({model: character}), options);
+                self.showChildView('blood', new GlamourView({model: character}), options);
+                self.showChildView('willpower', new WillpowerView({model: character}), options);
+                self.showChildView('health_levels', new HealthLevelsView({model: character}), options);
+                self.showChildView('skills', new SkillsView({model: character}), options);
+                self.showChildView('bottom_one_a', new SectionsView({
+                    model: character,
+                    sections: [{
+                        display: "Backgrounds",
+                        name: "ctdbs_backgrounds",
+                        format: 1
+                    },{
+                        display: "Holdings",
+                        name: "ctdbs_holdings_specializations",
+                        format: 1
+                    },{
+                        display: "Influences: The Elite",
+                        name: "influence_elite_specializations",
+                        format: 1
+                    },{
+                        display: "Influences: The Underworld",
+                        name: "influence_underworld_specializations",
+                        format: 1
+                    },{
+                        display: "Contacts",
+                        name: "contacts_specializations",
+                        format: 1
+                    },{
+                        display: "Allies",
+                        name: "allies_specializations",
+                        format: 1
+                    }]
+                }), options);
+     
+                self.showChildView('bottom_one_b', new SectionsView({
+                    model: character,
+                    sections: [{
+                        display: "Arts",
+                        name: "ctdbs_arts",
+                        format: 1
+                    },{
+                        display: "Techniques",
+                        name: "techniques",
+                        format: 0
+                    },{
+                        display: "Realms",
+                        name: "ctdbs_realms",
+                        format: 0
+                    }]
+                }), options);
+                
+                self.showChildView('bottom_one_c', new SectionsView({
+                    model: character,
+                    sections: [{
+                        display: "Merits",
+                        name: "ctdbs_merits",
+                        format: 4
+                    },{
+                        display: "Flaws",
+                        name: "ctdbs_flaws",
+                        format: 4
+                    },{
+                        display: "Status",
+                        name: "status_traits",
+                        format: 4
+                    }]
+                }), options);
+                
+                self.showChildView('bottom_two_a', new SectionsView({
+                    model: character,
+                    sections: [{
+                        display: "Lores",
+                        name: "lore_specializations",
+                        format: 0
+                    },{
+                        display: "Academics",
+                        name: "academics_specializations",
                         format: 0
                     }]
                 }), options);

@@ -48,6 +48,7 @@ define([
     ];
     
     var TEXT_ATTRIBUTES = ["archetype", "archetype_2", "wta_breed", "wta_auspice", "wta_tribe", "wta_camp", "wta_faction", "antecedence"];
+    var TEXT_ATTRIBUTES_PRETTY_NAMES = ["Archetype", "Second Archetype", "Breed", "Auspice", "Tribe", "Camp", "Faction", "Primary, Secondary, or NPC"];
     
     var SUM_CREATION_CATEGORIES = ["wta_merits", "wta_flaws"];
     
@@ -56,7 +57,7 @@ define([
         get_sum_creation_categories: function() {
             return SUM_CREATION_CATEGORIES;
         },
-        _update_creation: function(category, modified_trait, freeValue) {
+        update_creation_rules_for_changed_trait: function(category, modified_trait, freeValue) {
             var self = this;
             if (!_.contains(["wta_merits", "wta_flaws"], category)) {
                 if (!freeValue) {
@@ -157,6 +158,10 @@ define([
         
         all_text_attributes: function() {
             return TEXT_ATTRIBUTES;
+        },
+        
+        all_text_attributes_pretty_names: function() {
+            return TEXT_ATTRIBUTES_PRETTY_NAMES;
         },
  
         _raw_rank: function() {
@@ -381,6 +386,11 @@ define([
     Model.all_text_attributes = function () {
         return TEXT_ATTRIBUTES;
     };
+    
+    Model.all_text_attributes_pretty_names = function () {
+        return TEXT_ATTRIBUTES_PRETTY_NAMES;
+    };
+
 
     // Returns the Model class
     return Model;

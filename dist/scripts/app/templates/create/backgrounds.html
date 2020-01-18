@@ -1,0 +1,15 @@
+<ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+    <li data-role="list-divider">Backgrounds<span class="ui-li-count"><%= creation.remaining_picks(description_category) %></span></li>
+    <% _.each(_.range(3, 0, -1), function(i) { %>
+    <% var n = description_category + "_" + i + "_remaining"; %>
+    <% _.each(creation.get(description_category + "_" + i + "_picks"), function(st) { %>
+    <li data-icon="delete">
+        <a href="javascript: void(0)"><%= st.get("name") %> x<%= st.get("value") %></a>
+        <a href="#charactercreate/simpletraits/<%= description_category %>/<%= character.id %>/unpick/<%= st.linkId() %>/<%= i %>">Delete</a>
+    </li>
+    <% }); %>
+    <% _.each(_.range(creation.get(n)), function() { %>
+    <li><a href="#charactercreate/simpletraits/<%= description_category %>/<%= character.id %>/pick/<%= i %>">Pick a background at rating <%= i %></a></li>
+    <% }); %>
+    <% }); %>
+</ul>
