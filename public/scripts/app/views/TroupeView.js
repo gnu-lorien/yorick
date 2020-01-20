@@ -16,15 +16,16 @@ define([
         // The View Constructor
         initialize: function () {
             var self = this;
+            self.writable = false;
             _.bindAll(this, "render", "addstaff");
         },
 
-        register: function(troupe, readonly) {
+        register: function(troupe, writable) {
             var self = this;
             var changed = false;
-            if (troupe !== self.troupe || readonly != self.readonly) {
+            if (troupe !== self.troupe || writable != self.writable) {
                 self.troupe = troupe;
-                self.readonly = readonly;
+                self.writable = !!writable;
                 self.form = new TroupeForm({
                     el: "#troupe-data",
                     model: self.troupe,
@@ -44,7 +45,7 @@ define([
                         }
                     }
                 });
-                if (!readonly) {
+                if (self.writable) {
                     self.form.fields.add(new Backform.Field({control: "button", label: "Update"}))
                 }
                 changed = true;
@@ -99,7 +100,7 @@ define([
         render: function() {
             var self = this;
 
-            self.template = _.template(troupe_html)({readonly: self.readonly});
+            self.template = _.template(troupe_html)({readonly: !self.writable});
             self.$el.find("div[role='main']").html(self.template);
             self.form.setElement($("#troupe-data"));
             self.form.render();
