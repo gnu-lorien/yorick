@@ -143,8 +143,6 @@ define([
         regions: {
             profile: "#abs-form",
             password: "#reset-password-view",
-            patronage: "#patronage-list-region",
-            patronage_new: "#patronage-new-for-user-button",
             roles: "#administration-user-roles-available"
         },
         initialize: function(options) {
@@ -152,14 +150,6 @@ define([
             self.patronages = new Patronages;
             self.showChildView('profile', new View(), options);
             self.showChildView('password', new ResetButtonView(), options);
-            self.showChildView('patronage', new PatronagesView({
-                el: "#patronage-list",
-                collection: self.patronages,
-                back_url_base: "#administration/patronage/"
-            }))
-            self.showChildView('patronage_new', new NewPatronButtonView({
-                model: new Backbone.Model({userid: ""})
-            }));
             self.roles = new Backbone.Collection();
             self.showChildView('roles', new RolesView({
                 collection: self.roles
@@ -169,8 +159,6 @@ define([
             var self = this;
             self.profile.currentView.register.apply(self.profile.currentView, arguments);
             self.password.currentView.model = user;
-            self.patronage.currentView.render();
-            self.patronage_new.currentView.model.set("userid", user.id);
             var q = new Parse.Query(Parse.Role);
             q.each(function (role) {
                 var users_relation = role.getUsers();
