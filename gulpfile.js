@@ -85,6 +85,13 @@ gulp.task('siteconfig-after-twilight', function () {
         .pipe(gulp.dest('dist/scripts/app'));
 });
 
+gulp.task('siteconfig-greensboro', function () {
+    return gulp.src('./public/scripts/app/siteconfig.js')
+        .pipe(replace('return ConfigGnuLorienDev;', 'return ConfigGreensboro;'))
+        .pipe(uglify({outSourceMap: true}))
+        .pipe(gulp.dest('dist/scripts/app'));
+});
+
 gulp.task('appbust', function () {
     return gulp.src('./public/scripts/app.js')
         .pipe(replace('bust=010101', 'bust=' + pjson.version))
@@ -107,3 +114,5 @@ gulp.task('patron', gulp.series('clean', 'minify-html', 'copy-print-templates', 
 gulp.task('heroku', gulp.series('clean', 'minify-html', 'copy-print-templates', 'copy-referendum-templates', 'copy-html-templates', 'copy-create-templates', 'minify-css', 'images', 'minify-js', 'siteconfig-heroku', 'appbust', 'indexbust'));
 
 gulp.task('aftertwilight', gulp.series('clean', 'minify-html', 'copy-print-templates', 'copy-referendum-templates', 'copy-html-templates', 'copy-create-templates', 'minify-css', 'images', 'minify-js', 'siteconfig-after-twilight', 'appbust', 'indexbust'));
+
+gulp.task('greensboro', gulp.series('clean', 'minify-html', 'copy-print-templates', 'copy-referendum-templates', 'copy-html-templates', 'copy-create-templates', 'minify-css', 'images', 'minify-js', 'siteconfig-greensboro', 'appbust', 'indexbust'));

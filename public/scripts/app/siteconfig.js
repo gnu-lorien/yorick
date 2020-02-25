@@ -28,6 +28,13 @@ define([
         SAMPLE_TROUPE_ID: "mXhRByDNxX"
     };
 
+    var ConfigGreensboro = {
+        serverURL: "https://greensboro-yorick.herokuapp.com/parse",
+        facebookAppId: "202279720650237",
+        redirect_uri: "https://sheets.ourislandgeorgia.net/index.html",
+        SAMPLE_TROUPE_ID: "mXhRByDNxX"
+    };
+
     var ConfigGnuLorienDev = ConfigAfterTwilight;
     
     return ConfigGnuLorienDev;
