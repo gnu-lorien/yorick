@@ -120,7 +120,7 @@ define([
                 "merits_0_remaining": 7,
                 "flaws_0_remaining": 7,
                 "phase_1_finished": false,
-                "initial_xp": 30 + 50,
+                "initial_xp": 30,
                 "phase_2_finished": false,
             });
             return creation.save().then(function (newCreation) {
