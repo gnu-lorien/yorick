@@ -127,8 +127,8 @@ define([
                 self.set("creation", newCreation);
                 return self.add_experience_notation({
                     reason: "Character Creation XP",
-                    alteration_earned: 30 + 50,
-                    earned: 30 + 50});
+                    alteration_earned: 30,
+                    earned: 30});
             }).then(function (en) {
                 return Parse.Promise.as(self);
             });
