@@ -920,6 +920,10 @@ define([
                         display: "Elder Disciplines",
                         name: "elder_disciplines",
                         format: 0
+                    },{
+                        display: "Luminary Disciplines",
+                        name: "luminary_disciplines",
+                        format: 0
                     }]
                 }), options);
                 

@@ -34,6 +34,7 @@ define([
         ["disciplines", "Disciplines", "Disciplines"],
         ["techniques", "Techniques", "Disciplines"],
         ["elder_disciplines", "Elder Disciplines", "Disciplines"],
+        ["luminary_disciplines", "Luminary Disciplines", "Disciplines"],
         ["rituals", "Rituals", "Disciplines"],
         ["extra_in_clan_disciplines", "Extra In Clan Disciplines", "Disciplines"],
         ["paths", "Path of Enlightenment/Humanity", "Morality"],
@@ -236,6 +237,7 @@ define([
                 "rituals",
                 "techniques",
                 "elder_disciplines",
+                "luminary_disciplines"
                 ];
             var response = {};
             var objectIds = _.chain(current_categories).map(function(category) {
