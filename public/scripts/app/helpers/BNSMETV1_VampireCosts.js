@@ -110,7 +110,8 @@ define([
             var background_ct, skill_ct, ooc_discipline_ct;
             var technique_cost = 9999,
                 ic_elder_cost = 99999,
-                ooc_elder_cost = 99999;
+                ooc_elder_cost = 99999,
+                ic_luminary_cost = 99999;
 
             if ("backgrounds" == category) {
                 if (name == "Generation") {
@@ -167,6 +168,12 @@ define([
                 }
             }
 
+            if ("luminary_disciplines" == category) {
+                if (generation >= 5 && self.discipline_is_in_clan(character, trait)) {
+                    ic_luminary_cost = 24;
+                }
+                return mod_value * ic_luminary_cost;
+            }
         }
     });
 
