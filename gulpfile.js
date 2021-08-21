@@ -9,7 +9,7 @@ var gulp = require('gulp'),
     pjson = require('./package.json');
 
 gulp.task('clean', function () {
-    return gulp.src('dist', {read: false})
+    return gulp.src('dist', {read: false, allowEmpty: true})
         .pipe(clean());
 });
 

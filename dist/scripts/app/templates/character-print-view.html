@@ -135,6 +135,12 @@
         <%= format_skill(d, 0) %><br/>
         <% }); %>
         <% } %>
+        <% if (character.has("luminary_disciplines")) { %>
+        <h4 class="ui-bar ui-bar-a ui-corner-all">Luminary Disciplines</h4>
+        <% _.each(_.chain(character.get("luminary_disciplines")).sortBy("attributes.name").value(), function(d) { %>
+        <%= format_skill(d, 0) %><br/>
+        <% }); %>
+        <% } %>
     </div>
     <div class="ui-block-c">
         <% if (character.has("merits")) { %>
