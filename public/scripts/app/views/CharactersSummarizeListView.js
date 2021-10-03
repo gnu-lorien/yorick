@@ -13,7 +13,8 @@ define([
     "backform",
     "text!../templates/character-summarize-list-item-csv.html",
     "text!../templates/character-summarize-list-item-csv-header-grouped.html",
-], function( _, $, Backbone, character_summarize_list_item_html, Marionette, Vampire, Werewolf, Backform, character_summarize_list_item_csv_html, character_summarize_list_item_csv_header_grouped_html ) {
+    "backgrid"
+], function( _, $, Backbone, character_summarize_list_item_html, Marionette, Vampire, Werewolf, Backform, character_summarize_list_item_csv_html, character_summarize_list_item_csv_header_grouped_html, Backgrid ) {
 
     var PrettyView = Marionette.ItemView.extend({
         tagName: "li",
@@ -259,7 +260,29 @@ define([
             }
         ]
     });
-    
+
+    var gridColumns = [{
+        name: "id",
+        label: "ID",
+        editable: false,
+        cell: "string"
+    },{
+        name: "name",
+        label: "NAME",
+        editable: false,
+        cell: "string"
+    },{
+        name: "owner.username",
+        label: "Owner",
+        editable: false,
+        cell: "string"
+    },{
+        name: "experience_spent",
+        label: "Experience Spent",
+        editable: false,
+        cell: "string"
+    }];
+
     var Mode = Backbone.Model.extend({
         
     });
@@ -267,12 +290,13 @@ define([
     var Modes = Backbone.Collection.extend({
         model: Mode
     })
-    
+
     var View = Marionette.LayoutView.extend({
         el: "#troupe-summarize-characters-all > div[data-role='main']", 
         regions: {
             sections: "#sections",
-            list: "#troupe-summarize-characters-list"
+            list: "#troupe-summarize-characters-list",
+            formmanip: "#formmanip"
         },
         childEvents: {
             "filterwith": "filterwith",
@@ -397,6 +421,13 @@ define([
                 'list',
                 new CharactersView({
                     collection: self.collection}),
+                options);
+            self.showChildView(
+                'formmanip',
+                new Backgrid.Grid({
+                    columns: gridColumns,
+                    collection: self.collection
+                }),
                 options);
             this.$el.enhanceWithin();
             self.filterOptions.trigger("change", self.filterOptions);
