@@ -17,7 +17,7 @@
     "express": "^4.16.3",
     "jimp": "^0.2.28",
     "lodash": "^4.17.10",
-    "moment": "^2.22.2",
+    "moment": "^2.29.2",
     "parse": "^1.9.0",
     "parse-server": "=2.2.21",
     "parse-server-nodemailer-adapter": "^1.0.0",
