@@ -5,6 +5,10 @@
   "description": "A Vampire and Werewolf character database for By Night Studios Mind's Eye Theater (BNS MET)",
   "license": "AGPL-3.0",
   "main": "public/index.html",
+  "engines": {
+    "node": "14.x",
+    "npm": "6.x"
+  },
   "window": {
     "toolbar": false,
     "width": 1024,
