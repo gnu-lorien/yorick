@@ -125,7 +125,7 @@ define([
             }
 
             if ("skills" == category) {
-                if (generation == 1) {
+                if (generation < 3) {
                     skill_ct = self.get_cost_table(1);
                 } else {
                     skill_ct = self.get_cost_table(2);
