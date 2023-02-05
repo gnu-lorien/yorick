@@ -1,11 +1,26 @@
-import type Parse from 'parse/dist/parse.min.js'
+import Parse from 'parse/dist/parse.min.js'
 import { acceptHMRUpdate, defineStore } from 'pinia'
+import type { Vampire } from '~/models/Vampire'
 
-export const usePatronageStore = defineStore('patronage', () => {
-  const patronages = reactive([])
+interface CharacterCache {
+  [id: string]: Vampire | Object
+}
+export const useCharacterStore = defineStore('character', () => {
+  const characters: CharacterCache = reactive({})
 
-  async function getLatestPatronage(user: Parse.User) {
-    return null
+  async function getCharacter(id: string, type: Vampire | any, categories?: string | string[]) {
+    if (!(id in characters)) {
+      const q = new Parse.Query(type)
+      q.include('portrait')
+      q.include('owner')
+      q.include('backgrounds')
+      q.include('extra_in_clan_disciplines')
+      const c = await q.get(id)
+      characters[id] = c
+    }
+
+    const character = characters[id]
+    await character.ensure_loaded(categories)
   }
   /**
    * Current name of the user.
@@ -30,7 +45,7 @@ export const usePatronageStore = defineStore('patronage', () => {
   }
 
   return {
-    getLatestPatronage,
+    getCharacter,
     setNewName,
     otherNames,
     savedName,

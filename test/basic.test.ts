@@ -1,9 +1,11 @@
-import { beforeAll, describe, expect, it } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest'
 // import { Parse } from 'parse/node'
 import Parse from 'parse/dist/parse.min.js'
+import { createPinia, setActivePinia } from 'pinia'
 import { useConfigTestDefault } from '~/composables/siteconfig'
 import { SampleVampire } from '~/models/SampleVampire'
 import { Vampire } from '~/models/Vampire'
+import { registerYorickTypes } from '~/modules/parsetypes'
 
 describe('tests', () => {
   it('should works', () => {
@@ -31,10 +33,14 @@ describe('Vampires', () => {
       Parse.User.logOut()
 
     await Parse.User.logIn('devuser', 'thedumbness')
+    registerYorickTypes()
     return async () => {
       if (Parse.User.current())
         Parse.User.logOut()
     }
+  })
+  beforeEach(() => {
+    setActivePinia(createPinia())
   })
   it('Create a sample vampire', async () => {
     const v = await SampleVampire.create_test_character('saymsamp')
