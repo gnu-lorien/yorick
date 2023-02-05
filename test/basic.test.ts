@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 // import { Parse } from 'parse/node'
 import Parse from 'parse/dist/parse.min.js'
 import { useConfigTestDefault } from '~/composables/siteconfig'
 import { SampleVampire } from '~/models/SampleVampire'
+import { Vampire } from '~/models/Vampire'
 
 describe('tests', () => {
   it('should works', () => {
@@ -23,11 +24,24 @@ describe('parse sanity', () => {
 })
 
 describe('Vampires', () => {
-  it('Create a sample vampire', async () => {
+  beforeAll(async () => {
     Parse.initialize('APPLICATION_ID')
     Parse.serverURL = useConfigTestDefault().serverURL
-    const u = await Parse.User.logIn('devuser', 'thedumbness')
+    if (Parse.User.current())
+      Parse.User.logOut()
+
+    await Parse.User.logIn('devuser', 'thedumbness')
+    return async () => {
+      if (Parse.User.current())
+        Parse.User.logOut()
+    }
+  })
+  it('Create a sample vampire', async () => {
     const v = await SampleVampire.create_test_character('saymsamp')
+    expect(v.get('name')).to.be.a('string').and.satisfy(msg => msg.startsWith('kct_saymsamp'))
+  })
+  it('Create a regular vampire', async () => {
+    const v = await Vampire.create_test_character('saymsamp')
     expect(v.get('name')).to.be.a('string').and.satisfy(msg => msg.startsWith('kct_saymsamp'))
   })
 })
