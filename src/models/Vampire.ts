@@ -1,4 +1,4 @@
-import Parse from 'parse'
+import Parse from 'parse/dist/parse.min.js'
 
 const ALL_SIMPLETRAIT_CATEGORIES = [
   ['attributes', 'Attributes', 'Attributes'],

@@ -1,11 +1,11 @@
-import type Parse from 'parse'
+import type Parse from 'parse/dist/parse.min.js'
 import { acceptHMRUpdate, defineStore } from 'pinia'
 
 export const usePatronageStore = defineStore('patronage', () => {
   const patronages = reactive([])
 
   async function getLatestPatronage(user: Parse.User) {
-
+    return {}
   }
   /**
    * Current name of the user.

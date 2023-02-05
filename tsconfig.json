@@ -25,7 +25,9 @@
       "unplugin-vue-macros/macros-global"
     ],
     "paths": {
-      "~/*": ["src/*"]
+      "~/*": ["src/*"],
+      "parse/dist/parse.min": ["node_modules/@types/parse/index.d.ts"],
+      "parse/dist/parse.min.js": ["node_modules/@types/parse/index.d.ts"]
     }
   },
   "vueCompilerOptions": {
