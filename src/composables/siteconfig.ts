@@ -51,3 +51,7 @@ export function useConfigHeroku() {
 export function useConfigDefault() {
   return useConfigGnuLorienLocalhost()
 }
+
+export function useConfigTestDefault() {
+  return useConfigGnuLorienLocalhost()
+}
