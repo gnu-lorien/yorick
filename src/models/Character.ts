@@ -151,8 +151,8 @@ export class Character extends Parse.Object {
         )
       }
     }
-    const cost = self.calculate_trait_cost(modified_trait)
-    let spend = self.calculate_trait_to_spend(modified_trait)
+    const cost = await self.calculate_trait_cost(modified_trait)
+    let spend = await self.calculate_trait_to_spend(modified_trait)
     if (!_.isFinite(spend))
       spend = 0
 

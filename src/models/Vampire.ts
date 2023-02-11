@@ -155,14 +155,14 @@ export class Vampire extends Character {
       self.VampireCosts = new BNSMETV1_VampireCosts()
   }
 
-  calculate_trait_cost(trait) {
+  async calculate_trait_cost(trait) {
     const self = this
-    return self.VampireCosts.calculate_trait_cost(self, trait)
+    return await self.VampireCosts.calculate_trait_cost(self, trait)
   }
 
-  calculate_trait_to_spend(trait) {
+  async calculate_trait_to_spend(trait) {
     const self = this
-    const new_cost = self.VampireCosts.calculate_trait_cost(self, trait)
+    const new_cost = await self.VampireCosts.calculate_trait_cost(self, trait)
     const old_cost = trait.get('cost') || 0
     return new_cost - old_cost
   }
@@ -214,7 +214,26 @@ export class Vampire extends Character {
 
   static async create_test_character(nameappend) {
     nameappend = nameappend || ''
-    const name = `karmacharactertest${nameappend}${Math.random().toString(36).slice(2)}`
+    const name = `kct_${nameappend}${Math.random().toString(36).slice(2)}`
     return await this.create(name)
+  }
+
+  _raw_generation() {
+    const self = this
+    let generation
+    _.each(self.get('backgrounds'), (b) => {
+      if (b.get_base_name() == 'Generation')
+        generation = b.get('value')
+    })
+
+    return generation
+  }
+
+  generation() {
+    return this._raw_generation() || 1
+  }
+
+  has_generation() {
+    return !_.isUndefined(this._raw_generation())
   }
 }
