@@ -1,4 +1,5 @@
 import Parse from 'parse/dist/parse.min.js'
+import * as _ from 'lodash-es'
 import { chain, extend, isString, isUndefined, map, result } from 'lodash-es'
 import { BNSMETV1_VampireCosts } from '~/helpers/BNSMETV1_VampireCosts'
 import { Character } from '~/models/Character'
@@ -50,6 +51,30 @@ export class Vampire extends Character {
 
   static get_sum_creation_categories() {
     return SUM_CREATION_CATEGORIES
+  }
+
+  async update_creation_rules_for_changed_trait(category, modified_trait, freeValue) {
+    const self = this
+    if (!_.includes(['merits', 'flaws'], category)) {
+      if (!freeValue)
+        return
+    }
+    /* FIXME Move to the creation model */
+    if (!_.includes(['flaws', 'merits', 'focus_mentals', 'focus_physicals', 'focus_socials', 'attributes', 'skills', 'disciplines', 'backgrounds'], category))
+      return
+
+    const creations = await Parse.Object.fetchAllIfNeeded([self.get('creation')])
+    const creation = creations[0]
+    const stepName = `${category}_${freeValue}_remaining`
+    const listName = `${category}_${freeValue}_picks`
+    creation.addUnique(listName, modified_trait)
+    if (_.includes(['merits', 'flaws'], category)) {
+      const sum = _.sum(creation.get(listName), 'attributes.value')
+      creation.set(stepName, 7 - sum)
+    }
+    else {
+      creation.increment(stepName, -1)
+    }
   }
 
   static all_simpletrait_categories() {
@@ -130,6 +155,18 @@ export class Vampire extends Character {
       self.VampireCosts = new BNSMETV1_VampireCosts()
   }
 
+  calculate_trait_cost(trait) {
+    const self = this
+    return self.VampireCosts.calculate_trait_cost(self, trait)
+  }
+
+  calculate_trait_to_spend(trait) {
+    const self = this
+    const new_cost = self.VampireCosts.calculate_trait_cost(self, trait)
+    const old_cost = trait.get('cost') || 0
+    return new_cost - old_cost
+  }
+
   static async progress(text) {
     console.log(`Progress: ${text}`)
   }
@@ -160,6 +197,7 @@ export class Vampire extends Character {
     this.progress('Fetching character from server')
     const characters = useCharacterStore()
     const populated_character = await characters.getCharacter(v.id, Vampire)
+    await populated_character.save()
     this.progress('Adding Humanity')
     await populated_character.update_trait('Humanity', 5, 'paths', 5, true)
     this.progress('Adding Healthy')

@@ -104,6 +104,7 @@ export class Character extends Parse.Object {
 
     self.ensure_category(category)
     await Parse.Object.fetchAllIfNeeded(self.get_category_for_fetch(category))
+
     if (!_.isString(nameOrTrait)) {
       if (!_.includes(self.get(category), modified_trait)) {
         throw new Parse.Error(
@@ -157,7 +158,9 @@ export class Character extends Parse.Object {
 
     modified_trait.set('cost', cost)
     self.increment('change_count')
-    self.addUnique(category, modified_trait, { silent: true })
+    // RAS FIXME addUnique here with an unsaved modified_trait doesn't work now
+    await modified_trait.save()
+    self.addUnique(category, modified_trait)
     await self.progress(`Updating trait ${modified_trait.get('name')}`)
 
     await self.update_creation_rules_for_changed_trait(
@@ -687,7 +690,7 @@ export class Character extends Parse.Object {
     return await self.save()
   }
 
-  async initialize_troupe_membership(throttle) {
+  async initialize_troupe_membership(throttle?) {
     const self = this
     let initialize = true
     if (self.troupe_ids && throttle) {

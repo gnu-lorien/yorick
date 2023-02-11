@@ -21,6 +21,7 @@ export const useCharacterStore = defineStore('character', () => {
 
     const character = characters[id]
     await character.ensure_loaded(categories)
+    return character
   }
   /**
    * Current name of the user.
