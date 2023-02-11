@@ -109,8 +109,7 @@ export class Character extends Parse.Object {
       if (modified_trait.dirty('name')) {
         const matching_names = _.filter(
           _.without(self.get(category), modified_trait),
-          'attributes.name',
-          modified_trait.get('name'),
+          ['attributes.name', modified_trait.get('name')],
         )
         if (matching_names.length != 0) {
           modified_trait.set('name', modified_trait._serverData.name)
