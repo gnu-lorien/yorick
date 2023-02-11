@@ -1,5 +1,6 @@
 import Parse from 'parse/dist/parse.min.js'
 import { ClanRule } from '~/helpers/BNSMETV1_ClanRule'
+import { ExperienceNotation } from '~/models/ExperienceNotation'
 import { VampireCreation } from '~/models/VampireCreation'
 import { type UserModule } from '~/types'
 import { Vampire } from '~/models/Vampire'
@@ -13,6 +14,7 @@ export function registerYorickTypes() {
   Parse.Object.registerSubclass('ClanRule', ClanRule)
   Parse.Object.registerSubclass('SimpleTrait', SimpleTrait)
   Parse.Object.registerSubclass('Character', Character)
+  Parse.Object.registerSubclass('ExperienceNotation', ExperienceNotation)
 }
 
 // Setup Pinia

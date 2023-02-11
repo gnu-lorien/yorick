@@ -1,5 +1,8 @@
 import Parse from 'parse/dist/parse.min.js'
 import * as _ from 'lodash-es'
+import { SimpleTrait } from './SimpleTrait'
+import { ExperienceNotations } from './ExperienceNotations'
+import { ExperienceNotation } from './ExperienceNotation'
 
 export class Character extends Parse.Object {
   constructor(
@@ -309,7 +312,7 @@ export class Character extends Parse.Object {
       return Parse.Promise.as(self.experience_notations)
     }
 
-    self.experience_notations = new ExperienceNotationCollection()
+    self.experience_notations = new ExperienceNotations()
     // RAS FIXME Do I need to convert these to Vue watches?
     self.experience_notations.on('change', self.on_update_experience_notation, self)
     self.experience_notations.on('remove', self.on_remove_experience_notation, self)
