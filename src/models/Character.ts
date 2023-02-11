@@ -439,10 +439,10 @@ export class Character extends Parse.Object {
     // Silence the notification
     ens.add(en, { silent: true })
     // Find the index for the new model afterward
-    let index, model
+    let index
     for (let i = 0, length = ens.models.length; i < length; i++) {
-      model = ens.models[i]
-      if (ens._byCid[model.cid]) {
+      const model = ens.models[i]
+      if (model._localId === en._localId) {
         index = i
         break
       }

@@ -77,7 +77,7 @@ export class Vampire extends Character {
     }
     await this.ensure_creation_rules_exist()
     await this.initialize_vampire_costs()
-    await this.initialize_troup_membership()
+    await this.initialize_troupe_membership()
   }
 
   async ensure_creation_rules_exist() {
