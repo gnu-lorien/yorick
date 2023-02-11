@@ -493,7 +493,8 @@ export class Character extends Parse.Object {
     }
 
     self.recorded_changes = new VampireChanges()
-    self.on('saved', self.update_recorded_changes, self)
+    // RAS FIXME How do I do these self ons and triggers in Vue?
+    // self.on('saved', self.update_recorded_changes, self)
     // self.on("saved", self.fetch_recorded_changes, self);
     if (register)
       register(self.recorded_changes)
