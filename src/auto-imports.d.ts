@@ -128,9 +128,18 @@ declare global {
   const useBroadcastChannel: typeof import('@vueuse/core')['useBroadcastChannel']
   const useBrowserLocation: typeof import('@vueuse/core')['useBrowserLocation']
   const useCached: typeof import('@vueuse/core')['useCached']
+  const useCharacterStore: typeof import('./stores/characters')['useCharacterStore']
   const useClipboard: typeof import('@vueuse/core')['useClipboard']
   const useCloned: typeof import('@vueuse/core')['useCloned']
   const useColorMode: typeof import('@vueuse/core')['useColorMode']
+  const useConfigC9: typeof import('./composables/siteconfig')['useConfigC9']
+  const useConfigDefault: typeof import('./composables/siteconfig')['useConfigDefault']
+  const useConfigGnuLorienLocalhost: typeof import('./composables/siteconfig')['useConfigGnuLorienLocalhost']
+  const useConfigHeroku: typeof import('./composables/siteconfig')['useConfigHeroku']
+  const useConfigLocalhost: typeof import('./composables/siteconfig')['useConfigLocalhost']
+  const useConfigPatron: typeof import('./composables/siteconfig')['useConfigPatron']
+  const useConfigPubstorm: typeof import('./composables/siteconfig')['useConfigPubstorm']
+  const useConfigTestDefault: typeof import('./composables/siteconfig')['useConfigTestDefault']
   const useConfirmDialog: typeof import('@vueuse/core')['useConfirmDialog']
   const useCounter: typeof import('@vueuse/core')['useCounter']
   const useCssModule: typeof import('vue')['useCssModule']
@@ -201,6 +210,7 @@ declare global {
   const useOnline: typeof import('@vueuse/core')['useOnline']
   const usePageLeave: typeof import('@vueuse/core')['usePageLeave']
   const useParallax: typeof import('@vueuse/core')['useParallax']
+  const usePatronageStore: typeof import('./stores/patronage')['usePatronageStore']
   const usePermission: typeof import('@vueuse/core')['usePermission']
   const usePointer: typeof import('@vueuse/core')['usePointer']
   const usePointerLock: typeof import('@vueuse/core')['usePointerLock']
@@ -215,6 +225,7 @@ declare global {
   const useResizeObserver: typeof import('@vueuse/core')['useResizeObserver']
   const useRoute: typeof import('vue-router')['useRoute']
   const useRouter: typeof import('vue-router')['useRouter']
+  const useRuleStore: typeof import('./stores/rules')['useRuleStore']
   const useScreenOrientation: typeof import('@vueuse/core')['useScreenOrientation']
   const useScreenSafeArea: typeof import('@vueuse/core')['useScreenSafeArea']
   const useScriptTag: typeof import('@vueuse/core')['useScriptTag']
@@ -410,9 +421,18 @@ declare module 'vue' {
     readonly useBroadcastChannel: UnwrapRef<typeof import('@vueuse/core')['useBroadcastChannel']>
     readonly useBrowserLocation: UnwrapRef<typeof import('@vueuse/core')['useBrowserLocation']>
     readonly useCached: UnwrapRef<typeof import('@vueuse/core')['useCached']>
+    readonly useCharacterStore: UnwrapRef<typeof import('./stores/characters')['useCharacterStore']>
     readonly useClipboard: UnwrapRef<typeof import('@vueuse/core')['useClipboard']>
     readonly useCloned: UnwrapRef<typeof import('@vueuse/core')['useCloned']>
     readonly useColorMode: UnwrapRef<typeof import('@vueuse/core')['useColorMode']>
+    readonly useConfigC9: UnwrapRef<typeof import('./composables/siteconfig')['useConfigC9']>
+    readonly useConfigDefault: UnwrapRef<typeof import('./composables/siteconfig')['useConfigDefault']>
+    readonly useConfigGnuLorienLocalhost: UnwrapRef<typeof import('./composables/siteconfig')['useConfigGnuLorienLocalhost']>
+    readonly useConfigHeroku: UnwrapRef<typeof import('./composables/siteconfig')['useConfigHeroku']>
+    readonly useConfigLocalhost: UnwrapRef<typeof import('./composables/siteconfig')['useConfigLocalhost']>
+    readonly useConfigPatron: UnwrapRef<typeof import('./composables/siteconfig')['useConfigPatron']>
+    readonly useConfigPubstorm: UnwrapRef<typeof import('./composables/siteconfig')['useConfigPubstorm']>
+    readonly useConfigTestDefault: UnwrapRef<typeof import('./composables/siteconfig')['useConfigTestDefault']>
     readonly useConfirmDialog: UnwrapRef<typeof import('@vueuse/core')['useConfirmDialog']>
     readonly useCounter: UnwrapRef<typeof import('@vueuse/core')['useCounter']>
     readonly useCssModule: UnwrapRef<typeof import('vue')['useCssModule']>
@@ -483,6 +503,7 @@ declare module 'vue' {
     readonly useOnline: UnwrapRef<typeof import('@vueuse/core')['useOnline']>
     readonly usePageLeave: UnwrapRef<typeof import('@vueuse/core')['usePageLeave']>
     readonly useParallax: UnwrapRef<typeof import('@vueuse/core')['useParallax']>
+    readonly usePatronageStore: UnwrapRef<typeof import('./stores/patronage')['usePatronageStore']>
     readonly usePermission: UnwrapRef<typeof import('@vueuse/core')['usePermission']>
     readonly usePointer: UnwrapRef<typeof import('@vueuse/core')['usePointer']>
     readonly usePointerLock: UnwrapRef<typeof import('@vueuse/core')['usePointerLock']>
@@ -497,6 +518,7 @@ declare module 'vue' {
     readonly useResizeObserver: UnwrapRef<typeof import('@vueuse/core')['useResizeObserver']>
     readonly useRoute: UnwrapRef<typeof import('vue-router')['useRoute']>
     readonly useRouter: UnwrapRef<typeof import('vue-router')['useRouter']>
+    readonly useRuleStore: UnwrapRef<typeof import('./stores/rules')['useRuleStore']>
     readonly useScreenOrientation: UnwrapRef<typeof import('@vueuse/core')['useScreenOrientation']>
     readonly useScreenSafeArea: UnwrapRef<typeof import('@vueuse/core')['useScreenSafeArea']>
     readonly useScriptTag: UnwrapRef<typeof import('@vueuse/core')['useScriptTag']>
