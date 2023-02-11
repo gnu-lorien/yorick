@@ -4,6 +4,8 @@ import { SimpleTrait } from './SimpleTrait'
 import { ExperienceNotations } from './ExperienceNotations'
 import { ExperienceNotation } from './ExperienceNotation'
 import { VampireChange } from './VampireChange'
+import { Approvals } from './Approvals'
+import { Approval } from './Approval'
 import { VampireChanges } from '~/models/VampireChanges'
 
 export class Character extends Parse.Object {
