@@ -314,7 +314,7 @@ export class Character extends Parse.Object {
       if (already_exists)
         already_exists(self.experience_notations)
 
-      return Parse.Promise.as(self.experience_notations)
+      return self.experience_notations
     }
 
     self.experience_notations = new ExperienceNotations()
@@ -324,7 +324,8 @@ export class Character extends Parse.Object {
     if (register)
       register(self.experience_notations)
 
-    return await self.fetch_experience_notations()
+    await self.fetch_experience_notations()
+    return self.experience_notations
   }
 
   async wait_on_current_experience_update() {

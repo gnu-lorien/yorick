@@ -2,10 +2,7 @@ import { ExperienceNotation } from './ExperienceNotation'
 import { Collection } from '~/helpers/Collection'
 
 export class ExperienceNotations extends Collection {
-  constructor() {
-    super(ExperienceNotation)
-  }
-
+  model = ExperienceNotation
   comparator(leftm, rightm) {
     const left = leftm.get('entered')
     const right = rightm.get('entered')

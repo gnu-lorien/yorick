@@ -1,9 +1,6 @@
-export class Collection {
-  model
-  models = reactive([])
-  constructor(model) {
-    this.model = model
-  }
+import { Collection as BackboneCollection } from 'backbone'
+export class Collection extends BackboneCollection {
+  sync(method, collection, options?) {
 
-  comparator(left, right) { return 0 }
+  }
 }

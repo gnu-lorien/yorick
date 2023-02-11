@@ -2,9 +2,7 @@ import { Approval } from './Approval'
 import { Collection } from '~/helpers/Collection'
 
 export class Approvals extends Collection {
-  constructor() {
-    super(Approval)
-  }
+  model = Approval
 
   comparator(left, right) {
     let l, r
