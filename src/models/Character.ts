@@ -78,16 +78,9 @@ export class Character extends Parse.Object {
     })
   }
 
-  async update_trait(
-    nameOrTrait,
-    value,
-    category,
-    free_value,
-    wait,
-    experience_cost_type,
-    experience_cost_modifier,
-  ) {
+  async update_trait(nameOrTrait, value, c, free_value, wait, experience_cost_type, experience_cost_modifier) {
     const self = this
+    let category = c
     let modified_trait
     let name
     let serverData
