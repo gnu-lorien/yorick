@@ -3,7 +3,14 @@ import Parse from 'parse/dist/parse.min.js'
 import { SimpleTraitMixin } from './SimpleTraitMixin'
 import { applyMixins } from '~/helpers/applyMixins'
 
-export class SimpleTrait extends Parse.Object {}
+export class SimpleTrait extends Parse.Object {
+  constructor(
+    attributes?: Parse.Attributes,
+    options?: any,
+  ) {
+    super('SimpleTrait', attributes, options)
+  }
+}
 
 interface SimpleTrait extends SimpleTraitMixin {}
 
