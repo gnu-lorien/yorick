@@ -111,121 +111,108 @@ _.each(character_types, (character_type) => {
       expect(changes.models.length).toBe(expected_change_length)
     })
 
-    it('can be renamed', (done) => {
+    it('can be renamed', async () => {
       const start_check = expected_change_length
       let first_trait_id
       let second_trait_id
       let third_trait_id
-      vampire.update_trait('Retainers', 1, 'backgrounds', 0, true).done((trait) => {
-        expected_change_length++
-        trait.set('name', 'Retainers: Specialized Now')
-        return vampire.update_trait(trait)
-      }).done((trait) => {
-        expected_change_length++
-        first_trait_id = trait.id
-        trait.set('name', 'Retainers: Specialized Again')
-        trait.set('value', 4)
-        return vampire.update_trait(trait)
-      }).done((trait) => {
-        expected_change_length++
-        trait.set('value', 5)
-        return vampire.update_trait(trait)
-      }).done(() => {
-        expected_change_length++
-        return vampire.update_trait('Retainers: Specialized Now', 2, 'backgrounds', 0)
-      }).done((trait) => {
-        second_trait_id = trait.id
-        expected_change_length++
-        return vampire.update_trait('Retainers', 3, 'backgrounds', 0)
-      }).done((trait) => {
-        third_trait_id = trait.id
-        expected_change_length++
-        return vampire.update_trait('Retainers: Specialized Now', 4, 'backgrounds', 0)
-      }).done(() => {
-        expected_change_length++
-        return vampire.update_trait('Retainers', 4, 'backgrounds', 0, true)
-      }).done(() => {
-        expected_change_length++
-        return vampire.get_recorded_changes()
-      }).done((changes) => {
-        expect(changes.models.length).toBe(expected_change_length)
-        _(changes.models).slice(start_check, changes.length).each((change, i) => {
-          expect(change.get('name')).not.toBe(undefined)
-          const name = change.get('name')
-          const startsWithRetainers = _.startsWith(name, 'Retainers')
-          if (startsWithRetainers) {
-            if (i == 0) {
-              expect(change.get('type')).toBe('define')
-              expect(change.get('value')).toBe(1)
-              expect(change.get('cost')).toBe(1)
-              expect(change.get('simple_trait_id')).toBe(first_trait_id)
-            }
-            else if (i == 1) {
-              expect(change.get('type')).toBe('update')
-              expect(change.get('value')).toBe(1)
-              expect(change.get('cost')).toBe(1)
-              expect(change.get('name')).toBe('Retainers: Specialized Now')
-              expect(change.get('old_text')).toBe('Retainers')
-              expect(change.get('simple_trait_id')).toBe(first_trait_id)
-            }
-            else if (i == 2) {
-              expect(change.get('type')).toBe('update')
-              expect(change.get('value')).toBe(4)
-              expect(change.get('cost')).toBe(10)
-              expect(change.get('name')).toBe('Retainers: Specialized Again')
-              expect(change.get('old_text')).toBe('Retainers: Specialized Now')
-              expect(change.get('simple_trait_id')).toBe(first_trait_id)
-            }
-            else if (i == 3) {
-              expect(change.get('type')).toBe('update')
-              expect(change.get('old_value')).toBe(4)
-              expect(change.get('value')).toBe(5)
-              expect(change.get('old_cost')).toBe(10)
-              expect(change.get('cost')).toBe(15)
-              expect(change.get('name')).toBe('Retainers: Specialized Again')
-              expect(change.get('old_text')).toBe('Retainers: Specialized Again')
-              expect(change.get('simple_trait_id')).toBe(first_trait_id)
-            }
-            else if (i == 4) {
-              expect(change.get('type')).toBe('define')
-              expect(change.get('value')).toBe(2)
-              expect(change.get('cost')).toBe(3)
-              expect(change.get('name')).toBe('Retainers: Specialized Now')
-              expect(change.get('simple_trait_id')).toBe(second_trait_id)
-            }
-            else if (i == 5) {
-              expect(change.get('type')).toBe('define')
-              expect(change.get('value')).toBe(3)
-              expect(change.get('cost')).toBe(6)
-              expect(change.get('name')).toBe('Retainers')
-              expect(change.get('simple_trait_id')).toBe(third_trait_id)
-            }
-            else if (i == 6) {
-              expect(change.get('type')).toBe('update')
-              expect(change.get('value')).toBe(4)
-              expect(change.get('old_value')).toBe(2)
-              expect(change.get('old_cost')).toBe(3)
-              expect(change.get('cost')).toBe(10)
-              expect(change.get('name')).toBe('Retainers: Specialized Now')
-              expect(change.get('old_text')).toBe('Retainers: Specialized Now')
-              expect(change.get('simple_trait_id')).toBe(second_trait_id)
-            }
-            else if (i == 7) {
-              expect(change.get('type')).toBe('update')
-              expect(change.get('value')).toBe(4)
-              expect(change.get('old_value')).toBe(3)
-              expect(change.get('old_cost')).toBe(6)
-              expect(change.get('cost')).toBe(10)
-              expect(change.get('name')).toBe('Retainers')
-              expect(change.get('old_text')).toBe('Retainers')
-              expect(change.get('simple_trait_id')).toBe(third_trait_id)
-            }
+      let trait = await vampire.update_trait('Retainers', 1, 'backgrounds', 0, true)
+      expected_change_length++
+      trait.set('name', 'Retainers: Specialized Now')
+      trait = await vampire.update_trait(trait)
+      expected_change_length++
+      first_trait_id = trait.id
+      trait.set('name', 'Retainers: Specialized Again')
+      trait.set('value', 4)
+      trait = await vampire.update_trait(trait)
+      expected_change_length++
+      trait.set('value', 5)
+      trait = await vampire.update_trait(trait)
+      expected_change_length++
+      trait = await vampire.update_trait('Retainers: Specialized Now', 2, 'backgrounds', 0)
+      second_trait_id = trait.id
+      expected_change_length++
+      trait = await vampire.update_trait('Retainers', 3, 'backgrounds', 0)
+      third_trait_id = trait.id
+      expected_change_length++
+      trait = await vampire.update_trait('Retainers: Specialized Now', 4, 'backgrounds', 0)
+      expected_change_length++
+      trait = await vampire.update_trait('Retainers', 4, 'backgrounds', 0, true)
+      expected_change_length++
+      const changes = await vampire.get_recorded_changes()
+      expect(changes.models.length).toBe(expected_change_length)
+      _(changes.models).slice(start_check, changes.length).each((change, i) => {
+        expect(change.get('name')).not.toBe(undefined)
+        const name = change.get('name')
+        const startsWithRetainers = _.startsWith(name, 'Retainers')
+        if (startsWithRetainers) {
+          if (i == 0) {
+            expect(change.get('type')).toBe('define')
+            expect(change.get('value')).toBe(1)
+            expect(change.get('cost')).toBe(1)
+            expect(change.get('simple_trait_id')).toBe(first_trait_id)
           }
-        })
-      }).done(() => {
-        done()
-      }).fail((error) => {
-        done.fail(error)
+          else if (i == 1) {
+            expect(change.get('type')).toBe('update')
+            expect(change.get('value')).toBe(1)
+            expect(change.get('cost')).toBe(1)
+            expect(change.get('name')).toBe('Retainers: Specialized Now')
+            expect(change.get('old_text')).toBe('Retainers')
+            expect(change.get('simple_trait_id')).toBe(first_trait_id)
+          }
+          else if (i == 2) {
+            expect(change.get('type')).toBe('update')
+            expect(change.get('value')).toBe(4)
+            expect(change.get('cost')).toBe(10)
+            expect(change.get('name')).toBe('Retainers: Specialized Again')
+            expect(change.get('old_text')).toBe('Retainers: Specialized Now')
+            expect(change.get('simple_trait_id')).toBe(first_trait_id)
+          }
+          else if (i == 3) {
+            expect(change.get('type')).toBe('update')
+            expect(change.get('old_value')).toBe(4)
+            expect(change.get('value')).toBe(5)
+            expect(change.get('old_cost')).toBe(10)
+            expect(change.get('cost')).toBe(15)
+            expect(change.get('name')).toBe('Retainers: Specialized Again')
+            expect(change.get('old_text')).toBe('Retainers: Specialized Again')
+            expect(change.get('simple_trait_id')).toBe(first_trait_id)
+          }
+          else if (i == 4) {
+            expect(change.get('type')).toBe('define')
+            expect(change.get('value')).toBe(2)
+            expect(change.get('cost')).toBe(3)
+            expect(change.get('name')).toBe('Retainers: Specialized Now')
+            expect(change.get('simple_trait_id')).toBe(second_trait_id)
+          }
+          else if (i == 5) {
+            expect(change.get('type')).toBe('define')
+            expect(change.get('value')).toBe(3)
+            expect(change.get('cost')).toBe(6)
+            expect(change.get('name')).toBe('Retainers')
+            expect(change.get('simple_trait_id')).toBe(third_trait_id)
+          }
+          else if (i == 6) {
+            expect(change.get('type')).toBe('update')
+            expect(change.get('value')).toBe(4)
+            expect(change.get('old_value')).toBe(2)
+            expect(change.get('old_cost')).toBe(3)
+            expect(change.get('cost')).toBe(10)
+            expect(change.get('name')).toBe('Retainers: Specialized Now')
+            expect(change.get('old_text')).toBe('Retainers: Specialized Now')
+            expect(change.get('simple_trait_id')).toBe(second_trait_id)
+          }
+          else if (i == 7) {
+            expect(change.get('type')).toBe('update')
+            expect(change.get('value')).toBe(4)
+            expect(change.get('old_value')).toBe(3)
+            expect(change.get('old_cost')).toBe(6)
+            expect(change.get('cost')).toBe(10)
+            expect(change.get('name')).toBe('Retainers')
+            expect(change.get('old_text')).toBe('Retainers')
+            expect(change.get('simple_trait_id')).toBe(third_trait_id)
+          }
+        }
       })
     })
 
