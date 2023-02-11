@@ -136,11 +136,13 @@ export class Character extends Parse.Object {
       })
       modified_trait.setACL(self.get_me_acl())
       const TempVampire = Parse.Object.extend('Vampire')
+      const tv = new TempVampire()
+      tv.id = self.id
       modified_trait.set({
         name,
         value: value || free_value,
         category,
-        owner: new TempVampire({ id: self.id }),
+        owner: tv,
         free_value: free_value || 0,
       })
       if (experience_cost_type) {
