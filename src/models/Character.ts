@@ -162,6 +162,13 @@ export class Character extends Parse.Object {
       free_value,
     )
     await self.save()
+    // For some reason the modified_trait will have the correct id but is no longer the object
+    // in the Character backgrounds array
+    const modified_trait_id = modified_trait.id
+    _.each(self.get(category), (st) => {
+      if (_.isEqual(st.id, modified_trait_id))
+        modified_trait = st
+    })
     if (spend != 0) {
       await self.add_experience_notation({
         alteration_spent: spend,
