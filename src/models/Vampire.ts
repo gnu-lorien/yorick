@@ -3,6 +3,7 @@ import * as _ from 'lodash-es'
 import { chain, extend, isString, isUndefined, map, result } from 'lodash-es'
 import { BNSMETV1_VampireCosts } from '~/helpers/BNSMETV1_VampireCosts'
 import { Character } from '~/models/Character'
+import { SimpleTrait } from '~/models/SimpleTrait'
 import { useCharacterStore } from '~/stores/characters'
 import { usePatronageStore } from '~/stores/patronage'
 import { VampireCreation } from '~/models/VampireCreation'
@@ -77,34 +78,6 @@ export class Vampire extends Character {
     }
   }
 
-  static all_simpletrait_categories() {
-    return ALL_SIMPLETRAIT_CATEGORIES
-  }
-
-  async ensure_loaded(categories: string | string[] | undefined) {
-    categories = categories || []
-    if (isString(categories))
-      categories = [categories]
-    if (categories == 'all') {
-      categories = result(this, 'all_simpletrait_categories', [])
-      categories = map(categories, (e) => {
-        return e[0]
-      })
-    }
-    if (categories.length !== 0) {
-      const objectIds = chain(categories).map((category) => {
-        return this.get(category)
-      }).flatten().without(undefined).filter((id) => {
-        return id.id
-      }).value()
-
-      await Parse.Object.fetchAllIfNeeded(objectIds)
-    }
-    await this.ensure_creation_rules_exist()
-    await this.initialize_vampire_costs()
-    await this.initialize_troupe_membership()
-  }
-
   async ensure_creation_rules_exist() {
     const self = this
     if (self.has('creation')) {
@@ -149,10 +122,78 @@ export class Vampire extends Character {
     })
   }
 
-  async initialize_vampire_costs() {
+  async fetch_all_creation_elements() {
     const self = this
-    if (isUndefined(self.VampireCosts))
-      self.VampireCosts = new BNSMETV1_VampireCosts()
+    await self.ensure_creation_rules_exist()
+    const creation = self.get('creation')
+    const listCategories = ['flaws', 'merits', 'focus_mentals', 'focus_physicals', 'focus_socials', 'attributes', 'skills', 'backgrounds', 'disciplines']
+    let objectIds = []
+    _.each(listCategories, (category) => {
+      _.each(_.range(-1, 10), (i) => {
+        const gn = `${category}_${i}_picks`
+        objectIds = _.union(creation.get(gn), objectIds)
+      })
+    })
+    objectIds = _.chain(objectIds).flatten().without(undefined).filter((id) => {
+      return id.id
+    }).value()
+    await Parse.Object.fetchAllIfNeeded(objectIds)
+  }
+
+  static all_simpletrait_categories() {
+    return ALL_SIMPLETRAIT_CATEGORIES
+  }
+
+  static all_text_attributes() {
+    return TEXT_ATTRIBUTES
+  }
+
+  static all_text_attributes_pretty_names() {
+    return TEXT_ATTRIBUTES_PRETTY_NAMES
+  }
+
+  _raw_generation() {
+    const self = this
+    let generation
+    _.each(self.get('backgrounds'), (b) => {
+      if (b.get_base_name() == 'Generation')
+        generation = b.get('value')
+    })
+
+    return generation
+  }
+
+  generation() {
+    return this._raw_generation() || 1
+  }
+
+  has_generation() {
+    return !_.isUndefined(this._raw_generation())
+  }
+
+  morality_merit() {
+    const self = this
+    let morality = 'Humanity'
+    _.each(self.get('merits'), (m) => {
+      if (_.startsWith(m.get('name'), 'Path of')) {
+        const words = _.words(m.get('name'))
+        morality = _.slice(words, 2)
+        morality = morality.join(' ')
+      }
+    })
+    return morality
+  }
+
+  morality() {
+    const self = this
+    if (!self.has('paths'))
+      return new SimpleTrait()
+
+    const p = self.get('paths')[0]
+    if (!p)
+      return new SimpleTrait({ name: 'Humanity', value: 1 })
+
+    return p
   }
 
   async calculate_trait_cost(trait) {
@@ -165,6 +206,51 @@ export class Vampire extends Character {
     const new_cost = await self.VampireCosts.calculate_trait_cost(self, trait)
     const old_cost = trait.get('cost') || 0
     return new_cost - old_cost
+  }
+
+  async calculate_total_cost() {
+    const self = this
+    const current_categories = [
+      'skills',
+      'backgrounds',
+      'disciplines',
+      'attributes',
+      'merits',
+      'rituals',
+      'techniques',
+      'elder_disciplines',
+      'luminary_disciplines',
+    ]
+    const response = {}
+    const objectIds = _.chain(current_categories).map((category) => {
+      return self.get(category)
+    }).flatten().without(undefined).value()
+    const traits = await Parse.Object.fetchAllIfNeeded(objectIds)
+    _.each(traits, (trait) => {
+      response[`${trait.get('category')}-${trait.get('name')}`] = {
+        trait,
+        cost: self.calculate_trait_cost(trait),
+      }
+    })
+    return response
+  }
+
+  max_trait_value(trait) {
+    if (trait.get('category') == 'skills')
+      return 10
+
+    return 20
+  }
+
+  async initialize_vampire_costs() {
+    const self = this
+    if (isUndefined(self.VampireCosts))
+      self.VampireCosts = new BNSMETV1_VampireCosts()
+  }
+
+  async get_in_clan_disciplines() {
+    const self = this
+    return await self.VampireCosts.get_in_clan_disciplines(self)
   }
 
   static async progress(text) {
@@ -217,22 +303,27 @@ export class Vampire extends Character {
     return await this.create(name)
   }
 
-  _raw_generation() {
-    const self = this
-    let generation
-    _.each(self.get('backgrounds'), (b) => {
-      if (b.get_base_name() == 'Generation')
-        generation = b.get('value')
-    })
+  async ensure_loaded(categories: string | string[] | undefined) {
+    categories = categories || []
+    if (isString(categories))
+      categories = [categories]
+    if (categories == 'all') {
+      categories = result(this, 'all_simpletrait_categories', [])
+      categories = map(categories, (e) => {
+        return e[0]
+      })
+    }
+    if (categories.length !== 0) {
+      const objectIds = chain(categories).map((category) => {
+        return this.get(category)
+      }).flatten().without(undefined).filter((id) => {
+        return id.id
+      }).value()
 
-    return generation
-  }
-
-  generation() {
-    return this._raw_generation() || 1
-  }
-
-  has_generation() {
-    return !_.isUndefined(this._raw_generation())
+      await Parse.Object.fetchAllIfNeeded(objectIds)
+    }
+    await this.ensure_creation_rules_exist()
+    await this.initialize_vampire_costs()
+    await this.initialize_troupe_membership()
   }
 }
