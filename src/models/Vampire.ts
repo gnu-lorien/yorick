@@ -197,7 +197,6 @@ export class Vampire extends Character {
     this.progress('Fetching character from server')
     const characters = useCharacterStore()
     const populated_character = await characters.getCharacter(v.id, Vampire)
-    await populated_character.save()
     this.progress('Adding Humanity')
     await populated_character.update_trait('Humanity', 5, 'paths', 5, true)
     this.progress('Adding Healthy')
