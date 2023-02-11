@@ -5,12 +5,14 @@ import { type UserModule } from '~/types'
 import { Vampire } from '~/models/Vampire'
 import { SampleVampire } from '~/models/SampleVampire'
 import { SimpleTrait } from '~/models/SimpleTrait'
+import { Character } from '~/models/Character'
 
 export function registerYorickTypes() {
   Parse.Object.registerSubclass('Vampire', Vampire)
   Parse.Object.registerSubclass('VampireCreation', VampireCreation)
   Parse.Object.registerSubclass('ClanRule', ClanRule)
   Parse.Object.registerSubclass('SimpleTrait', SimpleTrait)
+  Parse.Object.registerSubclass('Character', Character)
 }
 
 // Setup Pinia
