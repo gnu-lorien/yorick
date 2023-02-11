@@ -253,7 +253,7 @@ export class Character extends Parse.Object {
     */
   }
 
-  unpick_from_creation(category, picked_trait_id, pick_index) {
+  async unpick_from_creation(category, picked_trait_id, pick_index) {
     const self = this
     await self.fetch_all_creation_elements()
     const picked_trait = await self.get_trait(category, picked_trait_id)
@@ -895,7 +895,7 @@ export class Character extends Parse.Object {
    * Update long text with the matching category
    * @return {Parse.Promise} for server update
    */
-  update_long_text(category, new_text) {
+  async update_long_text(category, new_text) {
     const self = this
     const getp = self.get_long_text(category, { update: true })
     const lt = await getp
@@ -926,7 +926,7 @@ export class Character extends Parse.Object {
    * Remove a long text from the server and locally
    * @return {Parse.Promise} for server update
    */
-  remove_long_text(category, options) {
+  async remove_long_text(category, options) {
     const self = this
     var options = options || {}
     _.defaults(options, {
