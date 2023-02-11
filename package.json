@@ -27,7 +27,9 @@
     "parse": "^4.0.1",
     "@types/parse": "^3.0.2",
     "lodash-es": "^4.17.21",
-    "@types/lodash-es": "^4.17.6"
+    "@types/lodash-es": "^4.17.6",
+    "backbone": "^1.4.1",
+    "@types/backbone": "^1.4.15"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^0.34.1",
