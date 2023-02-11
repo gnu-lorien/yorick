@@ -483,13 +483,11 @@ export class Character extends Parse.Object {
     const self = this
 
     if (!_.isUndefined(self.recorded_changes)) {
-      const p = self.update_recorded_changes()
-      if (register) {
-        p.then((rc) => {
-          register(rc)
-        })
-      }
-      return p
+      const rc = await self.update_recorded_changes()
+      if (register)
+        register(rc)
+
+      return self.recorded_changes
     }
 
     self.recorded_changes = new VampireChanges()
