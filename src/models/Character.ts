@@ -497,7 +497,8 @@ export class Character extends Parse.Object {
     if (register)
       register(self.recorded_changes)
 
-    return await self.fetch_recorded_changes()
+    await self.fetch_recorded_changes()
+    return self.recorded_changes
   }
 
   async update_recorded_changes() {
