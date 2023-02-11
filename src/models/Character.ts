@@ -150,6 +150,10 @@ export class Character extends Parse.Object {
           _.parseInt(experience_cost_modifier),
         )
       }
+      // RAS FIXME Should I save it here or after the cost is set?
+      // Will need to see a test that goes through the upper path and make sure
+      // that all children attributes are still saved in the modern parse
+      await modified_trait.save()
     }
     const cost = await self.calculate_trait_cost(modified_trait)
     let spend = await self.calculate_trait_to_spend(modified_trait)
@@ -158,8 +162,6 @@ export class Character extends Parse.Object {
 
     modified_trait.set('cost', cost)
     self.increment('change_count')
-    // RAS FIXME addUnique here with an unsaved modified_trait doesn't work now
-    await modified_trait.save()
     self.addUnique(category, modified_trait)
     await self.progress(`Updating trait ${modified_trait.get('name')}`)
 
