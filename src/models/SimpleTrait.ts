@@ -12,6 +12,6 @@ export class SimpleTrait extends Parse.Object {
   }
 }
 
-interface SimpleTrait extends SimpleTraitMixin {}
+export interface SimpleTrait extends SimpleTraitMixin {}
 
 applyMixins(SimpleTrait, [SimpleTraitMixin])

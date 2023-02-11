@@ -3,6 +3,6 @@ import { applyMixins } from '~/helpers/applyMixins'
 
 export class FauxSimpleTrait {}
 
-interface FauxSimpleTrait extends SimpleTraitMixin {}
+export interface FauxSimpleTrait extends SimpleTraitMixin {}
 
 applyMixins(FauxSimpleTrait, [SimpleTraitMixin])
