@@ -7,6 +7,7 @@ import { Vampire } from '~/models/Vampire'
 import { SampleVampire } from '~/models/SampleVampire'
 import { SimpleTrait } from '~/models/SimpleTrait'
 import { Character } from '~/models/Character'
+import { VampireChange } from '~/models/VampireChange'
 
 export function registerYorickTypes() {
   Parse.Object.registerSubclass('Vampire', Vampire)
@@ -15,6 +16,7 @@ export function registerYorickTypes() {
   Parse.Object.registerSubclass('SimpleTrait', SimpleTrait)
   Parse.Object.registerSubclass('Character', Character)
   Parse.Object.registerSubclass('ExperienceNotation', ExperienceNotation)
+  Parse.Object.registerSubclass('VampireChange', VampireChange)
 }
 
 // Setup Pinia

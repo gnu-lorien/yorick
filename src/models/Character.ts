@@ -3,6 +3,8 @@ import * as _ from 'lodash-es'
 import { SimpleTrait } from './SimpleTrait'
 import { ExperienceNotations } from './ExperienceNotations'
 import { ExperienceNotation } from './ExperienceNotation'
+import { VampireChange } from './VampireChange'
+import { VampireChanges } from '~/models/VampireChanges'
 
 export class Character extends Parse.Object {
   constructor(
@@ -481,7 +483,7 @@ export class Character extends Parse.Object {
       return p
     }
 
-    self.recorded_changes = new VampireChangeCollection()
+    self.recorded_changes = new VampireChanges()
     self.on('saved', self.update_recorded_changes, self)
     // self.on("saved", self.fetch_recorded_changes, self);
     if (register)
