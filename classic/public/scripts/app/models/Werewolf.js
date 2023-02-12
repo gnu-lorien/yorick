@@ -46,12 +46,12 @@ define([
         ["wta_flaws", "Flaws", "Merits and Flaws"],
         ["wta_totem_bonus_traits", "Totem Bonuses", "Pack"]
     ];
-    
+
     var TEXT_ATTRIBUTES = ["archetype", "archetype_2", "wta_breed", "wta_auspice", "wta_tribe", "wta_camp", "wta_faction", "antecedence"];
     var TEXT_ATTRIBUTES_PRETTY_NAMES = ["Archetype", "Second Archetype", "Breed", "Auspice", "Tribe", "Camp", "Faction", "Primary, Secondary, or NPC"];
-    
+
     var SUM_CREATION_CATEGORIES = ["wta_merits", "wta_flaws"];
-    
+
     // The Model constructor
     var instance_methods = _.extend({
         get_sum_creation_categories: function() {
@@ -74,7 +74,7 @@ define([
                 var listName = category + "_" + freeValue + "_picks";
                 creation.addUnique(listName, modified_trait);
                 if (_.contains(["wta_merits", "wta_flaws"], category)) {
-                    var sum = _.sum(creation.get(listName), "attributes.value");
+                    var sum = _.sumBy(creation.get(listName), "attributes.value");
                     creation.set(stepName, 7 - sum);
                 } else {
                     creation.increment(stepName, -1);
@@ -155,15 +155,15 @@ define([
         all_simpletrait_categories: function() {
             return ALL_SIMPLETRAIT_CATEGORIES;
         },
-        
+
         all_text_attributes: function() {
             return TEXT_ATTRIBUTES;
         },
-        
+
         all_text_attributes_pretty_names: function() {
             return TEXT_ATTRIBUTES_PRETTY_NAMES;
         },
- 
+
         _raw_rank: function() {
             var self = this;
             var rank;
@@ -183,11 +183,11 @@ define([
         has_rank: function() {
             return !_.isUndefined(this._raw_rank());
         },
-        
+
         get_gnosis_total: function() {
             var self = this;
             var wps = self.get("wta_gnosis_sources");
-            var total = _.sum(wps, "attributes.value");
+            var total = _.sumBy(wps, "attributes.value");
             return total;
         },
 
@@ -246,7 +246,7 @@ define([
             }
             return Parse.Promise.as(self);
         },
-        
+
         get_affinities: function() {
             var self = this;
             var affinities = [
@@ -260,7 +260,7 @@ define([
             return [].concat(affinities, extra_affinities);
         },
     }, ExpirationMixin );
-    
+
     _.extend(instance_methods, Character);
 
     var Model = Parse.Object.extend("Vampire", instance_methods);
@@ -378,7 +378,7 @@ define([
         var name = "karmacharactertestwerewolf" + nameappend + Math.random().toString(36).slice(2);
         return Model.create(name);
     };
-    
+
     Model.all_simpletrait_categories = function () {
         return ALL_SIMPLETRAIT_CATEGORIES;
     };
@@ -386,7 +386,7 @@ define([
     Model.all_text_attributes = function () {
         return TEXT_ATTRIBUTES;
     };
-    
+
     Model.all_text_attributes_pretty_names = function () {
         return TEXT_ATTRIBUTES_PRETTY_NAMES;
     };

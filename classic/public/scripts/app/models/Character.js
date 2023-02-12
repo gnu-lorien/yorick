@@ -161,7 +161,7 @@ define([
                     self.increment("change_count");
                     self.addUnique(category, modified_trait, {silent: true});
                     self.progress("Updating trait " + modified_trait.get("name"));
-    
+
                     var minimumPromise = self.update_creation_rules_for_changed_trait(category, modified_trait, free_value).then(function() {
                         return self.save();
                     }).then(function() {
@@ -210,7 +210,7 @@ define([
                 });
             }).fail(PromiseFailReport)
         },
-        
+
         unpick_text: function(target) {
             var self = this;
             self.unset(target);
@@ -232,7 +232,7 @@ define([
             var st = _.find(models, "attributes.name", name);
             return Parse.Promise.as(st, self);
         },
-        
+
         get_trait: function(category, id) {
             var self = this;
             var models = self.get(category);
@@ -275,7 +275,7 @@ define([
                     var creation = self.get("creation");
                     creation.remove(picks_name, picked_trait);
                     if (_.contains(self.get_sum_creation_categories(), category)) {
-                        var sum = _.sum(creation.get(picks_name), "attributes.value");
+                        var sum = _.sumBy(creation.get(picks_name), "attributes.value");
                         creation.set(remaining_name, 7 - sum);
                     } else {
                         creation.increment(remaining_name, 1);
@@ -450,7 +450,7 @@ define([
         add_experience_notation: function(options) {
             var self = this;
             self._addExperienceEntryWrapper = self._addExperienceEntryWrapper || Parse.Promise.as();
-            
+
             self._addExperienceEntryWrapper = self._addExperienceEntryWrapper.always(function () {
                 return self.get_experience_notations();
             }).then(function (ens) {
@@ -472,7 +472,7 @@ define([
                     self.trigger("finish_experience_notation_propagation");
                 });
             });
-            
+
             return self._addExperienceEntryWrapper;
         },
 
@@ -547,7 +547,7 @@ define([
             });
             return self._recordedChangesFetch;
         },
-        
+
         get_approvals: function () {
             var self = this;
             self._approvalsFetch = self._approvalsFetch || Parse.Promise.as();
@@ -557,11 +557,11 @@ define([
                 }
                 var q = new Parse.Query(Approval);
                 q.equalTo("owner", self);
-                
+
                 if (0 != self.approvals.length) {
                     q.greaterThan("createdAt", self.approvals.last().createdAt);
                 }
-                
+
                 return q.each(function(approval) {
                     self.approvals.add(approval);
                 });
@@ -570,7 +570,7 @@ define([
             });
             return self._approvalsFetch;
         },
-        
+
         get_transformed_last_approved: function () {
             var self = this;
             return self.get_approvals().then(function () {
@@ -712,7 +712,7 @@ define([
         get_willpower_total: function() {
             var self = this;
             var wps = self.get("willpower_sources");
-            var total = _.sum(wps, "attributes.value");
+            var total = _.sumBy(wps, "attributes.value");
             return total;
         },
 
@@ -907,14 +907,14 @@ define([
             });
             return self._mismatchFetch;
         },
-        
+
         check_server_client_permissions_mismatch: function () {
             if (_.isUndefined(this.is_mismatched)) {
                 return this.update_server_client_permissions_mismatch();
             }
             return Parse.Promise.as(this);
         },
-        
+
         /**
          * Get a long text from the server or local cache
          * @return {Parse.Promise} with LongText or null
@@ -947,10 +947,10 @@ define([
                     return Parse.Promise.as(_.result(self._ltCache, category));
                 })
             });
-            
+
             return self._ltPromise;
         },
-        
+
         /**
          * Cache a long text on the Character
          * @return {Parse.Promise} current character
@@ -961,7 +961,7 @@ define([
                 return Parse.Promise.as(self);
             })
         },
-        
+
         /**
          * Whether or not the server has a long text in this category
          * @return {Parse.Promise}
@@ -977,10 +977,10 @@ define([
                     return Parse.Promise.as(!_.isUndefined(lt));
                 });
             });
-            
+
             return self._ltPromise;
         },
-        
+
         /**
          * Whether or not a long text in this category is locally cached
          * @return {bool}
@@ -990,7 +990,7 @@ define([
             self._ltCache = self._ltCache || {};
             return _.has(self._ltCache, category);
         },
-        
+
         /**
          * Get text only from local cache
          * @return {LongText}
@@ -1000,7 +1000,7 @@ define([
             self._ltCache = self._ltCache || {};
             return _.result(self._ltCache, category);
         },
-        
+
         /**
          * Update long text with the matching category
          * @return {Parse.Promise} for server update
@@ -1020,9 +1020,9 @@ define([
                         text: new_text
                     });
                 }
-                
+
                 lt.setACL(self.get_me_acl());
-                
+
                 return lt.save().then(function () {
                     self._ltCache = self._ltCache || {};
                     _.set(self._ltCache, category, lt);
@@ -1031,7 +1031,7 @@ define([
                 });
             });
         },
-        
+
         /**
          * Remove a long text from the server and locally
          * @return {Parse.Promise} for server update
@@ -1054,7 +1054,7 @@ define([
                 });
             });
         },
-        
+
         /**
          * Remove a long text locally only
          */
@@ -1063,7 +1063,7 @@ define([
             self._ltCache = self._ltCache || {};
             delete self._ltCache[category];
         },
-        
+
         /**
          * Gets the minimal version of all long texts for this character
          * @return {Parse.Promise} minimal LongTexts
@@ -1082,10 +1082,10 @@ define([
                     return Parse.Promise.as(longtexts);
                 });
             });
-            
-            return self._ltPromise;           
+
+            return self._ltPromise;
         }
-        
+
     }, ExpirationMixin );
 
     var Model = Parse.Object.extend("Vampire", instance_methods);

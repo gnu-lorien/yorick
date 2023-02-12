@@ -71,7 +71,7 @@ export class Vampire extends Character {
     const listName = `${category}_${freeValue}_picks`
     creation.addUnique(listName, modified_trait)
     if (_.includes(['merits', 'flaws'], category)) {
-      const sum = _.sum(creation.get(listName), 'attributes.value')
+      const sum = _.sumBy(creation.get(listName), 'attributes.value')
       creation.set(stepName, 7 - sum)
     }
     else {

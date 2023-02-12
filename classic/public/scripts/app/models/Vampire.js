@@ -50,12 +50,12 @@ define([
         ["merits", "Merits", "Merits and Flaws"],
         ["flaws", "Flaws", "Merits and Flaws"]
     ];
-    
+
     var TEXT_ATTRIBUTES = ["clan", "archetype", "sect", "faction", "title", "antecedence"];
     var TEXT_ATTRIBUTES_PRETTY_NAMES = ["Clan", "Archetype", "Sect", function (character) { return "Faction"; }, "Title", "Primary, Secondary, or NPC"];
-    
+
     var SUM_CREATION_CATEGORIES = ["merits", "flaws"];
-    
+
     // The Model constructor
     var instance_methods = _.extend({
         get_sum_creation_categories: function() {
@@ -78,7 +78,7 @@ define([
                 var listName = category + "_" + freeValue + "_picks";
                 creation.addUnique(listName, modified_trait);
                 if (_.contains(["merits", "flaws"], category)) {
-                    var sum = _.sum(creation.get(listName), "attributes.value");
+                    var sum = _.sumBy(creation.get(listName), "attributes.value");
                     creation.set(stepName, 7 - sum);
                 } else {
                     creation.increment(stepName, -1);
@@ -160,15 +160,15 @@ define([
         all_simpletrait_categories: function() {
             return ALL_SIMPLETRAIT_CATEGORIES;
         },
-        
+
         all_text_attributes: function() {
             return TEXT_ATTRIBUTES;
         },
-        
+
         all_text_attributes_pretty_names: function() {
             return TEXT_ATTRIBUTES_PRETTY_NAMES;
         },
- 
+
         _raw_generation: function() {
             var self = this;
             var generation;
@@ -273,13 +273,13 @@ define([
             }
             return Parse.Promise.as(self);
         },
-        
+
         get_in_clan_disciplines: function() {
             var self = this;
             return self.VampireCosts.get_in_clan_disciplines(self);
         },
     }, ExpirationMixin );
-    
+
     _.extend(instance_methods, Character);
 
     var Model = Parse.Object.extend("Vampire", instance_methods);
@@ -396,15 +396,15 @@ define([
         var name = "karmacharactertest" + nameappend + Math.random().toString(36).slice(2);
         return Model.create(name);
     };
-    
+
     Model.all_simpletrait_categories = function () {
         return ALL_SIMPLETRAIT_CATEGORIES;
     };
-    
+
     Model.all_text_attributes = function () {
         return TEXT_ATTRIBUTES;
     };
-    
+
     Model.all_text_attributes_pretty_names = function () {
         return TEXT_ATTRIBUTES_PRETTY_NAMES;
     };

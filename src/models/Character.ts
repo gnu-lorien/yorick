@@ -265,7 +265,7 @@ export class Character extends Parse.Object {
     const creation = self.get('creation')
     creation.remove(picks_name, picked_trait)
     if (_.includes(self.get_sum_creation_categories(), category)) {
-      const sum = _.sum(creation.get(picks_name), 'attributes.value')
+      const sum = _.sumBy(creation.get(picks_name), 'attributes.value')
       creation.set(remaining_name, 7 - sum)
     }
     else {
@@ -680,7 +680,7 @@ export class Character extends Parse.Object {
   get_willpower_total() {
     const self = this
     const wps = self.get('willpower_sources')
-    const total = _.sum(wps, 'attributes.value')
+    const total = _.sumBy(wps, 'attributes.value')
     return total
   }
 

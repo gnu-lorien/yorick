@@ -43,12 +43,12 @@ define([
         ["ctdbs_merits", "Merits", "Merits and Flaws"],
         ["ctdbs_flaws", "Flaws", "Merits and Flaws"],
     ];
-    
+
     var TEXT_ATTRIBUTES = ["archetype", "ctdbs_kith", "ctdbs_fealty_court", "ctdbs_noble_house", "ctdbs_kith_group_type", "antecedence"];
     var TEXT_ATTRIBUTES_PRETTY_NAMES = ["Archetype", "Kith", "Court", "House", function(character) { return "Group"; }, "Primary, Secondary, or NPC"];
-    
+
     var SUM_CREATION_CATEGORIES = ["ctdbs_merits", "ctdbs_flaws"];
-    
+
     // The Model constructor
     var instance_methods = _.extend({
         get_sum_creation_categories: function() {
@@ -72,7 +72,7 @@ define([
                 var listName = category + "_" + freeValue + "_picks";
                 creation.addUnique(listName, modified_trait);
                 if (_.contains(["ctdbs_merits", "ctdbs_flaws"], category)) {
-                    var sum = _.sum(creation.get(listName), "attributes.value");
+                    var sum = _.sumBy(creation.get(listName), "attributes.value");
                     creation.set(stepName, 7 - sum);
                 } else {
                     creation.increment(stepName, -1);
@@ -153,15 +153,15 @@ define([
         all_simpletrait_categories: function() {
             return ALL_SIMPLETRAIT_CATEGORIES;
         },
-        
+
         all_text_attributes: function() {
             return TEXT_ATTRIBUTES;
         },
-        
+
         all_text_attributes_pretty_names: function() {
             return TEXT_ATTRIBUTES_PRETTY_NAMES;
         },
- 
+
         _raw_seeming: function() {
             var self = this;
             var seeming;
@@ -181,12 +181,12 @@ define([
         has_seeming: function() {
             return !_.isUndefined(this._raw_seeming());
         },
-        
+
         realms: function() {
             var self = this;
             return self.get("ctdbs_realms");
         },
- 
+
         calculate_trait_cost: function(trait) {
             var self = this;
             return self.Costs.calculate_trait_cost(self, trait);
@@ -242,12 +242,12 @@ define([
             }
             return Parse.Promise.as(self);
         },
-        
+
         get_arts_affinities: function() {
             var self = this;
             return self.Costs.get_arts_affinities(self);
         },
-        
+
         _unpick_previous_arts: function(arts_to_remove)
         {
             var self = this;
@@ -270,7 +270,7 @@ define([
 
             return self._updateTraitWrapper;
         },
- 
+
         update_text: function(target, value) {
             var self = this;
             if (target != "ctdbs_kith") {
@@ -303,7 +303,7 @@ define([
             });
             return self._updateTraitWrapper;
         },
-        
+
         unpick_text: function(target) {
             var self = this;
             self._updateTraitWrapper = self._updateTraitWrapper || Parse.Promise.as();
@@ -314,7 +314,7 @@ define([
         },
 
     }, ExpirationMixin );
-    
+
     _.extend(instance_methods, Character);
 
     var Model = Parse.Object.extend("Vampire", instance_methods);
@@ -430,7 +430,7 @@ define([
         var name = "karmacharactertestwerewolf" + nameappend + Math.random().toString(36).slice(2);
         return Model.create(name);
     };
-    
+
     Model.all_simpletrait_categories = function () {
         return ALL_SIMPLETRAIT_CATEGORIES;
     };
@@ -438,7 +438,7 @@ define([
     Model.all_text_attributes = function () {
         return TEXT_ATTRIBUTES;
     };
-    
+
     Model.all_text_attributes_pretty_names = function () {
         return TEXT_ATTRIBUTES_PRETTY_NAMES;
     };
