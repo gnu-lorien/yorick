@@ -216,22 +216,21 @@ _.each(character_types, (character_type) => {
       })
     })
 
-    it('can\'t be renamed to collide', (done) => {
+    it('can\'t be renamed to collide', async () => {
       let classic_trait, not_classic_trait
-      vampire.update_trait('Retainers: Classic', 1, 'backgrounds', 0, true).done((trait) => {
-        classic_trait = trait
-        return vampire.update_trait('Retainers: Not Classic', 2, 'backgrounds', 0, true)
-      }).done((trait) => {
-        not_classic_trait = trait
-        not_classic_trait.set('name', 'Retainers: Classic')
-        return vampire.update_trait(not_classic_trait)
-      }).done(() => {
-        done.fail('Allowed the rename to be persisted')
-      }).fail((error) => {
+      let trait = await vampire.update_trait('Retainers: Classic', 1, 'backgrounds', 0, true)
+      classic_trait = trait
+      trait = await vampire.update_trait('Retainers: Not Classic', 2, 'backgrounds', 0, true)
+      not_classic_trait = trait
+      not_classic_trait.set('name', 'Retainers: Classic')
+      try {
+        await vampire.update_trait(not_classic_trait)
+        expect(false)
+      }
+      catch (error) {
         expect(error.code).toBe(1)
         expect(not_classic_trait.get('name')).toBe('Retainers: Not Classic')
-        done()
-      })
+      }
     })
 
     it('can fail to be removed', (done) => {

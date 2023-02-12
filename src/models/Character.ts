@@ -112,7 +112,7 @@ export class Character extends Parse.Object {
           ['attributes.name', modified_trait.get('name')],
         )
         if (matching_names.length != 0) {
-          modified_trait.set('name', modified_trait._serverData.name)
+          modified_trait.revert('name')
           throw new Parse.Error(
             1,
             'Name matches an existing trait. Restoring original name',
