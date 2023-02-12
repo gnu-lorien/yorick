@@ -212,7 +212,7 @@ export class Character extends Parse.Object {
     const self = this
     const models = self.get(category)
     name = `${name}`
-    const st = _.find(models, 'attributes.name', name)
+    const st = _.find(models, ['attributes.name', name])
     return st
   }
 
