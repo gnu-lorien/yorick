@@ -343,6 +343,7 @@ export class Character extends Parse.Object {
     q.equalTo('owner', self).addDescending('entered').addDescending('createdAt')
     self.experience_notations.query = q
     await self.experience_notations.fetch({ reset: true })
+    return self.experience_notations
   }
 
   _finalize_triggered_experience_notation_changes(changed_index, ens) {
