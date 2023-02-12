@@ -18,6 +18,10 @@ export class Character extends Parse.Object {
     super(className, attributes, options)
   }
 
+  toReferenceId() {
+    return `${this.className}\$${this._getId()}`
+  }
+
   async remove_trait(trait) {
     const self = this
     await trait.destroy()
@@ -155,16 +159,16 @@ export class Character extends Parse.Object {
     self.addUnique(category, modified_trait)
     await self.progress(`Updating trait ${modified_trait.get('name')}`)
 
-    await self.update_creation_rules_for_changed_trait(
-      category,
-      modified_trait,
-      free_value,
-    )
     await self.save()
     // For some reason the modified_trait will have the correct id but is no longer the object
     // in the Character backgrounds array
     const modified_trait_id = modified_trait.id
     modified_trait = _.find(self.get(category), ['id', modified_trait_id])
+    await self.update_creation_rules_for_changed_trait(
+      category,
+      modified_trait,
+      free_value,
+    )
     if (spend != 0) {
       await self.add_experience_notation({
         alteration_spent: spend,

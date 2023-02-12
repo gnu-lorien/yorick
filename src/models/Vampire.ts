@@ -7,6 +7,7 @@ import { SimpleTrait } from '~/models/SimpleTrait'
 import { useCharacterStore } from '~/stores/characters'
 import { usePatronageStore } from '~/stores/patronage'
 import { VampireCreation } from '~/models/VampireCreation'
+import { useCreationStore } from '~/stores/creations'
 
 const ALL_SIMPLETRAIT_CATEGORIES = [
   ['attributes', 'Attributes', 'Attributes'],
@@ -64,8 +65,8 @@ export class Vampire extends Character {
     if (!_.includes(['flaws', 'merits', 'focus_mentals', 'focus_physicals', 'focus_socials', 'attributes', 'skills', 'disciplines', 'backgrounds'], category))
       return
 
-    const creations = await Parse.Object.fetchAllIfNeeded([self.get('creation')])
-    const creation = creations[0]
+    const creations = useCreationStore()
+    const creation = await creations.getCreationForOwner(this)
     const stepName = `${category}_${freeValue}_remaining`
     const listName = `${category}_${freeValue}_picks`
     creation.addUnique(listName, modified_trait)
@@ -76,15 +77,11 @@ export class Vampire extends Character {
     else {
       creation.increment(stepName, -1)
     }
+    await creation.save()
   }
 
-  async ensure_creation_rules_exist() {
-    const self = this
-    if (self.has('creation')) {
-      await Parse.Object.fetchAllIfNeeded([self.get('creation')])
-      return
-    }
-    const creation = new VampireCreation({
+  creation_rules_defaults() {
+    return {
       owner: self,
       completed: false,
       concept: false,
@@ -112,14 +109,26 @@ export class Vampire extends Character {
       phase_1_finished: false,
       initial_xp: 30,
       phase_2_finished: false,
-    })
-    const newCreation = await creation.save()
-    self.set('creation', newCreation)
-    await self.add_experience_notation({
+    }
+  }
+
+  async set_creation(newCreation) {
+    this.set('creation', newCreation)
+    await this.add_experience_notation({
       reason: 'Character Creation XP',
       alteration_earned: 30,
       earned: 30,
     })
+  }
+
+  async ensure_creation_rules_exist() {
+    const self = this
+    if (self.has('creation')) {
+      await Parse.Object.fetchAllIfNeeded([self.get('creation')])
+      return
+    }
+    const creations = useCreationStore()
+    await creations.getOrCreateCreationRules(this)
   }
 
   async fetch_all_creation_elements() {
