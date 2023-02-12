@@ -220,13 +220,13 @@ export class Character extends Parse.Object {
     const self = this
     const models = self.get(category)
     if (_.isObject(id))
-      id = id.id || id.cid
+      id = id.id || id._localId
 
-    let st = _.findWhere(models, { cid: id })
+    let st = _.find(models, ['_localId', id])
     if (st)
-      return Parse.Promise.as(st, self)
+      return st
 
-    st = _.findWhere(models, { id })
+    st = _.find(models, ['id', id])
     const traits = await Parse.Object.fetchAllIfNeeded([st])
     return traits[0]
     /*
