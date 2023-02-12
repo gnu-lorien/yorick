@@ -8,6 +8,7 @@ import { SampleVampire } from '~/models/SampleVampire'
 import { Vampire } from '~/models/Vampire'
 import { registerYorickTypes } from '~/modules/parsetypes'
 import { useCharacterStore } from '~/stores/characters'
+import { SimpleTrait } from '~/models/SimpleTrait'
 
 describe('tests', () => {
   it('should works', () => {
@@ -225,7 +226,7 @@ _.each(character_types, (character_type) => {
       not_classic_trait.set('name', 'Retainers: Classic')
       try {
         await vampire.update_trait(not_classic_trait)
-        expect(false)
+        expect(false).toBe(true)
       }
       catch (error) {
         expect(error.code).toBe(1)
@@ -233,31 +234,28 @@ _.each(character_types, (character_type) => {
       }
     })
 
-    it('can fail to be removed', (done) => {
+    it('can fail to be removed', async () => {
       // Change the prototype of simpletrait to make destroy fail
       const old_destroy = SimpleTrait.prototype.destroy
-      SimpleTrait.prototype.destroy = function () {
+      SimpleTrait.prototype.destroy = async function () {
         // var e = new Parse.Error(Parse.Error.INVALID_LINKED_SESSION, "Forcing SimpleTrait destroy to fail");
-        return Parse.Promise.error({})
+        throw new Parse.Error(Parse.Error.OTHER_CAUSE, 'Failing to delete')
       }
 
       // Remove the thing
-      vampire.get_trait_by_name('backgrounds', 'Haven').then((st) => {
-        return vampire.remove_trait(st).then(() => {
-          SimpleTrait.prototype.destroy = old_destroy
-          done.fail('Successfully removed a trait while destroy was broken')
-        }, (error) => {
-          SimpleTrait.prototype.destroy = old_destroy
-          // Make sure we didn't remove the thing
-          vampire.get_trait_by_name('backgrounds', 'Haven').then((fa) => {
-            expect(fa.get('value')).toBe(2)
-            expect(fa.get('free_value')).toBe(0)
-            done()
-          }, (error) => {
-            done.fail(error)
-          })
-        })
-      })
+      const st = await vampire.get_trait_by_name('backgrounds', 'Haven')
+      try {
+        await vampire.remove_trait(st)
+        expect(false).toBe(true)
+      }
+      catch (error) {
+
+      }
+      SimpleTrait.prototype.destroy = old_destroy
+      // Make sure we didn't remove the thing
+      const fa = await vampire.get_trait_by_name('backgrounds', 'Haven')
+      expect(fa.get('value')).toBe(2)
+      expect(fa.get('free_value')).toBe(0)
     })
 
     it('can be removed', (done) => {
