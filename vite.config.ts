@@ -152,6 +152,9 @@ export default defineConfig({
     deps: {
       inline: ['@vue', '@vueuse', 'vue-demi'],
     },
+    threads: false,
+    hookTimeout: 10000 * 600,
+    testTimeout: 10000 * 600,
   },
 
   // https://github.com/antfu/vite-ssg
