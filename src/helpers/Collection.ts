@@ -32,6 +32,14 @@ export class Collection {
     }
   }
 
+  at(index) {
+    return this.models.at(index)
+  }
+
+  indexOf(value, fromIndex = 0) {
+    return _.indexOf(this.models, value, fromIndex)
+  }
+
   comparator(left, right) {
     return 0
   }
@@ -44,6 +52,26 @@ export class Collection {
     }
     else {
       this.models.push(models)
+    }
+    this._updateLookups()
+    this.models.sort(this.comparator)
+  }
+
+  _remove(model) {
+    if (_.isObject(model)) { this.models.splice(this.models.indexOf(model), 1) }
+    else {
+      const i = _.findIndex(this.models, ['id', model])
+      this.models.splice(i, 1)
+    }
+  }
+
+  remove(models, options = {}) {
+    if (_.isArray(models)) {
+      for (let i = 0; i < models.length; ++i)
+        this._remove(models[i])
+    }
+    else {
+      this._remove(models)
     }
     this._updateLookups()
     this.models.sort(this.comparator)
