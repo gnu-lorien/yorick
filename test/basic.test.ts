@@ -412,3 +412,173 @@ describe('A Vampire\'s creation', () => {
     expect(vampire.get('merits').length).toBe(0)
   })
 })
+
+_.each(character_types, (character_type) => {
+  describe(`A ${character_type.name}'s experience history`, () => {
+    let vampire
+
+    beforeAll(async () => {
+      await parseStart()
+      const v = await Vampire.create_test_character('experiencehistory')
+      const characters = useCharacterStore()
+      vampire = await characters.getCharacter(v.id)
+    })
+
+    it('got initial xp', async () => {
+      const ens = await vampire.get_experience_notations()
+      const en = _.last(ens.models)
+      expect(en.get('reason')).toBe('Character Creation XP')
+      expect(en.get('alteration_earned')).toBe(30)
+    })
+
+    it('reports initial xp', () => {
+      expect(vampire.experience_available()).toBe(30)
+      expect(vampire.get('experience_earned')).toBe(30)
+      expect(vampire.get('experience_spent')).toBe(0)
+    })
+
+    it('updates listeners on add', async () => {
+      // RAS FIXME What do about these triggers? I think these turn into component tests
+      /*
+      const Listener = Backbone.View.extend({
+        initialize() {
+          const self = this
+          _.bindAll(this, 'finish')
+        },
+
+        finish(en) {
+          const self = this
+          expect(en.get('reason')).toBe('meet hands')
+          expect(en.get('alteration_earned')).toBe(24)
+          vampire.get_experience_notations().then((ens) => {
+            const l = _.first(ens.models)
+            expect(l.get('reason')).toBe('meet hands')
+            expect(l.get('alteration_earned')).toBe(24)
+            expect(l.get('earned')).toBe(54)
+            self.stopListening()
+            done()
+          })
+        },
+      })
+      l = new Listener()
+      vampire.get_experience_notations((rc) => {
+        l.listenTo(rc, 'add', l.finish)
+        vampire.add_experience_notation({ reason: 'meet hands', alteration_earned: 24 })
+      })
+      */
+    })
+
+    it('can be quickly sequential', async () => {
+      const p = _.map(_.range(1, 20), (i) => {
+        return vampire.add_experience_notation({
+          alteration_earned: i,
+          alteration_spent: i,
+        })
+      })
+      await Promise.allSettled(p)
+      const ens = await vampire.get_experience_notations()
+      // Ignore the first two because of their creation above us
+      const debug_alterations_earned = _.map(ens.models, 'attributes.alteration_earned')
+      const models = _.dropRight(ens.models, 2)
+      let expected = 54
+      const initial_expected = expected
+      let thisval = 1
+      _.eachRight(models, (en) => {
+        expected += thisval
+        expect(en.get('alteration_earned')).toBe(thisval)
+        expect(en.get('alteration_spent')).toBe(thisval)
+        expect(en.get('earned')).toBe(expected)
+        expect(en.get('spent')).toBe(expected - initial_expected)
+        thisval += 1
+      })
+      expect(vampire.experience_available()).toBe(initial_expected)
+      expect(vampire.get('experience_earned')).toBe(expected)
+      expect(vampire.get('experience_spent')).toBe(expected - initial_expected)
+    })
+
+    it('can remove the top most', async () => {
+      let ens = await vampire.get_experience_notations()
+      await vampire.remove_experience_notation(ens.at(0))
+      expect(vampire.experience_available()).toBe(54)
+      expect(vampire.get('experience_earned')).toBe(244 - 19)
+      expect(vampire.get('experience_spent')).toBe(244 - 54 - 19)
+      ens = await vampire.fetch_experience_notations()
+      expect(ens.at(0).get('alteration_earned')).toBe(18)
+      expect(ens.at(0).get('alteration_spent')).toBe(18)
+    })
+
+    it('can remove a middle one', async () => {
+      const ens = await vampire.get_experience_notations()
+      return vampire.remove_experience_notation(ens.at(ens.models.length - 3))
+      expect(vampire.experience_available()).toBe(54)
+      expect(vampire.get('experience_earned')).toBe(244 - 19 - 1)
+      expect(vampire.get('experience_spent')).toBe(244 - 54 - 19 - 1)
+    })
+
+    it('can remove a middle one by trigger', async () => {
+      // RAS FIXME What do about these triggers? I think these turn into component tests
+      /*
+      const Listener = Backbone.View.extend({
+        initialize() {
+          const self = this
+          _.bindAll(this, 'finish')
+        },
+
+        finish() {
+          const self = this
+          self.stopListening()
+          expect(vampire.experience_available()).toBe(54)
+          expect(vampire.get('experience_earned')).toBe(244 - 19 - 1 - 2)
+          expect(vampire.get('experience_spent')).toBe(244 - 54 - 19 - 1 - 2)
+          done()
+        },
+      })
+      l = new Listener()
+      l.listenTo(vampire, 'finish_experience_notation_propagation', l.finish)
+      vampire.get_experience_notations().then((ens) => {
+        return vampire.remove_experience_notation(ens.at(ens.models.length - 3))
+      }, (error) => {
+        done.fail(error.message)
+      })
+      */
+    })
+
+    it('can update a middle one by trigger', async () => {
+      // RAS FIXME What do about these triggers? I think these turn into component tests
+      /*
+      const Listener = Backbone.View.extend({
+        initialize() {
+          const self = this
+          _.bindAll(this, 'finish')
+        },
+
+        finish() {
+          const self = this
+          self.stopListening()
+          expect(vampire.experience_available()).toBe(54)
+          expect(vampire.get('experience_earned')).toBe(244 - 19 - 1 - 2 - 1)
+          expect(vampire.get('experience_spent')).toBe(244 - 54 - 19 - 1 - 2 - 1)
+          done()
+        },
+      })
+      l = new Listener()
+      l.listenTo(vampire, 'finish_experience_notation_propagation', l.finish)
+      vampire.get_experience_notations().then((ens) => {
+        console.log(_.map(ens.models, 'attributes.earned'))
+        const en = ens.at(ens.models.length - 3)
+        return en.save({ alteration_spent: 2, alteration_earned: 2 })
+      }, (error) => {
+        done.fail(error.message)
+      })
+      */
+    })
+
+    it('can add a middle one', () => {
+
+    })
+    // Handles moving from top to bottom
+    // Handles moving from bottom to top
+    // Handles resorting internally
+    // Handles removing the only
+  })
+})
