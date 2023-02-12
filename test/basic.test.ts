@@ -258,19 +258,13 @@ _.each(character_types, (character_type) => {
       expect(fa.get('free_value')).toBe(0)
     })
 
-    it('can be removed', (done) => {
-      vampire.get_trait_by_name('backgrounds', 'Haven').then((st) => {
-        expect(st).toBeDefined()
-        expect(st.id).toBeDefined()
-        return vampire.remove_trait(st)
-      }).then(() => {
-        return vampire.get_trait_by_name('backgrounds', 'Haven')
-      }).then((fa) => {
-        expect(fa).toBeUndefined()
-        done()
-      }).fail((error) => {
-        done.fail(`Failed to remove the trait ${JSON.stringify(error)}`)
-      })
+    it('can be removed', async () => {
+      const st = await vampire.get_trait_by_name('backgrounds', 'Haven')
+      expect(st).toBeDefined()
+      expect(st.id).toBeDefined()
+      await vampire.remove_trait(st)
+      const fa = await vampire.get_trait_by_name('backgrounds', 'Haven')
+      expect(fa).toBeUndefined()
     })
   })
 })
