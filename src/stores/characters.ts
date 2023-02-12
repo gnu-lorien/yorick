@@ -1,4 +1,4 @@
-import Parse from 'parse/dist/parse.min.js'
+import Parse from 'parse/dist/parse.js'
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import type { Vampire } from '~/models/Vampire'
 

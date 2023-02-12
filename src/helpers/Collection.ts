@@ -1,4 +1,4 @@
-import Parse from 'parse/dist/parse.min.js'
+import Parse from 'parse/dist/parse.js'
 import * as _ from 'lodash-es'
 
 interface LookupCache {

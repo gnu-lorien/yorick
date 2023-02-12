@@ -1,4 +1,4 @@
-import Parse from 'parse/dist/parse.min.js'
+import Parse from 'parse/dist/parse.js'
 import { each, isNumber, range } from 'lodash-es'
 import { Vampire } from '~/models/Vampire'
 

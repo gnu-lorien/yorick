@@ -1,4 +1,4 @@
-import type Parse from 'parse/dist/parse.min.js'
+import type Parse from 'parse/dist/parse.js'
 import { acceptHMRUpdate, defineStore } from 'pinia'
 
 export const usePatronageStore = defineStore('patronage', () => {

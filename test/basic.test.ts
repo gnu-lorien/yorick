@@ -1,7 +1,7 @@
 import * as _ from 'lodash-es'
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest'
 // import { Parse } from 'parse/node'
-import Parse from 'parse/dist/parse.min.js'
+import Parse from 'parse/dist/parse.js'
 import { createPinia, setActivePinia } from 'pinia'
 import { useConfigTestDefault } from '~/composables/siteconfig'
 import { SampleVampire } from '~/models/SampleVampire'

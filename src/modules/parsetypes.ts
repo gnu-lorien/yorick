@@ -1,4 +1,4 @@
-import Parse from 'parse/dist/parse.min.js'
+import Parse from 'parse/dist/parse.js'
 import { ClanRule } from '~/helpers/BNSMETV1_ClanRule'
 import { ExperienceNotation } from '~/models/ExperienceNotation'
 import { VampireCreation } from '~/models/VampireCreation'

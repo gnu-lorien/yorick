@@ -1,4 +1,4 @@
-import Parse from 'parse/dist/parse.min.js'
+import Parse from 'parse/dist/parse.js'
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { find } from 'lodash-es'
 import { ClanRule } from '~/helpers/BNSMETV1_ClanRule'
