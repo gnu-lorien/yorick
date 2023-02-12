@@ -415,23 +415,37 @@ describe('A Vampire\'s creation', () => {
 
 _.each(character_types, (character_type) => {
   describe(`A ${character_type.name}'s experience history`, () => {
-    let vampire
+    async function getNewExperienceHistoryCharacter() {
+      const v = await character_type.template.create_test_character('experiencehistory')
+      const characters = useCharacterStore()
+      return await characters.getCharacter(v.id, character_type.template)
+    }
+
+    async function getNewExperienceHistoryCharacterFakedRange(start, stop) {
+      const vampire = await getNewExperienceHistoryCharacter()
+      for (const i of _.range(1, 20)) {
+        await vampire.add_experience_notation({
+          alteration_earned: i,
+          alteration_spent: i,
+        })
+      }
+      return vampire
+    }
 
     beforeAll(async () => {
       await parseStart()
-      const v = await Vampire.create_test_character('experiencehistory')
-      const characters = useCharacterStore()
-      vampire = await characters.getCharacter(v.id)
     })
 
     it('got initial xp', async () => {
+      const vampire = await getNewExperienceHistoryCharacter()
       const ens = await vampire.get_experience_notations()
       const en = _.last(ens.models)
       expect(en.get('reason')).toBe('Character Creation XP')
       expect(en.get('alteration_earned')).toBe(30)
     })
 
-    it('reports initial xp', () => {
+    it('reports initial xp', async () => {
+      const vampire = await getNewExperienceHistoryCharacter()
       expect(vampire.experience_available()).toBe(30)
       expect(vampire.get('experience_earned')).toBe(30)
       expect(vampire.get('experience_spent')).toBe(0)
@@ -468,51 +482,79 @@ _.each(character_types, (character_type) => {
       */
     })
 
-    it('can be quickly sequential', async () => {
-      const p = _.map(_.range(1, 20), (i) => {
-        return vampire.add_experience_notation({
+    it('can be simply sequential', async () => {
+      const vampire = await getNewExperienceHistoryCharacter()
+      const startingXP = vampire.experience_available()
+      for (const i of _.range(1, 20)) {
+        await vampire.add_experience_notation({
           alteration_earned: i,
           alteration_spent: i,
         })
-      })
-      await Promise.allSettled(p)
+      }
       const ens = await vampire.get_experience_notations()
-      // Ignore the first two because of their creation above us
+      // Ignore first one because it's from creation
       const debug_alterations_earned = _.map(ens.models, 'attributes.alteration_earned')
-      const models = _.dropRight(ens.models, 2)
-      let expected = 54
-      const initial_expected = expected
+      const debug_entered = _.map(ens.models, (m) => {
+        return m.attributes.entered.getTime()
+      })
+      const models = _.dropRight(ens.models, 1)
+      let expected = startingXP
       let thisval = 1
       _.eachRight(models, (en) => {
         expected += thisval
         expect(en.get('alteration_earned')).toBe(thisval)
         expect(en.get('alteration_spent')).toBe(thisval)
         expect(en.get('earned')).toBe(expected)
-        expect(en.get('spent')).toBe(expected - initial_expected)
+        expect(en.get('spent')).toBe(expected - startingXP)
         thisval += 1
       })
-      expect(vampire.experience_available()).toBe(initial_expected)
+      expect(vampire.experience_available()).toBe(startingXP)
       expect(vampire.get('experience_earned')).toBe(expected)
-      expect(vampire.get('experience_spent')).toBe(expected - initial_expected)
+      expect(vampire.get('experience_spent')).toBe(expected - startingXP)
+    })
+
+    it('can be quickly sequential', async () => {
+      const vampire = await getNewExperienceHistoryCharacter()
+      const startingXP = vampire.experience_available()
+      const p = _.map(_.range(1, 20), (i) => {
+        return vampire.add_experience_notation({
+          alteration_earned: i,
+          alteration_spent: i,
+        })
+      })
+      await Promise.all(p)
+      const ens = await vampire.get_experience_notations()
+      // Ignore first one because it's from creation
+      const debug_alterations_earned = _.map(ens.models, 'attributes.alteration_earned')
+      const debug_entered = _.map(ens.models, (m) => {
+        return m.attributes.entered.getTime()
+      })
+      const models = _.dropRight(ens.models, 1)
+      const expected = startingXP + _.sum(_.range(1, 20))
+      expect(vampire.experience_available()).toBe(startingXP)
+      expect(vampire.get('experience_earned')).toBe(expected)
+      expect(vampire.get('experience_spent')).toBe(expected - startingXP)
     })
 
     it('can remove the top most', async () => {
+      const vampire = await getNewExperienceHistoryCharacterFakedRange(1, 20)
       let ens = await vampire.get_experience_notations()
       await vampire.remove_experience_notation(ens.at(0))
-      expect(vampire.experience_available()).toBe(54)
-      expect(vampire.get('experience_earned')).toBe(244 - 19)
-      expect(vampire.get('experience_spent')).toBe(244 - 54 - 19)
+      expect(vampire.experience_available()).toBe(30)
+      expect(vampire.get('experience_earned')).toBe(220 - 19)
+      expect(vampire.get('experience_spent')).toBe(220 - 30 - 19)
       ens = await vampire.fetch_experience_notations()
       expect(ens.at(0).get('alteration_earned')).toBe(18)
       expect(ens.at(0).get('alteration_spent')).toBe(18)
     })
 
     it('can remove a middle one', async () => {
+      const vampire = await getNewExperienceHistoryCharacterFakedRange(1, 20)
       const ens = await vampire.get_experience_notations()
-      return vampire.remove_experience_notation(ens.at(ens.models.length - 3))
-      expect(vampire.experience_available()).toBe(54)
-      expect(vampire.get('experience_earned')).toBe(244 - 19 - 1)
-      expect(vampire.get('experience_spent')).toBe(244 - 54 - 19 - 1)
+      return vampire.remove_experience_notation(ens.at(ens.models.length - 2))
+      expect(vampire.experience_available()).toBe(30)
+      expect(vampire.get('experience_earned')).toBe(220 - 1)
+      expect(vampire.get('experience_spent')).toBe(220 - 30 - 1)
     })
 
     it('can remove a middle one by trigger', async () => {
