@@ -442,14 +442,7 @@ export class Character extends Parse.Object {
     // Silence the notification
     ens.add(en, { silent: true })
     // Find the index for the new model afterward
-    let index
-    for (let i = 0, length = ens.models.length; i < length; i++) {
-      const model = ens.models[i]
-      if (model._localId === en._localId) {
-        index = i
-        break
-      }
-    }
+    const index = ens.indexOf(en)
     const altered_ens = self._propagate_experience_notation_change(ens, index)
     await Parse.Object.saveAll(altered_ens)
 

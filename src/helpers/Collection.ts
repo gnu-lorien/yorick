@@ -37,7 +37,7 @@ export class Collection {
   }
 
   indexOf(value, fromIndex = 0) {
-    return _.indexOf(this.models, value, fromIndex)
+    return this.models.indexOf(value, fromIndex)
   }
 
   comparator(left, right) {
