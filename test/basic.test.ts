@@ -141,7 +141,7 @@ _.each(character_types, (character_type) => {
       expected_change_length++
       const changes = await vampire.get_recorded_changes()
       expect(changes.models.length).toBe(expected_change_length)
-      _(changes.models).slice(start_check, changes.length).each((change, i) => {
+      _.chain(changes.models).slice(start_check, changes.length).each((change, i) => {
         expect(change.get('name')).not.toBe(undefined)
         const name = change.get('name')
         const startsWithRetainers = _.startsWith(name, 'Retainers')
