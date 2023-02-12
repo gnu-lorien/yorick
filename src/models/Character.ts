@@ -264,7 +264,7 @@ export class Character extends Parse.Object {
     const remaining_name = `${category}_${pick_index}_remaining`
     const creation = self.get('creation')
     creation.remove(picks_name, picked_trait)
-    if (_.contains(self.get_sum_creation_categories(), category)) {
+    if (_.includes(self.get_sum_creation_categories(), category)) {
       const sum = _.sum(creation.get(picks_name), 'attributes.value')
       creation.set(remaining_name, 7 - sum)
     }

@@ -51,7 +51,7 @@ export class Vampire extends Character {
     super('Vampire')
   }
 
-  static get_sum_creation_categories() {
+  get_sum_creation_categories() {
     return SUM_CREATION_CATEGORIES
   }
 
