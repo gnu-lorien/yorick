@@ -20,7 +20,7 @@ export class Collection {
     // RAS TODO Implement event handling. Probably will be a watch on the reactive
   }
 
-  #updateLookups() {
+  _updateLookups() {
     this._byId = {}
     this._byLocalId = {}
     for (let i = 0; i < this.models.length; ++i) {
@@ -32,6 +32,10 @@ export class Collection {
     }
   }
 
+  comparator(left, right) {
+    return 0
+  }
+
   add(models, options?) {
     options = options || {}
     if (_.isArray(models)) {
@@ -41,6 +45,8 @@ export class Collection {
     else {
       this.models.push(models)
     }
+    this._updateLookups()
+    this.models.sort(this.comparator)
   }
 
   get(id) {
