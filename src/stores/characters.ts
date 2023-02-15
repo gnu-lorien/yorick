@@ -13,7 +13,9 @@ export const useCharacterStore = defineStore('character', () => {
     if (!(id in characters)) {
       const q = new Parse.Query(type)
       await type.append_to_character_fetch_query(q)
-      const c = await q.get(id)
+      const data = await q.get(id, { json: true })
+      const c = type.fromJSON(data, true, false)
+      const c = q.get(id)
       characters[id] = c
     }
 
