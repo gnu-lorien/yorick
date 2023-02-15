@@ -966,4 +966,8 @@ export class Character extends Parse.Object {
     })
     return longtexts
   }
+
+  static async append_to_character_fetch_query(q: Parse.Query) {
+
+  }
 }

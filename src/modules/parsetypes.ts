@@ -9,9 +9,11 @@ import { SimpleTrait } from '~/models/SimpleTrait'
 import { Character } from '~/models/Character'
 import { VampireChange } from '~/models/VampireChange'
 import { Approval } from '~/models/Approval'
+import { Werewolf } from '~/models/Werewolf'
 
 export function registerYorickTypes() {
   Parse.Object.registerSubclass('Vampire', Vampire)
+  Parse.Object.registerSubclass('Vampire', Werewolf)
   Parse.Object.registerSubclass('VampireCreation', VampireCreation)
   Parse.Object.registerSubclass('ClanRule', ClanRule)
   Parse.Object.registerSubclass('SimpleTrait', SimpleTrait)

@@ -16,37 +16,33 @@ const ALL_SIMPLETRAIT_CATEGORIES = [
   ['focus_socials', 'Social Focus', 'Attributes'],
   ['health_levels', 'Health Levels', 'Expended'],
   ['willpower_sources', 'Willpower', 'Expended'],
+  ['wta_gnosis_sources', 'Gnosis', 'Expended'],
   ['skills', 'Skills', 'Skills'],
   ['lore_specializations', 'Lore Specializations', 'Skills'],
   ['academics_specializations', 'Academics Specializations', 'Skills'],
   ['drive_specializations', 'Drive Specializations', 'Skills'],
   ['linguistics_specializations', 'Languages', 'Skills'],
-  ['disciplines', 'Disciplines', 'Disciplines'],
-  ['techniques', 'Techniques', 'Disciplines'],
-  ['elder_disciplines', 'Elder Disciplines', 'Disciplines'],
-  ['luminary_disciplines', 'Luminary Disciplines', 'Disciplines'],
-  ['rituals', 'Rituals', 'Disciplines'],
-  ['extra_in_clan_disciplines', 'Extra In Clan Disciplines', 'Disciplines'],
-  ['paths', 'Path of Enlightenment/Humanity', 'Morality'],
-  ['backgrounds', 'Backgrounds', 'Backgrounds'],
-  ['haven_specializations', 'Haven Specializations', 'Backgrounds'],
+  ['wta_gifts', 'Gifts', 'Gifts'],
+  ['extra_affinity_links', 'Extra Affinities', 'Gifts'],
+  ['wta_backgrounds', 'Backgrounds', 'Backgrounds'],
+  ['wta_territory_specializations', 'Territory Specializations', 'Backgrounds'],
   ['contacts_specializations', 'Contacts Specializations', 'Backgrounds'],
   ['allies_specializations', 'Allies Specializations', 'Backgrounds'],
-  ['sabbat_rituals', 'Sabbat Ritae', 'Backgrounds'],
-  ['vampiric_texts', 'Vampiric Texts', 'Backgrounds'],
   ['influence_elite_specializations', 'Influence: Elite', 'Backgrounds'],
   ['influence_underworld_specializations', 'Influence: Underworld', 'Backgrounds'],
-  ['status_traits', 'Sect Status', 'Backgrounds'],
-  ['merits', 'Merits', 'Merits and Flaws'],
-  ['flaws', 'Flaws', 'Merits and Flaws'],
+  ['wta_rites', 'Rites', 'Backgrounds'],
+  ['wta_monikers', 'Monikers', 'Backgrounds'],
+  ['wta_merits', 'Merits', 'Merits and Flaws'],
+  ['wta_flaws', 'Flaws', 'Merits and Flaws'],
+  ['wta_totem_bonus_traits', 'Totem Bonuses', 'Pack'],
 ]
 
-const TEXT_ATTRIBUTES = ['clan', 'archetype', 'sect', 'faction', 'title', 'antecedence']
-const TEXT_ATTRIBUTES_PRETTY_NAMES = ['Clan', 'Archetype', 'Sect', function (character) { return 'Faction' }, 'Title', 'Primary, Secondary, or NPC']
+const TEXT_ATTRIBUTES = ['archetype', 'archetype_2', 'wta_breed', 'wta_auspice', 'wta_tribe', 'wta_camp', 'wta_faction', 'antecedence']
+const TEXT_ATTRIBUTES_PRETTY_NAMES = ['Archetype', 'Second Archetype', 'Breed', 'Auspice', 'Tribe', 'Camp', 'Faction', 'Primary, Secondary, or NPC']
 
-const SUM_CREATION_CATEGORIES = ['merits', 'flaws']
+const SUM_CREATION_CATEGORIES = ['wta_merits', 'wta_flaws']
 
-export class Vampire extends Character {
+export class Werewolf extends Character {
   constructor() {
     super('Vampire')
   }
@@ -57,12 +53,12 @@ export class Vampire extends Character {
 
   async update_creation_rules_for_changed_trait(category, modified_trait, freeValue) {
     const self = this
-    if (!_.includes(['merits', 'flaws'], category)) {
+    if (!_.includes(['wta_merits', 'wta_flaws'], category)) {
       if (!freeValue)
         return
     }
     /* FIXME Move to the creation model */
-    if (!_.includes(['flaws', 'merits', 'focus_mentals', 'focus_physicals', 'focus_socials', 'attributes', 'skills', 'disciplines', 'backgrounds'], category))
+    if (!_.includes(['wta_flaws', 'wta_merits', 'focus_mentals', 'focus_physicals', 'focus_socials', 'attributes', 'skills', 'wta_gifts', 'wta_backgrounds'], category))
       return
 
     const creations = useCreationStore()
@@ -70,7 +66,7 @@ export class Vampire extends Character {
     const stepName = `${category}_${freeValue}_remaining`
     const listName = `${category}_${freeValue}_picks`
     creation.addUnique(listName, modified_trait)
-    if (_.includes(['merits', 'flaws'], category)) {
+    if (_.includes(['wta_merits', 'wta_flaws'], category)) {
       const sum = _.sumBy(creation.get(listName), 'attributes.value')
       creation.set(stepName, 7 - sum)
     }
@@ -93,19 +89,18 @@ export class Vampire extends Character {
       skills_3_remaining: 2,
       skills_2_remaining: 3,
       skills_1_remaining: 4,
-      backgrounds_3_remaining: 1,
-      backgrounds_2_remaining: 1,
-      backgrounds_1_remaining: 1,
-      disciplines_2_remaining: 1,
-      disciplines_1_remaining: 2,
+      wta_backgrounds_3_remaining: 1,
+      wta_backgrounds_2_remaining: 1,
+      wta_backgrounds_1_remaining: 1,
+      wta_gifts_1_remaining: 3,
       attributes_7_remaining: 1,
       attributes_5_remaining: 1,
       attributes_3_remaining: 1,
       focus_mentals_1_remaining: 1,
       focus_socials_1_remaining: 1,
       focus_physicals_1_remaining: 1,
-      merits_0_remaining: 7,
-      flaws_0_remaining: 7,
+      wta_merits_0_remaining: 7,
+      wta_flaws_0_remaining: 7,
       phase_1_finished: false,
       initial_xp: 30,
       phase_2_finished: false,
@@ -135,7 +130,7 @@ export class Vampire extends Character {
     const self = this
     await self.ensure_creation_rules_exist()
     const creation = self.get('creation')
-    const listCategories = ['flaws', 'merits', 'focus_mentals', 'focus_physicals', 'focus_socials', 'attributes', 'skills', 'backgrounds', 'disciplines']
+    const listCategories = ['wta_flaws', 'wta_merits', 'focus_mentals', 'focus_physicals', 'focus_socials', 'attributes', 'skills', 'wta_backgrounds', 'wta_gifts']
     let objectIds = []
     _.each(listCategories, (category) => {
       _.each(_.range(-1, 10), (i) => {
@@ -161,11 +156,11 @@ export class Vampire extends Character {
     return TEXT_ATTRIBUTES_PRETTY_NAMES
   }
 
-  _raw_generation() {
+  _raw_rank() {
     const self = this
     let generation
-    _.each(self.get('backgrounds'), (b) => {
-      if (b.get_base_name() == 'Generation')
+    _.each(self.get('wta_backgrounds'), (b) => {
+      if (b.get_base_name() == 'Rank')
         generation = b.get('value')
     })
 
@@ -173,46 +168,28 @@ export class Vampire extends Character {
   }
 
   generation() {
-    return this._raw_generation() || 1
+    return this._raw_rank() || 1
   }
 
-  has_generation() {
-    return !_.isUndefined(this._raw_generation())
+  has_rank() {
+    return !_.isUndefined(this._raw_rank())
   }
 
-  morality_merit() {
+  get_gnosis_total() {
     const self = this
-    let morality = 'Humanity'
-    _.each(self.get('merits'), (m) => {
-      if (_.startsWith(m.get('name'), 'Path of')) {
-        const words = _.words(m.get('name'))
-        morality = _.slice(words, 2)
-        morality = morality.join(' ')
-      }
-    })
-    return morality
-  }
-
-  morality() {
-    const self = this
-    if (!self.has('paths'))
-      return new SimpleTrait()
-
-    const p = self.get('paths')[0]
-    if (!p)
-      return new SimpleTrait({ name: 'Humanity', value: 1 })
-
-    return p
+    const wps = self.get('wta_gnosis_sources')
+    const total = _.sumBy(wps, 'attributes.value')
+    return total
   }
 
   async calculate_trait_cost(trait) {
     const self = this
-    return await self.VampireCosts.calculate_trait_cost(self, trait)
+    return await self.Costs.calculate_trait_cost(self, trait)
   }
 
   async calculate_trait_to_spend(trait) {
     const self = this
-    const new_cost = await self.VampireCosts.calculate_trait_cost(self, trait)
+    const new_cost = await self.Costs.calculate_trait_cost(self, trait)
     const old_cost = trait.get('cost') || 0
     return new_cost - old_cost
   }
@@ -221,14 +198,10 @@ export class Vampire extends Character {
     const self = this
     const current_categories = [
       'skills',
-      'backgrounds',
-      'disciplines',
+      'wta_backgrounds',
+      'wta_gifts',
       'attributes',
-      'merits',
-      'rituals',
-      'techniques',
-      'elder_disciplines',
-      'luminary_disciplines',
+      'wta_merits',
     ]
     const response = {}
     const objectIds = _.chain(current_categories).map((category) => {
@@ -251,22 +224,32 @@ export class Vampire extends Character {
     return 20
   }
 
-  async initialize_vampire_costs() {
+  async initialize_costs() {
     const self = this
-    if (isUndefined(self.VampireCosts))
-      self.VampireCosts = new BNSMETV1_VampireCosts()
+    if (isUndefined(self.VampireCosts)) {
+      self.Costs = new BNSMETV1_VampireCosts()
+      await self.Costs.initialize()
+    }
   }
 
-  async get_in_clan_disciplines() {
+  get_affinities() {
     const self = this
-    return await self.VampireCosts.get_in_clan_disciplines(self)
+    let affinities = [
+      self.get('wta_tribe'),
+      self.get('wta_auspice'),
+      self.get('wta_breed'),
+    ]
+    affinities = _.without(affinities, undefined)
+    let extra_affinities = _.map(self.get('extra_affinity_links'), 'attributes.name')
+    extra_affinities = _.without(extra_affinities, undefined)
+    return [].concat(affinities, extra_affinities)
   }
 
   static async append_to_character_fetch_query(q: Parse.Query) {
     q.include('portrait')
     q.include('owner')
-    q.include('backgrounds')
-    q.include('extra_in_clan_disciplines')
+    q.include('wta_backgrounds')
+    q.include('extra_affinity_links')
   }
 
   static async progress(text) {
@@ -288,6 +271,7 @@ export class Vampire extends Character {
     const patronage = await patronages.getLatestPatronage(Parse.User.current())
     const changes = {
       name,
+      type: 'Werewolf',
       owner: Parse.User.current(),
       change_count: 0,
     }
@@ -298,9 +282,7 @@ export class Vampire extends Character {
     await v.save(changes)
     this.progress('Fetching character from server')
     const characters = useCharacterStore()
-    const populated_character = await characters.getCharacter(v.id, Vampire)
-    this.progress('Adding Humanity')
-    await populated_character.update_trait('Humanity', 5, 'paths', 5, true)
+    const populated_character = await characters.getCharacter(v.id, Werewolf)
     this.progress('Adding Healthy')
     await populated_character.update_trait('Healthy', 3, 'health_levels', 3, true)
     this.progress('Adding Injured')
@@ -309,13 +291,15 @@ export class Vampire extends Character {
     await populated_character.update_trait('Incapacitated', 3, 'health_levels', 3, true)
     this.progress('Adding Willpower')
     await populated_character.update_trait('Willpower', 6, 'willpower_sources', 6, true)
+    this.progress('Adding Gnosis')
+    await populated_character.update_trait('Gnosis', 10, 'wta_gnosis_sources', 10, true)
     this.progress('Done!')
     return populated_character
   }
 
   static async create_test_character(nameappend) {
     nameappend = nameappend || ''
-    const name = `kct_${nameappend}${Math.random().toString(36).slice(2)}`
+    const name = `kctw_${nameappend}${Math.random().toString(36).slice(2)}`
     return await this.create(name)
   }
 
@@ -339,7 +323,7 @@ export class Vampire extends Character {
       await Parse.Object.fetchAllIfNeeded(objectIds)
     }
     await this.ensure_creation_rules_exist()
-    await this.initialize_vampire_costs()
+    await this.initialize_costs()
     await this.initialize_troupe_membership()
   }
 }
