@@ -6,6 +6,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { useConfigTestDefault } from '~/composables/siteconfig'
 import { SampleVampire } from '~/models/SampleVampire'
 import { Vampire } from '~/models/Vampire'
+import { Werewolf } from '~/models/Werewolf'
 import { registerYorickTypes } from '~/modules/parsetypes'
 import { useCharacterStore } from '~/stores/characters'
 import { SimpleTrait } from '~/models/SimpleTrait'
@@ -64,22 +65,14 @@ describe('Vampires', () => {
   })
 })
 
-/*
-const character_types = [
-  {
-    name: "Vampire",
-    template: Vampire
-  },{
-    name: "Werewolf",
-    template: Werewolf
-  }
-];
-*/
-
 const character_types = [
   {
     name: 'Vampire',
     template: Vampire,
+  },
+  {
+    name: 'Werewolf',
+    template: Werewolf,
   },
 ]
 
