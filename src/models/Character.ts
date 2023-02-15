@@ -970,4 +970,42 @@ export class Character extends Parse.Object {
   static async append_to_character_fetch_query(q: Parse.Query) {
 
   }
+
+  // This will need to be maintained manually to match Parse.Object.fromJSON
+  static fromJSONAsType(constructor, json, override = false, dirty = false) {
+    const o = new constructor()
+    const otherAttributes = {}
+
+    for (const _attr12 in json) {
+      if (_attr12 !== 'className' && _attr12 !== '__type') {
+        otherAttributes[_attr12] = json[_attr12]
+
+        if (dirty)
+          o.set(_attr12, json[_attr12])
+      }
+    }
+
+    if (override) {
+      // id needs to be set before clearServerData can work
+      if (otherAttributes.objectId)
+        o.id = otherAttributes.objectId
+
+      let preserved = null
+
+      if (typeof o._preserveFieldsOnFetch === 'function')
+        preserved = o._preserveFieldsOnFetch()
+
+      o._clearServerData()
+
+      if (preserved)
+        o._finishFetch(preserved)
+    }
+
+    o._finishFetch(otherAttributes)
+
+    if (json.objectId)
+      o._setExisted(true)
+
+    return o
+  }
 }
