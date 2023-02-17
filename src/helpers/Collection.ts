@@ -102,4 +102,8 @@ export class Collection {
     const remoteObjects = await this.query.find()
     this.add(remoteObjects)
   }
+
+  each(iteratee) {
+    return _.each(this.models, iteratee)
+  }
 }
