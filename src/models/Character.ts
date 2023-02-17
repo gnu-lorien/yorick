@@ -897,7 +897,7 @@ export class Character extends Parse.Object {
   async update_long_text(category, new_text) {
     const self = this
     const getp = self.get_long_text(category, { update: true })
-    const lt = await getp
+    let lt = await getp
     if (lt == null) {
       lt = new LongText({
         category,
