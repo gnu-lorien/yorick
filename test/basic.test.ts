@@ -3,6 +3,8 @@ import { beforeAll, beforeEach, describe, expect, it } from 'vitest'
 // import { Parse } from 'parse/node'
 import Parse from 'parse/dist/parse.js'
 import { createPinia, setActivePinia } from 'pinia'
+import { getCharacterTypes } from './charactertypes'
+import { parseEnd, parseStart } from './parsehelpers'
 import { useConfigTestDefault } from '~/composables/siteconfig'
 import { SampleVampire } from '~/models/SampleVampire'
 import { Vampire } from '~/models/Vampire'
@@ -29,24 +31,6 @@ describe('parse sanity', () => {
   })
 })
 
-async function parseInit() {
-  Parse.initialize('APPLICATION_ID')
-  Parse.serverURL = useConfigTestDefault().serverURL
-  registerYorickTypes()
-}
-async function parseStart() {
-  await parseInit()
-  if (Parse.User.current() === null || !_.eq(Parse.User.current().get('username'), 'devuser'))
-    return await Parse.User.logIn('devuser', 'thedumbness')
-
-  return Parse.User.current()
-}
-
-async function parseEnd() {
-  if (Parse.User.current())
-    Parse.User.logOut()
-}
-
 describe('Vampires', () => {
   beforeAll(async () => {
     await parseStart()
@@ -65,18 +49,7 @@ describe('Vampires', () => {
   })
 })
 
-const character_types = [
-  {
-    name: 'Vampire',
-    template: Vampire,
-  },
-  {
-    name: 'Werewolf',
-    template: Werewolf,
-  },
-]
-
-_.each(character_types, (character_type) => {
+_.each(getCharacterTypes(), (character_type) => {
   describe(`A ${character_type.name}'s traits`, () => {
     let vampire
     let expected_change_length
@@ -471,7 +444,7 @@ describe('A Werewolf\'s creation', () => {
   })
 })
 
-_.each(character_types, (character_type) => {
+_.each(getCharacterTypes(), (character_type) => {
   describe(`A ${character_type.name}'s experience history`, () => {
     async function getNewExperienceHistoryCharacter() {
       const v = await character_type.template.create_test_character('experiencehistory')
