@@ -731,10 +731,12 @@ export class Character extends Parse.Object {
     self.setACL(newACL)
     await self.save()
     await self.progress('Updating trait permissions')
-    delete self.attributes.troupes
+    self.unset('troupes')
     delete self.troupes
+    /*
     delete self._previousAttributes.troupes
     delete self._serverData.troupes
+     */
     const q = new Parse.Query('SimpleTrait')
     q.equalTo('owner', self)
     await q.each((st) => {
@@ -744,7 +746,7 @@ export class Character extends Parse.Object {
     await self.progress('Saving trait permissions')
     const simple_trait_saving_promises = _.map(allsts, (st) => {
       const name = st.get('name')
-      return st.save().fail((error) => {
+      return st.save().catch((error) => {
         return new Parse.Error(Parse.Error.OTHER_CAUSE, `Could not save ${name}`)
       })
     })
