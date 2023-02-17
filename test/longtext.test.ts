@@ -39,7 +39,7 @@ _.each(getCharacterTypes(), (character_type) => {
 
     it('can be updated', async () => {
       const the_text = 'I\'m awesome'
-      const lt = vampire.update_long_text('background', the_text)
+      const lt = await vampire.update_long_text('background', the_text)
       expect(lt).toBeDefined()
       expect(lt.get('owner').id).toBe(vampire.id)
       expect(lt.get('text')).toEqual(the_text)
@@ -51,7 +51,7 @@ _.each(getCharacterTypes(), (character_type) => {
 
     it('can be removed', async () => {
       const the_text = 'Nothing extra needed'
-      let lt = vampire.update_long_text('something_else', the_text)
+      let lt = await vampire.update_long_text('something_else', the_text)
       expect(lt).toBeDefined()
       expect(lt.get('owner')).toBe(vampire)
       expect(lt.get('text')).toEqual(the_text)
@@ -68,7 +68,7 @@ _.each(getCharacterTypes(), (character_type) => {
     })
 
     it('can be cleared to save memory', async () => {
-      const lt = vampire.update_long_text('extra_printed', 'The clocks only come out at nine')
+      const lt = await vampire.update_long_text('extra_printed', 'The clocks only come out at nine')
       expect(vampire.has_fetched_long_text('extra_printed')).toBe(true)
       vampire.free_fetched_long_text('extra_printed')
       expect(vampire.has_fetched_long_text('extra_printed')).toBe(false)
