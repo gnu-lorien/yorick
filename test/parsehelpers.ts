@@ -16,6 +16,22 @@ export async function parseStart() {
   return Parse.User.current()
 }
 
+export async function parseStartMember() {
+  await parseInit()
+  if (Parse.User.current() === null || !_.eq(Parse.User.current().get('username'), 'sampmem'))
+    return await Parse.User.logIn('sampmem', 'sampmem')
+
+  return Parse.User.current()
+}
+
+export async function parseStartAST() {
+  await parseInit()
+  if (Parse.User.current() === null || !_.eq(Parse.User.current().get('username'), 'sampast'))
+    return await Parse.User.logIn('sampmem', 'sampast')
+
+  return Parse.User.current()
+}
+
 export async function parseEnd() {
   if (Parse.User.current())
     Parse.User.logOut()
