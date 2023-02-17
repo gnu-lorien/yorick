@@ -27,7 +27,7 @@ export function useConfigGnuLorienLocalhost() {
     serverURL: 'http://localhost:1337/parse/1',
     facebookAppId: '1607159299598020',
     redirect_uri: 'http://localhost:63342/yorick/public/index.html',
-    SAMPLE_TROUPE_ID: 'k7zf9B7bwV',
+    SAMPLE_TROUPE_ID: 'deiNfiuZdD',
   }
 }
 
