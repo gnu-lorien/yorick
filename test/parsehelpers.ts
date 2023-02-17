@@ -27,7 +27,7 @@ export async function parseStartMember() {
 export async function parseStartAST() {
   await parseInit()
   if (Parse.User.current() === null || !_.eq(Parse.User.current().get('username'), 'sampast'))
-    return await Parse.User.logIn('sampmem', 'sampast')
+    return await Parse.User.logIn('sampast', 'sampast')
 
   return Parse.User.current()
 }
