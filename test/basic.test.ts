@@ -406,6 +406,71 @@ describe('A Vampire\'s creation', () => {
   })
 })
 
+describe('A Werewolf\'s creation', () => {
+  let vampire
+
+  beforeAll(async () => {
+    await parseStart()
+    const v = await Werewolf.create_test_character('creation')
+    const characters = useCharacterStore()
+    vampire = await characters.getCharacter(v.id)
+  })
+
+  it('can pick a tribe', async () => {
+    await vampire.update_text('wta_tribe', 'TheTribe')
+    expect(vampire.get('wta_tribe')).toBe('TheTribe')
+  })
+
+  it('can repick a tribe', async () => {
+    expect(vampire.get('wta_tribe')).not.toBe('DifferentClan')
+    await vampire.update_text('wta_tribe', 'DifferentClan')
+    expect(vampire.get('wta_tribe')).toBe('DifferentClan')
+  })
+
+  it('can pick a merit', async () => {
+    const creation = vampire.get('creation')
+    expect(creation.get('wta_merits_0_remaining')).toBe(7)
+    expect(creation.get('wta_merits_0_picks')).toBe(undefined)
+    const st = await vampire.update_trait('Bloodline: Coyote', 2, 'wta_merits', 0, true)
+    expect(vampire.get('creation').get('wta_merits_0_remaining')).toBe(5)
+    expect(vampire.get('creation').get('wta_merits_0_picks').length).toBe(1)
+    expect(vampire.get('creation').get('wta_merits_0_picks')[0].get('name')).toBe('Bloodline: Coyote')
+    expect(vampire.get('creation').get('wta_merits_0_picks')[0].get('value')).toBe(2)
+    const physical = await vampire.get_trait('wta_merits', st)
+    expect(physical).not.toBe(undefined)
+    expect(physical.get('name')).toBe('Bloodline: Coyote')
+    expect(physical.get('value')).toBe(2)
+  })
+
+  it('can change the value of a picked merit', async () => {
+    const creation = vampire.get('creation')
+    expect(creation.get('wta_merits_0_remaining')).toBe(5)
+    expect(creation.get('wta_merits_0_picks').length).toBe(1)
+    const st = await vampire.update_trait('Bloodline: Coyote', 3, 'wta_merits', 0, true)
+    expect(vampire.get('creation').get('wta_merits_0_remaining')).toBe(4)
+    expect(vampire.get('creation').get('wta_merits_0_picks').length).toBe(1)
+    expect(vampire.get('creation').get('wta_merits_0_picks')[0].get('name')).toBe('Bloodline: Coyote')
+    expect(vampire.get('creation').get('wta_merits_0_picks')[0].get('value')).toBe(3)
+    const physical = await vampire.get_trait('wta_merits', st)
+    expect(physical).not.toBe(undefined)
+    expect(physical.get('name')).toBe('Bloodline: Coyote')
+    expect(physical.get('value')).toBe(3)
+  })
+
+  it('can unpick a merit with a changed value', async () => {
+    expect(vampire.get('creation').get('wta_merits_0_remaining')).toBe(4)
+    expect(vampire.get('creation').get('wta_merits_0_picks').length).toBe(1)
+    const st = _.first(vampire.get('creation').get('wta_merits_0_picks'))
+    const physical = await vampire.get_trait('wta_merits', st)
+    expect(physical.get('name')).toBe('Bloodline: Coyote')
+    expect(physical.get('value')).toBe(3)
+    await vampire.unpick_from_creation('wta_merits', physical, 0, true)
+    expect(vampire.get('creation').get('wta_merits_0_remaining')).toBe(7)
+    expect(vampire.get('creation').get('wta_merits_0_picks').length).toBe(0)
+    expect(vampire.get('wta_merits').length).toBe(0)
+  })
+})
+
 _.each(character_types, (character_type) => {
   describe(`A ${character_type.name}'s experience history`, () => {
     async function getNewExperienceHistoryCharacter() {
