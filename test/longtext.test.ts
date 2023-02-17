@@ -33,7 +33,7 @@ _.each(getCharacterTypes(), (character_type) => {
     })
 
     it('return null when removing non-existent', async () => {
-      const lt = vampire.remove_long_text('some ridiculous thing we\'d never have')
+      const lt = await vampire.remove_long_text('some ridiculous thing we\'d never have')
       expect(lt).toBe(null)
     })
 
