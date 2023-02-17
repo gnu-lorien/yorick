@@ -973,7 +973,7 @@ export class Character extends Parse.Object {
   }
 
   // This will need to be maintained manually to match Parse.Object.fromJSON
-  static fromJSONAsType(constructor, json, override = false, dirty = false) {
+  static fromJSONAsType(json, constructor, override = false, dirty = false) {
     const o = new constructor()
     const otherAttributes = {}
 

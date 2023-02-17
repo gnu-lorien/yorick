@@ -1,26 +1,37 @@
 import Parse from 'parse/dist/parse.js'
+import * as _ from 'lodash-es'
 import { acceptHMRUpdate, defineStore } from 'pinia'
-import type { Vampire } from '~/models/Vampire'
-import type { Werewolf } from '~/models/Werewolf'
+import { Vampire } from '~/models/Vampire'
+import { Werewolf } from '~/models/Werewolf'
 
-interface CharacterCache {
-  [id: string]: Vampire | Werewolf
-}
 export const useCharacterStore = defineStore('character', () => {
-  const characters: CharacterCache = reactive({})
+  const characters: Map<string, Vampire | Werewolf> = reactive(new Map())
 
+  function getCharacterType(data, type?: Vampire | Werewolf) {
+    if (_.isUndefined(type)) {
+      const databaseType = data.get('type')
+      if (databaseType === 'Werewolf')
+        return Werewolf
+      return Vampire
+    }
+    return type
+  }
   async function getCharacter(id: string, type: Vampire | Werewolf, categories?: string | string[]) {
     if (!(id in characters)) {
-      const q = new Parse.Query(type)
+      const q = new Parse.Query(type || 'Character')
       await type.append_to_character_fetch_query(q)
       const data = await q.get(id, { json: true })
-      const c = type.fromJSONAsType(type, data)
+      const c = type.fromJSONAsType(data, getCharacterType(data, type))
       characters[id] = c
     }
 
     const character = characters[id]
     await character.ensure_loaded(categories)
     return character
+  }
+
+  async function clearCharacters() {
+    characters.clear()
   }
   /**
    * Current name of the user.
@@ -46,6 +57,7 @@ export const useCharacterStore = defineStore('character', () => {
 
   return {
     getCharacter,
+    clearCharacters,
     setNewName,
     otherNames,
     savedName,
