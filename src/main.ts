@@ -10,6 +10,9 @@ import generatedRoutes from '~pages'
 import './scss/main.scss'
 // import 'uno.css'
 
+// Import all of Bootstrap's JS
+import * as bootstrap from 'bootstrap'
+
 const routes = setupLayouts(generatedRoutes)
 
 // https://github.com/antfu/vite-ssg
