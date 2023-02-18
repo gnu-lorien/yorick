@@ -1,5 +1,5 @@
 import Parse from 'parse/dist/parse.js'
-import { any, chain, eq, map, range } from 'lodash-es'
+import * as _ from 'lodash-es'
 import { useRuleStore } from '~/stores/rules'
 
 export class BNSMETV1_VampireCosts extends Parse.Object {
@@ -11,7 +11,7 @@ export class BNSMETV1_VampireCosts extends Parse.Object {
     const self = this
     const rules = useRuleStore()
     let icds = await rules.getInClanDisciplines(character)
-    const eicds = map(character.get('extra_in_clan_disciplines'), 'attributes.name')
+    const eicds = _.map(character.get('extra_in_clan_disciplines'), 'attributes.name')
     icds = [].concat(icds, eicds)
     return icds
   }
@@ -20,17 +20,17 @@ export class BNSMETV1_VampireCosts extends Parse.Object {
     const self = this
     const rules = useRuleStore()
     let icds = await rules.getInClanDisciplines(character)
-    const eicds = map(character.get('extra_in_clan_disciplines'), 'attributes.name')
+    const eicds = _.map(character.get('extra_in_clan_disciplines'), 'attributes.name')
     icds = [].concat(icds, eicds)
     if ([] == icds)
       return false
 
-    return any(icds, (icd) => {
+    return _.some(icds, (icd) => {
       // Need to check if an in-clan includes a specialized name
-      if (eq(icd, trait.get_base_name()))
+      if (_.eq(icd, trait.get_base_name()))
         return true
 
-      if (eq(icd, trait.get('name')))
+      if (_.eq(icd, trait.get('name')))
         return true
 
       return false
@@ -38,13 +38,13 @@ export class BNSMETV1_VampireCosts extends Parse.Object {
   }
 
   get_cost_table(cost_per_entry) {
-    return map(range(1, 10), (i) => {
+    return _.map(_.range(1, 10), (i) => {
       return i * cost_per_entry
     })
   }
 
   get_cost_on_table(ct, value) {
-    return chain(ct).take(value).sum().value()
+    return _.chain(ct).take(value).sum().value()
   }
 
   get_trait_cost_on_table(ct, trait) {
