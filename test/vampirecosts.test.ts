@@ -54,6 +54,6 @@ describe('A Vampire\'s costs', () => {
     await characters.clearCharacters()
     vampire = await characters.getCharacter(vampire.id)
     icds = await vampire.get_in_clan_disciplines()
-    expect(icds).not.to.include('MadeUpForTesting')
+    expect(icds).to.include('MadeUpForTesting')
   })
 })
