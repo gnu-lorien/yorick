@@ -28,9 +28,6 @@ const { t } = useI18n()
       <button>Log in with Username and Password</button>
     </form>
     <div>
-      <a id="login-with-facebook" href="#"><img src="log_in_with_facebook.png"></a>
-    </div>
-    <div>
       <a href="#signup">Need an account? Sign up!</a>
     </div>
     <div>
