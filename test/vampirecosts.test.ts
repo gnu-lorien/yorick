@@ -44,4 +44,16 @@ describe('A Vampire\'s costs', () => {
     icds = await vampire.get_in_clan_disciplines()
     expect(icds).not.to.include('MadeUpForTesting')
   })
+
+  it('extra in clans are initialized properly', async () => {
+    let vampire = await getCharacter()
+    await vampire.update_trait('MadeUpForTesting', 1, 'extra_in_clan_disciplines', 1)
+    let icds = await vampire.get_in_clan_disciplines()
+    expect(icds).to.include('MadeUpForTesting')
+    const characters = useCharacterStore()
+    await characters.clearCharacters()
+    vampire = await characters.getCharacter(vampire.id)
+    icds = await vampire.get_in_clan_disciplines()
+    expect(icds).not.to.include('MadeUpForTesting')
+  })
 })
