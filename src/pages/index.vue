@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import Parse from 'parse/dist/parse.js'
+
 defineOptions({
   name: 'IndexPage',
 })
@@ -12,11 +14,18 @@ const go = () => {
 }
 
 const { t } = useI18n()
+
+const username = ref('')
+const password = ref('')
+
+function logIn() {
+  Parse.User.logIn(username.value, password.value)
+}
 </script>
 
 <template>
   <div class="login form-signin w-100 m-auto">
-    <form class="login-form">
+    <form class="login-form" @submit.prevent="logIn">
       <img class="max-yorick-sizing" src="yorick_256.png">
       <p>
         Welcome to Yorick, a character management system.
@@ -26,11 +35,11 @@ const { t } = useI18n()
       </h2>
       <div class="error" style="display:none" />
       <div class="form-floating">
-        <input id="login-username" type="text" class="form-control" placeholder="Username">
+        <input id="login-username" v-model="username" type="text" class="form-control" placeholder="Username">
         <label for="login-username">Username</label>
       </div>
       <div class="form-floating">
-        <input id="login-password" type="password" class="form-control" placeholder="Password">
+        <input id="login-password" v-model="password" type="password" class="form-control" placeholder="Password">
         <label for="login-password">Password</label>
       </div>
       <button class="w-100 btn btn-lg btn-primary">
