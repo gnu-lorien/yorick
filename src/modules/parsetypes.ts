@@ -15,7 +15,7 @@ export function registerYorickTypes() {
   Parse.Object.registerSubclass('Vampire', Vampire)
   Parse.Object.registerSubclass('Vampire', Werewolf)
   Parse.Object.registerSubclass('VampireCreation', VampireCreation)
-  Parse.Object.registerSubclass('ClanRule', ClanRule)
+  Parse.Object.registerSubclass(ClanRule.databaseClassName, ClanRule)
   Parse.Object.registerSubclass('SimpleTrait', SimpleTrait)
   Parse.Object.registerSubclass('ExperienceNotation', ExperienceNotation)
   Parse.Object.registerSubclass('VampireChange', VampireChange)
