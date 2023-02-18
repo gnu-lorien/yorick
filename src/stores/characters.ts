@@ -7,6 +7,7 @@ import { Character } from '~/models/Character'
 
 export const useCharacterStore = defineStore('character', () => {
   const characters: Map<string, Vampire | Werewolf> = reactive(new Map())
+  const userCharacterIds: Map<string, Array<string>> = reactive(new Map())
 
   function getCharacterType(data, type?: Vampire | Werewolf) {
     if (_.isUndefined(type)) {
@@ -22,7 +23,7 @@ export const useCharacterStore = defineStore('character', () => {
     }
     return type
   }
-  async function getCharacter(id: string, type: Vampire | Werewolf, categories?: string | string[]) {
+  async function getCharacter(id: string, type?: Vampire | Werewolf, categories?: string | string[]) {
     if (characters.has(id)) {
       const character = characters.get(id)
       await character.ensure_loaded(categories)
@@ -46,6 +47,23 @@ export const useCharacterStore = defineStore('character', () => {
 
   async function clearCharacters() {
     characters.clear()
+    userCharacterIds.clear()
+  }
+
+  async function getUserCharacters(user, type) {
+    if (userCharacterIds.has(user.id)) {
+      const result = []
+      const ids = userCharacterIds.get(user.id) || []
+      for (const id of ids)
+        result.push(await getCharacter(id))
+      return result
+    }
+    const q = new Parse.Query('Vampire')
+    q.equalTo('owner', user)
+    const found = await q.find()
+    const ids = _.map(found, 'id')
+    userCharacterIds.set(user.id, ids)
+    return await getUserCharacters(user, type)
   }
   /**
    * Current name of the user.
@@ -72,6 +90,7 @@ export const useCharacterStore = defineStore('character', () => {
   return {
     getCharacter,
     clearCharacters,
+    getUserCharacters,
     setNewName,
     otherNames,
     savedName,

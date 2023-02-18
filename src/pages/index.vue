@@ -20,11 +20,23 @@ const password = ref('')
 
 function logIn() {
   Parse.User.logIn(username.value, password.value)
+  if (isLoggedIn())
+    router.push({ name: 'playeroptions' })
+}
+
+function logOut() {
+  Parse.User.logOut()
+  username.value = ''
+  password.value = ''
+}
+
+function isLoggedIn() {
+  return Parse.User.current() !== null
 }
 </script>
 
 <template>
-  <div class="login form-signin w-100 m-auto">
+  <div v-if="!isLoggedIn()" class="login form-signin w-100 m-auto">
     <form class="login-form" @submit.prevent="logIn">
       <img class="max-yorick-sizing" src="yorick_256.png">
       <p>
@@ -55,6 +67,11 @@ function logIn() {
     <div>
       <a href="#about">About Yorick</a>
     </div>
+  </div>
+  <div v-else>
+    <button @click="logOut">
+      Logout
+    </button>
   </div>
 </template>
 
