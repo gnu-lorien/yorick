@@ -3,31 +3,45 @@ import * as _ from 'lodash-es'
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { Vampire } from '~/models/Vampire'
 import { Werewolf } from '~/models/Werewolf'
+import { Character } from '~/models/Character'
 
 export const useCharacterStore = defineStore('character', () => {
   const characters: Map<string, Vampire | Werewolf> = reactive(new Map())
 
   function getCharacterType(data, type?: Vampire | Werewolf) {
     if (_.isUndefined(type)) {
-      const databaseType = data.get('type')
+      const databaseType = _.get(data, 'type', 'Vampire')
       if (databaseType === 'Werewolf')
         return Werewolf
-      return Vampire
+
+      else if (databaseType === 'Vampire')
+        return Vampire
+
+      else
+        throw new Error('Unknown character type provided by the database')
     }
     return type
   }
   async function getCharacter(id: string, type: Vampire | Werewolf, categories?: string | string[]) {
-    if (!(id in characters)) {
-      const q = new Parse.Query(type || 'Character')
+    if (characters.has(id)) {
+      const character = characters.get(id)
+      await character.ensure_loaded(categories)
+      return character
+    }
+    if (!_.isUndefined(type)) {
+      const q = new Parse.Query(type)
       await type.append_to_character_fetch_query(q)
       const data = await q.get(id, { json: true })
       const c = type.fromJSONAsType(data, getCharacterType(data, type))
-      characters[id] = c
+      characters.set(id, c)
+      return getCharacter(id, type, categories)
     }
-
-    const character = characters[id]
-    await character.ensure_loaded(categories)
-    return character
+    const q = new Parse.Query('Vampire')
+    const data = await q.get(id, { json: true })
+    const realType = getCharacterType(data, type)
+    const c = Character.fromJSONAsType(data, realType)
+    characters.set(id, c)
+    return getCharacter(id, realType, categories)
   }
 
   async function clearCharacters() {

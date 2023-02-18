@@ -322,6 +322,14 @@ export class Werewolf extends Character {
 
       await Parse.Object.fetchAllIfNeeded(objectIds)
     }
+    if (this.has('portrait') && !this.get('portrait').isDataAvailable())
+      await this.get('portrait').fetch()
+    if (this.has('owner') && !this.get('owner').isDataAvailable())
+      await this.get('owner').fetch()
+    if (this.has('wta_backgrounds') && !this.get('wta_backgrounds').isDataAvailable())
+      await this.get('wta_backgrounds').fetch()
+    if (this.has('extra_affinity_links') && !this.get('extra_affinity_links').isDataAvailable())
+      await this.get('extra_affinity_links').fetch()
     await this.ensure_creation_rules_exist()
     await this.initialize_costs()
     await this.initialize_troupe_membership()

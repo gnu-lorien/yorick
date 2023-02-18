@@ -29,7 +29,7 @@ _.each(getCharacterTypes(), (character_type) => {
       await parseStartMember()
       setActivePinia(createPinia())
       expect(Parse.User.current().get('username')).toBe('sampmem')
-      const v = await Vampire.create_test_character('troupemember')
+      const v = await character_type.template.create_test_character('troupemember')
       const characters = useCharacterStore()
       vampire = await characters.getCharacter(v.id)
     })
@@ -54,7 +54,7 @@ _.each(getCharacterTypes(), (character_type) => {
       const characters = useCharacterStore()
       await characters.clearCharacters()
       const v = await characters.getCharacter(vampire.id)
-      expect(v).toBeTypeOf(character_type.template)
+      expect(v).toBeInstanceOf(character_type.template)
       const acl = v.get_me_acl()
       expect(acl.getRoleWriteAccess(`LST_${SAMPLE_TROUPE_ID}`)).toBe(true)
       expect(acl.getRoleReadAccess(`LST_${SAMPLE_TROUPE_ID}`)).toBe(true)
@@ -71,7 +71,7 @@ _.each(getCharacterTypes(), (character_type) => {
         expect(true).toBe(false)
       }
       catch (e) {
-
+        expect(e.code).toEqual(Parse.Error.OBJECT_NOT_FOUND)
       }
     })
 
@@ -96,7 +96,7 @@ _.each(getCharacterTypes(), (character_type) => {
         expect(true).toBe(false)
       }
       catch (e) {
-
+        expect(e.code).toEqual(Parse.Error.OBJECT_NOT_FOUND)
       }
     })
 
@@ -109,7 +109,7 @@ _.each(getCharacterTypes(), (character_type) => {
         expect(true).toBe(false)
       }
       catch (e) {
-
+        expect(e.code).toEqual(Parse.Error.OBJECT_NOT_FOUND)
       }
     })
 

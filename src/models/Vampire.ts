@@ -338,6 +338,14 @@ export class Vampire extends Character {
 
       await Parse.Object.fetchAllIfNeeded(objectIds)
     }
+    if (this.has('portrait') && !this.get('portrait').isDataAvailable())
+      await this.get('portrait').fetch()
+    if (this.has('owner') && !this.get('owner').isDataAvailable())
+      await this.get('owner').fetch()
+    if (this.has('backgrounds') && !this.get('backgrounds').isDataAvailable())
+      await this.get('backgrounds').fetch()
+    if (this.has('extra_in_clan_disciplines') && !this.get('extra_in_clan_disciplines').isDataAvailable())
+      await this.get('extra_in_clan_disciplines').fetch()
     await this.ensure_creation_rules_exist()
     await this.initialize_vampire_costs()
     await this.initialize_troupe_membership()
