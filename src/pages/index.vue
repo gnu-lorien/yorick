@@ -15,37 +15,29 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <div>
-    <div text-4xl>
-      <div i-carbon-campsite inline-block />
-    </div>
+  <div class="login">
+    <img class="max-yorick-sizing" src="yorick_256.png">
     <p>
-      <a rel="noreferrer" href="https://github.com/antfu/vitesse" target="_blank">
-        Vitesse
-      </a>
+      Welcome to Yorick, a character management system for <a href="http://www.undergroundtheater.org/">Underground Theater</a>.
     </p>
-    <p>
-      <em text-sm opacity-75>{{ t('intro.desc') }}</em>
-    </p>
-
-    <div py-4 />
-
-    <TheInput
-      v-model="name"
-      placeholder="What's your name?"
-      autocomplete="false"
-      @keydown.enter="go"
-    />
-    <label class="hidden" for="input">{{ t('intro.whats-your-name') }}</label>
-
+    <form class="login-form">
+      <h2>Log In</h2>
+      <div class="error" style="display:none" />
+      <input id="login-username" type="text" placeholder="Username">
+      <input id="login-password" type="password" placeholder="Password">
+      <button>Log in with Username and Password</button>
+    </form>
     <div>
-      <button
-        btn m-3 text-sm
-        :disabled="!name"
-        @click="go"
-      >
-        {{ t('button.go') }}
-      </button>
+      <a id="login-with-facebook" href="#"><img src="log_in_with_facebook.png"></a>
+    </div>
+    <div>
+      <a href="#signup">Need an account? Sign up!</a>
+    </div>
+    <div>
+      <a href="#reset">Forgot your password?</a>
+    </div>
+    <div>
+      <a href="#about">About Yorick</a>
     </div>
   </div>
 </template>
