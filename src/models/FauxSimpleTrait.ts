@@ -1,13 +1,17 @@
-import { Model } from 'backbone'
+import Parse from 'parse/dist/parse.js'
 import { SimpleTraitMixin } from './SimpleTraitMixin'
 import { applyMixins } from '~/helpers/applyMixins'
 
-export class FauxSimpleTrait extends Model {
+export class FauxSimpleTrait extends Parse.Object {
   constructor(
     attributes?: Parse.Attributes,
     options?: any,
   ) {
-    super(attributes, options)
+    super('FauxSimpleTrait', attributes, options)
+  }
+
+  async save() {
+    throw new Error('May not save a faux simple trait')
   }
 }
 
