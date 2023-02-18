@@ -344,8 +344,12 @@ export class Vampire extends Character {
       await this.get('owner').fetch()
     if (this.has('backgrounds') && !this.get('backgrounds').isDataAvailable())
       await this.get('backgrounds').fetch()
-    if (this.has('extra_in_clan_disciplines') && !this.get('extra_in_clan_disciplines').isDataAvailable())
-      await this.get('extra_in_clan_disciplines').fetch()
+    if (this.has('extra_in_clan_disciplines')) {
+      for (const eicd of this.get('extra_in_clan_disciplines')) {
+        if (!eicd.isDataAvailable())
+          await eicd.fetch()
+      }
+    }
     await this.ensure_creation_rules_exist()
     await this.initialize_vampire_costs()
     await this.initialize_troupe_membership()
