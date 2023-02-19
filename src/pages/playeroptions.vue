@@ -15,7 +15,7 @@ function hasAdminInterface() {
   <div role="main" class="ui-content">
     <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
       <li>
-        <router-link :to="{ path: '/characters/all' }">
+        <router-link :to="{ name: 'characters-type', params: { type: 'all' } }">
           Characters
         </router-link>
       </li>
