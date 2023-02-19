@@ -1,13 +1,21 @@
-<script>
+<script setup>
 import Parse from 'parse/dist/parse.js'
 import { useCharacterStore } from '~/stores/characters'
 
-const characterStore = useCharacterStore()
-const characters = characterStore.getUserCharacters(Parse.User.current())
+const props = defineProps({
+  type: String,
+})
 
-export default {
-  name: '[type]',
-}
+const characters = ref([])
+
+onMounted(async () => {
+  const characterStore = useCharacterStore()
+  const newCharacters = await characterStore.getUserCharacters(Parse.User.current())
+  characters.value.splice(0, newCharacters.length, ...newCharacters)
+})
+
+const name = '[type]'
+defineExpose([name])
 </script>
 
 <template>
