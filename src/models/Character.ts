@@ -663,13 +663,13 @@ export class Character extends Parse.Object {
       return data.get(`thumb_${size}`).url()
     }
     else {
-      return 'head_skull.png'
+      return '/head_skull.png'
     }
   }
 
   get_thumbnail_sync(size) {
     const self = this
-    return _.result(self, `attributes.portrait.attributes.thumb_${size}.url`, 'head_skull.png')
+    return _.result(self, `attributes.portrait.attributes.thumb_${size}.url`, '/head_skull.png')
   }
 
   get_willpower_total() {
