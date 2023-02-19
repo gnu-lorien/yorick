@@ -342,8 +342,12 @@ export class Vampire extends Character {
       await this.get('portrait').fetch()
     if (this.has('owner') && !this.get('owner').isDataAvailable())
       await this.get('owner').fetch()
-    if (this.has('backgrounds') && !this.get('backgrounds').isDataAvailable())
-      await this.get('backgrounds').fetch()
+    if (this.has('backgrounds')) {
+      for (const background of this.get('backgrounds')) {
+        if (!background.isDataAvailable())
+          await background.fetch()
+      }
+    }
     if (this.has('extra_in_clan_disciplines')) {
       for (const eicd of this.get('extra_in_clan_disciplines')) {
         if (!eicd.isDataAvailable())
