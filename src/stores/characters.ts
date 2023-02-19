@@ -50,7 +50,7 @@ export const useCharacterStore = defineStore('character', () => {
     userCharacterIds.clear()
   }
 
-  async function getUserCharacters(user, type) {
+  async function getUserCharacters(user, type, limit = 100) {
     if (userCharacterIds.has(user.id)) {
       const result = []
       const ids = userCharacterIds.get(user.id) || []
@@ -60,6 +60,7 @@ export const useCharacterStore = defineStore('character', () => {
     }
     const q = new Parse.Query('Vampire')
     q.equalTo('owner', user)
+    q.limit(limit)
     const found = await q.find()
     const ids = _.map(found, 'id')
     userCharacterIds.set(user.id, ids)
