@@ -45,13 +45,12 @@ describe('CharacterListItem.vue', () => {
     })
     const wrapper = mount(TestComponent, { props: { characterId: character.value.id } })
     const waitForCharacterStoreToComplete = await getCharacter()
-    await flushPromises()
+    // await flushPromises()
     await nextTick()
     expect(wrapper.text()).toContain('Ventrue')
 
     await character.value.update_text('clan', 'Lasombra')
     triggerRef(character)
-    await flushPromises()
     await nextTick()
     expect(wrapper.text()).toContain('Lasombra')
 
