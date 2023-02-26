@@ -29,9 +29,10 @@ describe('CharacterListItem.vue', () => {
       template: '<Suspense><template #fallback>Does this become my text?</template><CharacterListItem :character-id="characterId"/></Suspense>',
     })
     const wrapper = mount(TestComponent, { props: { characterId: character.id } })
+    const waitForCharacterStoreToComplete = await getCharacter()
     await flushPromises()
     await nextTick()
-    expect(wrapper.html()).toContain('Ventrue')
+    expect(wrapper.text()).toContain('Ventrue')
     expect(wrapper.html()).toMatchSnapshot()
   })
 })
