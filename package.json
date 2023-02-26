@@ -15,6 +15,8 @@
     "test:troupe": "vitest troupe",
     "test:vampirecosts": "vitest vampirecosts",
     "test:vampireinit": "vitest vampireinit",
+    "test:component": "vitest component",
+    "test:characterlistitem": "vitest characterlistitem",
     "typecheck": "vue-tsc --noEmit",
     "up": "taze major -I"
   },
