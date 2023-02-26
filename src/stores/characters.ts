@@ -1,12 +1,13 @@
 import Parse from 'parse/dist/parse.js'
 import * as _ from 'lodash-es'
 import { acceptHMRUpdate, defineStore } from 'pinia'
+import type { Ref } from 'vue'
 import { Vampire } from '~/models/Vampire'
 import { Werewolf } from '~/models/Werewolf'
 import { Character } from '~/models/Character'
 
 export const useCharacterStore = defineStore('character', () => {
-  const characters: Map<string, Vampire | Werewolf> = reactive(new Map())
+  const characters: Map<string, Ref<Vampire | Werewolf>> = new Map()
   const userCharacterIds: Map<string, Array<string>> = reactive(new Map())
 
   function getCharacterType(data, type?: Vampire | Werewolf) {
@@ -26,7 +27,7 @@ export const useCharacterStore = defineStore('character', () => {
   async function getCharacter(id: string, type?: Vampire | Werewolf, categories?: string | string[]): Promise<Vampire | Werewolf> {
     if (characters.has(id)) {
       const character = characters.get(id)
-      await character.ensure_loaded(categories)
+      await character.value.ensure_loaded(categories)
       return character
     }
     if (!_.isUndefined(type)) {
@@ -34,14 +35,14 @@ export const useCharacterStore = defineStore('character', () => {
       await type.append_to_character_fetch_query(q)
       const data = await q.get(id, { json: true })
       const c = type.fromJSONAsType(data, getCharacterType(data, type))
-      characters.set(id, c)
+      characters.set(id, ref(c))
       return getCharacter(id, type, categories)
     }
     const q = new Parse.Query('Vampire')
     const data = await q.get(id, { json: true })
     const realType = getCharacterType(data, type)
     const c = Character.fromJSONAsType(data, realType)
-    characters.set(id, c)
+    characters.set(id, ref(c))
     return getCharacter(id, realType, categories)
   }
 
