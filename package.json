@@ -17,6 +17,7 @@
     "test:vampireinit": "vitest vampireinit",
     "test:component": "vitest component",
     "test:characterlistitem": "vitest characterlistitem",
+    "test:characterclansimple": "vitest characterclansimple",
     "typecheck": "vue-tsc --noEmit",
     "up": "taze major -I"
   },

@@ -7,6 +7,7 @@ export {}
 
 declare module '@vue/runtime-core' {
   export interface GlobalComponents {
+    CharacterClanSimple: typeof import('./components/CharacterClanSimple.vue')['default']
     CharacterListItem: typeof import('./components/CharacterListItem.vue')['default']
     README: typeof import('./components/README.md')['default']
     RouterLink: typeof import('vue-router')['RouterLink']

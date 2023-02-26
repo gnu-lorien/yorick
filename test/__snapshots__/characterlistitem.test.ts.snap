@@ -1,0 +1,9 @@
+// Vitest Snapshot v1
+
+exports[`CharacterListItem.vue > should render 1`] = `
+"<img src=\\"/head_skull.png\\" class=\\"rounded float-start\\">
+<h5 class=\\"mb-1 text-start ps-5\\">kct_characterlistitemv4xv7lntk7</h5>
+<p class=\\"text-start ps-5\\"> Ventrue</p>
+<!--v-if-->
+<p class=\\"text-start ps-5\\">The Dev User andrew.sayman+tvdevuser2@gmail.com devuser</p>"
+`;

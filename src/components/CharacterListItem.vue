@@ -23,7 +23,7 @@ const character = await characters.getCharacter(props.characterId)
   </template>
   <template v-else>
     <p class="text-start ps-5">
-      {{ character.get("sect") }} {{ character.get("archetype") }} {{ character.get("clan") }}
+      {{ character.get("sect") }} {{ character.get("archetype") }} {{ character.attributes.clan }}
     </p>
     <template v-if="character.get('antecedence') || character.get('faction') || character.get('title')">
       <p class="text-start ps-5">

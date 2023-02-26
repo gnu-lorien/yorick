@@ -2,7 +2,7 @@ import * as _ from 'lodash-es'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import CharacterListItem from '../src/components/CharacterListItem.vue'
+import CharacterClanSimple from '../src/components/CharacterClanSimple.vue'
 import { parseStart } from './parsehelpers'
 import { Vampire } from '~/models/Vampire'
 import { useCharacterStore } from '~/stores/characters'
@@ -24,35 +24,35 @@ describe('CharacterListItem.vue', () => {
   it('should render', async () => {
     const character = await getCharacter()
     const TestComponent = defineComponent({
-      components: { CharacterListItem },
+      components: { CharacterClanSimple },
       props: { characterId: String },
-      template: '<Suspense><template #fallback>Does this become my text?</template><CharacterListItem :character-id="characterId"/></Suspense>',
+      template: '<Suspense><template #fallback>Does this become my text?</template><CharacterClanSimple :character-id="characterId"/></Suspense>',
     })
     const wrapper = mount(TestComponent, { props: { characterId: character.id } })
     const waitForCharacterStoreToComplete = await getCharacter()
     await flushPromises()
     await nextTick()
-    expect(wrapper.html()).toContain('Ventrue')
-    // expect(wrapper.html()).toMatchSnapshot()
+    expect(wrapper.text()).toContain('Ventrue')
   })
 
   it('can update clan', async () => {
     const character = await getCharacter()
     const TestComponent = defineComponent({
-      components: { CharacterListItem },
+      components: { CharacterClanSimple },
       props: { characterId: String },
-      template: '<Suspense><template #fallback>Does this become my text?</template><CharacterListItem :character-id="characterId"/></Suspense>',
+      template: '<Suspense><template #fallback>Does this become my text?</template><CharacterClanSimple :character-id="characterId"/></Suspense>',
     })
     const wrapper = mount(TestComponent, { props: { characterId: character.id } })
     const waitForCharacterStoreToComplete = await getCharacter()
     await flushPromises()
     await nextTick()
-    expect(wrapper.html()).toContain('Ventrue')
+    expect(wrapper.text()).toContain('Ventrue')
 
-    await character.update_text('clan', 'Lasombra')
+    // await character.update_text('clan', 'Lasombra')
+    character.set('clan', 'Lasombra')
     await flushPromises()
     await nextTick()
-    expect(wrapper.html()).toContain('Lasombra')
+    expect(wrapper.text()).toContain('Lasombra')
 
     // expect(wrapper.html()).toMatchSnapshot()
   })
