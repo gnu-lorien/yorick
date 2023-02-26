@@ -23,7 +23,7 @@ export const useCharacterStore = defineStore('character', () => {
     }
     return type
   }
-  async function getCharacter(id: string, type?: Vampire | Werewolf, categories?: string | string[]) {
+  async function getCharacter(id: string, type?: Vampire | Werewolf, categories?: string | string[]): Promise<Vampire | Werewolf> {
     if (characters.has(id)) {
       const character = characters.get(id)
       await character.ensure_loaded(categories)
