@@ -1,7 +1,7 @@
 import Parse from 'parse/dist/parse.js'
 import * as _ from 'lodash-es'
 import { chain, extend, isString, isUndefined, map, result } from 'lodash-es'
-import type { Ref } from 'vue'
+import type { Ref, ShallowRef } from 'vue'
 import { BNSMETV1_VampireCosts } from '~/helpers/BNSMETV1_VampireCosts'
 import { Character } from '~/models/Character'
 import { SimpleTrait } from '~/models/SimpleTrait'
@@ -274,7 +274,7 @@ export class Vampire extends Character {
     console.log(`Progress: ${text}`)
   }
 
-  static async create(name): Ref<Vampire> {
+  static async create(name): Promise<ShallowRef<Vampire>> {
     const v = new this()
     const acl = new Parse.ACL()
     acl.setPublicReadAccess(false)
@@ -299,7 +299,7 @@ export class Vampire extends Character {
     await v.save(changes)
     this.progress('Fetching character from server')
     const characters = useCharacterStore()
-    const populated_character: Ref<Vampire> = await characters.getCharacter(v.id, Vampire)
+    const populated_character = await characters.getCharacter(v.id, Vampire)
     this.progress('Adding Humanity')
     await populated_character.value.update_trait('Humanity', 5, 'paths', 5, true)
     this.progress('Adding Healthy')
@@ -311,7 +311,7 @@ export class Vampire extends Character {
     this.progress('Adding Willpower')
     await populated_character.value.update_trait('Willpower', 6, 'willpower_sources', 6, true)
     this.progress('Done!')
-    return populated_character
+    return populated_character as ShallowRef<Vampire>
   }
 
   static async create_test_character(nameappend) {
