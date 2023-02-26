@@ -50,6 +50,7 @@ describe('CharacterListItem.vue', () => {
     expect(wrapper.html()).toContain('Ventrue')
 
     await character.value.update_text('clan', 'Lasombra')
+    triggerRef(character)
     await flushPromises()
     await nextTick()
     expect(wrapper.html()).toContain('Lasombra')
