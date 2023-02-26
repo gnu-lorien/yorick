@@ -1,5 +1,5 @@
 import * as _ from 'lodash-es'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import CharacterListItem from '../src/components/CharacterListItem.vue'
@@ -26,11 +26,12 @@ describe('CharacterListItem.vue', () => {
     const TestComponent = defineComponent({
       components: { CharacterListItem },
       props: { characterId: String },
-      template: '<Suspense><Async :character-id="characterId"/></Suspense>',
+      template: '<Suspense><template #fallback>Does this become my text?</template><CharacterListItem :character-id="characterId"/></Suspense>',
     })
     const wrapper = mount(TestComponent, { props: { characterId: character.id } })
+    await flushPromises()
     await nextTick()
-    expect(wrapper.text()).toContain('Ventrue')
+    expect(wrapper.html()).toContain('Ventrue')
     expect(wrapper.html()).toMatchSnapshot()
   })
 })
