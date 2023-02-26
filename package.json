@@ -18,6 +18,7 @@
     "test:component": "vitest component",
     "test:characterlistitem": "vitest characterlistitem",
     "test:characterclansimple": "vitest characterclansimple",
+    "test:basic": "vitest basic",
     "typecheck": "vue-tsc --noEmit",
     "up": "taze major -I"
   },

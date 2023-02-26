@@ -1,6 +1,7 @@
 import Parse from 'parse/dist/parse.js'
 import * as _ from 'lodash-es'
 import { chain, extend, isString, isUndefined, map, result } from 'lodash-es'
+import type { ShallowRef } from 'vue'
 import { BNSMETV1_VampireCosts } from '~/helpers/BNSMETV1_VampireCosts'
 import { Character } from '~/models/Character'
 import { SimpleTrait } from '~/models/SimpleTrait'
@@ -256,7 +257,7 @@ export class Werewolf extends Character {
     console.log(`Progress: ${text}`)
   }
 
-  static async create(name) {
+  static async create(name): Promise<ShallowRef<Werewolf>> {
     const v = new this()
     const acl = new Parse.ACL()
     acl.setPublicReadAccess(false)
@@ -284,17 +285,17 @@ export class Werewolf extends Character {
     const characters = useCharacterStore()
     const populated_character = await characters.getCharacter(v.id, Werewolf)
     this.progress('Adding Healthy')
-    await populated_character.update_trait('Healthy', 3, 'health_levels', 3, true)
+    await populated_character.value.update_trait('Healthy', 3, 'health_levels', 3, true)
     this.progress('Adding Injured')
-    await populated_character.update_trait('Injured', 3, 'health_levels', 3, true)
+    await populated_character.value.update_trait('Injured', 3, 'health_levels', 3, true)
     this.progress('Adding Incapacitated')
-    await populated_character.update_trait('Incapacitated', 3, 'health_levels', 3, true)
+    await populated_character.value.update_trait('Incapacitated', 3, 'health_levels', 3, true)
     this.progress('Adding Willpower')
-    await populated_character.update_trait('Willpower', 6, 'willpower_sources', 6, true)
+    await populated_character.value.update_trait('Willpower', 6, 'willpower_sources', 6, true)
     this.progress('Adding Gnosis')
-    await populated_character.update_trait('Gnosis', 10, 'wta_gnosis_sources', 10, true)
+    await populated_character.value.update_trait('Gnosis', 10, 'wta_gnosis_sources', 10, true)
     this.progress('Done!')
-    return populated_character
+    return populated_character as ShallowRef<Werewolf>
   }
 
   static async create_test_character(nameappend) {

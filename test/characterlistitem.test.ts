@@ -16,8 +16,8 @@ describe('CharacterListItem.vue', () => {
   async function getCharacter(): Promise<Vampire> {
     const v = await Vampire.create_test_character('characterlistitem')
     const characters = useCharacterStore()
-    const vampire = await characters.getCharacter(v.id)
-    await vampire.update_text('clan', 'Ventrue')
+    const vampire = await characters.getCharacter(v.value.id)
+    await vampire.value.update_text('clan', 'Ventrue')
     return vampire
   }
 
@@ -28,7 +28,7 @@ describe('CharacterListItem.vue', () => {
       props: { characterId: String },
       template: '<Suspense><template #fallback>Does this become my text?</template><CharacterListItem :character-id="characterId"/></Suspense>',
     })
-    const wrapper = mount(TestComponent, { props: { characterId: character.id } })
+    const wrapper = mount(TestComponent, { props: { characterId: character.value.id } })
     const waitForCharacterStoreToComplete = await getCharacter()
     await flushPromises()
     await nextTick()
@@ -43,13 +43,13 @@ describe('CharacterListItem.vue', () => {
       props: { characterId: String },
       template: '<Suspense><template #fallback>Does this become my text?</template><CharacterListItem :character-id="characterId"/></Suspense>',
     })
-    const wrapper = mount(TestComponent, { props: { characterId: character.id } })
+    const wrapper = mount(TestComponent, { props: { characterId: character.value.id } })
     const waitForCharacterStoreToComplete = await getCharacter()
     await flushPromises()
     await nextTick()
     expect(wrapper.html()).toContain('Ventrue')
 
-    await character.update_text('clan', 'Lasombra')
+    await character.value.update_text('clan', 'Lasombra')
     await flushPromises()
     await nextTick()
     expect(wrapper.html()).toContain('Lasombra')

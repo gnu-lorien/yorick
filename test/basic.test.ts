@@ -20,6 +20,10 @@ describe('tests', () => {
 })
 
 describe('parse sanity', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
   it('Initialize and use Parse', async () => {
     Parse.initialize('APPLICATION_ID')
     Parse.serverURL = useConfigTestDefault().serverURL
@@ -28,24 +32,6 @@ describe('parse sanity', () => {
     query.equalTo('name', 'Orthodox')
     const results = await query.find()
     expect(results[0].get('name')).toBe('Orthodox')
-  })
-})
-
-describe('Vampires', () => {
-  beforeAll(async () => {
-    await parseStart()
-    return parseEnd
-  })
-  beforeEach(() => {
-    setActivePinia(createPinia())
-  })
-  it('Create a sample vampire', async () => {
-    const v = await SampleVampire.create_test_character('saymsamp')
-    expect(v.get('name')).to.be.a('string').and.satisfy(msg => msg.startsWith('kct_saymsamp'))
-  })
-  it('Create a regular vampire', async () => {
-    const v = await Vampire.create_test_character('saymsamp')
-    expect(v.get('name')).to.be.a('string').and.satisfy(msg => msg.startsWith('kct_saymsamp'))
   })
 })
 
@@ -59,22 +45,22 @@ _.each(getCharacterTypes(), (character_type) => {
       const v = await character_type.template.create_test_character('vampiretraits')
       expected_change_length = 5
       const characters = useCharacterStore()
-      vampire = await characters.getCharacter(v.id, character_type.template)
+      vampire = await characters.getCharacter(v.value.id, character_type.template)
     })
 
     it('show up in the history', async () => {
-      let changes = await vampire.get_recorded_changes()
+      let changes = await vampire.value.get_recorded_changes()
       expect(changes.models.length).toBe(expected_change_length)
-      await vampire.update_trait('Haven', 1, 'backgrounds', 0, true)
+      await vampire.value.update_trait('Haven', 1, 'backgrounds', 0, true)
       expected_change_length++
-      changes = await vampire.get_recorded_changes()
+      changes = await vampire.value.get_recorded_changes()
       expect(changes.models.length).toBe(expected_change_length)
-      await vampire.update_trait('Haven', 1, 'backgrounds', 0, true)
-      changes = await vampire.get_recorded_changes()
+      await vampire.value.update_trait('Haven', 1, 'backgrounds', 0, true)
+      changes = await vampire.value.get_recorded_changes()
       expect(changes.models.length).toBe(expected_change_length)
-      await vampire.update_trait('Haven', 2, 'backgrounds', 0, true)
+      await vampire.value.update_trait('Haven', 2, 'backgrounds', 0, true)
       expected_change_length++
-      changes = await vampire.get_recorded_changes()
+      changes = await vampire.value.get_recorded_changes()
       expect(changes.models.length).toBe(expected_change_length)
     })
 
@@ -83,30 +69,30 @@ _.each(getCharacterTypes(), (character_type) => {
       let first_trait_id
       let second_trait_id
       let third_trait_id
-      let trait = await vampire.update_trait('Retainers', 1, 'backgrounds', 0, true)
+      let trait = await vampire.value.update_trait('Retainers', 1, 'backgrounds', 0, true)
       expected_change_length++
       trait.set('name', 'Retainers: Specialized Now')
-      trait = await vampire.update_trait(trait)
+      trait = await vampire.value.update_trait(trait)
       expected_change_length++
       first_trait_id = trait.id
       trait.set('name', 'Retainers: Specialized Again')
       trait.set('value', 4)
-      trait = await vampire.update_trait(trait)
+      trait = await vampire.value.update_trait(trait)
       expected_change_length++
       trait.set('value', 5)
-      trait = await vampire.update_trait(trait)
+      trait = await vampire.value.update_trait(trait)
       expected_change_length++
-      trait = await vampire.update_trait('Retainers: Specialized Now', 2, 'backgrounds', 0)
+      trait = await vampire.value.update_trait('Retainers: Specialized Now', 2, 'backgrounds', 0)
       second_trait_id = trait.id
       expected_change_length++
-      trait = await vampire.update_trait('Retainers', 3, 'backgrounds', 0)
+      trait = await vampire.value.update_trait('Retainers', 3, 'backgrounds', 0)
       third_trait_id = trait.id
       expected_change_length++
-      trait = await vampire.update_trait('Retainers: Specialized Now', 4, 'backgrounds', 0)
+      trait = await vampire.value.update_trait('Retainers: Specialized Now', 4, 'backgrounds', 0)
       expected_change_length++
-      trait = await vampire.update_trait('Retainers', 4, 'backgrounds', 0, true)
+      trait = await vampire.value.update_trait('Retainers', 4, 'backgrounds', 0, true)
       expected_change_length++
-      const changes = await vampire.get_recorded_changes()
+      const changes = await vampire.value.get_recorded_changes()
       expect(changes.models.length).toBe(expected_change_length)
       _.chain(changes.models).slice(start_check, changes.length).each((change, i) => {
         expect(change.get('name')).not.toBe(undefined)
@@ -185,13 +171,13 @@ _.each(getCharacterTypes(), (character_type) => {
 
     it('can\'t be renamed to collide', async () => {
       let classic_trait, not_classic_trait
-      let trait = await vampire.update_trait('Retainers: Classic', 1, 'backgrounds', 0, true)
+      let trait = await vampire.value.update_trait('Retainers: Classic', 1, 'backgrounds', 0, true)
       classic_trait = trait
-      trait = await vampire.update_trait('Retainers: Not Classic', 2, 'backgrounds', 0, true)
+      trait = await vampire.value.update_trait('Retainers: Not Classic', 2, 'backgrounds', 0, true)
       not_classic_trait = trait
       not_classic_trait.set('name', 'Retainers: Classic')
       try {
-        await vampire.update_trait(not_classic_trait)
+        await vampire.value.update_trait(not_classic_trait)
         expect(false).toBe(true)
       }
       catch (error) {
@@ -209,9 +195,9 @@ _.each(getCharacterTypes(), (character_type) => {
       }
 
       // Remove the thing
-      const st = await vampire.get_trait_by_name('backgrounds', 'Haven')
+      const st = await vampire.value.get_trait_by_name('backgrounds', 'Haven')
       try {
-        await vampire.remove_trait(st)
+        await vampire.value.remove_trait(st)
         expect(false).toBe(true)
       }
       catch (error) {
@@ -219,17 +205,17 @@ _.each(getCharacterTypes(), (character_type) => {
       }
       SimpleTrait.prototype.destroy = old_destroy
       // Make sure we didn't remove the thing
-      const fa = await vampire.get_trait_by_name('backgrounds', 'Haven')
+      const fa = await vampire.value.get_trait_by_name('backgrounds', 'Haven')
       expect(fa.get('value')).toBe(2)
       expect(fa.get('free_value')).toBe(0)
     })
 
     it('can be removed', async () => {
-      const st = await vampire.get_trait_by_name('backgrounds', 'Haven')
+      const st = await vampire.value.get_trait_by_name('backgrounds', 'Haven')
       expect(st).toBeDefined()
       expect(st.id).toBeDefined()
-      await vampire.remove_trait(st)
-      const fa = await vampire.get_trait_by_name('backgrounds', 'Haven')
+      await vampire.value.remove_trait(st)
+      const fa = await vampire.value.get_trait_by_name('backgrounds', 'Haven')
       expect(fa).toBeUndefined()
     })
   })
@@ -242,58 +228,58 @@ describe('A Vampire\'s creation', () => {
     await parseStart()
     const v = await Vampire.create_test_character('vampirecreation')
     const characters = useCharacterStore()
-    vampire = await characters.getCharacter(v.id)
+    vampire = await characters.getCharacter(v.value.id)
   })
 
   it('can pick a clan', async () => {
-    await vampire.update_text('clan', 'TestClan')
-    expect(vampire.get('clan')).toBe('TestClan')
+    await vampire.value.update_text('clan', 'TestClan')
+    expect(vampire.value.get('clan')).toBe('TestClan')
   })
 
   it('can repick a clan', async () => {
-    expect(vampire.get('clan')).not.toBe('DifferentClan')
-    await vampire.update_text('clan', 'DifferentClan')
-    expect(vampire.get('clan')).toBe('DifferentClan')
+    expect(vampire.value.get('clan')).not.toBe('DifferentClan')
+    await vampire.value.update_text('clan', 'DifferentClan')
+    expect(vampire.value.get('clan')).toBe('DifferentClan')
   })
 
   it('can pick Physical as a primary attribute', async () => {
-    const creation = vampire.get('creation')
+    const creation = vampire.value.get('creation')
     expect(creation.get('attributes_7_remaining')).toBe(1)
     expect(creation.get('attributes_7_picks')).toBe(undefined)
-    const st = await vampire.update_trait('Physical', 7, 'attributes', 7, true)
-    expect(vampire.get('creation').get('attributes_7_remaining')).toBe(0)
-    expect(vampire.get('creation').get('attributes_7_picks').length).toBe(1)
-    expect(vampire.get('creation').get('attributes_7_picks')[0].get('name')).toBe('Physical')
-    expect(vampire.get('creation').get('attributes_7_picks')[0].get('value')).toBe(7)
-    const physical = await vampire.get_trait('attributes', st.id || st.cid)
+    const st = await vampire.value.update_trait('Physical', 7, 'attributes', 7, true)
+    expect(vampire.value.get('creation').get('attributes_7_remaining')).toBe(0)
+    expect(vampire.value.get('creation').get('attributes_7_picks').length).toBe(1)
+    expect(vampire.value.get('creation').get('attributes_7_picks')[0].get('name')).toBe('Physical')
+    expect(vampire.value.get('creation').get('attributes_7_picks')[0].get('value')).toBe(7)
+    const physical = await vampire.value.get_trait('attributes', st.id || st.cid)
     expect(physical).not.toBe(undefined)
     expect(physical.get('name')).toBe('Physical')
     expect(physical.get('value')).toBe(7)
   })
 
   it('can unpick Physical as a primary attribute', async () => {
-    expect(vampire.get('creation').get('attributes_7_remaining')).toBe(0)
-    expect(vampire.get('creation').get('attributes_7_picks').length).toBe(1)
-    const st = _.first(vampire.get('creation').get('attributes_7_picks'))
-    const physical = await vampire.get_trait('attributes', st.id)
+    expect(vampire.value.get('creation').get('attributes_7_remaining')).toBe(0)
+    expect(vampire.value.get('creation').get('attributes_7_picks').length).toBe(1)
+    const st = _.first(vampire.value.get('creation').get('attributes_7_picks'))
+    const physical = await vampire.value.get_trait('attributes', st.id)
     expect(physical.get('name')).toBe('Physical')
     expect(physical.get('value')).toBe(7)
-    await vampire.unpick_from_creation('attributes', st.id, 7, true)
-    expect(vampire.get('creation').get('attributes_7_remaining')).toBe(1)
-    expect(vampire.get('creation').get('attributes_7_picks').length).toBe(0)
-    expect(vampire.get('attributes').length).toBe(0)
+    await vampire.value.unpick_from_creation('attributes', st.id, 7, true)
+    expect(vampire.value.get('creation').get('attributes_7_remaining')).toBe(1)
+    expect(vampire.value.get('creation').get('attributes_7_picks').length).toBe(0)
+    expect(vampire.value.get('attributes').length).toBe(0)
   })
 
   it('can pick a Physical focus', async () => {
-    const creation = vampire.get('creation')
+    const creation = vampire.value.get('creation')
     expect(creation.get('focus_physicals_1_remaining')).toBe(1)
     expect(creation.get('focus_physicals_1_picks')).toBe(undefined)
-    const st = await vampire.update_trait('Dexterity', 1, 'focus_physicals', 1, true)
-    expect(vampire.get('creation').get('focus_physicals_1_remaining')).toBe(0)
-    expect(vampire.get('creation').get('focus_physicals_1_picks').length).toBe(1)
-    expect(vampire.get('creation').get('focus_physicals_1_picks')[0].get('name')).toBe('Dexterity')
-    expect(vampire.get('creation').get('focus_physicals_1_picks')[0].get('value')).toBe(1)
-    const physical = await vampire.get_trait('focus_physicals', st)
+    const st = await vampire.value.update_trait('Dexterity', 1, 'focus_physicals', 1, true)
+    expect(vampire.value.get('creation').get('focus_physicals_1_remaining')).toBe(0)
+    expect(vampire.value.get('creation').get('focus_physicals_1_picks').length).toBe(1)
+    expect(vampire.value.get('creation').get('focus_physicals_1_picks')[0].get('name')).toBe('Dexterity')
+    expect(vampire.value.get('creation').get('focus_physicals_1_picks')[0].get('value')).toBe(1)
+    const physical = await vampire.value.get_trait('focus_physicals', st)
     expect(physical).not.toBe(undefined)
     expect(physical.get('name')).toBe('Dexterity')
     expect(physical.get('value')).toBe(1)
@@ -301,81 +287,81 @@ describe('A Vampire\'s creation', () => {
   })
 
   it('can repick a Physical focus', async () => {
-    expect(vampire.get('creation').get('focus_physicals_1_remaining')).toBe(0)
-    expect(vampire.get('creation').get('focus_physicals_1_picks').length).toBe(1)
-    const st = _.first(vampire.get('creation').get('focus_physicals_1_picks'))
-    let physical = await vampire.get_trait('focus_physicals', st)
+    expect(vampire.value.get('creation').get('focus_physicals_1_remaining')).toBe(0)
+    expect(vampire.value.get('creation').get('focus_physicals_1_picks').length).toBe(1)
+    const st = _.first(vampire.value.get('creation').get('focus_physicals_1_picks'))
+    let physical = await vampire.value.get_trait('focus_physicals', st)
     expect(physical.get('name')).toBe('Dexterity')
     expect(physical.get('value')).toBe(1)
-    await vampire.unpick_from_creation('focus_physicals', physical, 1, true)
-    expect(vampire.get('creation').get('focus_physicals_1_remaining')).toBe(1)
-    expect(vampire.get('creation').get('focus_physicals_1_picks').length).toBe(0)
-    expect(vampire.get('focus_physicals').length).toBe(0)
-    physical = await vampire.update_trait('Stamina', 1, 'focus_physicals', 1, true)
-    expect(vampire.get('creation').get('focus_physicals_1_remaining')).toBe(0)
-    expect(vampire.get('creation').get('focus_physicals_1_picks').length).toBe(1)
-    expect(vampire.get('creation').get('focus_physicals_1_picks')[0].get('name')).toBe('Stamina')
-    expect(vampire.get('creation').get('focus_physicals_1_picks')[0].get('value')).toBe(1)
-    physical = await vampire.get_trait('focus_physicals', physical)
+    await vampire.value.unpick_from_creation('focus_physicals', physical, 1, true)
+    expect(vampire.value.get('creation').get('focus_physicals_1_remaining')).toBe(1)
+    expect(vampire.value.get('creation').get('focus_physicals_1_picks').length).toBe(0)
+    expect(vampire.value.get('focus_physicals').length).toBe(0)
+    physical = await vampire.value.update_trait('Stamina', 1, 'focus_physicals', 1, true)
+    expect(vampire.value.get('creation').get('focus_physicals_1_remaining')).toBe(0)
+    expect(vampire.value.get('creation').get('focus_physicals_1_picks').length).toBe(1)
+    expect(vampire.value.get('creation').get('focus_physicals_1_picks')[0].get('name')).toBe('Stamina')
+    expect(vampire.value.get('creation').get('focus_physicals_1_picks')[0].get('value')).toBe(1)
+    physical = await vampire.value.get_trait('focus_physicals', physical)
     expect(physical).not.toBe(undefined)
     expect(physical.get('name')).toBe('Stamina')
     expect(physical.get('value')).toBe(1)
   })
 
   it('can unpick a Physical focus', async () => {
-    expect(vampire.get('creation').get('focus_physicals_1_remaining')).toBe(0)
-    expect(vampire.get('creation').get('focus_physicals_1_picks').length).toBe(1)
-    const st = _.first(vampire.get('creation').get('focus_physicals_1_picks'))
-    const physical = await vampire.get_trait('focus_physicals', st)
+    expect(vampire.value.get('creation').get('focus_physicals_1_remaining')).toBe(0)
+    expect(vampire.value.get('creation').get('focus_physicals_1_picks').length).toBe(1)
+    const st = _.first(vampire.value.get('creation').get('focus_physicals_1_picks'))
+    const physical = await vampire.value.get_trait('focus_physicals', st)
     expect(physical.get('name')).toBe('Stamina')
     expect(physical.get('value')).toBe(1)
-    await vampire.unpick_from_creation('focus_physicals', physical, 1, true)
-    expect(vampire.get('creation').get('focus_physicals_1_remaining')).toBe(1)
-    expect(vampire.get('creation').get('focus_physicals_1_picks').length).toBe(0)
-    expect(vampire.get('focus_physicals').length).toBe(0)
+    await vampire.value.unpick_from_creation('focus_physicals', physical, 1, true)
+    expect(vampire.value.get('creation').get('focus_physicals_1_remaining')).toBe(1)
+    expect(vampire.value.get('creation').get('focus_physicals_1_picks').length).toBe(0)
+    expect(vampire.value.get('focus_physicals').length).toBe(0)
   })
 
   it('can pick a merit', async () => {
-    const creation = vampire.get('creation')
+    const creation = vampire.value.get('creation')
     expect(creation.get('merits_0_remaining')).toBe(7)
     expect(creation.get('merits_0_picks')).toBe(undefined)
-    const st = await vampire.update_trait('Bloodline: Coyote', 2, 'merits', 0, true)
-    expect(vampire.get('creation').get('merits_0_remaining')).toBe(5)
-    expect(vampire.get('creation').get('merits_0_picks').length).toBe(1)
-    expect(vampire.get('creation').get('merits_0_picks')[0].get('name')).toBe('Bloodline: Coyote')
-    expect(vampire.get('creation').get('merits_0_picks')[0].get('value')).toBe(2)
-    const physical = await vampire.get_trait('merits', st)
+    const st = await vampire.value.update_trait('Bloodline: Coyote', 2, 'merits', 0, true)
+    expect(vampire.value.get('creation').get('merits_0_remaining')).toBe(5)
+    expect(vampire.value.get('creation').get('merits_0_picks').length).toBe(1)
+    expect(vampire.value.get('creation').get('merits_0_picks')[0].get('name')).toBe('Bloodline: Coyote')
+    expect(vampire.value.get('creation').get('merits_0_picks')[0].get('value')).toBe(2)
+    const physical = await vampire.value.get_trait('merits', st)
     expect(physical).not.toBe(undefined)
     expect(physical.get('name')).toBe('Bloodline: Coyote')
     expect(physical.get('value')).toBe(2)
   })
 
   it('can change the value of a picked merit', async () => {
-    const creation = vampire.get('creation')
+    const creation = vampire.value.get('creation')
     expect(creation.get('merits_0_remaining')).toBe(5)
     expect(creation.get('merits_0_picks').length).toBe(1)
-    const st = await vampire.update_trait('Bloodline: Coyote', 3, 'merits', 0, true)
-    expect(vampire.get('creation').get('merits_0_remaining')).toBe(4)
-    expect(vampire.get('creation').get('merits_0_picks').length).toBe(1)
-    expect(vampire.get('creation').get('merits_0_picks')[0].get('name')).toBe('Bloodline: Coyote')
-    expect(vampire.get('creation').get('merits_0_picks')[0].get('value')).toBe(3)
-    const physical = await vampire.get_trait('merits', st)
+    const st = await vampire.value.update_trait('Bloodline: Coyote', 3, 'merits', 0, true)
+    expect(vampire.value.get('creation').get('merits_0_remaining')).toBe(4)
+    expect(vampire.value.get('creation').get('merits_0_picks').length).toBe(1)
+    expect(vampire.value.get('creation').get('merits_0_picks')[0].get('name')).toBe('Bloodline: Coyote')
+    expect(vampire.value.get('creation').get('merits_0_picks')[0].get('value')).toBe(3)
+    const physical = await vampire.value.get_trait('merits', st)
     expect(physical).not.toBe(undefined)
     expect(physical.get('name')).toBe('Bloodline: Coyote')
     expect(physical.get('value')).toBe(3)
   })
 
   it('can unpick a merit with a changed value', async () => {
-    expect(vampire.get('creation').get('merits_0_remaining')).toBe(4)
-    expect(vampire.get('creation').get('merits_0_picks').length).toBe(1)
-    const st = _.first(vampire.get('creation').get('merits_0_picks'))
-    const physical = await vampire.get_trait('merits', st)
+    expect(vampire.value.get('creation').get('merits_0_remaining')).toBe(4)
+    expect(vampire.value.get('creation').get('merits_0_picks').length).toBe(1)
+    const st = _.first(vampire.value.get('creation').get('merits_0_picks'))
+    const physical = await vampire.value.get_trait('merits', st)
     expect(physical.get('name')).toBe('Bloodline: Coyote')
     expect(physical.get('value')).toBe(3)
-    await vampire.unpick_from_creation('merits', physical, 0, true)
-    expect(vampire.get('creation').get('merits_0_remaining')).toBe(7)
-    expect(vampire.get('creation').get('merits_0_picks').length).toBe(0)
-    expect(vampire.get('merits').length).toBe(0)
+    await vampire.value.unpick_from_creation('merits', physical, 0, true)
+    expect(vampire.value.get('creation').get('merits_0_remaining')).toBe(7)
+    expect(vampire.value.get('creation').get('merits_0_picks').length).toBe(0)
+    expect(vampire.value.get('merits').length).toBe(0)
   })
 })
 
@@ -386,61 +372,61 @@ describe('A Werewolf\'s creation', () => {
     await parseStart()
     const v = await Werewolf.create_test_character('creation')
     const characters = useCharacterStore()
-    vampire = await characters.getCharacter(v.id)
+    vampire = await characters.getCharacter(v.value.id)
   })
 
   it('can pick a tribe', async () => {
-    await vampire.update_text('wta_tribe', 'TheTribe')
-    expect(vampire.get('wta_tribe')).toBe('TheTribe')
+    await vampire.value.update_text('wta_tribe', 'TheTribe')
+    expect(vampire.value.get('wta_tribe')).toBe('TheTribe')
   })
 
   it('can repick a tribe', async () => {
-    expect(vampire.get('wta_tribe')).not.toBe('DifferentClan')
-    await vampire.update_text('wta_tribe', 'DifferentClan')
-    expect(vampire.get('wta_tribe')).toBe('DifferentClan')
+    expect(vampire.value.get('wta_tribe')).not.toBe('DifferentClan')
+    await vampire.value.update_text('wta_tribe', 'DifferentClan')
+    expect(vampire.value.get('wta_tribe')).toBe('DifferentClan')
   })
 
   it('can pick a merit', async () => {
-    const creation = vampire.get('creation')
+    const creation = vampire.value.get('creation')
     expect(creation.get('wta_merits_0_remaining')).toBe(7)
     expect(creation.get('wta_merits_0_picks')).toBe(undefined)
-    const st = await vampire.update_trait('Bloodline: Coyote', 2, 'wta_merits', 0, true)
-    expect(vampire.get('creation').get('wta_merits_0_remaining')).toBe(5)
-    expect(vampire.get('creation').get('wta_merits_0_picks').length).toBe(1)
-    expect(vampire.get('creation').get('wta_merits_0_picks')[0].get('name')).toBe('Bloodline: Coyote')
-    expect(vampire.get('creation').get('wta_merits_0_picks')[0].get('value')).toBe(2)
-    const physical = await vampire.get_trait('wta_merits', st)
+    const st = await vampire.value.update_trait('Bloodline: Coyote', 2, 'wta_merits', 0, true)
+    expect(vampire.value.get('creation').get('wta_merits_0_remaining')).toBe(5)
+    expect(vampire.value.get('creation').get('wta_merits_0_picks').length).toBe(1)
+    expect(vampire.value.get('creation').get('wta_merits_0_picks')[0].get('name')).toBe('Bloodline: Coyote')
+    expect(vampire.value.get('creation').get('wta_merits_0_picks')[0].get('value')).toBe(2)
+    const physical = await vampire.value.get_trait('wta_merits', st)
     expect(physical).not.toBe(undefined)
     expect(physical.get('name')).toBe('Bloodline: Coyote')
     expect(physical.get('value')).toBe(2)
   })
 
   it('can change the value of a picked merit', async () => {
-    const creation = vampire.get('creation')
+    const creation = vampire.value.get('creation')
     expect(creation.get('wta_merits_0_remaining')).toBe(5)
     expect(creation.get('wta_merits_0_picks').length).toBe(1)
-    const st = await vampire.update_trait('Bloodline: Coyote', 3, 'wta_merits', 0, true)
-    expect(vampire.get('creation').get('wta_merits_0_remaining')).toBe(4)
-    expect(vampire.get('creation').get('wta_merits_0_picks').length).toBe(1)
-    expect(vampire.get('creation').get('wta_merits_0_picks')[0].get('name')).toBe('Bloodline: Coyote')
-    expect(vampire.get('creation').get('wta_merits_0_picks')[0].get('value')).toBe(3)
-    const physical = await vampire.get_trait('wta_merits', st)
+    const st = await vampire.value.update_trait('Bloodline: Coyote', 3, 'wta_merits', 0, true)
+    expect(vampire.value.get('creation').get('wta_merits_0_remaining')).toBe(4)
+    expect(vampire.value.get('creation').get('wta_merits_0_picks').length).toBe(1)
+    expect(vampire.value.get('creation').get('wta_merits_0_picks')[0].get('name')).toBe('Bloodline: Coyote')
+    expect(vampire.value.get('creation').get('wta_merits_0_picks')[0].get('value')).toBe(3)
+    const physical = await vampire.value.get_trait('wta_merits', st)
     expect(physical).not.toBe(undefined)
     expect(physical.get('name')).toBe('Bloodline: Coyote')
     expect(physical.get('value')).toBe(3)
   })
 
   it('can unpick a merit with a changed value', async () => {
-    expect(vampire.get('creation').get('wta_merits_0_remaining')).toBe(4)
-    expect(vampire.get('creation').get('wta_merits_0_picks').length).toBe(1)
-    const st = _.first(vampire.get('creation').get('wta_merits_0_picks'))
-    const physical = await vampire.get_trait('wta_merits', st)
+    expect(vampire.value.get('creation').get('wta_merits_0_remaining')).toBe(4)
+    expect(vampire.value.get('creation').get('wta_merits_0_picks').length).toBe(1)
+    const st = _.first(vampire.value.get('creation').get('wta_merits_0_picks'))
+    const physical = await vampire.value.get_trait('wta_merits', st)
     expect(physical.get('name')).toBe('Bloodline: Coyote')
     expect(physical.get('value')).toBe(3)
-    await vampire.unpick_from_creation('wta_merits', physical, 0, true)
-    expect(vampire.get('creation').get('wta_merits_0_remaining')).toBe(7)
-    expect(vampire.get('creation').get('wta_merits_0_picks').length).toBe(0)
-    expect(vampire.get('wta_merits').length).toBe(0)
+    await vampire.value.unpick_from_creation('wta_merits', physical, 0, true)
+    expect(vampire.value.get('creation').get('wta_merits_0_remaining')).toBe(7)
+    expect(vampire.value.get('creation').get('wta_merits_0_picks').length).toBe(0)
+    expect(vampire.value.get('wta_merits').length).toBe(0)
   })
 })
 
@@ -449,13 +435,13 @@ _.each(getCharacterTypes(), (character_type) => {
     async function getNewExperienceHistoryCharacter() {
       const v = await character_type.template.create_test_character('experiencehistory')
       const characters = useCharacterStore()
-      return await characters.getCharacter(v.id, character_type.template)
+      return await characters.getCharacter(v.value.id, character_type.template)
     }
 
     async function getNewExperienceHistoryCharacterFakedRange(start, stop) {
       const vampire = await getNewExperienceHistoryCharacter()
       for (const i of _.range(1, 20)) {
-        await vampire.add_experience_notation({
+        await vampire.value.add_experience_notation({
           alteration_earned: i,
           alteration_spent: i,
         })
@@ -469,7 +455,7 @@ _.each(getCharacterTypes(), (character_type) => {
 
     it('got initial xp', async () => {
       const vampire = await getNewExperienceHistoryCharacter()
-      const ens = await vampire.get_experience_notations()
+      const ens = await vampire.value.get_experience_notations()
       const en = _.last(ens.models)
       expect(en.get('reason')).toBe('Character Creation XP')
       expect(en.get('alteration_earned')).toBe(30)
@@ -477,9 +463,9 @@ _.each(getCharacterTypes(), (character_type) => {
 
     it('reports initial xp', async () => {
       const vampire = await getNewExperienceHistoryCharacter()
-      expect(vampire.experience_available()).toBe(30)
-      expect(vampire.get('experience_earned')).toBe(30)
-      expect(vampire.get('experience_spent')).toBe(0)
+      expect(vampire.value.experience_available()).toBe(30)
+      expect(vampire.value.get('experience_earned')).toBe(30)
+      expect(vampire.value.get('experience_spent')).toBe(0)
     })
 
     it('updates listeners on add', async () => {
@@ -495,7 +481,7 @@ _.each(getCharacterTypes(), (character_type) => {
           const self = this
           expect(en.get('reason')).toBe('meet hands')
           expect(en.get('alteration_earned')).toBe(24)
-          vampire.get_experience_notations().then((ens) => {
+          vampire.value.get_experience_notations().then((ens) => {
             const l = _.first(ens.models)
             expect(l.get('reason')).toBe('meet hands')
             expect(l.get('alteration_earned')).toBe(24)
@@ -506,23 +492,23 @@ _.each(getCharacterTypes(), (character_type) => {
         },
       })
       l = new Listener()
-      vampire.get_experience_notations((rc) => {
+      vampire.value.get_experience_notations((rc) => {
         l.listenTo(rc, 'add', l.finish)
-        vampire.add_experience_notation({ reason: 'meet hands', alteration_earned: 24 })
+        vampire.value.add_experience_notation({ reason: 'meet hands', alteration_earned: 24 })
       })
       */
     })
 
     it('can be simply sequential', async () => {
       const vampire = await getNewExperienceHistoryCharacter()
-      const startingXP = vampire.experience_available()
+      const startingXP = vampire.value.experience_available()
       for (const i of _.range(1, 20)) {
-        await vampire.add_experience_notation({
+        await vampire.value.add_experience_notation({
           alteration_earned: i,
           alteration_spent: i,
         })
       }
-      const ens = await vampire.get_experience_notations()
+      const ens = await vampire.value.get_experience_notations()
       // Ignore first one because it's from creation
       const debug_alterations_earned = _.map(ens.models, 'attributes.alteration_earned')
       const debug_entered = _.map(ens.models, (m) => {
@@ -539,22 +525,22 @@ _.each(getCharacterTypes(), (character_type) => {
         expect(en.get('spent')).toBe(expected - startingXP)
         thisval += 1
       })
-      expect(vampire.experience_available()).toBe(startingXP)
-      expect(vampire.get('experience_earned')).toBe(expected)
-      expect(vampire.get('experience_spent')).toBe(expected - startingXP)
+      expect(vampire.value.experience_available()).toBe(startingXP)
+      expect(vampire.value.get('experience_earned')).toBe(expected)
+      expect(vampire.value.get('experience_spent')).toBe(expected - startingXP)
     })
 
     it('can be quickly sequential', async () => {
       const vampire = await getNewExperienceHistoryCharacter()
-      const startingXP = vampire.experience_available()
+      const startingXP = vampire.value.experience_available()
       const p = _.map(_.range(1, 20), (i) => {
-        return vampire.add_experience_notation({
+        return vampire.value.add_experience_notation({
           alteration_earned: i,
           alteration_spent: i,
         })
       })
       await Promise.all(p)
-      const ens = await vampire.get_experience_notations()
+      const ens = await vampire.value.get_experience_notations()
       // Ignore first one because it's from creation
       const debug_alterations_earned = _.map(ens.models, 'attributes.alteration_earned')
       const debug_entered = _.map(ens.models, (m) => {
@@ -562,30 +548,30 @@ _.each(getCharacterTypes(), (character_type) => {
       })
       const models = _.dropRight(ens.models, 1)
       const expected = startingXP + _.sum(_.range(1, 20))
-      expect(vampire.experience_available()).toBe(startingXP)
-      expect(vampire.get('experience_earned')).toBe(expected)
-      expect(vampire.get('experience_spent')).toBe(expected - startingXP)
+      expect(vampire.value.experience_available()).toBe(startingXP)
+      expect(vampire.value.get('experience_earned')).toBe(expected)
+      expect(vampire.value.get('experience_spent')).toBe(expected - startingXP)
     })
 
     it('can remove the top most', async () => {
       const vampire = await getNewExperienceHistoryCharacterFakedRange(1, 20)
-      let ens = await vampire.get_experience_notations()
-      await vampire.remove_experience_notation(ens.at(0))
-      expect(vampire.experience_available()).toBe(30)
-      expect(vampire.get('experience_earned')).toBe(220 - 19)
-      expect(vampire.get('experience_spent')).toBe(220 - 30 - 19)
-      ens = await vampire.fetch_experience_notations()
+      let ens = await vampire.value.get_experience_notations()
+      await vampire.value.remove_experience_notation(ens.at(0))
+      expect(vampire.value.experience_available()).toBe(30)
+      expect(vampire.value.get('experience_earned')).toBe(220 - 19)
+      expect(vampire.value.get('experience_spent')).toBe(220 - 30 - 19)
+      ens = await vampire.value.fetch_experience_notations()
       expect(ens.at(0).get('alteration_earned')).toBe(18)
       expect(ens.at(0).get('alteration_spent')).toBe(18)
     })
 
     it('can remove a middle one', async () => {
       const vampire = await getNewExperienceHistoryCharacterFakedRange(1, 20)
-      const ens = await vampire.get_experience_notations()
-      return vampire.remove_experience_notation(ens.at(ens.models.length - 2))
-      expect(vampire.experience_available()).toBe(30)
-      expect(vampire.get('experience_earned')).toBe(220 - 1)
-      expect(vampire.get('experience_spent')).toBe(220 - 30 - 1)
+      const ens = await vampire.value.get_experience_notations()
+      return vampire.value.remove_experience_notation(ens.at(ens.models.length - 2))
+      expect(vampire.value.experience_available()).toBe(30)
+      expect(vampire.value.get('experience_earned')).toBe(220 - 1)
+      expect(vampire.value.get('experience_spent')).toBe(220 - 30 - 1)
     })
 
     it('can remove a middle one by trigger', async () => {
@@ -600,16 +586,16 @@ _.each(getCharacterTypes(), (character_type) => {
         finish() {
           const self = this
           self.stopListening()
-          expect(vampire.experience_available()).toBe(54)
-          expect(vampire.get('experience_earned')).toBe(244 - 19 - 1 - 2)
-          expect(vampire.get('experience_spent')).toBe(244 - 54 - 19 - 1 - 2)
+          expect(vampire.value.experience_available()).toBe(54)
+          expect(vampire.value.get('experience_earned')).toBe(244 - 19 - 1 - 2)
+          expect(vampire.value.get('experience_spent')).toBe(244 - 54 - 19 - 1 - 2)
           done()
         },
       })
       l = new Listener()
       l.listenTo(vampire, 'finish_experience_notation_propagation', l.finish)
-      vampire.get_experience_notations().then((ens) => {
-        return vampire.remove_experience_notation(ens.at(ens.models.length - 3))
+      vampire.value.get_experience_notations().then((ens) => {
+        return vampire.value.remove_experience_notation(ens.at(ens.models.length - 3))
       }, (error) => {
         done.fail(error.message)
       })
@@ -628,15 +614,15 @@ _.each(getCharacterTypes(), (character_type) => {
         finish() {
           const self = this
           self.stopListening()
-          expect(vampire.experience_available()).toBe(54)
-          expect(vampire.get('experience_earned')).toBe(244 - 19 - 1 - 2 - 1)
-          expect(vampire.get('experience_spent')).toBe(244 - 54 - 19 - 1 - 2 - 1)
+          expect(vampire.value.experience_available()).toBe(54)
+          expect(vampire.value.get('experience_earned')).toBe(244 - 19 - 1 - 2 - 1)
+          expect(vampire.value.get('experience_spent')).toBe(244 - 54 - 19 - 1 - 2 - 1)
           done()
         },
       })
       l = new Listener()
       l.listenTo(vampire, 'finish_experience_notation_propagation', l.finish)
-      vampire.get_experience_notations().then((ens) => {
+      vampire.value.get_experience_notations().then((ens) => {
         console.log(_.map(ens.models, 'attributes.earned'))
         const en = ens.at(ens.models.length - 3)
         return en.save({ alteration_spent: 2, alteration_earned: 2 })

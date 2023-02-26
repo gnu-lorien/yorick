@@ -31,7 +31,7 @@ _.each(getCharacterTypes(), (character_type) => {
       expect(Parse.User.current().get('username')).toBe('sampmem')
       const v = await character_type.template.create_test_character('troupemember')
       const characters = useCharacterStore()
-      vampire = await characters.getCharacter(v.id)
+      vampire = await characters.getCharacter(v.value.id)
     })
 
     it('can add a vampire', async () => {
@@ -39,9 +39,9 @@ _.each(getCharacterTypes(), (character_type) => {
       console.log(`Created the troupe object with id ${SAMPLE_TROUPE_ID}`)
       const troupe = await t.fetch()
       console.log('Found the troupe. Making the vampire join the troupe.')
-      await vampire.join_troupe(troupe)
+      await vampire.value.join_troupe(troupe)
       console.log('Joined the troupe. Getting the ACL')
-      const acl = vampire.get_me_acl()
+      const acl = vampire.value.get_me_acl()
       console.log('Checking the ACLs')
       expect(acl.getRoleWriteAccess(`LST_${SAMPLE_TROUPE_ID}`)).toBe(true)
       expect(acl.getRoleReadAccess(`LST_${SAMPLE_TROUPE_ID}`)).toBe(true)
@@ -53,9 +53,9 @@ _.each(getCharacterTypes(), (character_type) => {
       await parseStartAST()
       const characters = useCharacterStore()
       await characters.clearCharacters()
-      const v = await characters.getCharacter(vampire.id)
-      expect(v).toBeInstanceOf(character_type.template)
-      const acl = v.get_me_acl()
+      const v = await characters.getCharacter(vampire.value.id)
+      expect(v.value).toBeInstanceOf(character_type.template)
+      const acl = v.value.get_me_acl()
       expect(acl.getRoleWriteAccess(`LST_${SAMPLE_TROUPE_ID}`)).toBe(true)
       expect(acl.getRoleReadAccess(`LST_${SAMPLE_TROUPE_ID}`)).toBe(true)
       expect(acl.getRoleWriteAccess(`AST_${SAMPLE_TROUPE_ID}`)).toBe(true)
@@ -67,7 +67,7 @@ _.each(getCharacterTypes(), (character_type) => {
       try {
         const characters = useCharacterStore()
         await characters.clearCharacters()
-        await characters.getCharacter(vampire.id)
+        await characters.getCharacter(vampire.value.id)
         expect(true).toBe(false)
       }
       catch (e) {
@@ -79,8 +79,8 @@ _.each(getCharacterTypes(), (character_type) => {
       await parseStartMember()
       const t = new Troupe({ id: SAMPLE_TROUPE_ID })
       const troupe = await t.fetch()
-      await vampire.leave_troupe(troupe)
-      const acl = vampire.get_me_acl()
+      await vampire.value.leave_troupe(troupe)
+      const acl = vampire.value.get_me_acl()
       expect(acl.getRoleWriteAccess(`LST_${SAMPLE_TROUPE_ID}`)).toBe(false)
       expect(acl.getRoleReadAccess(`LST_${SAMPLE_TROUPE_ID}`)).toBe(false)
       expect(acl.getRoleWriteAccess(`AST_${SAMPLE_TROUPE_ID}`)).toBe(false)
@@ -92,7 +92,7 @@ _.each(getCharacterTypes(), (character_type) => {
       try {
         const characters = useCharacterStore()
         await characters.clearCharacters()
-        await characters.getCharacter(vampire.id)
+        await characters.getCharacter(vampire.value.id)
         expect(true).toBe(false)
       }
       catch (e) {
@@ -105,7 +105,7 @@ _.each(getCharacterTypes(), (character_type) => {
       try {
         const characters = useCharacterStore()
         await characters.clearCharacters()
-        await characters.getCharacter(vampire.id)
+        await characters.getCharacter(vampire.value.id)
         expect(true).toBe(false)
       }
       catch (e) {
@@ -117,10 +117,10 @@ _.each(getCharacterTypes(), (character_type) => {
       await parseStartMember()
       const troupe = await new Troupe({ id: SAMPLE_TROUPE_ID }).fetch()
       console.log('Joining a troupe')
-      vampire.join_troupe(troupe)
+      vampire.value.join_troupe(troupe)
       console.log('Joined a troupe')
       console.log('Leaving a troupe')
-      await vampire.leave_troupe(troupe)
+      await vampire.value.leave_troupe(troupe)
     })
   })
 })
