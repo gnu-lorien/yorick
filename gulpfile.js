@@ -59,7 +59,7 @@ gulp.task('images', function () {
 
 gulp.task('siteconfig-pubstorm', function () {
     return gulp.src('./public/scripts/app/siteconfig.js')
-        .pipe(replace('return ConfigGnuLorienDev;', 'return ConfigPubstorm;'))
+        .pipe(replace('return ConfigGnuLorienDev;', 'return ConfigYorickStaging;'))
         .pipe(uglify({outSourceMap: true}))
         .pipe(gulp.dest('dist/scripts/app'));
 });

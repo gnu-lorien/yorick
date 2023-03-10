@@ -39,9 +39,15 @@ define([
         redirect_uri: "https://sheets.ourislandgeorgia.net/index.html",
         SAMPLE_TROUPE_ID: "mXhRByDNxX"
     };
-    
+
+    var ConfigYorickStaging = {
+        serverURL: "https://yorick-staging.herokuapp.com/parse",
+        facebookAppId: "1606746326305984",
+        redirect_uri: "https://stagingpatron.undergroundtheater.org/index.html"
+    };
+
     var ConfigGnuLorienDev = ConfigC9;
-    
+
     return ConfigGnuLorienDev;
 
 });
