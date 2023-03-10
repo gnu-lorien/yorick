@@ -30,15 +30,15 @@ defineExpose([name])
       <a v-for="character in characters" :key="character.id" href="#" class="list-group-item list-group-item-action active">
         <Suspense>
           <template #fallback>
-            <div>Loading {{ character.id }}</div>
+            <div>Loading {{ character.value.id }}</div>
           </template>
-          <CharacterListItem :character-id="character.id" />
+          <CharacterListItem :character-id="character.value.id" />
         </Suspense>
       </a>
     </div>
     <ol>
       <li v-for="character in characters">
-        <img :src="character.get_thumbnail_sync(128)">
+        <img :src="character.value.get_thumbnail_sync(128)">
         {{ character }}
       </li>
     </ol>
