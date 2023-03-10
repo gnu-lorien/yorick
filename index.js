@@ -12,7 +12,7 @@ var settings = {
   "appId": process.env.APPLICATION_ID || "APPLICATION_ID",
   "appName": process.env.APPLICATION_NAME || "Yorick",
   "masterKey": process.env.MASTER_KEY || "MASTER_KEY",
-  "databaseURI": process.env.MONGODB_URI || "mongodb://localhost:27017/anotherstore",
+  "databaseURI": process.env.DB_URI || "mongodb://localhost:27017/anotherstore",
   "mountPath": process.env.MOUNT_PATH || "/parse/1",
   "cloud": process.env.CLOUD_CODE_MAIN || "/home/ubuntu/workspace/cloud/main.js",
   "verbose": true,
