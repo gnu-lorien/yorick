@@ -12,6 +12,8 @@ const creation = computed(() => {
   return character.value.get('creation')
 })
 
+await character.value.fetch_creation_categories()
+
 const route = useRoute()
 const redirectTo = {
   name: route.name,
