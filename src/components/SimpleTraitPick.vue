@@ -21,15 +21,23 @@ const filter = ref('')
 const router = useRouter()
 
 async function selectDescription(description) {
-  await character.value.update_text(props.target, description.get('name'))
+  if (description.get('requirement') == 'requires_specialization')
+    throw 'We do not support specialization picks yet'
+
+  const valueField = _.parseInt(description.get('value'))
+  let cost = props.freeValue
+  if (valueField)
+    cost = valueField
+
+  await character.value.update_trait(description.get('name'), cost, props.category, props.freeValue)
   triggerRef(character)
   emit('selected')
 }
 
 const specialCategory = computed(() => {
-  if (props.category == 'disciplines')
+  if (props.category === 'disciplines')
     return ['in clan disciplines']
-  else if (props.category == 'wta_gifts')
+  else if (props.category === 'wta_gifts')
     return ['affinity', 'show_only_value_1']
   return []
 })
