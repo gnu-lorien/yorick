@@ -57,6 +57,11 @@ const attributePicking = computed(() => {
   })
   return results
 })
+
+async function unpick(category, st, i) {
+  await character.value.unpick_from_creation(category, st.id, i)
+  triggerRef(character)
+}
 </script>
 
 <template>
@@ -96,7 +101,10 @@ const attributePicking = computed(() => {
       <span class="badge bg-secondary rounded-pill">{{ attributePicking.remaining }}</span>
     </div>
     <div v-for="toUnpick in attributePicking.unpicks" class="list-group-item d-flex justify-content-between">
-      {{ toUnpick.st.get("name") }} x{{ toUnpick.st.get("value") }} <button>Delete</button>
+      {{ toUnpick.st.get("name") }} x{{ toUnpick.st.get("value") }}
+      <button class="btn btn-secondary" @click="unpick(attributePicking.name, toUnpick.st, toUnpick.i)">
+        Delete
+      </button>
     </div>
     <div v-for="toPick in attributePicking.picks" class="list-group-item align-items-start d-flex justify-content-between">
       <template v-if="picking[attributePicking.name]">
