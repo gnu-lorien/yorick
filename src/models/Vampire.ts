@@ -46,31 +46,37 @@ const TEXT_ATTRIBUTES = [
   {
     name: 'clan',
     category: 'clans',
+    upper: 'Clan',
     pretty: 'Clan',
   },
   {
     name: 'archetype',
     category: 'archetypes',
+    upper: 'Archetype',
     pretty: 'Archetype',
   },
   {
     name: 'sect',
     category: 'sects',
     pretty: 'Sect',
+    upper: 'Sect',
   },
   {
     name: 'faction',
     category: 'factions',
+    upper: character => 'Faction',
     pretty: character => 'Faction',
   },
   {
     name: 'title',
     category: 'titles',
     pretty: 'Title',
+    upper: 'Title',
   },
   {
     name: 'antecedence',
     category: 'antecedences',
+    upper: 'Antecedence',
     pretty: 'Primary, Secondary, or NPC',
   },
 ]
@@ -197,11 +203,28 @@ export class Vampire extends Character {
   }
 
   all_text_attributes() {
-    return TEXT_ATTRIBUTES
+    const result = []
+    for (const attr of TEXT_ATTRIBUTES) {
+      const d = { ...attr }
+      if (_.isFunction(d.pretty))
+        d.pretty = d.pretty(this)
+      if (_.isFunction(d.upper))
+        d.upper = d.upper(this)
+      result.push(d)
+    }
+    return result
   }
 
   all_text_attributes_pretty_names() {
-    return _.map(TEXT_ATTRIBUTES, 'pretty')
+    const justPretty = _.map(TEXT_ATTRIBUTES, 'pretty')
+    const result = []
+    for (const pretty of justPretty) {
+      if (_.isFunction(pretty))
+        result.push(pretty(this))
+      else
+        result.push(pretty)
+    }
+    return result
   }
 
   _raw_generation() {
