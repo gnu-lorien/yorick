@@ -23,6 +23,9 @@ const picking = reactive({})
 for (const { name } of character.value.all_text_attributes())
   picking[name] = false
 
+for (const category of character.value.all_simpletrait_categories())
+  picking[category[0]] = false
+
 function allTexts() {
   const texts = []
   for (const attributes of character.value.all_text_attributes()) {
@@ -38,6 +41,7 @@ function allTexts() {
 const attributePicking = computed(() => {
   const creation = character.value.get('creation')
   const results = {
+    name: 'attributes',
     remaining: creation.remaining_picks('attributes'),
     unpicks: [],
     picks: [],
@@ -95,7 +99,25 @@ const attributePicking = computed(() => {
       {{ toUnpick.st.get("name") }} x{{ toUnpick.st.get("value") }} <button>Delete</button>
     </div>
     <div v-for="toPick in attributePicking.picks" class="list-group-item align-items-start d-flex justify-content-between">
-      <button>Pick attribute at rating {{ toPick }}</button>
+      <template v-if="picking[attributePicking.name]">
+        <button @click="picking[attributePicking.name] = false">
+          Done picking {{ attributePicking.name }} at rating {{ toPick }}
+        </button>
+        <Suspense>
+          <template #fallback>
+            Loading...
+          </template>
+          <SimpleTraitPick
+            :category="category"
+            :target="name"
+            :character-id="props.characterId"
+            @selected.once="picking[attributePicking.name] = false"
+          />
+        </Suspense>
+      </template>
+      <button v-else @click="picking[attributePicking.name] = true">
+        Pick {{ attributePicking.name }} at rating {{ toPick }}
+      </button>
     </div>
   </div>
 </template>

@@ -3,12 +3,12 @@ import * as _ from 'lodash-es'
 import Fuse from 'fuse.js'
 import { useCharacterStore } from '~/stores/characters'
 import { useDescriptionStore } from '~/stores/descriptions'
-const props = defineProps(['category', 'target', 'characterId', 'redirectTo'])
+const props = defineProps(['category', 'target', 'characterId', 'specialCategory'])
 const emit = defineEmits<{
   (e: 'selected'): void
 }>()
 
-const name = '[SimpleTextNew]'
+const name = 'SimpleTraitPick'
 defineExpose([name])
 
 const characters = useCharacterStore()
@@ -24,8 +24,6 @@ async function selectDescription(description) {
   await character.value.update_text(props.target, description.get('name'))
   triggerRef(character)
   emit('selected')
-  if (props.redirectTo)
-    router.push(props.redirectTo)
 }
 
 const filteredDescriptions = computed(() => {
@@ -38,6 +36,7 @@ const filteredDescriptions = computed(() => {
 </script>
 
 <template>
+  <slot />
   <div class="list-group">
     <form class="p-2 mb-2 bg-light border-bottom">
       <input v-model="filter" type="search" class="form-control" autocomplete="false" placeholder="Type to filter...">
