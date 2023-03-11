@@ -48,7 +48,7 @@ const categoryFilteredDescriptions = asyncComputed(async () => {
       return true
     return false
   }).map('attributes').map('name').value()
-  const traitNames = _.chain(character.value.get(self.category))
+  const traitNames = _.chain(character.value.get(props.category))
     .map('attributes')
     .map('name')
     .without(requireSpecializations)
