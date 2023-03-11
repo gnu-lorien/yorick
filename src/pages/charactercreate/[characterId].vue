@@ -64,12 +64,11 @@ const focusPicking = computed(() => {
   const creation = character.value.get('creation')
   const totalResults = []
   _.each(_.zip(['Physical', 'Social', 'Mental'], ['focus_physicals', 'focus_socials', 'focus_mentals']), (z) => {
-    const pretty = z[0]
     const target = z[1]
     const results = {
       name: target,
       pretty: character.value.simpletrait_details(target).pretty,
-      remaining: creation.remaining_picks('attributes'),
+      remaining: creation.remaining_picks(target),
       unpicks: [],
       picks: [],
     }
@@ -95,12 +94,11 @@ const focusPicking = computed(() => {
 
 const skillsPicking = computed(() => {
   const creation = character.value.get('creation')
-  const pretty = 'Skills'
   const target = 'skills'
   const results = {
     name: target,
     pretty: character.value.simpletrait_details(target).pretty,
-    remaining: creation.remaining_picks('attributes'),
+    remaining: creation.remaining_picks(target),
     unpicks: [],
     picks: [],
   }
@@ -120,6 +118,39 @@ const skillsPicking = computed(() => {
     })
   })
   return [results]
+})
+
+const bottomPicking = computed(() => {
+  const creation = character.value.get('creation')
+  const totalResults = []
+  _.each([['backgrounds', true], ['disciplines', true], ['merits', false], ['flaws', false]], (z) => {
+    const target = z[0]
+    const results = {
+      name: target,
+      pretty: character.value.simpletrait_details(target).pretty,
+      remaining: creation.remaining_picks(target),
+      unpicks: [],
+      picks: [],
+      hasRating: z[1],
+    }
+    _.each(_.range(10, -1, -1), (i) => {
+      const n = `${target}_${i}_remaining`
+      _.each(creation.get(`${target}_${i}_picks`), (st) => {
+        results.unpicks.push({
+          st,
+          i,
+        })
+      })
+      _.each(_.range(creation.get(n)), (inner) => {
+        results.picks.push({
+          i,
+          picking: `${target}_${i}_${inner}`,
+        })
+      })
+    })
+    totalResults.push(results)
+  })
+  return totalResults
 })
 </script>
 
@@ -258,6 +289,42 @@ const skillsPicking = computed(() => {
       </template>
       <button v-else @click="picking = toPick.picking">
         Pick {{ attributePicking.pretty }} at rating {{ toPick.i }}
+      </button>
+    </div>
+  </div>
+
+  <div v-for="attributePicking in bottomPicking" class="list-group mt-2">
+    <div class="list-group-item list-group-item-secondary d-flex justify-content-between align-items-start">
+      {{ attributePicking.pretty }}
+      <span class="badge bg-secondary rounded-pill">{{ attributePicking.remaining }}</span>
+    </div>
+    <div v-for="toUnpick in attributePicking.unpicks" class="list-group-item d-flex justify-content-between">
+      {{ toUnpick.st.get("name") }} x{{ toUnpick.st.get("value") }}
+      <button class="btn btn-secondary" @click="unpick(attributePicking.name, toUnpick.st, toUnpick.i)">
+        Delete
+      </button>
+    </div>
+    <div v-for="toPick in attributePicking.picks" class="list-group-item align-items-start d-flex justify-content-between">
+      <template v-if="picking === toPick.picking">
+        <button @click="picking = false">
+          Done picking {{ attributePicking.name }} <span v-if="attributePicking.hasRating">at rating {{ toPick.i }}</span>
+        </button>
+        <Suspense>
+          <template #fallback>
+            Loading...
+          </template>
+          <SimpleTraitPick
+            :category="attributePicking.name"
+            :free-value="toPick.i"
+            :character-id="props.characterId"
+            @selected.once="picking = false"
+          >
+            <span v-if="attributePicking.hasRating">Pick one for value {{ toPick.i }}</span>
+          </SimpleTraitPick>
+        </Suspense>
+      </template>
+      <button v-else @click="picking = toPick.picking">
+        Pick {{ attributePicking.pretty }} <span v-if="attributePicking.hasRating">at rating {{ toPick.i }}</span>
       </button>
     </div>
   </div>

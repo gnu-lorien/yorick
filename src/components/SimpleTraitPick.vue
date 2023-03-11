@@ -140,7 +140,7 @@ const filteredDescriptions = asyncComputed(async () => {
       <input v-model="filter" type="search" class="form-control" autocomplete="false" placeholder="Type to filter...">
     </form>
     <button v-for="description in filteredDescriptions" class="list-group-item list-group-item-action text-start" @click="selectDescription(description)">
-      {{ description.get("name") }}
+      {{ description.get("name") }} <span v-if="description.has('value')">x{{ description.get("value") }}</span>
     </button>
   </div>
   <div v-else>
