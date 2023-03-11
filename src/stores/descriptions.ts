@@ -1,3 +1,4 @@
+import * as _ from 'lodash-es'
 import Parse from 'parse/dist/parse.js'
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { find } from 'lodash-es'
@@ -21,7 +22,9 @@ export const useDescriptionStore = defineStore('description', () => {
     await q.eachBatch((results: Array<Object>) => {
       descriptions.push(...results)
     })
-    cache.set(category, descriptions)
+
+    const sortedDescriptions = _.sortBy(descriptions, 'attributes.order', 'attributes.name')
+    cache.set(category, sortedDescriptions)
     return getDescriptionsForCategory(category)
   }
 
