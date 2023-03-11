@@ -92,14 +92,17 @@ export class Vampire extends Character {
     return SUM_CREATION_CATEGORIES
   }
 
+  get_creation_categories() {
+    return ['flaws', 'merits', 'focus_mentals', 'focus_physicals', 'focus_socials', 'attributes', 'skills', 'disciplines', 'backgrounds']
+  }
+
   async update_creation_rules_for_changed_trait(category, modified_trait, freeValue) {
     const self = this
     if (!_.includes(['merits', 'flaws'], category)) {
       if (!freeValue)
         return
     }
-    /* FIXME Move to the creation model */
-    if (!_.includes(['flaws', 'merits', 'focus_mentals', 'focus_physicals', 'focus_socials', 'attributes', 'skills', 'disciplines', 'backgrounds'], category))
+    if (!_.includes(self.get_creation_categories(), category))
       return
 
     const creations = useCreationStore()

@@ -65,14 +65,17 @@ export class Werewolf extends Character {
     return SUM_CREATION_CATEGORIES
   }
 
+  get_creation_categories() {
+    return ['wta_flaws', 'wta_merits', 'focus_mentals', 'focus_physicals', 'focus_socials', 'attributes', 'skills', 'wta_gifts', 'wta_backgrounds']
+  }
+
   async update_creation_rules_for_changed_trait(category, modified_trait, freeValue) {
     const self = this
-    if (!_.includes(['wta_merits', 'wta_flaws'], category)) {
+    if (!_.includes(this.get_sum_creation_categories(), category)) {
       if (!freeValue)
         return
     }
-    /* FIXME Move to the creation model */
-    if (!_.includes(['wta_flaws', 'wta_merits', 'focus_mentals', 'focus_physicals', 'focus_socials', 'attributes', 'skills', 'wta_gifts', 'wta_backgrounds'], category))
+    if (!_.includes(this.get_creation_categories(), category))
       return
 
     const creations = useCreationStore()
@@ -80,7 +83,7 @@ export class Werewolf extends Character {
     const stepName = `${category}_${freeValue}_remaining`
     const listName = `${category}_${freeValue}_picks`
     creation.addUnique(listName, modified_trait)
-    if (_.includes(['wta_merits', 'wta_flaws'], category)) {
+    if (_.includes(this.get_sum_creation_categories(), category)) {
       const sum = _.sumBy(creation.get(listName), 'attributes.value')
       creation.set(stepName, 7 - sum)
     }

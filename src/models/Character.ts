@@ -83,6 +83,23 @@ export class Character extends Parse.Object {
     })
   }
 
+  async fetch_categories(categories) {
+    const for_fetch = []
+    for (const category of categories) {
+      this.ensure_category(category)
+      for_fetch.push(...this.get_category_for_fetch(category))
+    }
+    await Parse.Object.fetchAllIfNeeded(for_fetch)
+  }
+
+  get_creation_categories() {
+    return []
+  }
+
+  async fetch_creation_categories() {
+    await this.fetch_categories(this.get_creation_categories())
+  }
+
   async update_trait(nameOrTrait, value, c, free_value, wait, experience_cost_type, experience_cost_modifier) {
     const self = this
     let category = c
