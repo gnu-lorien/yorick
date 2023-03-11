@@ -8,7 +8,9 @@ defineExpose([name])
 
 const characters = useCharacterStore()
 const character = await characters.getCharacter(props.characterId)
-const creation = character.value.get('creation')
+const creation = computed(() => {
+  return character.value.get('creation')
+})
 
 const route = useRoute()
 const redirectTo = {
@@ -32,6 +34,25 @@ function allTexts() {
   }
   return texts
 }
+
+const attributePicking = computed(() => {
+  const creation = character.value.get('creation')
+  const results = {
+    remaining: creation.remaining_picks('attributes'),
+    unpicks: [],
+    picks: [],
+  }
+  _.each(_.range(8, 0, -1), (i) => {
+    const n = `attributes_${i}_remaining`
+    _.each(creation.get(`attributes_${i}_picks`), (st) => {
+      results.unpicks.push({ st, i })
+    })
+    _.each(_.range(creation.get(n)), () => {
+      results.picks.push(i)
+    })
+  })
+  return results
+})
 </script>
 
 <template>
@@ -63,6 +84,19 @@ function allTexts() {
         {{ pickText }} {{ pretty }}
       </button>
     </template>
+  </div>
+
+  <div class="list-group">
+    <div class="list-group-item list-group-item-secondary d-flex justify-content-between align-items-start">
+      Attributes
+      <span class="badge bg-secondary rounded-pill">{{ attributePicking.remaining }}</span>
+    </div>
+    <div v-for="toUnpick in attributePicking.unpicks" class="list-group-item d-flex justify-content-between">
+      {{ toUnpick.st.get("name") }} x{{ toUnpick.st.get("value") }} <button>Delete</button>
+    </div>
+    <div v-for="toPick in attributePicking.picks" class="list-group-item align-items-start d-flex justify-content-between">
+      <button>Pick attribute at rating {{ toPick }}</button>
+    </div>
   </div>
 </template>
 
