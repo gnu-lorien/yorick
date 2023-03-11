@@ -51,6 +51,11 @@ export const useCreationStore = defineStore('creation', () => {
     return vc
   }
 
+  function clearCreationRules() {
+    Object.keys(characterToCreation).forEach(key => delete characterToCreation[key])
+    Object.keys(creations).forEach(key => delete characterToCreation[key])
+  }
+
   /**
    * Current name of the user.
    */
@@ -76,6 +81,7 @@ export const useCreationStore = defineStore('creation', () => {
   return {
     getCreationForOwner,
     getOrCreateCreationRules,
+    clearCreationRules,
     setNewName,
     otherNames,
     savedName,
