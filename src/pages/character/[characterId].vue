@@ -157,9 +157,9 @@ function getTextGroupings() {
       </h3>
       <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-4 py-5">
         <div v-for="entry in section.entries" class="col d-flex align-items-start">
-          <button href="#simpletraits/{{ entry.category }}/{{ character.id }}/all" class="btn btn-secondary shadow">
+          <router-link :to="{ name: 'simpletraits-category-characterId-all', params: { category: entry.category, characterId: character.id } }" class="btn btn-secondary shadow">
             {{ entry.description }}
-          </button>
+          </router-link>
         </div>
       </div>
     </template>
