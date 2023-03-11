@@ -6,6 +6,8 @@ const props = defineProps(['characterId'])
 const name = '[new]'
 defineExpose([name])
 
+const router = useRouter()
+
 const characters = useCharacterStore()
 const character = await characters.getCharacter(props.characterId)
 const creation = computed(() => {
@@ -152,6 +154,11 @@ const bottomPicking = computed(() => {
   })
   return totalResults
 })
+
+async function complete() {
+  await character.value.complete_character_creation()
+  router.push({ name: 'character-characterId', params: { characterId: character.value.id } })
+}
 </script>
 
 <template>
@@ -328,6 +335,9 @@ const bottomPicking = computed(() => {
       </button>
     </div>
   </div>
+  <button class="btn btn-primary" @click="complete()">
+    Complete Character Creation!
+  </button>
 </template>
 
 <style scoped>
