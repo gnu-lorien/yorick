@@ -42,8 +42,38 @@ const ALL_SIMPLETRAIT_CATEGORIES = [
   ['flaws', 'Flaws', 'Merits and Flaws'],
 ]
 
-const TEXT_ATTRIBUTES = ['clan', 'archetype', 'sect', 'faction', 'title', 'antecedence']
-const TEXT_ATTRIBUTES_PRETTY_NAMES = ['Clan', 'Archetype', 'Sect', function (character) { return 'Faction' }, 'Title', 'Primary, Secondary, or NPC']
+const TEXT_ATTRIBUTES = [
+  {
+    name: 'clan',
+    category: 'clans',
+    pretty: 'Clan',
+  },
+  {
+    name: 'archetype',
+    category: 'archetypes',
+    pretty: 'Archetype',
+  },
+  {
+    name: 'sect',
+    category: 'sects',
+    pretty: 'Sect',
+  },
+  {
+    name: 'faction',
+    category: 'factions',
+    pretty: character => 'Faction',
+  },
+  {
+    name: 'title',
+    category: 'titles',
+    pretty: 'Title',
+  },
+  {
+    name: 'antecedence',
+    category: 'antecedences',
+    pretty: 'Primary, Secondary, or NPC',
+  },
+]
 
 const SUM_CREATION_CATEGORIES = ['merits', 'flaws']
 
@@ -159,7 +189,7 @@ export class Vampire extends Character {
   }
 
   static all_text_attributes_pretty_names() {
-    return TEXT_ATTRIBUTES_PRETTY_NAMES
+    return _.map(TEXT_ATTRIBUTES, 'pretty')
   }
 
   all_simpletrait_categories() {
@@ -171,7 +201,7 @@ export class Vampire extends Character {
   }
 
   all_text_attributes_pretty_names() {
-    return TEXT_ATTRIBUTES_PRETTY_NAMES
+    return _.map(TEXT_ATTRIBUTES, 'pretty')
   }
 
   _raw_generation() {
