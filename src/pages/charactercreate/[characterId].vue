@@ -20,7 +20,11 @@ const redirectTo = {
   <p>You have {{ creation.get("initial_xp") }} initial XP to spend</p>
   <p>Remaining steps for {{ character.get("name") }}</p>
 
-  {{ redirectTo }}
+  <router-link
+    :to="{ name: 'charactercreate-simpletext-category-target-characterId-pick', params: { category: 'clans', target: 'clan', characterId: props.characterId } }"
+  >
+    Pick Clan
+  </router-link>
 </template>
 
 <style scoped>
