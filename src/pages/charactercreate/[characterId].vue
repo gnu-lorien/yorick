@@ -108,11 +108,13 @@ const attributePicking = computed(() => {
             Loading...
           </template>
           <SimpleTraitPick
-            :category="category"
-            :target="name"
+            :category="attributePicking.name"
+            :free-value="toPick"
             :character-id="props.characterId"
             @selected.once="picking[attributePicking.name] = false"
-          />
+          >
+            Pick one for value {{ toPick }}
+          </SimpleTraitPick>
         </Suspense>
       </template>
       <button v-else @click="picking[attributePicking.name] = true">
