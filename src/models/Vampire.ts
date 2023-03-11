@@ -205,6 +205,18 @@ export class Vampire extends Character {
     return ALL_SIMPLETRAIT_CATEGORIES
   }
 
+  simpletrait_details(target: string) {
+    for (const values of ALL_SIMPLETRAIT_CATEGORIES) {
+      if (values[0] === target) {
+        return {
+          name: values[0],
+          pretty: values[1],
+          prettyCategory: values[2],
+        }
+      }
+    }
+  }
+
   all_text_attributes() {
     const result = []
     for (const attr of TEXT_ATTRIBUTES) {
