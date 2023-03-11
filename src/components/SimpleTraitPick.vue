@@ -20,9 +20,14 @@ const filter = ref('')
 
 const router = useRouter()
 
+const specializing = ref(false)
+const specializationName = ref('')
+
 async function selectDescription(description) {
-  if (description.get('requirement') == 'requires_specialization')
-    throw 'We do not support specialization picks yet'
+  if (description.get('requirement') == 'requires_specialization') {
+    specializing.value = description
+    return
+  }
 
   const valueField = _.parseInt(description.get('value'))
   let cost = props.freeValue
@@ -30,6 +35,18 @@ async function selectDescription(description) {
     cost = valueField
 
   await character.value.update_trait(description.get('name'), cost, props.category, props.freeValue)
+  triggerRef(character)
+  emit('selected')
+}
+
+async function specializeDescription() {
+  const description = specializing.value
+  const valueField = _.parseInt(description.get('value'))
+  let cost = props.freeValue
+  if (valueField)
+    cost = valueField
+
+  await character.value.update_trait_with_specialization(description.get('name'), cost, props.category, props.freeValue, specializationName.value)
   triggerRef(character)
   emit('selected')
 }
@@ -117,13 +134,25 @@ const filteredDescriptions = asyncComputed(async () => {
 </script>
 
 <template>
-  <div class="list-group">
+  <div v-if="!specializing" class="list-group">
     <slot />
     <form class="p-2 mb-2 bg-light border-bottom">
       <input v-model="filter" type="search" class="form-control" autocomplete="false" placeholder="Type to filter...">
     </form>
     <button v-for="description in filteredDescriptions" class="list-group-item list-group-item-action text-start" @click="selectDescription(description)">
       {{ description.get("name") }}
+    </button>
+  </div>
+  <div v-else>
+    Specialization for {{ specializing.get("name") }}
+    <form class="p-2 mb-2 bg-light border-bottom">
+      <input v-model="specializationName">
+    </form>
+    <button class="btn btn-success" @click="specializeDescription()">
+      Specialize
+    </button>
+    <button class="btn btn-warning" @click="emit('selected')">
+      Cancel
     </button>
   </div>
 </template>
