@@ -7,6 +7,7 @@ import { VampireChange } from './VampireChange'
 import { Approvals } from './Approvals'
 import { Approval } from './Approval'
 import { LongText } from './LongText'
+import { SimpleTraitMixin } from '~/models/SimpleTraitMixin'
 import { FauxSimpleTrait } from '~/models/FauxSimpleTrait'
 import { VampireChanges } from '~/models/VampireChanges'
 
@@ -100,7 +101,7 @@ export class Character extends Parse.Object {
     await this.fetch_categories(this.get_creation_categories())
   }
 
-  async update_trait(nameOrTrait, value, c, free_value, wait, experience_cost_type, experience_cost_modifier) {
+  async update_trait(nameOrTrait, value, c, free_value, wait, experience_cost_type, experience_cost_modifier, specialization) {
     const self = this
     let category = c
     let modified_trait
@@ -112,7 +113,7 @@ export class Character extends Parse.Object {
       category = modified_trait.get('category')
     }
     else {
-      name = nameOrTrait
+      name = SimpleTraitMixin.get_specialized_name(nameOrTrait, specialization)
     }
     if (_.isUndefined(wait))
       wait = true
@@ -191,8 +192,8 @@ export class Character extends Parse.Object {
       await self.add_experience_notation({
         alteration_spent: spend,
         reason: `Update ${modified_trait.get(
-              'name',
-            )} to ${modified_trait.get('value')}`,
+          'name',
+        )} to ${modified_trait.get('value')}`,
       })
     }
     await self.progress('Finished saving character')
@@ -205,6 +206,10 @@ export class Character extends Parse.Object {
     // RAS FIXME Make sure that these triggers happen automatically in the Vue style in tests
     // self.trigger(`change:${category}`)
     return modified_trait
+  }
+
+  async update_trait_with_specialization(nameOrTrait, value, c, free_value, specialization) {
+    return await this.update_trait(nameOrTrait, value, c, free_value, true, undefined, undefined, specialization)
   }
 
   async update_text(target, value) {
