@@ -14,6 +14,8 @@ const redirectTo = {
   name: route.name,
   params: route.params,
 }
+
+const picking = reactive({ clans: false })
 </script>
 
 <template>
@@ -26,17 +28,27 @@ const redirectTo = {
   >
     Pick Clan
   </router-link>
-  <Suspense>
-    <template #fallback>
-      Loading...
-    </template>
-    <SimpleTextNew
-      category="clans"
-      target="clan"
-      :character-id="props.characterId"
-      redirect-to=""
-    />
-  </Suspense>
+  <template v-if="picking.clans">
+    <button @click="picking.clans = false">
+      Done Picking Clan
+    </button>
+    <Suspense>
+      <template #fallback>
+        Loading...
+      </template>
+      <SimpleTextNew
+        category="clans"
+        target="clan"
+        :character-id="props.characterId"
+        redirect-to=""
+      />
+    </Suspense>
+  </template>
+  <template v-else>
+    <button @click="picking.clans = true">
+      Local Pick Clan
+    </button>
+  </template>
 </template>
 
 <style scoped>
