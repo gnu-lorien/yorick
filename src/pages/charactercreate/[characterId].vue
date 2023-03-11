@@ -26,6 +26,17 @@ const redirectTo = {
   >
     Pick Clan
   </router-link>
+  <Suspense>
+    <template #fallback>
+      Loading...
+    </template>
+    <SimpleTextNew
+      category="clans"
+      target="clan"
+      :character-id="props.characterId"
+      redirect-to=""
+    />
+  </Suspense>
 </template>
 
 <style scoped>
