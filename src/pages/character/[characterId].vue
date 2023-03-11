@@ -144,11 +144,11 @@ function getTextGroupings() {
     </div>
   </div>
 
-  <template v-if="character.is_being_created()">
-    <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-      <li><a href="#charactercreate/{{ character.id }}">Character Creation</a></li>
-    </ul>
-  </template>
+  <div v-if="character.is_being_created()" class="container pb-4">
+    <router-link :to="{ name: 'charactercreate-characterId', params: { characterId: character.id } }" class="btn btn-secondary shadow">
+      Character Creation
+    </router-link>
+  </div>
 
   <div class="container">
     <template v-for="section in getTraitSections()">
