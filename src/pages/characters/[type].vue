@@ -27,14 +27,14 @@ defineExpose([name])
   </template>
   <template v-else>
     <div class="list-group">
-      <a v-for="character in characters" :key="character.id" href="#" class="list-group-item list-group-item-action active">
+      <router-link v-for="character in characters" :key="character.id" :to="{ name: 'character-characterId', params: { characterId: character.value.id } }" href="#" class="list-group-item list-group-item-action active">
         <Suspense>
           <template #fallback>
             <div>Loading {{ character.value.id }}</div>
           </template>
           <CharacterListItem :character-id="character.value.id" />
         </Suspense>
-      </a>
+      </router-link>
     </div>
     <ol>
       <li v-for="character in characters">
