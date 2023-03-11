@@ -23,10 +23,10 @@ export const useCreationStore = defineStore('creation', () => {
 
     const q = new Parse.Query(VampireCreation)
     q.equalTo('owner', owner)
-    const vc = q.first()
+    const vc = await q.first()
     if (_.isUndefined(vc))
       return
-    characterToCreation[ownerReferenceId] = vc[0]
+    characterToCreation[ownerReferenceId] = vc
     return await getCreationForOwner(owner)
   }
 
