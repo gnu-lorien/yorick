@@ -38,7 +38,8 @@
     "@types/lodash-es": "^4.17.6",
     "@types/backbone": "^1.4.15",
     "bootstrap": "~5.2.3",
-    "@popperjs/core": "~2.11.6"
+    "@popperjs/core": "~2.11.6",
+    "fuse.js": "~6.6.2"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^0.34.1",

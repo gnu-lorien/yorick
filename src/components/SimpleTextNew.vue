@@ -1,4 +1,6 @@
 <script setup>
+import * as _ from 'lodash-es'
+import Fuse from 'fuse.js'
 import { useCharacterStore } from '~/stores/characters'
 import { useDescriptionStore } from '~/stores/descriptions'
 const props = defineProps(['category', 'target', 'characterId', 'redirectTo'])
@@ -24,12 +26,9 @@ async function selectDescription(description) {
 const filteredDescriptions = computed(() => {
   if (filter.value.trim() === '')
     return [...descriptions]
-  const filtered = []
-  for (const description of descriptions) {
-    if (description.get('name').toLowerCase().startsWith(filter.value.toLowerCase()))
-      filtered.push(description)
-  }
-  return filtered
+  const fuse = new Fuse(descriptions, { keys: ['attributes.name'] })
+  const filtered = fuse.search(filter.value)
+  return _.map(filtered, 'item')
 })
 </script>
 
