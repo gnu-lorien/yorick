@@ -38,8 +38,21 @@ const ALL_SIMPLETRAIT_CATEGORIES = [
   ['wta_totem_bonus_traits', 'Totem Bonuses', 'Pack'],
 ]
 
-const TEXT_ATTRIBUTES = ['archetype', 'archetype_2', 'wta_breed', 'wta_auspice', 'wta_tribe', 'wta_camp', 'wta_faction', 'antecedence']
-const TEXT_ATTRIBUTES_PRETTY_NAMES = ['Archetype', 'Second Archetype', 'Breed', 'Auspice', 'Tribe', 'Camp', 'Faction', 'Primary, Secondary, or NPC']
+const TEXT_ATTRIBUTES = [
+  { name: 'archetype', category: 'archetypes', upper: 'Archetype', pretty: 'Archetype' },
+  { name: 'archetype_2', category: 'archetype_2s', upper: 'Second Archetype', pretty: 'Second Archetype' },
+  { name: 'wta_breed', category: 'wta_breeds', upper: 'Breed', pretty: 'Breed' },
+  { name: 'wta_auspice', category: 'wta_auspices', upper: 'Auspice', pretty: 'Auspice' },
+  { name: 'wta_tribe', category: 'wta_tribes', upper: 'Tribe', pretty: 'Tribe' },
+  { name: 'wta_camp', category: 'wta_camp', upper: 'Camp', pretty: 'Camp' },
+  { name: 'wta_faction', category: 'wta_faction', upper: 'Faction', pretty: 'Faction' },
+  {
+    name: 'antecedence',
+    category: 'antecedences',
+    upper: 'Antecedence',
+    pretty: 'Primary, Secondary, or NPC',
+  },
+]
 
 const SUM_CREATION_CATEGORIES = ['wta_merits', 'wta_flaws']
 
@@ -154,7 +167,7 @@ export class Werewolf extends Character {
   }
 
   static all_text_attributes_pretty_names() {
-    return TEXT_ATTRIBUTES_PRETTY_NAMES
+    return _.map(TEXT_ATTRIBUTES, 'pretty')
   }
 
   all_simpletrait_categories() {
@@ -162,11 +175,28 @@ export class Werewolf extends Character {
   }
 
   all_text_attributes() {
-    return TEXT_ATTRIBUTES
+    const result = []
+    for (const attr of TEXT_ATTRIBUTES) {
+      const d = { ...attr }
+      if (_.isFunction(d.pretty))
+        d.pretty = d.pretty(this)
+      if (_.isFunction(d.upper))
+        d.upper = d.upper(this)
+      result.push(d)
+    }
+    return result
   }
 
   all_text_attributes_pretty_names() {
-    return TEXT_ATTRIBUTES_PRETTY_NAMES
+    const justPretty = _.map(TEXT_ATTRIBUTES, 'pretty')
+    const result = []
+    for (const pretty of justPretty) {
+      if (_.isFunction(pretty))
+        result.push(pretty(this))
+      else
+        result.push(pretty)
+    }
+    return result
   }
 
   _raw_rank() {
