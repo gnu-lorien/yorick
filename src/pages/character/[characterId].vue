@@ -170,7 +170,7 @@ function getTextGroupings() {
       Information
     </h3>
     <div class="ui-grid-b ui-responsive">
-      <template v-for="{ st, ust } in getTextGroupings">
+      <template v-for="{ st, ust } in getTextGroupings()">
         <div class="ui-block-b">
           <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
             <template v-if="character.get(st)">
