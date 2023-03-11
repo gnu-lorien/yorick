@@ -30,9 +30,15 @@ export class SimpleTraitMixin {
     if (!specialization)
       self.set('name', self.get_base_name())
     else
-      self.set('name', `${self.get_base_name()}: ${specialization}`)
+      self.set('name', SimpleTraitMixin.get_specialized_name(self.get_base_name(), specialization))
 
     return self
+  }
+
+  static get_specialized_name(name: string, specialization: string) {
+    if (!specialization)
+      return name
+    return `${name}: ${specialization}`
   }
 
   validate(attr, options) {
