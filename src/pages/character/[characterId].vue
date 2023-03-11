@@ -152,12 +152,14 @@ function getTextGroupings() {
 
   <div class="container">
     <template v-for="section in getTraitSections()">
-      <h3 class="border-dark border border-1 bg-light bg-gradient text-dark">
+      <h3 class="border-dark border border-1 bg-light bg-gradient text-dark shadow-sm">
         {{ section.heading }}
       </h3>
       <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-4 py-5">
         <div v-for="entry in section.entries" class="col d-flex align-items-start">
-          <li><a href="#simpletraits/{{ entry.category }}/{{ character.id }}/all">{{ entry.description }}</a></li>
+          <button href="#simpletraits/{{ entry.category }}/{{ character.id }}/all" class="btn btn-secondary shadow">
+            {{ entry.description }}
+          </button>
         </div>
       </div>
     </template>
