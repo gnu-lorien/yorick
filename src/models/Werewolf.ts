@@ -157,6 +157,18 @@ export class Werewolf extends Character {
     return TEXT_ATTRIBUTES_PRETTY_NAMES
   }
 
+  all_simpletrait_categories() {
+    return ALL_SIMPLETRAIT_CATEGORIES
+  }
+
+  all_text_attributes() {
+    return TEXT_ATTRIBUTES
+  }
+
+  all_text_attributes_pretty_names() {
+    return TEXT_ATTRIBUTES_PRETTY_NAMES
+  }
+
   _raw_rank() {
     const self = this
     let generation
