@@ -45,10 +45,10 @@ function getTraitSections() {
 function getTextGroupings() {
   const groupings = []
   const sorted = character.value.all_text_attributes()
-  for (const { name } of sorted) {
+  for (const { name, upper } of sorted) {
     const d = {
       st: name,
-      ust: name[0].toUpperCase() + name.substring(1),
+      ust: upper,
     }
     groupings.push(d)
   }
