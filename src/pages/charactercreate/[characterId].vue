@@ -38,18 +38,13 @@ function allTexts() {
   <p>You have {{ creation.get("initial_xp") }} initial XP to spend</p>
   <p>Remaining steps for {{ character.get("name") }}</p>
 
-  <template v-for="{ name, category, upper, pickText } in allTexts()">
-    <div v-if="character.get(name)">
+  <div v-for="{ name, category, pretty, pickText } in allTexts()" class="container p-1 m-1">
+    <template v-if="character.get(name)">
       {{ character.get(name) }}
-    </div>
-    <router-link
-      :to="{ name: 'charactercreate-simpletext-category-target-characterId-pick', params: { category, target: name, characterId: props.characterId } }"
-    >
-      {{ pickText }} {{ upper }}
-    </router-link>
+    </template>
     <template v-if="picking[name]">
       <button @click="picking[name] = false">
-        Done Picking {{ upper }}
+        Done {{ pretty }}
       </button>
       <Suspense>
         <template #fallback>
@@ -65,10 +60,10 @@ function allTexts() {
     </template>
     <template v-else>
       <button @click="picking[name] = true">
-        Pick {{ upper }}
+        {{ pickText }} {{ pretty }}
       </button>
     </template>
-  </template>
+  </div>
 </template>
 
 <style scoped>
