@@ -7,10 +7,20 @@ defineExpose([name])
 
 const characters = useCharacterStore()
 const character = await characters.getCharacter(props.characterId)
+const creation = character.value.get('creation')
+
+const route = useRoute()
+const redirectTo = {
+  name: route.name,
+  params: route.params,
+}
 </script>
 
 <template>
-  {{ character }}
+  <p>You have {{ creation.get("initial_xp") }} initial XP to spend</p>
+  <p>Remaining steps for {{ character.get("name") }}</p>
+
+  {{ redirectTo }}
 </template>
 
 <style scoped>
