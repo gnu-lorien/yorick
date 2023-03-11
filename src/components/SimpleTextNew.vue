@@ -1,9 +1,12 @@
-<script setup>
+<script setup lang="ts">
 import * as _ from 'lodash-es'
 import Fuse from 'fuse.js'
 import { useCharacterStore } from '~/stores/characters'
 import { useDescriptionStore } from '~/stores/descriptions'
 const props = defineProps(['category', 'target', 'characterId', 'redirectTo'])
+const emit = defineEmits<{
+  (e: 'selected'): void
+}>()
 
 const name = '[new]'
 defineExpose([name])
@@ -20,7 +23,9 @@ const router = useRouter()
 async function selectDescription(description) {
   await character.value.update_text(props.target, description.get('name'))
   triggerRef(character)
-  router.push(props.redirectTo)
+  emit('selected')
+  if (props.redirectTo)
+    router.push(props.redirectTo)
 }
 
 const filteredDescriptions = computed(() => {
