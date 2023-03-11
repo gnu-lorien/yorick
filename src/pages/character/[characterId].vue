@@ -8,24 +8,38 @@ defineExpose([name])
 const characters = useCharacterStore()
 const character = await characters.getCharacter(props.characterId)
 
-function getTraitGroupings() {
-  const groupings = []
+function getTraitSections() {
+  const sections = []
   const sorted = character.value.all_simpletrait_categories()
-  let heading = null
+  let section = null
+  /*
+  {
+    heading: null,
+    entries: [],
+  }
+   */
   for (const grouping of sorted) {
-    const d = {
+    const entry = {
       description: grouping[1],
       category: grouping[0],
-      heading: grouping[2],
-      isHeader: false,
     }
-    if (heading !== d.heading) {
-      d.isHeader = true
-      heading = d.heading
+    const heading = grouping[2]
+    if (section === null) {
+      section = {
+        heading,
+        entries: [],
+      }
     }
-    groupings.push(d)
+    if (heading !== section.heading) {
+      sections.push(section)
+      section = {
+        heading,
+        entries: [],
+      }
+    }
+    section.entries.push(entry)
   }
-  return groupings
+  return sections
 }
 
 function getTextGroupings() {
@@ -136,44 +150,44 @@ function getTextGroupings() {
     </ul>
   </template>
 
-  <div class="ui-grid-b ui-responsive">
-    <template v-for="grouping in getTraitGroupings()">
-      <h3 v-if="grouping.isHeader" class="ui-bar ui-bar-a">
-        {{ grouping.heading }}
+  <div class="container">
+    <template v-for="section in getTraitSections()">
+      <h3 class="border-dark border border-1 bg-light bg-gradient text-dark">
+        {{ section.heading }}
       </h3>
-      <div class="ui-block-b">
-        <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-          <li><a href="#simpletraits/{{ grouping.category }}/{{ character.id }}/all">{{ grouping.description }}</a></li>
-        </ul>
-      </div>
-    </template>
-
-    <template v-if="!character.is_being_created()">
-      <h3 class="ui-bar ui-bar-a">
-        Information
-      </h3>
-      <div class="ui-grid-b ui-responsive">
-        <template v-for="{ st, ust } in getTextGroupings">
-          <div class="ui-block-b">
-            <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
-              <template v-if="character.get(st)">
-                <li data-role="list-divider">
-                  {{ ust }}<p>{{ character.get(st) }}</p>
-                </li>
-                <li><a href="#simpletext/{{ st }}s/{{ st }}/{{ character.id }}/pick">Repick {{ ust }}</a></li>
-                <li data-icon="delete">
-                  <a href="#simpletext/{{ st }}s/{{ st }}/{{ character.id }}/unpick">Unpick {{ ust }}</a>
-                </li>
-              </template>
-              <li v-else>
-                <a href="#simpletext/{{ st }}s/{{ st }}/{{ character.id }}/pick">Pick {{ ust }}</a>
-              </li>
-            </ul>
-          </div>
-        </template>
+      <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-4 py-5">
+        <div v-for="entry in section.entries" class="col d-flex align-items-start">
+          <li><a href="#simpletraits/{{ entry.category }}/{{ character.id }}/all">{{ entry.description }}</a></li>
+        </div>
       </div>
     </template>
   </div>
+
+  <template v-if="!character.is_being_created()">
+    <h3 class="ui-bar ui-bar-a">
+      Information
+    </h3>
+    <div class="ui-grid-b ui-responsive">
+      <template v-for="{ st, ust } in getTextGroupings">
+        <div class="ui-block-b">
+          <ul data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
+            <template v-if="character.get(st)">
+              <li data-role="list-divider">
+                {{ ust }}<p>{{ character.get(st) }}</p>
+              </li>
+              <li><a href="#simpletext/{{ st }}s/{{ st }}/{{ character.id }}/pick">Repick {{ ust }}</a></li>
+              <li data-icon="delete">
+                <a href="#simpletext/{{ st }}s/{{ st }}/{{ character.id }}/unpick">Unpick {{ ust }}</a>
+              </li>
+            </template>
+            <li v-else>
+              <a href="#simpletext/{{ st }}s/{{ st }}/{{ character.id }}/pick">Pick {{ ust }}</a>
+            </li>
+          </ul>
+        </div>
+      </template>
+    </div>
+  </template>
 
   <h3 class="ui-bar ui-bar-a">
     Progression
