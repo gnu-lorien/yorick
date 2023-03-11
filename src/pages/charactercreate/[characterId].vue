@@ -38,6 +38,7 @@ const attributePicking = computed(() => {
   const creation = character.value.get('creation')
   const results = {
     name: 'attributes',
+    pretty: 'Attributes',
     remaining: creation.remaining_picks('attributes'),
     unpicks: [],
     picks: [],
@@ -58,6 +59,39 @@ async function unpick(category, st, i) {
   await character.value.unpick_from_creation(category, st.id, i)
   triggerRef(character)
 }
+
+const focusPicking = computed(() => {
+  const creation = character.value.get('creation')
+  const totalResults = []
+  _.each(_.zip(['Physical', 'Social', 'Mental'], ['focus_physicals', 'focus_socials', 'focus_mentals']), (z) => {
+    const pretty = z[0]
+    const target = z[1]
+    const results = {
+      name: target,
+      pretty: character.value.simpletrait_details(target).pretty,
+      remaining: creation.remaining_picks('attributes'),
+      unpicks: [],
+      picks: [],
+    }
+    _.each(_.range(2, 0, -1), (i) => {
+      const n = `${target}_${i}_remaining`
+      _.each(creation.get(`${target}_${i}_picks`), (st) => {
+        results.unpicks.push({
+          st,
+          i,
+        })
+      })
+      _.each(_.range(creation.get(n)), (inner) => {
+        results.picks.push({
+          i,
+          picking: `${target}_${i}_${inner}`,
+        })
+      })
+    })
+    totalResults.push(results)
+  })
+  return totalResults
+})
 </script>
 
 <template>
@@ -91,9 +125,9 @@ async function unpick(category, st, i) {
     </template>
   </div>
 
-  <div class="list-group">
+  <div class="list-group mt-2">
     <div class="list-group-item list-group-item-secondary d-flex justify-content-between align-items-start">
-      Attributes
+      {{ attributePicking.pretty }}
       <span class="badge bg-secondary rounded-pill">{{ attributePicking.remaining }}</span>
     </div>
     <div v-for="toUnpick in attributePicking.unpicks" class="list-group-item d-flex justify-content-between">
@@ -122,7 +156,43 @@ async function unpick(category, st, i) {
         </Suspense>
       </template>
       <button v-else @click="picking = toPick.picking">
-        Pick {{ attributePicking.name }} at rating {{ toPick.i }}
+        Pick {{ attributePicking.pretty }} at rating {{ toPick.i }}
+      </button>
+    </div>
+  </div>
+
+  <div v-for="attributePicking in focusPicking" class="list-group mt-2">
+    <div class="list-group-item list-group-item-secondary d-flex justify-content-between align-items-start">
+      {{ attributePicking.pretty }}
+      <span class="badge bg-secondary rounded-pill">{{ attributePicking.remaining }}</span>
+    </div>
+    <div v-for="toUnpick in attributePicking.unpicks" class="list-group-item d-flex justify-content-between">
+      {{ toUnpick.st.get("name") }} x{{ toUnpick.st.get("value") }}
+      <button class="btn btn-secondary" @click="unpick(attributePicking.name, toUnpick.st, toUnpick.i)">
+        Delete
+      </button>
+    </div>
+    <div v-for="toPick in attributePicking.picks" class="list-group-item align-items-start d-flex justify-content-between">
+      <template v-if="picking === toPick.picking">
+        <button @click="picking = false">
+          Done picking {{ attributePicking.name }} at rating {{ toPick.i }}
+        </button>
+        <Suspense>
+          <template #fallback>
+            Loading...
+          </template>
+          <SimpleTraitPick
+            :category="attributePicking.name"
+            :free-value="toPick.i"
+            :character-id="props.characterId"
+            @selected.once="picking = false"
+          >
+            Pick one for value {{ toPick.i }}
+          </SimpleTraitPick>
+        </Suspense>
+      </template>
+      <button v-else @click="picking = toPick.picking">
+        Pick {{ attributePicking.pretty }} at rating {{ toPick.i }}
       </button>
     </div>
   </div>
