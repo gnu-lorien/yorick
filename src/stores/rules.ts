@@ -68,4 +68,4 @@ export const useRuleStore = defineStore('rule', () => {
 })
 
 if (import.meta.hot)
-  import.meta.hot.accept(acceptHMRUpdate(useUserStore, import.meta.hot))
+  import.meta.hot.accept(acceptHMRUpdate(useRuleStore, import.meta.hot))
