@@ -34,7 +34,7 @@ const specialCategory = computed(() => {
   return []
 })
 
-const categoryFilteredDescriptions = computed(async () => {
+const categoryFilteredDescriptions = asyncComputed(async () => {
   const requireSpecializations = _.chain([...descriptions]).filter((model) => {
     if (model.get('requirement') == 'requires_specialization')
       return true
@@ -95,15 +95,17 @@ const categoryFilteredDescriptions = computed(async () => {
     })
   }
   return descriptionItems
-})
+}, [])
 
-const filteredDescriptions = computed(() => {
-  if (filter.value.trim() === '')
-    return [...categoryFilteredDescriptions.value]
-  const fuse = new Fuse(categoryFilteredDescriptions.value, { keys: ['attributes.name'] })
+const filteredDescriptions = asyncComputed(async () => {
+  if (filter.value.trim() === '') {
+    const descriptionItems = await categoryFilteredDescriptions.value
+    return [...descriptionItems]
+  }
+  const fuse = new Fuse(await categoryFilteredDescriptions.value, { keys: ['attributes.name'] })
   const filtered = fuse.search(filter.value)
   return _.map(filtered, 'item')
-})
+}, [])
 </script>
 
 <template>
