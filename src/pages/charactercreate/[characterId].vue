@@ -20,13 +20,7 @@ const redirectTo = {
   params: route.params,
 }
 
-const picking = reactive({})
-
-for (const { name } of character.value.all_text_attributes())
-  picking[name] = false
-
-for (const category of character.value.all_simpletrait_categories())
-  picking[category[0]] = false
+const picking = ref(false)
 
 function allTexts() {
   const texts = []
@@ -53,8 +47,8 @@ const attributePicking = computed(() => {
     _.each(creation.get(`attributes_${i}_picks`), (st) => {
       results.unpicks.push({ st, i })
     })
-    _.each(_.range(creation.get(n)), () => {
-      results.picks.push(i)
+    _.each(_.range(creation.get(n)), (inner) => {
+      results.picks.push({ i, picking: `attributes_${i}_${inner}` })
     })
   })
   return results
@@ -74,8 +68,8 @@ async function unpick(category, st, i) {
     <template v-if="character.get(name)">
       {{ character.get(name) }}
     </template>
-    <template v-if="picking[name]">
-      <button @click="picking[name] = false">
+    <template v-if="picking === name">
+      <button @click="picking = false">
         Done {{ pretty }}
       </button>
       <Suspense>
@@ -86,12 +80,12 @@ async function unpick(category, st, i) {
           :category="category"
           :target="name"
           :character-id="props.characterId"
-          @selected.once="picking[name] = false"
+          @selected.once="picking = false"
         />
       </Suspense>
     </template>
     <template v-else>
-      <button @click="picking[name] = true">
+      <button @click="picking = name">
         {{ pickText }} {{ pretty }}
       </button>
     </template>
@@ -109,9 +103,9 @@ async function unpick(category, st, i) {
       </button>
     </div>
     <div v-for="toPick in attributePicking.picks" class="list-group-item align-items-start d-flex justify-content-between">
-      <template v-if="picking[attributePicking.name]">
-        <button @click="picking[attributePicking.name] = false">
-          Done picking {{ attributePicking.name }} at rating {{ toPick }}
+      <template v-if="picking === toPick.picking">
+        <button @click="picking = false">
+          Done picking {{ attributePicking.name }} at rating {{ toPick.i }}
         </button>
         <Suspense>
           <template #fallback>
@@ -119,16 +113,16 @@ async function unpick(category, st, i) {
           </template>
           <SimpleTraitPick
             :category="attributePicking.name"
-            :free-value="toPick"
+            :free-value="toPick.i"
             :character-id="props.characterId"
-            @selected.once="picking[attributePicking.name] = false"
+            @selected.once="picking = false"
           >
-            Pick one for value {{ toPick }}
+            Pick one for value {{ toPick.i }}
           </SimpleTraitPick>
         </Suspense>
       </template>
-      <button v-else @click="picking[attributePicking.name] = true">
-        Pick {{ attributePicking.name }} at rating {{ toPick }}
+      <button v-else @click="picking = toPick.picking">
+        Pick {{ attributePicking.name }} at rating {{ toPick.i }}
       </button>
     </div>
   </div>
