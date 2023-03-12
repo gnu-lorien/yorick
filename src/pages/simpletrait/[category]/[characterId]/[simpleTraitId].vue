@@ -12,9 +12,18 @@ const emit = defineEmits<{
 const characters = useCharacterStore()
 const character = await characters.getCharacter(props.characterId)
 const trait = await character.value.get_trait(props.category, props.simpleTraitId)
-const fauxtrait = ref({ ...trait.attributes, get(n) { return this[n] } })
+const fauxtrait = reactive({
+  ...trait.attributes,
+  get(n) { return this[n] },
+  get_specialization() {
+    const name = this.get('name') || ''
+    const s = name.split(': ')
+    return s[1]
+  },
+})
+const specialization = ref(fauxtrait.get_specialization())
 const calculatedCost = asyncComputed(async () => {
-  return await character.value.calculate_trait_to_spend(fauxtrait.value)
+  return await character.value.calculate_trait_to_spend(fauxtrait)
 }, NaN)
 const finalCost = asyncComputed(async () => {
   const toSpend = calculatedCost.value
@@ -22,7 +31,7 @@ const finalCost = asyncComputed(async () => {
   return available - toSpend
 }, NaN)
 const traitMax = asyncComputed(async () => {
-  const max = character.value.max_trait_value(new SimpleTrait({ ...fauxtrait.value.attributes }))
+  const max = character.value.max_trait_value(new SimpleTrait({ ...fauxtrait }))
   return max
 }, 10)
 </script>
@@ -35,6 +44,36 @@ const traitMax = asyncComputed(async () => {
   <form class="p-2 mb-2 bg-light border-bottom">
     <label for="value-slider">Slider:</label>
     <input id="value-slider" v-model="fauxtrait.value" type="range" name="simpleTraitValue" class="value-slider" min="1" :max="traitMax">
+  </form>
+  <button class="btn btn-secondary">
+    Cancel
+  </button>
+  <button class="btn btn-warning">
+    Remove
+  </button>
+  <button class="btn btn-success">
+    Save
+  </button>
+  <h2>Advanced Options</h2>
+  <form class="p-2 mb-2">
+    <label for="specialize-name">Specialize Name</label>
+    <input id="specialize-name" v-model="specialization" type="text">
+    <label for="free-slider">Free Value:</label>
+    <input id="free-slider" v-model="fauxtrait.free_value" type="range" name="free-slider" class="free-slider" min="0" :max="traitMax">
+    <label for="experience-type-select">Experience Cost Type Override</label>
+    <select id="experience-type-select" name="experience-type-select">
+      <option value="automatic" :selected="fauxtrait.experience_cost_type === ''">
+        Automatic
+      </option>
+      <option value="flat" :selected="fauxtrait.experience_cost_type === 'flat'">
+        Flat
+      </option>
+      <option value="linear" :selected="fauxtrait.experience_cost_type === 'linear'">
+        Linear
+      </option>
+    </select>
+    <label for="experience-cost-modifier">Experience Cost Modifier</label>
+    <input id="experience-cost-modifier" v-model="fauxtrait.experience_cost_modifier" type="range" name="experience-cost-modifier" class="cost-modifier-slider" min="1" max="10">
   </form>
 </template>
 
