@@ -21,7 +21,9 @@ await character.value.fetch_category(props.category)
   </ul>
   <ul v-if="character.has(props.category)">
     <li v-for="e in character.get(props.category)">
-      {{ e.get("name") }} x{{ e.get("value") }}
+      <router-link :to="{ name: 'simpletrait-category-characterId-simpleTraitId', params: { ...props, simpleTraitId: e.id } }">
+        {{ e.get("name") }} x{{ e.get("value") }}
+      </router-link>
     </li>
   </ul>
 </template>
