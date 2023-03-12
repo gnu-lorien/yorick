@@ -42,7 +42,7 @@ const traitMax = asyncComputed(async () => {
   <p>Available XP: {{ character.experience_available() }}</p>
   <p>Final: {{ finalCost }}</p>
   <form class="p-2 mb-2 bg-light border-bottom">
-    <label for="value-slider">Slider:</label>
+    <label for="value-slider">Value:</label>
     <input id="value-slider" v-model="fauxtrait.value" type="range" name="simpleTraitValue" class="value-slider" min="1" :max="traitMax">
   </form>
   <button class="btn btn-secondary">
