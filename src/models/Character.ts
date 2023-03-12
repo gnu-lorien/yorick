@@ -93,6 +93,10 @@ export class Character extends Parse.Object {
     await Parse.Object.fetchAllIfNeeded(for_fetch)
   }
 
+  async fetch_category(category) {
+    await this.fetch_categories([category])
+  }
+
   get_creation_categories() {
     return []
   }

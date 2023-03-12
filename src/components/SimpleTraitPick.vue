@@ -30,11 +30,11 @@ async function selectDescription(description) {
   }
 
   const valueField = _.parseInt(description.get('value'))
-  let cost = props.freeValue
+  let cost = _.defaultTo(props.freeValue, 1)
   if (valueField)
     cost = valueField
 
-  await character.value.update_trait(description.get('name'), cost, props.category, props.freeValue)
+  await character.value.update_trait(description.get('name'), cost, props.category, _.defaultTo(props.freeValue, 0))
   triggerRef(character)
   emit('selected')
 }
@@ -42,11 +42,11 @@ async function selectDescription(description) {
 async function specializeDescription() {
   const description = specializing.value
   const valueField = _.parseInt(description.get('value'))
-  let cost = props.freeValue
+  let cost = _.defaultTo(props.freeValue, 1)
   if (valueField)
     cost = valueField
 
-  await character.value.update_trait_with_specialization(description.get('name'), cost, props.category, props.freeValue, specializationName.value)
+  await character.value.update_trait_with_specialization(description.get('name'), cost, props.category, _.defaultTo(props.freeValue, 0), specializationName.value)
   triggerRef(character)
   emit('selected')
 }

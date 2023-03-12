@@ -2,22 +2,24 @@
 import { useCharacterStore } from '~/stores/characters'
 const props = defineProps(['category', 'characterId'])
 
-const name = '[new]'
-defineExpose([name])
-
 const characters = useCharacterStore()
 const character = await characters.getCharacter(props.characterId)
+const details = character.value.simpletrait_details(props.category)
 </script>
 
 <template>
-  <ul>
-    <li><a href="#simpletraits/{{ props.category }}/{{ character.id }}/new">Add New {{ props.category }}</a></li>
-  </ul>
-  <ul v-if="character.has(props.category)">
-    <li v-for="e in character.value.get(props.category)" v-bind="e.id">
-      <a href="#simpletrait/{{ category }}/{{ character.id }}/{{ e.id }}" class="ui-btn ui-btn-icon-right ui-icon-carat-r">{{ e.get("name") }} x{{ e.get("value") }}</a>
-    </li>
-  </ul>
+  <Suspense>
+    <template #fallback>
+      Loading...
+    </template>
+    <SimpleTraitPick
+      :category="props.category"
+      :character-id="props.characterId"
+      @selected.once="picking = false"
+    >
+      New trait for {{ details.pretty }}
+    </SimpleTraitPick>
+  </Suspense>
 </template>
 
 <style scoped>
