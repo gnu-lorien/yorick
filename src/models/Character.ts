@@ -97,6 +97,10 @@ export class Character extends Parse.Object {
     await this.fetch_categories([category])
   }
 
+  async fetch_all_simpletrait_categories() {
+    await this.fetch_categories(_.map(this.all_simpletrait_categories(), 0))
+  }
+
   get_creation_categories() {
     return []
   }

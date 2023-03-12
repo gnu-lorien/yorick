@@ -70,7 +70,11 @@ function getTextGroupings() {
         data-role="listview" data-inset="true"
         class="ui-listview ui-listview-inset ui-corner-all ui-shadow"
       >
-        <li><a href="#character/{{ character.id }}/print">Show Latest</a></li>
+        <li>
+          <router-link :to="{ name: 'character-characterId-print', params: { characterId: props.characterId } }">
+            Show Latest
+          </router-link>
+        </li>
       </ul>
     </div>
     <div class="ui-block-b">
