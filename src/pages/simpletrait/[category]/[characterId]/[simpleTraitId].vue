@@ -45,15 +45,21 @@ const traitMax = asyncComputed(async () => {
     <label for="value-slider">Value:</label>
     <input id="value-slider" v-model="fauxtrait.value" type="range" name="simpleTraitValue" class="value-slider" min="1" :max="traitMax">
   </form>
-  <button class="btn btn-secondary">
-    Cancel
-  </button>
-  <button class="btn btn-warning">
-    Remove
-  </button>
-  <button class="btn btn-success">
-    Save
-  </button>
+  <div>
+    <button class="btn btn-warning">
+      Remove
+    </button>
+  </div>
+  <div>
+    <button class="btn btn-success">
+      Save
+    </button>
+  </div>
+  <div>
+    <button class="btn btn-secondary">
+      Cancel
+    </button>
+  </div>
   <h2>Advanced Options</h2>
   <form class="p-2 mb-2">
     <label for="specialize-name">Specialize Name</label>
