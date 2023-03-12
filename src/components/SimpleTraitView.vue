@@ -66,7 +66,7 @@ async function save() {
   }
   else {
     updated = await character.value.update_trait(
-      fauxtrait.get('name'),
+      fauxtrait.get_base_name(),
       fauxtrait.get('value'),
       fauxtrait.get('category'),
       fauxtrait.get('free_value'),
