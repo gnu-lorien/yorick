@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import * as _ from 'lodash-es'
 import Fuse from 'fuse.js'
+import { FauxTrait } from '~/helpers/FauxTrait'
 import type { SimpleTrait } from '~/models/SimpleTrait'
+import { SimpleTraitMixin } from '~/models/SimpleTraitMixin'
 import { useCharacterStore } from '~/stores/characters'
 import { useDescriptionStore } from '~/stores/descriptions'
-const props = defineProps(['category', 'freeValue', 'characterId'])
+const props = defineProps(['category', 'freeValue', 'characterId', 'faux'])
 const emit = defineEmits<{
-  (e: 'selected', trait: SimpleTrait): void
+  (e: 'selected', trait: SimpleTrait | FauxTrait): void
 }>()
 
 const name = 'SimpleTraitPick'
@@ -36,9 +38,22 @@ async function selectDescription(description) {
   if (valueField)
     cost = valueField
 
-  const st = await character.value.update_trait(description.get('name'), cost, props.category, _.defaultTo(props.freeValue, 0))
-  triggerRef(character)
-  emit('selected', st)
+  if (props.faux) {
+    const st = new FauxTrait(
+      {
+        name: description.get('name'),
+        value: cost || _.defaultTo(props.freeValue, 0),
+        category: props.category,
+        free_value: _.defaultTo(props.freeValue, 0),
+      },
+    )
+    emit('selected', st)
+  }
+  else {
+    const st = await character.value.update_trait(description.get('name'), cost, props.category, _.defaultTo(props.freeValue, 0))
+    triggerRef(character)
+    emit('selected', st)
+  }
 }
 
 async function specializeDescription() {
@@ -48,9 +63,22 @@ async function specializeDescription() {
   if (valueField)
     cost = valueField
 
-  const st = await character.value.update_trait_with_specialization(description.get('name'), cost, props.category, _.defaultTo(props.freeValue, 0), specializationName.value)
-  triggerRef(character)
-  emit('selected', st)
+  if (props.faux) {
+    const st = new FauxTrait(
+      {
+        name: SimpleTraitMixin.get_specialized_name(description.get('name'), specializationName.value),
+        value: cost || _.defaultTo(props.freeValue, 0),
+        category: props.category,
+        free_value: _.defaultTo(props.freeValue, 0),
+      },
+    )
+    emit('selected', st)
+  }
+  else {
+    const st = await character.value.update_trait_with_specialization(description.get('name'), cost, props.category, _.defaultTo(props.freeValue, 0), specializationName.value)
+    triggerRef(character)
+    emit('selected', st)
+  }
 }
 
 const specialCategory = computed(() => {
