@@ -29,11 +29,12 @@ function switchToEditing(trait) {
 </script>
 
 <template>
-  <Suspense v-if="picking">
+  <Suspense>
     <template #fallback>
       Loading...
     </template>
     <SimpleTraitPick
+      v-if="picking"
       :category="props.category"
       :character-id="props.characterId"
       :faux="true"
@@ -41,12 +42,8 @@ function switchToEditing(trait) {
     >
       New trait for {{ details.pretty }}
     </SimpleTraitPick>
-  </Suspense>
-  <Suspense v-else>
-    <template #fallback>
-      Loading...
-    </template>
     <SimpleTraitView
+      v-else
       :category="props.category"
       :character-id="props.characterId"
       :fauxtrait="fauxtrait"
