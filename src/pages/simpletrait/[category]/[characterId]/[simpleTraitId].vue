@@ -12,17 +12,17 @@ const emit = defineEmits<{
 const characters = useCharacterStore()
 const character = await characters.getCharacter(props.characterId)
 const trait = await character.value.get_trait(props.category, props.simpleTraitId)
-const fauxtrait = ref(new SimpleTrait({ ...trait.attributes }))
+const fauxtrait = ref({ ...trait.attributes, get(n) { return this[n] } })
 const calculatedCost = asyncComputed(async () => {
-  return await character.value.calculate_trait_to_spend(trait)
+  return await character.value.calculate_trait_to_spend(fauxtrait.value)
 }, NaN)
 const finalCost = asyncComputed(async () => {
-  const toSpend = await character.value.calculate_trait_to_spend(trait)
+  const toSpend = calculatedCost.value
   const available = character.value.experience_available()
   return available - toSpend
 }, NaN)
 const traitMax = asyncComputed(async () => {
-  const max = character.value.max_trait_value(fauxtrait.value)
+  const max = character.value.max_trait_value(new SimpleTrait({ ...fauxtrait.value.attributes }))
   return max
 }, 10)
 </script>
