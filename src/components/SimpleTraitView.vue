@@ -29,7 +29,13 @@ const traitMax = asyncComputed(async () => {
   return max
 }, 10)
 const finalName = computed(() => {
-  return SimpleTraitMixin.get_specialized_name(fauxtrait.name, specialization.value)
+  if (specialization.value === fauxtrait.get_specialization())
+    return fauxtrait.name
+  fauxtrait.set_specialization(specialization.value)
+  return fauxtrait.name
+})
+const existingTrait = computed(() => {
+  return !!props.trait
 })
 
 function redirectOnSelected(trait) {
@@ -76,6 +82,11 @@ async function save() {
 function cancel() {
   router.push({ name: 'simpletraits-category-characterId-all', params: { ...props } })
 }
+
+async function remove() {
+  await character.value.remove_trait(props.trait)
+  router.push({ name: 'simpletraits-category-characterId-all', params: { ...props } })
+}
 </script>
 
 <template>
@@ -88,7 +99,7 @@ function cancel() {
     <input id="value-slider" v-model.number="fauxtrait.value" type="range" name="simpleTraitValue" class="value-slider" min="1" :max="traitMax">
   </form>
   <div>
-    <button class="btn btn-warning">
+    <button v-if="existingTrait" class="btn btn-warning" @click="remove()">
       Remove
     </button>
   </div>
