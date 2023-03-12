@@ -1,5 +1,5 @@
 export class FauxTrait {
-  constructor(attributes) {
+  constructor(attributes: Object) {
     Object.keys(attributes).forEach(v => this[v] = attributes[v])
   }
 
