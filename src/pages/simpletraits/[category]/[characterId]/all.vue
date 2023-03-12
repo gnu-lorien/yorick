@@ -9,12 +9,15 @@ const characters = useCharacterStore()
 const character = await characters.getCharacter(props.characterId)
 const details = character.value.simpletrait_details(props.category)
 await character.value.fetch_category(props.category)
+
+const route = useRoute()
+const redirectPath = route.path
 </script>
 
 <template>
   <ul>
     <li>
-      <router-link :to="{ name: 'simpletraits-category-characterId-new', params: { ...props } }">
+      <router-link :to="{ name: 'simpletraits-category-characterId-new', params: { ...props }, query: { redirectPath } }">
         Add New {{ details.pretty }}
       </router-link>
     </li>
