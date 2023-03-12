@@ -14,6 +14,7 @@ declare module '@vue/runtime-core' {
     RouterView: typeof import('vue-router')['RouterView']
     SimpleTextNew: typeof import('./components/SimpleTextNew.vue')['default']
     SimpleTraitPick: typeof import('./components/SimpleTraitPick.vue')['default']
+    SimpleTraitView: typeof import('./components/SimpleTraitView.vue')['default']
     TheCounter: typeof import('./components/TheCounter.vue')['default']
     TheFooter: typeof import('./components/TheFooter.vue')['default']
     TheInput: typeof import('./components/TheInput.vue')['default']
