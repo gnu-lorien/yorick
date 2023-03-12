@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import * as _ from 'lodash-es'
 import Fuse from 'fuse.js'
+import type { SimpleTrait } from '~/models/SimpleTrait'
 import { useCharacterStore } from '~/stores/characters'
 import { useDescriptionStore } from '~/stores/descriptions'
 const props = defineProps(['category', 'freeValue', 'characterId'])
 const emit = defineEmits<{
-  (e: 'selected'): void
+  (e: 'selected', trait: SimpleTrait): void
 }>()
 
 const name = 'SimpleTraitPick'
@@ -13,6 +14,7 @@ defineExpose([name])
 
 const characters = useCharacterStore()
 const character = await characters.getCharacter(props.characterId)
+await character.value.fetch_category(props.category)
 
 const descriptionStore = useDescriptionStore()
 const descriptions = await descriptionStore.getDescriptionsForCategory(props.category)
@@ -34,9 +36,9 @@ async function selectDescription(description) {
   if (valueField)
     cost = valueField
 
-  await character.value.update_trait(description.get('name'), cost, props.category, _.defaultTo(props.freeValue, 0))
+  const st = await character.value.update_trait(description.get('name'), cost, props.category, _.defaultTo(props.freeValue, 0))
   triggerRef(character)
-  emit('selected')
+  emit('selected', st)
 }
 
 async function specializeDescription() {
@@ -46,9 +48,9 @@ async function specializeDescription() {
   if (valueField)
     cost = valueField
 
-  await character.value.update_trait_with_specialization(description.get('name'), cost, props.category, _.defaultTo(props.freeValue, 0), specializationName.value)
+  const st = await character.value.update_trait_with_specialization(description.get('name'), cost, props.category, _.defaultTo(props.freeValue, 0), specializationName.value)
   triggerRef(character)
-  emit('selected')
+  emit('selected', st)
 }
 
 const specialCategory = computed(() => {
