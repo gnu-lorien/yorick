@@ -1,8 +1,12 @@
 <script setup>
 import * as _ from 'lodash-es'
-const props = defineProps(['character', 'target'])
+const props = defineProps(['character', 'target', 'count'])
 
-const character = shallowRef(props.character)
+// const { character, target, count } = toRefs(props)
+console.log(`Is character a ref? ${isRef(props.character)}`)
+const character = computed(() => {
+  return props.character
+})
 
 const transform = computed(() => {
   if (!character.value.transform_description)
@@ -34,7 +38,9 @@ const transform = computed(() => {
     <span v-for="prior in transform.priors" style="color: indianred"><i class="fa fa-minus">{{ prior }}</i></span>
     <span style="color: darkseagreen"><i class="fa fa-plus">{{ current }}</i></span>
   </span>
-  <span v-else>{{ character.get(target) }}</span>
+  <span v-else>{{ props.character.get(target) }}</span>
+  {{ props.count }}
+  {{ props.character.get(target) }}
 </template>
 
 <style scoped>
