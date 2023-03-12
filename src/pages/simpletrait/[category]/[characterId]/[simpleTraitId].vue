@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import * as _ from 'lodash-es'
 import Fuse from 'fuse.js'
+import { FauxTrait } from '~/helpers/FauxTrait'
 import { SimpleTrait } from '~/models/SimpleTrait'
 import { useCharacterStore } from '~/stores/characters'
 import { useDescriptionStore } from '~/stores/descriptions'
@@ -12,15 +13,7 @@ const emit = defineEmits<{
 const characters = useCharacterStore()
 const character = await characters.getCharacter(props.characterId)
 const trait = await character.value.get_trait(props.category, props.simpleTraitId)
-const fauxtrait = reactive({
-  ...trait.attributes,
-  get(n) { return this[n] },
-  get_specialization() {
-    const name = this.get('name') || ''
-    const s = name.split(': ')
-    return s[1]
-  },
-})
+const fauxtrait = reactive(new FauxTrait(trait.attributes))
 const specialization = ref(fauxtrait.get_specialization())
 const calculatedCost = asyncComputed(async () => {
   return await character.value.calculate_trait_to_spend(fauxtrait)
