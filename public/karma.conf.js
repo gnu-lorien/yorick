@@ -14,8 +14,12 @@ module.exports = function(config) {
   }
 
   config.set({
+    transports: ['polling'],
     client: {
-      args: [targetArg || 'localhost']
+      args: [targetArg || 'localhost'],
+      jasmine: {
+        random: false
+      }
     },
 
     // base path that will be used to resolve all patterns (eg. files, exclude)
@@ -29,10 +33,10 @@ module.exports = function(config) {
 
     // list of files / patterns to load in the browser
     files: [
+      'scripts/app/tests/test-main.js',
       {pattern: 'scripts/tests/*.js', included: false},
       {pattern: 'scripts/app/**/*.js', included: false},
-      {pattern: 'scripts/lib/**/*.js', included: false},
-      'scripts/app/tests/test-main.js',
+      {pattern: 'scripts/lib/**/*.js', included: false}
     ],
 
 
