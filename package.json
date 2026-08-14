@@ -53,6 +53,7 @@
   "scripts": {
     "start": "node index.js",
     "seed": "node -e \"require('./seed_db').seedDatabase(process.env.MONGODB_URI || 'mongodb://localhost:27017/anotherstore').then(() => console.log('Database seeded successfully')).catch(console.error)\"",
+    "audit-permissions": "node audit_db_permissions.js",
     "test": "node test_runner.js localhost",
     "test:localhost": "node test_runner.js localhost",
     "test:staging": "karma start public/karma.conf.js --single-run --browsers PhantomJS --target=staging"

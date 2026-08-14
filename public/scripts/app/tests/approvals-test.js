@@ -59,7 +59,7 @@ define([
             it("troupe AST (sampast) can create an approval for the latest recorded change", function (done) {
                 helpers.MemberParseStart().then(function () {
                     // Member makes a trait change
-                    return character.update_trait("Leadership", 1, "skills", 0, false);
+                    return character.update_trait("Leadership", 1, "skills", 0, true);
                 }).then(function () {
                     return character.get_recorded_changes();
                 }).then(function (changes) {
@@ -89,7 +89,7 @@ define([
             it("detects false approvals when modifications occur after approval", function (done) {
                 helpers.MemberParseStart().then(function () {
                     // Player makes a new change after the approval was granted
-                    return character.update_trait("Subterfuge", 1, "skills", 0, false);
+                    return character.update_trait("Subterfuge", 1, "skills", 0, true);
                 }).then(function () {
                     return character.get_recorded_changes();
                 }).then(function (changes) {

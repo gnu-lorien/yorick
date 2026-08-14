@@ -34,9 +34,7 @@ async function seedDatabase(databaseURI) {
   var db = client.db();
 
   try {
-    var userCount = await db.collection('_User').countDocuments().catch(function() {
-      return db.collection('_User').count();
-    });
+    var userCount = await db.collection('_User').find({}).toArray().then(function(docs) { return docs.length; });
 
     if (userCount === 0) {
       console.log('Seeding database from database_seed directory...');

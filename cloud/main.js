@@ -116,33 +116,38 @@ Parse.Cloud.beforeSave("ReferendumPortrait", function(request, response) {
 });
 
 var get_vampire_change_acl = function(vampire) {
-    var daString = vampire.get("acl_to_json");
-    if (_.isUndefined(daString)) {
-        var acl = new Parse.ACL;
-        acl.setPublicReadAccess(false);
-        acl.setPublicWriteAccess(false);
-        var owner = vampire.get("owner");
-        if (!_.isUndefined(owner)) {
-            // Archived characters have no owner
-            acl.setReadAccess(owner, true);
-            acl.setWriteAccess(owner, false);
-        }
-        acl.setRoleReadAccess("Administrator", true);
-        acl.setRoleWriteAccess("Administrator", true);
-        return acl;
-    }
-    var acl = new Parse.ACL;
-    var given_permissions_by_id = JSON.parse(daString);
-    _.each(given_permissions_by_id, function (permissions, key) {
-        acl.setReadAccess(key, true);
-        acl.setWriteAccess(key, false);
-    });
+    var acl = new Parse.ACL();
     acl.setPublicReadAccess(false);
     acl.setPublicWriteAccess(false);
+    var owner = vampire.get("owner");
+    if (!_.isUndefined(owner)) {
+        // Archived characters have no owner
+        acl.setReadAccess(owner, true);
+        acl.setWriteAccess(owner, false);
+    }
     acl.setRoleReadAccess("Administrator", true);
-    acl.setRoleWriteAccess("Administrator", false);
+    acl.setRoleWriteAccess("Administrator", true);
+
+    var daString = vampire.get("acl_to_json");
+    if (!_.isUndefined(daString) && daString) {
+        try {
+            var given_permissions_by_id = JSON.parse(daString);
+            _.each(given_permissions_by_id, function (permissions, key) {
+                if (key.indexOf("role:") === 0) {
+                    var roleName = key.replace("role:", "");
+                    acl.setRoleReadAccess(roleName, true);
+                    acl.setRoleWriteAccess(roleName, false);
+                } else if (key !== "*") {
+                    acl.setReadAccess(key, true);
+                    acl.setWriteAccess(key, false);
+                }
+            });
+        } catch (e) {
+            console.log("Failed to parse acl_to_json: " + e.message);
+        }
+    }
     return acl;
-}
+};
 
 Parse.Cloud.beforeSave("Vampire", function(request, response) {
     var tracked_texts = [
@@ -580,13 +585,81 @@ Parse.Cloud.define("submit_facebook_profile_data", function(request, response) {
 });
 
 Parse.Cloud.define("make_me_admin", function(request, response) {
-    (new Parse.Query(Parse.Role)).equalTo("name", "Administrator").first().then(function (role) {
-        role.getUsers().add(new Parse.User({id: "b9VFx9QiZj"}));
+    var secret = process.env.ADMIN_SECRET_KEY;
+    if (!request.master && (!secret || request.params.secret_key !== secret)) {
+        return response.error("Unauthorized: Invalid or missing administrator secret key.");
+    }
+    if (!request.user) {
+        return response.error("Unauthorized: User not authenticated.");
+    }
+    (new Parse.Query(Parse.Role)).equalTo("name", "Administrator").first({useMasterKey: true}).then(function (role) {
+        if (!role) {
+            return Parse.Promise.error("Administrator role not found.");
+        }
+        role.getUsers().add(request.user);
         return role.save({}, {useMasterKey: true});
     }).then(function (s) {
         response.success(s.id);
     }, function(error) {
         response.error(error);
+    });
+});
+
+Parse.Cloud.beforeSave("VampireApproval", function(request, response) {
+    if (!request.user) {
+        return response.error("Unauthorized: Must be logged in to create approvals.");
+    }
+    var approval = request.object;
+    var character = approval.get("owner");
+    if (!character) {
+        return response.error("Approval must have an associated character owner.");
+    }
+
+    var charQuery = new Parse.Query("Vampire");
+    charQuery.include("owner");
+    charQuery.get(character.id, {useMasterKey: true}).then(function (vampire) {
+        var owner = vampire.get("owner");
+        var isOwner = owner && owner.id === request.user.id;
+
+        var roleQuery = new Parse.Query(Parse.Role);
+        roleQuery.equalTo("users", request.user);
+        return roleQuery.find({useMasterKey: true}).then(function (roles) {
+            var roleNames = _.map(roles, function (r) { return r.get("name"); });
+            var isAdmin = _.includes(roleNames, "Administrator") || _.includes(roleNames, "SiteAdministrator");
+
+            if (isOwner && !isAdmin) {
+                return Parse.Promise.error("Unauthorized: Players cannot approve their own character changes.");
+            }
+
+            if (isAdmin) {
+                return Parse.Promise.as(true);
+            }
+
+            var troupeRelation = vampire.relation("troupes");
+            return troupeRelation.query().find({useMasterKey: true}).then(function (troupes) {
+                var canApprove = _.some(troupes, function (troupe) {
+                    return _.includes(roleNames, "AST_" + troupe.id) || _.includes(roleNames, "LST_" + troupe.id);
+                });
+
+                if (!canApprove) {
+                    return Parse.Promise.error("Unauthorized: Approver does not have Storyteller role for this troupe.");
+                }
+                return Parse.Promise.as(true);
+            });
+        });
+    }).then(function () {
+        var acl = new Parse.ACL();
+        acl.setPublicReadAccess(true);
+        acl.setPublicWriteAccess(false);
+        acl.setRoleReadAccess("Administrator", true);
+        acl.setRoleWriteAccess("Administrator", true);
+        acl.setReadAccess(request.user, true);
+        acl.setWriteAccess(request.user, true);
+        approval.setACL(acl);
+        response.success();
+    }, function (error) {
+        var msg = error && error.message ? error.message : (typeof error === "string" ? error : "Approval rejected.");
+        response.error(msg);
     });
 });
 
