@@ -53,6 +53,9 @@ async function getDatabaseURI() {
 
 async function startServer() {
   var databaseURI = await getDatabaseURI();
+  var seed_db = require('./seed_db');
+  await seed_db.seedDatabase(databaseURI);
+
   var settings = {
     "appId": process.env.APPLICATION_ID || "APPLICATION_ID",
     "appName": process.env.APPLICATION_NAME || "Yorick",

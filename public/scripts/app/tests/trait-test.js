@@ -54,26 +54,29 @@ define([
     });
     var ParseStart = function() {
         ParseInit();
-        if (!_.eq(Parse.User.current().get("username"), "devuser")) {
+        var current = Parse.User.current();
+        if (!current || !_.eq(current.get("username"), "devuser")) {
             return Parse.User.logIn("devuser", "thedumbness");
         }
-        return Parse.Promise.as(Parse.User.current());
+        return Parse.Promise.as(current);
     };
 
     var MemberParseStart = function () {
         ParseInit();
-        if (!_.eq(Parse.User.current().get("username"), "sampmem")) {
+        var current = Parse.User.current();
+        if (!current || !_.eq(current.get("username"), "sampmem")) {
             return Parse.User.logIn("sampmem", "sampmem");
         }
-        return Parse.Promise.as(Parse.User.current());
+        return Parse.Promise.as(current);
     };
 
     var ASTParseStart = function () {
         ParseInit();
-        if (!_.eq(Parse.User.current().get("username"), "sampast")) {
+        var current = Parse.User.current();
+        if (!current || !_.eq(current.get("username"), "sampast")) {
             return Parse.User.logIn("sampast", "sampast");
         }
-        return Parse.Promise.as(Parse.User.current());
+        return Parse.Promise.as(current);
     };
 
     describe("Parse", function() {

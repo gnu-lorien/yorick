@@ -51,7 +51,10 @@
     "url": "https://github.com/gnu-lorien/yorick.git"
   },
   "scripts": {
+    "start": "node index.js",
+    "seed": "node -e \"require('./seed_db').seedDatabase(process.env.MONGODB_URI || 'mongodb://localhost:27017/anotherstore').then(() => console.log('Database seeded successfully')).catch(console.error)\"",
     "test": "karma start public/karma.conf.js --single-run --browsers PhantomJS",
-    "start": "node index.js"
+    "test:localhost": "node test_runner.js localhost",
+    "test:staging": "karma start public/karma.conf.js --single-run --browsers PhantomJS --target=staging"
   }
 }

@@ -2,7 +2,21 @@
 // Generated on Sat Nov 07 2015 22:22:03 GMT-0500 (Eastern Standard Time)
 
 module.exports = function(config) {
+  var targetArg = process.env.TEST_TARGET;
+  if (!targetArg) {
+    process.argv.forEach(function(arg) {
+      if (arg.indexOf('--target=') === 0) {
+        targetArg = arg.split('=')[1];
+      } else if (arg === '--staging' || arg === '--stagingapi') {
+        targetArg = 'staging';
+      }
+    });
+  }
+
   config.set({
+    client: {
+      args: [targetArg || 'localhost']
+    },
 
     // base path that will be used to resolve all patterns (eg. files, exclude)
     basePath: '',
