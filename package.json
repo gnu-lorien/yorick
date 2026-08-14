@@ -40,6 +40,7 @@
     "karma-jasmine": "^0.3.6",
     "karma-phantomjs-launcher": "^1.0.0",
     "karma-requirejs": "^1.0.0",
+    "mongodb-memory-server": "^11.2.0",
     "nodefy": "^0.2.2",
     "phantomjs-prebuilt": "^2.1.7",
     "requirejs": "^2.2.0",
@@ -50,7 +51,7 @@
     "url": "https://github.com/gnu-lorien/yorick.git"
   },
   "scripts": {
-    "test": "./node_modules/.bin/karma start public/karma.conf.js --single-run --browsers PhantomJS",
+    "test": "karma start public/karma.conf.js --single-run --browsers PhantomJS",
     "start": "node index.js"
   }
 }
