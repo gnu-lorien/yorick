@@ -27,6 +27,7 @@
     "serve-static": "^1.13.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "gulp": "^4.0.0",
     "gulp-clean": "^0.3.2",
     "gulp-debug": "^2.1.2",
@@ -56,6 +57,14 @@
     "audit-permissions": "node audit_db_permissions.js",
     "test": "node test_runner.js localhost",
     "test:localhost": "node test_runner.js localhost",
-    "test:staging": "karma start public/karma.conf.js --single-run --browsers PhantomJS --target=staging"
+    "test:staging": "karma start public/karma.conf.js --single-run --browsers PhantomJS --target=staging",
+    "test:e2e": "playwright test",
+    "test:e2e:history": "playwright test e2e/character-history.spec.js",
+    "test:e2e:admin": "playwright test e2e/administration.spec.js",
+    "test:e2e:troupe": "playwright test e2e/troupes.spec.js",
+    "test:e2e:sheet": "playwright test e2e/character-sheet.spec.js",
+    "test:e2e:auth": "playwright test e2e/auth-profile.spec.js",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report"
   }
 }

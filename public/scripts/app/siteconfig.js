@@ -40,6 +40,13 @@ define([
         SAMPLE_TROUPE_ID: "mXhRByDNxX"
     };
     
+    if (typeof window !== 'undefined' && window.location) {
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            ConfigLocalhost.serverURL = window.location.origin + "/parse";
+            return ConfigLocalhost;
+        }
+    }
+
     var ConfigGnuLorienDev = ConfigC9;
     
     return ConfigGnuLorienDev;
