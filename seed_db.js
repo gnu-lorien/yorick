@@ -3,6 +3,7 @@ var path = require('path');
 var MongoClient = require('mongodb').MongoClient;
 var ObjectID = require('mongodb').ObjectID;
 var password = require('parse-server/lib/password');
+var seedExtra = require('./seed_extra');
 
 function parseEJSON(val) {
   if (val === null || val === undefined) return val;
@@ -27,6 +28,82 @@ function parseEJSON(val) {
     return res;
   }
   return val;
+}
+
+/**
+ * Test accounts the E2E suite depends on.
+ *
+ * `sampstranger` shares no troupe with any test character and exists purely so
+ * the access-control specs have a genuine outsider to assert against; the other
+ * three all end up inside some troupe or role.
+ */
+var TEST_USERS = [
+  { id: 'm91umkbuQq',       username: 'devuser',      password: 'thedumbness', admin: true,  storyteller: true },
+  { id: 'user_sampmem',     username: 'sampmem',      password: 'sampmem',     admin: false, storyteller: false },
+  { id: 'user_sampast',     username: 'sampast',      password: 'sampast',     admin: false, storyteller: true },
+  { id: 'user_sampstranger', username: 'sampstranger', password: 'sampstranger', admin: false, storyteller: false }
+];
+
+/**
+ * Upsert the test accounts. Kept separate from the bulk import and run on every
+ * boot, because the bulk import is skipped once the database has any users at
+ * all — which previously meant a new test account could never be added to an
+ * existing database.
+ */
+async function seedTestUsers(db) {
+  for (var i = 0; i < TEST_USERS.length; i++) {
+    var u = TEST_USERS[i];
+    var hashed = await password.hash(u.password);
+    await db.collection('_User').updateOne(
+      { username: u.username },
+      {
+        $set: {
+          username: u.username,
+          _hashed_password: hashed,
+          _wperm: [u.id],
+          _rperm: ['*', u.id],
+          _acl: (function () {
+            var acl = {};
+            acl[u.id] = { w: true, r: true };
+            acl['*'] = { r: true };
+            return acl;
+          })(),
+          _updated_at: new Date(),
+          admininterface: u.admin,
+          storytellerinterface: u.storyteller
+        },
+        $setOnInsert: {
+          _id: u.id,
+          _created_at: new Date()
+        }
+      },
+      { upsert: true }
+    );
+  }
+}
+
+/**
+ * Assert the accounts the E2E suite requires are present and usable. Called by
+ * the Playwright global setup so a misseeded database fails loudly and early
+ * rather than as a wall of confusing per-test auth failures.
+ */
+async function verifyTestUsers(databaseURI) {
+  var client = await MongoClient.connect(databaseURI, { useNewUrlParser: true });
+  var missing = [];
+  try {
+    var db = client.db();
+    for (var i = 0; i < TEST_USERS.length; i++) {
+      var found = await db.collection('_User').findOne({ username: TEST_USERS[i].username });
+      if (!found) missing.push(TEST_USERS[i].username);
+    }
+  } finally {
+    await client.close();
+  }
+  if (missing.length > 0) {
+    throw new Error('Missing required test users: ' + missing.join(', ') +
+      '. Reseed the database (npm run seed) before running the E2E suite.');
+  }
+  return TEST_USERS.map(function (u) { return u.username; });
 }
 
 async function seedDatabase(databaseURI) {
@@ -78,74 +155,6 @@ async function seedDatabase(databaseURI) {
           }
         }
       }
-
-      // Ensure test users exist with correct passwords
-      var hashedDumbness = await password.hash('thedumbness');
-      var hashedSampmem = await password.hash('sampmem');
-      var hashedSampast = await password.hash('sampast');
-
-      await db.collection('_User').updateOne(
-        { username: 'devuser' },
-        {
-          $set: {
-            username: 'devuser',
-            _hashed_password: hashedDumbness,
-            _wperm: ['m91umkbuQq'],
-            _rperm: ['*', 'm91umkbuQq'],
-            _acl: { m91umkbuQq: { w: true, r: true }, '*': { r: true } },
-            _updated_at: new Date(),
-            admininterface: true,
-            storytellerinterface: true
-          },
-          $setOnInsert: {
-            _id: 'm91umkbuQq',
-            _created_at: new Date()
-          }
-        },
-        { upsert: true }
-      );
-
-      await db.collection('_User').updateOne(
-        { username: 'sampmem' },
-        {
-          $set: {
-            username: 'sampmem',
-            _hashed_password: hashedSampmem,
-            _wperm: ['user_sampmem'],
-            _rperm: ['*', 'user_sampmem'],
-            _acl: { user_sampmem: { w: true, r: true }, '*': { r: true } },
-            _updated_at: new Date(),
-            admininterface: false,
-            storytellerinterface: false
-          },
-          $setOnInsert: {
-            _id: 'user_sampmem',
-            _created_at: new Date()
-          }
-        },
-        { upsert: true }
-      );
-
-      await db.collection('_User').updateOne(
-        { username: 'sampast' },
-        {
-          $set: {
-            username: 'sampast',
-            _hashed_password: hashedSampast,
-            _wperm: ['user_sampast'],
-            _rperm: ['*', 'user_sampast'],
-            _acl: { user_sampast: { w: true, r: true }, '*': { r: true } },
-            _updated_at: new Date(),
-            admininterface: false,
-            storytellerinterface: true
-          },
-          $setOnInsert: {
-            _id: 'user_sampast',
-            _created_at: new Date()
-          }
-        },
-        { upsert: true }
-      );
 
       // Ensure test sample troupe exists
       await db.collection('Troupe').updateOne(
@@ -243,11 +252,31 @@ async function seedDatabase(databaseURI) {
 
       console.log('Database seeding complete.');
     }
+
+    // The remaining steps run on every boot, not only on a cold database.
+    // Upserts keep them idempotent, and running them unconditionally is what
+    // lets a new test account or a new description category reach a database
+    // that was seeded before they existed.
+    await seedTestUsers(db);
+
+    var descResult = await seedExtra.seedDescriptions(db);
+    if (descResult.inserted > 0) {
+      console.log('Backfilled ' + descResult.inserted + ' Description rows (' +
+        descResult.categories.join(', ') + ')');
+    }
+
+    var kithResult = await seedExtra.seedKithRules(db);
+    if (kithResult.inserted > 0) {
+      console.log('Backfilled ' + kithResult.inserted + ' bnsctdbs_KithRule rows');
+    }
   } finally {
     await client.close();
   }
 }
 
 module.exports = {
-  seedDatabase: seedDatabase
+  seedDatabase: seedDatabase,
+  seedTestUsers: seedTestUsers,
+  verifyTestUsers: verifyTestUsers,
+  TEST_USERS: TEST_USERS
 };

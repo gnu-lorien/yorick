@@ -73,6 +73,16 @@ async function loginAsMember(page) {
 }
 
 /**
+ * Log in as the outsider account ('sampstranger') - no roles, no troupe
+ * membership, no patronage. Named alongside the other three convenience
+ * wrappers for the access-control and patron-status specs that need a genuine
+ * outsider perspective.
+ */
+async function loginAsStranger(page) {
+  return loginAs(page, 'sampstranger', 'sampstranger');
+}
+
+/**
  * Log out current session
  */
 async function logout(page) {
@@ -91,5 +101,6 @@ module.exports = {
   loginAsAdmin,
   loginAsAST,
   loginAsMember,
+  loginAsStranger,
   logout
 };
