@@ -1057,7 +1057,7 @@ define([
             }).then(function () {
                 self.troupeCharacters.collection.reset(c);
             })
-            return p.done(function () {
+            return p.then(function () {
                 return Parse.Promise.as(self.troupeCharacters.collection);
             })
         },
@@ -1105,7 +1105,7 @@ define([
                 $.mobile.loading("show", {text: "Updating local character list", textVisible: true});
                 collection.reset(c);
             })
-            return p.done(function () {
+            return p.then(function () {
                 $.mobile.loading("show", {text: "Transitioning", textVisible: true});
                 return Parse.Promise.as(collection);
             })
@@ -1143,7 +1143,7 @@ define([
                 self.characters.collection.reset(c);
             })
             
-            return p.done(function () {
+            return p.then(function () {
                 return Parse.Promise.as(self.characters.collection);
             })
         },
@@ -1171,7 +1171,7 @@ define([
             }).then(function () {
                 self.characters.collection.reset(c);
             })
-            return p.done(function () {
+            return p.then(function () {
                 return Parse.Promise.as(self.characters.collection);
             })
         },

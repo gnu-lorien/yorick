@@ -40,7 +40,7 @@ module.exports = defineConfig({
   webServer: {
     command: 'node index.js',
     url: 'http://localhost:1337',
-    reuseExistingServer: false,
+    reuseExistingServer: true,
     timeout: 120000,
     stdout: 'pipe',
     stderr: 'pipe'

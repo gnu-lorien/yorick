@@ -18,11 +18,13 @@ async function waitForAppReady(page, timeout = 20000) {
 /**
  * Wait for jQuery Mobile loading spinner overlay to disappear
  */
-async function waitForJqmLoader(page, timeout = 10000) {
+async function waitForJqmLoader(page, timeout = 8000) {
   try {
     await page.waitForFunction(() => {
       const loader = document.querySelector('.ui-loader');
-      return !loader || loader.style.display === 'none' || !loader.classList.contains('ui-loader-verbose');
+      if (!loader) return true;
+      const style = window.getComputedStyle(loader);
+      return style.display === 'none' || style.visibility === 'hidden' || loader.offsetParent === null;
     }, { timeout });
   } catch (e) {
     // Ignore timeout if loader already finished

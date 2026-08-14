@@ -269,7 +269,7 @@ define([
     })
     
     var View = Marionette.LayoutView.extend({
-        el: "#troupe-summarize-characters-all > div[data-role='main']", 
+        el: "#troupe-summarize-characters-all > div[role='main']", 
         regions: {
             sections: "#sections",
             list: "#troupe-summarize-characters-list"
