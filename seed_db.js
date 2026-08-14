@@ -94,8 +94,8 @@ async function seedDatabase(databaseURI) {
             _rperm: ['*', 'm91umkbuQq'],
             _acl: { m91umkbuQq: { w: true, r: true }, '*': { r: true } },
             _updated_at: new Date(),
-            admininterface: false,
-            storytellerinterface: false
+            admininterface: true,
+            storytellerinterface: true
           },
           $setOnInsert: {
             _id: 'm91umkbuQq',
@@ -165,6 +165,45 @@ async function seedDatabase(databaseURI) {
         },
         { upsert: true }
       );
+
+      // Ensure Administrator and SiteAdministrator roles exist
+      var adminRoles = ['Administrator', 'SiteAdministrator'];
+      for (var a = 0; a < adminRoles.length; a++) {
+        var aRoleName = adminRoles[a];
+        var aRoleId = 'role_' + aRoleName;
+        await db.collection('_Role').updateOne(
+          { name: aRoleName },
+          {
+            $set: {
+              name: aRoleName,
+              _rperm: ['*'],
+              _wperm: ['role:Administrator'],
+              _acl: { '*': { r: true }, 'role:Administrator': { r: true, w: true } },
+              _updated_at: new Date()
+            },
+            $setOnInsert: {
+              _id: aRoleId,
+              _created_at: new Date()
+            }
+          },
+          { upsert: true }
+        );
+      }
+
+      // Add devuser to Administrator role using actual role _id
+      var adminRole = await db.collection('_Role').findOne({ name: 'Administrator' });
+      if (adminRole) {
+        await db.collection('_Join:users:_Role').updateOne(
+          { owningId: adminRole._id, relatedId: 'm91umkbuQq' },
+          {
+            $set: {
+              owningId: adminRole._id,
+              relatedId: 'm91umkbuQq'
+            }
+          },
+          { upsert: true }
+        );
+      }
 
       // Ensure Troupe roles exist
       var troupeRoles = ['LST_WOad4CBTsG', 'AST_WOad4CBTsG', 'Narrator_WOad4CBTsG'];
