@@ -24,17 +24,18 @@ module.exports = defineConfig({
     video: 'on',
     viewport: { width: 1280, height: 800 }
   },
+  testMatch: /.*\.spec\.js/,
   projects: [
-    {
-      name: 'setup',
-      testMatch: /.*\.setup\.js/
-    },
     {
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome']
       },
       dependencies: ['setup']
+    },
+    {
+      name: 'setup',
+      testMatch: /.*\.setup\.js/
     }
   ],
   webServer: {
