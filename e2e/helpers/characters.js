@@ -16,6 +16,7 @@ const {
   clearStuckLoader,
   parseIntOrNull,
   normalize,
+  selectBackformOption,
   runInApp
 } = require('./jqm-helpers');
 
@@ -41,6 +42,31 @@ async function waitForHashToLeave(page, fragment, timeout = 30000) {
     fragment,
     { timeout }
   );
+}
+
+/**
+ * Wait for the page a pick/unpick action redirects to once its own save has
+ * resolved: `#character-create` for every creation-time action, `#character`
+ * for the post-creation (`duringCreation: false`) simpletext actions.
+ *
+ * Confirmed live as a genuine race, not a hypothetical one: the redirect
+ * target itself runs a *second* asynchronous route handler (`charactercreate`
+ * fetches the character, calls `fetch_all_creation_elements()`, then calls
+ * `$.mobile.changePage`), which briefly hides the jQuery Mobile loader between
+ * its own `.show()`/work/`.hide()` - a window `waitForJqmLoader` alone can
+ * observe as "done" before that second handler has actually finished. Chaining
+ * two picks back to back (no assertion in between to absorb the gap) lands the
+ * second pick's navigation while the *first* pick's destination page is still
+ * mid-render, so it reads whatever the previously-active page last showed.
+ * Reproduced by picking Breed then immediately Auspice on a fresh Werewolf:
+ * the Auspice picker rendered the stale Breed options ("Homid, Lupus, Metis")
+ * until this wait was added. `createCompletedCharacter`'s `texts` loop and
+ * `spendAllCreationPools`'s pick loop both fire picks back to back with no
+ * caller-side assertion between them, so both need this, not just tests that
+ * happen to chain calls themselves.
+ */
+async function settleAfterRedirect(page, duringCreation) {
+  await waitForActivePage(page, duringCreation ? 'character-create' : 'character');
 }
 
 /** Venue name -> RequireJS module and the `type` the app stores. */
@@ -211,6 +237,7 @@ async function pickSimpleText(page, characterId, category, target, optionName, {
   await link.click();
   await waitForHashToLeave(page, '/pick');
   await waitForJqmLoader(page);
+  await settleAfterRedirect(page, duringCreation);
   return chosen;
 }
 
@@ -220,6 +247,7 @@ async function unpickSimpleText(page, characterId, category, target, { duringCre
   await navigateToHash(page, `${prefix}/${category}/${target}/${characterId}/unpick`);
   await waitForHashToLeave(page, '/unpick');
   await waitForJqmLoader(page);
+  await settleAfterRedirect(page, duringCreation);
 }
 
 function escapeRegExp(s) {
@@ -256,6 +284,7 @@ async function pickCreationTrait(page, characterId, category, freeValue, traitNa
   await target.click();
   await waitForHashToLeave(page, '/pick');
   await waitForJqmLoader(page);
+  await settleAfterRedirect(page, true);
   return chosen;
 }
 
@@ -337,6 +366,7 @@ async function unpickCreationTrait(page, characterId, category, traitName) {
   await page.locator(`#character-create a[href="${href}"]`).first().click();
   await waitForHashToLeave(page, '/unpick');
   await waitForJqmLoader(page);
+  await settleAfterRedirect(page, true);
   return href;
 }
 
@@ -374,6 +404,22 @@ async function purchaseTrait(page, characterId, category, traitName, { value, fr
  */
 async function openNewTraitChange(page, characterId, category, traitName) {
   await navigateToHash(page, `simpletraits/${category}/${characterId}/new`, '#simpletrait-new');
+
+  // Werewolf's "wta_gifts" (and only that category) renders an extra
+  // `GiftsForm` filter above the list (`SimpleTraitNewView.js`), whose
+  // "Show by Affinity" control defaults to "Mine" -
+  // `gift_filter_options` is constructed with `{"affinities": "mine", ...}`
+  // and `templateHelpers` re-filters the list down to
+  // `get_affinity_items()` whenever that is set. A non-affinity Gift is
+  // therefore not even rendered, let alone findable by name, until this is
+  // switched to "Any". Every other category (Vampire's disciplines
+  // included) never renders `#category-filter-rules`, so this is a no-op
+  // there - confirmed harmless by re-running the Vampire suite after adding
+  // it here.
+  const affinityFilter = page.locator('#category-filter-rules select[name="affinities"]');
+  if (await affinityFilter.count() > 0) {
+    await selectBackformOption(page, '#category-filter-rules select[name="affinities"]', 'Any');
+  }
 
   const link = page.locator(`#simpletrait-new a.simpletrait[name="${traitName.replace(/"/g, '\\"')}"]`).first();
   if (await link.count() === 0) {
@@ -594,6 +640,27 @@ async function readInClanDisciplines(page, characterId) {
 }
 
 /**
+ * Assertion-side read-back of the Gift affinity list `BNSWTAV1_WerewolfCosts.
+ * gift_is_affinity` intersects against a Gift Description's `affinity_1..3`.
+ *
+ * `Werewolf.get_affinities()` (models/Werewolf.js) is `[wta_tribe, wta_
+ * auspice, wta_breed].concat(extra_affinity_links names)`, filtered of
+ * `undefined` - the Werewolf analogue of `get_in_clan_disciplines()` above.
+ */
+async function readAffinities(page, characterId) {
+  return runInApp(page, ['app/models/Werewolf'], `
+    return mods[0].get_character(arg.id, "all").then(function (c) {
+      return {
+        breed: c.get("wta_breed") || null,
+        auspice: c.get("wta_auspice") || null,
+        tribe: c.get("wta_tribe") || null,
+        affinities: _.without(c.get_affinities(), undefined)
+      };
+    });
+  `, { id: characterId });
+}
+
+/**
  * True once the character has left the creation wizard.
  *
  * Completion is stored on the character's `creation` object, not on the
@@ -752,6 +819,10 @@ async function spendAllCreationPools(page, characterId, options = {}) {
 /**
  * Pick a sum-pool trait that fits inside `budget`.
  * Returns the chosen name, or null when nothing affordable is left.
+ *
+ * Does not call `settleAfterRedirect` - see the doc comment on
+ * `pickCreationTraitAvoiding` just below, which this shares its caller
+ * (`spendAllCreationPools`) and its reasoning with.
  */
 async function pickSumPoolTrait(page, characterId, category, freeValue, alreadyChosen, budget) {
   await navigateToHash(
@@ -785,6 +856,7 @@ async function pickSumPoolTrait(page, characterId, category, freeValue, alreadyC
   await page.locator(`#character-create-simpletrait-new a.simpletrait[name="${pick.name.replace(/"/g, '\\"')}"]`).first().click();
   await waitForHashToLeave(page, '/pick');
   await waitForJqmLoader(page);
+  // Deliberately not `settleAfterRedirect` here - see `pickCreationTraitAvoiding`.
   return pick.name;
 }
 
@@ -792,6 +864,20 @@ async function pickSumPoolTrait(page, characterId, category, freeValue, alreadyC
  * Pick a trait, skipping names already taken in this category.
  * The wizard rejects picking the same trait twice into one category, so a naive
  * "always take the first option" loop stalls on multi-slot pools.
+ *
+ * Deliberately does *not* call `settleAfterRedirect` the way `pickCreationTrait`
+ * does. This is the picker `spendAllCreationPools`'s greedy loop drives, which
+ * has no way to know a given trait name carries `requires_specialization` (the
+ * same landmine both creation suites' own test-picked names document avoiding)
+ * - and unlike a normal pick, that redirects to `#simpletrait-specialization`,
+ * never to `#character-create`. Waiting for one specific destination page
+ * would hang for every such pick. It does not need to: the caller's loop
+ * re-navigates via `openCreation` (a real, targeted wait) at the top of every
+ * iteration regardless of which page a previous pick left active, so the
+ * plain "hash left /pick, loader cleared" wait already used below is
+ * sufficient here - confirmed live by the regression this exemption fixes
+ * (`admin-rules.spec.js`'s unguarded `createCompletedCharacter('Vampire')`
+ * call, which happens to pick a specialization-requiring skill).
  */
 async function pickCreationTraitAvoiding(page, characterId, category, freeValue, alreadyChosen) {
   await navigateToHash(
@@ -813,6 +899,7 @@ async function pickCreationTraitAvoiding(page, characterId, category, freeValue,
   await page.locator(`#character-create-simpletrait-new a.simpletrait[name="${pick.replace(/"/g, '\\"')}"]`).first().click();
   await waitForHashToLeave(page, '/pick');
   await waitForJqmLoader(page);
+  // Deliberately not `settleAfterRedirect` here - see the doc comment above.
   return pick;
 }
 
@@ -1002,6 +1089,7 @@ module.exports = {
   readCharacterTexts,
   readCreation,
   readInClanDisciplines,
+  readAffinities,
   createCompletedCharacter,
   deleteCharacter,
   countCharactersByPrefix,

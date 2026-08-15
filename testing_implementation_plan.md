@@ -116,6 +116,26 @@ items change assumptions baked into the numbered tests below, so read this befor
 
 ### Facts the numbered tests depend on
 
+- **The creation pool badge undercounts for every Werewolf and Changeling category.**
+  `VampireCreation.remaining_picks()` sizes its loop from a hardcoded `tops` map holding only
+  `skills / disciplines / backgrounds / attributes / merits / flaws`, so any `wta_*` or `ctdbs_*`
+  category falls back to `tops[category] || 1` and sums only the rating-1 and rating-0 sub-pools. The
+  per-rating counters on the creation record are correct; only the on-page `.ui-li-count` badge is
+  wrong. Assert the real counters via `readCreation`, and treat the badge as a known-wrong value.
+- **`wta_rites` purchases cost nothing.** `BNSWTAV1_WerewolfCosts.calculate_trait_cost` has no branch
+  for that category and no seeded Description carries a cost override, so the cost resolves to
+  `undefined` and `Character.update_trait`'s `_.isFinite` guard silently zeroes it. The Rite is bought
+  and rendered correctly; only the XP deduction is missing.
+- **Renown (Glory / Honor / Wisdom) has no UI path at all.** It is absent from
+  `ALL_SIMPLETRAIT_CATEGORIES`, has no seed data anywhere in the repository, and appears on neither
+  the live nor the print sheet. **Item 354 (Task 12b, "raise Renown") therefore cannot pass** and
+  should be treated the same way as the three dropped Description categories. "Rage" is likewise a
+  hardcoded print-only constant, tied to no character data.
+- **Gift affinity** is `[wta_tribe, wta_auspice, wta_breed] + extra_affinity_links` intersected against
+  a Gift's `affinity_1..3`. Measured: affinity Gift 4 XP at value 1, non-affinity 6. The post-creation
+  `wta_gifts` picker also defaults its own filter to "Mine", hiding non-affinity Gifts until switched
+  to "Any".
+
 - **Creation merits cost XP and flaws refund it — this is deliberate, not a bug.**
   `calculate_trait_cost` in `helpers/BNSMETV1_VampireCosts.js` returns `mod_value` for `merits` and
   `mod_value * -1` for `flaws`, unlike the slot pools, which use `free_value` so their cost nets to
