@@ -365,15 +365,41 @@ async function updateDescriptionViaAdmin(page, fields) {
 
 /** Fixture teardown: remove Description rows this suite created, by real id. Mirrors Task 1's afterAll Parse cleanup. */
 async function destroyDescriptions(page, ids) {
-  await page.evaluate(async (ids) => {
+  // Report failures rather than swallowing them.
+  //
+  // This previously wrapped each destroy in `catch (e) { /* already gone */ }`,
+  // which makes a genuine permission or network failure indistinguishable from
+  // a row that was already deleted — so a leak is completely invisible. It was:
+  // Task 11 tracked its ids correctly and called this faithfully, and a clan
+  // Description still survived every run, silently pushing the seeded count
+  // from 42 to 43. Only an out-of-band count caught it.
+  //
+  // Failures are returned rather than thrown, because this runs in `afterAll`
+  // and turning a passing suite red at teardown would obscure the results it
+  // just produced. Callers should surface a non-empty `failed` list.
+  const result = await page.evaluate(async (ids) => {
+    const failed = [];
+    let destroyed = 0;
     for (const id of ids) {
       try {
         const obj = new window.Parse.Object('Description');
         obj.id = id;
         await obj.destroy();
-      } catch (e) { /* already gone */ }
+        destroyed++;
+      } catch (e) {
+        failed.push({ id, message: e && e.message ? e.message : String(e) });
+      }
     }
+    return { destroyed, failed };
   }, ids);
+
+  if (result.failed.length > 0) {
+    console.warn(
+      `[e2e] destroyDescriptions could not delete ${result.failed.length} of ${ids.length} row(s): ` +
+      result.failed.map((f) => `${f.id} (${f.message})`).join('; ')
+    );
+  }
+  return result;
 }
 
 module.exports = {
