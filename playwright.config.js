@@ -32,7 +32,22 @@ module.exports = defineConfig({
   fullyParallel: false,
   forbidOnly: CI,
   retries: CI ? 1 : 0,
-  workers: CI ? 2 : 4,
+
+  // Serial by default, deliberately.
+  //
+  // `fullyParallel: false` only serialises tests *within* a file; separate spec
+  // files still run concurrently across workers. Several suites here mutate
+  // globally shared records (Descriptions, the five game-rule classes,
+  // patronages, referendums) against a single server and a single database, so
+  // running two spec files at once produces intermittent cross-suite failures
+  // that look like flaky tests.
+  //
+  // Note that `workers` is a top-level option only — setting it inside a
+  // `projects[]` entry is silently ignored, which is exactly how the admin
+  // suites ended up running in parallel despite appearing to be pinned to one
+  // worker. Raise this on the command line (`--workers=N`) for read-mostly
+  // suites once they are known not to contend.
+  workers: 1,
 
   reporter: [
     ['list'],
@@ -55,7 +70,8 @@ module.exports = defineConfig({
     {
       name: 'admin',
       testMatch: ADMIN_TESTS,
-      workers: 1,
+      // `workers` is not a project-level option; concurrency is controlled by
+      // the top-level `workers` setting above.
       fullyParallel: false,
       use: { ...devices['Desktop Chrome'] }
     },

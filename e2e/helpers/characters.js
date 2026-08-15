@@ -12,6 +12,8 @@ const {
   navigateToHash,
   waitForActivePage,
   waitForJqmLoader,
+  setJqmSlider,
+  clearStuckLoader,
   parseIntOrNull,
   normalize,
   runInApp
@@ -219,6 +221,53 @@ async function pickCreationTrait(page, characterId, category, freeValue, traitNa
   await target.click();
   await waitForJqmLoader(page);
   return chosen;
+}
+
+/**
+ * Purchase a trait *post-creation*, the counterpart to `pickCreationTrait`
+ * above for a character that has already left the wizard (or, per the
+ * confirmed-live finding that these routes gate on nothing but a valid
+ * character id, one that has not yet reached it either).
+ *
+ * Drives the real two-step UI: `#simpletraits/:category/:cid/new` lists the
+ * offered Descriptions (SimpleTraitNewView, reading `DescriptionFetcher` -
+ * see helpers/descriptions.js and helpers/rules.js for why that is the
+ * `Description` class, never a `bnsmetv1_*Rule`/`bnsctdbs_KithRule` class);
+ * clicking one navigates to `#simpletrait/spacer/.../new`
+ * (`#simpletrait-change`), a confirmation page with a `.value-slider` /
+ * `.free-slider` and a `.save` button that actually persists the purchase and
+ * charges XP. `value`/`freeValue` default to whatever the picked option's own
+ * href already encodes (its Description's `value` field, or 1 if it has
+ * none) - pass them to spend at a specific level instead.
+ */
+async function purchaseTrait(page, characterId, category, traitName, { value, freeValue } = {}) {
+  await navigateToHash(page, `simpletraits/${category}/${characterId}/new`, '#simpletrait-new');
+
+  const link = page.locator(`#simpletrait-new a.simpletrait[name="${traitName.replace(/"/g, '\\"')}"]`).first();
+  if (await link.count() === 0) {
+    const available = await page.locator('#simpletrait-new a.simpletrait').evaluateAll((els) => els.map((e) => e.getAttribute('name')));
+    throw new Error(`"${traitName}" not offered by the "${category}" picker. Available: ${available.slice(0, 20).join(', ')}`);
+  }
+  await link.click();
+  await waitForActivePage(page, 'simpletrait-change');
+
+  if (value !== undefined) {
+    await setJqmSlider(page, '#simpletrait-changing .value-slider', value);
+  }
+  if (freeValue !== undefined) {
+    await setJqmSlider(page, '#simpletrait-changing .free-slider', freeValue);
+  }
+
+  await page.locator('#simpletrait-changing .save').click();
+  await waitForJqmLoader(page);
+  // save_clicked defers the actual persistence (`_.defer(...)`) and then
+  // navigates the hash on success; give the deferred save a moment to land
+  // before anything reads the character back.
+  await page.waitForTimeout(500);
+  // Defensive: several routes in this app only hide the loading overlay
+  // inside a `.fail(...)` branch, never unconditionally on success (see
+  // clearStuckLoader in jqm-helpers.js) - cheap to clear defensively here too.
+  await clearStuckLoader(page);
 }
 
 /** Read the character sheet's XP counters. */
@@ -513,6 +562,7 @@ module.exports = {
   pickSimpleText,
   unpickSimpleText,
   pickCreationTrait,
+  purchaseTrait,
   pickCreationTraitAvoiding,
   spendAllCreationPools,
   pickSumPoolTrait,

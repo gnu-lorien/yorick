@@ -160,6 +160,31 @@ test.describe('Task 1 - Patronage Lifecycle And Patron Status', () => {
         await obj.destroy();
       }, state.referendumId).catch(() => {});
     }
+
+    // Remove every patronage belonging to sampmem.
+    //
+    // This suite creates patronages and has no way to remove them through the
+    // UI - test 13 documents that no delete affordance exists anywhere - so
+    // without this they accumulate on every run. That is not merely untidy: it
+    // makes test 09 fail intermittently, because it identifies "the row this
+    // run created" by its rendered date, and two runs that happen to land on
+    // the same date make that filter match two rows. RUN_JITTER_DAYS reduces
+    // the odds of that collision but cannot remove them (300 possible offsets,
+    // birthday-style), and 31 leftover rows had already built up before this
+    // teardown was added.
+    //
+    // Deleting by owner rather than by tracked id is deliberate: it is
+    // self-healing, so a run that crashes part-way still leaves a clean
+    // database for the next one. The seed ships no Patronage rows at all, so
+    // every record for this user is a test artefact.
+    await adminPage.evaluate(async (ownerId) => {
+      const q = new window.Parse.Query('Patronage');
+      q.equalTo('owner', window.Parse.User.createWithoutData(ownerId));
+      q.limit(1000);
+      const rows = await q.find();
+      await window.Parse.Object.destroyAll(rows);
+    }, state.sampmemId).catch(() => {});
+
     await adminPage.close();
     await memberPage.close();
     await astPage.close();

@@ -157,6 +157,20 @@ async function navigateToHash(page, hash, targetSelector = null, timeout = DEFAU
   }
 }
 
+/**
+ * Reload the app from scratch, then wait for it to re-bootstrap.
+ *
+ * The Parse session lives in localStorage, so the user stays signed in across
+ * the reload. Several router properties (`self.administrationEditRules`,
+ * `self.administrationDescriptionsView`, ...) are memoized on the *router
+ * instance* and only constructed once per page load; reloading is the only
+ * reliable way to force a route handler to build a genuinely fresh view.
+ */
+async function hardReload(page, timeout = DEFAULT_TIMEOUT) {
+  await page.evaluate(() => { window.location.reload(); });
+  await waitForAppReady(page, timeout);
+}
+
 /** Set a jQuery Mobile slider and fire the change event the view listens for. */
 async function setJqmSlider(page, selector, value) {
   await page.waitForSelector(selector, { state: 'attached' });
@@ -280,6 +294,27 @@ async function selectBackformOption(page, selectSelector, optionText) {
   return value;
 }
 
+/**
+ * Force-clear a stuck jQuery Mobile loading overlay.
+ *
+ * Several admin routes (`administration_patronage*` in mobileRouter.js, and -
+ * identically - the five `administration_bnsmetv1_*_rules` / `administration_
+ * bnsctdbs_kith_rules` / `administration_descriptions` routes) call
+ * `$.mobile.loading("show")` up front but only call the matching `.hide()`
+ * inside a `.fail(...)` branch, never unconditionally on success (unlike
+ * sibling routes that correctly use `.always(...)`). After a *successful*
+ * navigation to any of these, `<html>` is left with the `ui-loading` class
+ * permanently applied, whose full-page overlay then intercepts the next click
+ * anywhere on the page. Confirmed live. This does not paper over a wrong
+ * result anywhere - it only clears a confirmed, named UI bug from blocking an
+ * unrelated later click.
+ */
+async function clearStuckLoader(page) {
+  await page.evaluate(() => {
+    if (window.jQuery && window.jQuery.mobile) window.jQuery.mobile.loading('hide');
+  });
+}
+
 async function fillBackformInput(page, inputSelector, value) {
   const input = page.locator(inputSelector);
   await input.fill(String(value));
@@ -353,6 +388,7 @@ module.exports = {
   activePageId,
   waitForActivePage,
   navigateToHash,
+  hardReload,
   setJqmSlider,
   submitJqmForm,
   waitForJqmPopup,
@@ -361,6 +397,7 @@ module.exports = {
   activePopup,
   fillInActivePopup,
   submitActivePopup,
+  clearStuckLoader,
   selectBackformOption,
   fillBackformInput,
   parseIntOrNull,
