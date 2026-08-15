@@ -116,6 +116,18 @@ items change assumptions baked into the numbered tests below, so read this befor
 
 ### Facts the numbered tests depend on
 
+- **Only `extended_print_text` reaches the printable sheet.** `CharacterPrintView` wires an
+  `ExtendedPrintTextView` into `#cpp-extended-print-text`; there is no region or child view for
+  `background` or `notes`, for any creature type, and no `cpp-background` / `cpp-notes` element exists
+  anywhere in the repository. This reads as intentional — `extended_print_text` is described as
+  "Additional text to display with your printed character sheet" while background and notes describe
+  history and session content — so items 280 and 281 were corrected to assert edit-page persistence
+  plus the *absence* of leakage into print, and item 286 is unsatisfiable as written.
+- **Long-text edits cannot be logged, for two independent reasons.** `update_long_text` never calls
+  `Vampire#save()` at all — it saves only the separate `LongText` object — so `beforeSave("Vampire")`
+  never fires; and that hook's `tracked_texts` allowlist excludes all three long-text categories in
+  any case. There is no `beforeSave("LongText")` hook either.
+
 - **Scenario (h) of Task 9 was a misreading of the Karma suite, now corrected.** Items 248, 260 and
   272 originally read "removing a creation-picked trait fails with an informative error". The Karma
   test they derive from (`trait-test.js`, "can fail to be removed") does something else entirely: it
@@ -702,13 +714,15 @@ Category per creature: `backgrounds` / `wta_backgrounds` / `ctdbs_backgrounds`.
 277. Extended print text (`#character/:cid/extendedprinttext`) renders an empty state for a new character
 278. Updating the extended print text persists and appears in the print preview
 279. Removing the extended print text clears it from the print preview
-280. Background long text (`#character/:cid/backgroundlt`) updates and persists on the sheet and print
-281. Removing the background long text clears both surfaces
+280. Background long text (`#character/:cid/backgroundlt`) updates and persists on its edit page, and is
+     correctly absent from the print sheet (there is no print region for it)
+281. Removing the background long text clears it from its edit page
 282. Notes long text (`#character/:cid/noteslt`) updates and persists
 283. Removing the notes long text clears it
 284. Navigating away and back re-renders the saved long text (cache priming behaves)
 285. Long text edits are recorded in the character log
-286. All three long texts render correctly on the Werewolf and Changeling printable sheets
+286. All three long texts render on the Werewolf and Changeling printable sheets — **unsatisfiable**:
+     only `extended_print_text` has a print region at all
 
 ---
 
