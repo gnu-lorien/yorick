@@ -116,6 +116,23 @@ items change assumptions baked into the numbered tests below, so read this befor
 
 ### Facts the numbered tests depend on
 
+- **Creation merits cost XP and flaws refund it — this is deliberate, not a bug.**
+  `calculate_trait_cost` in `helpers/BNSMETV1_VampireCosts.js` returns `mod_value` for `merits` and
+  `mod_value * -1` for `flaws`, unlike the slot pools, which use `free_value` so their cost nets to
+  zero. The `merits_0_remaining` / `flaws_0_remaining` counters are a 7-point *cap*, not an
+  XP-exemption. Items 178, 179, 181 and 182 originally said "XP is unchanged"; that was an error in
+  this plan, extrapolated from slot-pool behaviour, and has been corrected to the measured arithmetic.
+  The Karma test this derives from only ever asserted the pool.
+- **Discipline cost tables stop growing after level 9.** `get_cost_table` builds `_.range(1, 10)` and
+  `get_cost_on_table` uses `_.take`, which silently returns the whole array past its end, so levels
+  10-15 all cost what level 9 costs. Test 189's expectation is derived from that algorithm, so fixing
+  the app will turn it red — deliberately.
+- **`VampireChange` rows cannot be deleted by the test user and accumulate.** Class-level permissions
+  in `database_seed/_SCHEMA.json` grant `delete` only to `role:SiteAdministrator`, and `devuser` holds
+  `Administrator`. They are also *generated* during teardown, since `beforeDelete("SimpleTrait")`
+  writes a "remove" entry per destroyed trait. Suites that count audit-log rows globally must expect
+  this growth rather than assume a clean table.
+
 - **The XP notations table renders two `<tr>` per notation.** A delta row carrying the running balance
   as `earned - spent`, then a value row with the Edit controls. The running balance test 57 asks for is
   in the *delta* row. `readXpRows` pairs them.
@@ -457,11 +474,12 @@ Mirrors `default-test.js` "A Vampire's creation" and `creation-vs-xp-test.js`, d
 175. Skill pool enforcement: picking beyond an exhausted pool is prevented
 176. Pick backgrounds consuming the 3, 2, and 1 pools
 177. Pick in-clan disciplines using the 2 and 1 discipline slots
-178. **Pick a merit (`Bloodline: Coyote` at 2); the merit pool sum updates and XP is unchanged**
-179. **Change the picked merit's value from 2 to 3; the pool sum updates and XP is unchanged**
+178. **Pick a merit (`Bloodline: Coyote` at 2); the merit pool sum drops by 2 and Spent XP rises by 2**
+179. **Change the picked merit's value from 2 to 3; the pool sum and Spent XP both follow the new value**
 180. **Unpick the merit with the changed value; the pool sum is fully restored**
-181. Pick a flaw; the flaw pool sum updates
-182. **Across all creation picks, Available XP never moves off 30 and Spent stays 0**
+181. Pick a flaw; the flaw pool sum drops by its value and Spent XP falls by the same amount (a refund)
+182. **Across all *slot* pool picks, Available XP never moves off 30 and Spent stays 0; merits and flaws are
+     the documented exception, and completion still lands on 30/0/30**
 183. **Complete Creation transitions the character out of the wizard to the live sheet**
 184. The completed sheet shows 30 available XP and 0 spent
 185. **Post-creation purchase of in-clan `Celerity` 2 deducts the in-clan cost from Available**
