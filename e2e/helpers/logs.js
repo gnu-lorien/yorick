@@ -12,7 +12,7 @@
  * `new_cost`). The aliases below let callers use either spelling.
  */
 
-const { navigateToHash, waitForJqmLoader } = require('./jqm-helpers');
+const { navigateToHash, waitForJqmLoader, hardReload } = require('./jqm-helpers');
 
 const PAGE = '#character-log';
 
@@ -34,8 +34,54 @@ function resolveColumn(name) {
   return COLUMN_ALIASES[name] || name;
 }
 
-/** Open a character's log page. */
+/**
+ * Open a character's log page, guaranteed fresh.
+ *
+ * DEFECT, confirmed live: `CharacterLogView.register(character, start,
+ * changeBy)` (views/CharacterLogView.js) only calls `update_collection_query_
+ * and_fetch()` - the thing that actually re-queries `VampireChange` - when
+ * `start`, `changeBy`, or the character object reference differ from what it
+ * already held. It has no way to know the underlying rows changed. The
+ * natural test pattern "read the log, act, read the log again" almost always
+ * calls this with the *same* characterId/start/changeBy both times, which is
+ * exactly the case this view treats as "nothing to do" - the second read
+ * silently returns the pre-action rows.
+ *
+ * Measured on a live server: raising a trait's value produced a correct
+ * `VampireChange` row immediately (confirmed by a direct `Parse.Query`
+ * alongside the UI read), while `character/:cid/log/0/20` opened a second
+ * time with the same `changeBy=20` kept showing the stale pre-raise rows even
+ * 1.5s later and after an explicit re-navigation - only a *different*
+ * `changeBy` (or a full page reload) forced a fresh fetch. This is the same
+ * family of bug as `waitForJqmLoader` "may return immediately" - the page
+ * transition completes without the data it's supposed to show.
+ *
+ * A first fix routed through a throwaway `changeBy` before the real one, to
+ * force `register()`'s "changed" check either way. That is correct in
+ * isolation but dangerous in practice: firing two `$.mobile.changePage` calls
+ * back to back, with no settling time between them, leaves jQuery Mobile's
+ * own transition/page-cache bookkeeping confused. Measured live: the very
+ * next *unrelated* navigation (to `#simpletrait-new` or `#simpletrait-change`
+ * for a trait already visited once before) then stalled for ~42 seconds
+ * before `navigateToHash`'s own retry fallback finally recovered it - twice,
+ * in one short test, both immediately after a double-navigated `openLog`
+ * call. That is a worse defect than the one being fixed.
+ *
+ * The safe fix is the one `navigateToHash` itself already falls back to for
+ * views that short-circuit this same way: a full reload. The Parse session
+ * lives in `localStorage`, so the user stays signed in, and a freshly
+ * constructed `CharacterLogView` has no memoized `start`/`changeBy` to compare
+ * against, so the very next navigation to the log route is guaranteed to be a
+ * real, first-ever registration - no race, no back-to-back transitions.
+ * Heavier per call than the double-navigation attempt, but it is the "heavy
+ * but reliable" tool this codebase already trusts for exactly this failure
+ * mode, and it cannot destabilise anything downstream the way the faster fix
+ * did. This changes nothing about the function's signature or return value,
+ * so every existing caller (this suite's `xp-history.spec.js` included) gets
+ * a correctness fix for free.
+ */
 async function openLog(page, characterId, start = 0, changeBy = 10) {
+  await hardReload(page);
   await navigateToHash(page, `character/${characterId}/log/${start}/${changeBy}`, PAGE);
 }
 

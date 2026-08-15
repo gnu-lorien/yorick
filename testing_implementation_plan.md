@@ -116,6 +116,28 @@ items change assumptions baked into the numbered tests below, so read this befor
 
 ### Facts the numbered tests depend on
 
+- **Scenario (h) of Task 9 was a misreading of the Karma suite, now corrected.** Items 248, 260 and
+  272 originally read "removing a creation-picked trait fails with an informative error". The Karma
+  test they derive from (`trait-test.js`, "can fail to be removed") does something else entirely: it
+  monkey-patches `SimpleTrait.prototype.destroy` to force a rejection and asserts that the trait
+  survives — it is about error propagation, not about creation picks, and it cannot be ported to the
+  UI without the same monkey-patching. What the application actually does is worse than refusing:
+  `Character.remove_trait` destroys the trait and refunds its cost but never calls
+  `update_creation_rules_for_changed_trait`, so the creation-pool counter is never restored and, with
+  creation complete, there is no route back to reclaim the slot. Measured in all three venues. The
+  items now describe that defect and the tests pin it red.
+- **`CharacterLogView` does not refetch when reopened with the same parameters.** `register()` sets
+  its `changed` flag only when `start`, `changeBy` or the character object reference differ, and only
+  then re-queries. The natural pattern "read the log, act, read the log again" passes identical
+  parameters both times, so the second read silently returns pre-action rows. `logs.js#openLog` now
+  does a full reload first; a lighter double-navigation fix measured correct in isolation but left
+  jQuery Mobile's transition bookkeeping confused enough to stall the *next unrelated* navigation for
+  ~42 seconds, so it was rejected.
+- **The router's character cache never invalidates on external mutation.** A fixture write performed
+  through `page.evaluate` is confirmed correct by a direct Parse query while the sheet keeps showing
+  pre-write values until a reload. Fixture setup that writes behind the UI must reload before
+  asserting through it.
+
 - **Re-dating a notation *forwards* double-counts it.** `_propagate_experience_notation_change`
   (models/Character.js) recomputes only rows `[0..index]`, seeding from row `index + 1`. When a
   notation moves *down* the list (older) the rows it passed fall inside that window and are corrected;
@@ -636,7 +658,7 @@ Category per creature: `backgrounds` / `wta_backgrounds` / `ctdbs_backgrounds`.
 245. The renamed specialization displays grouped under its base name on the sheet
 246. **Renaming a trait to collide with an existing trait name is rejected with a surfaced error**
 247. Changing the value of a specialized trait charges or refunds the correct XP difference
-248. Removing a creation-picked trait fails with an informative error
+248. Removing a creation-picked trait silently succeeds and orphans its creation-pool slot (defect)
 249. Removing a purchased trait succeeds and refunds the correct XP
 250. The removed trait disappears from both the category view and the main sheet
 251. The removal is recorded in the log with the correct old value and cost
@@ -651,7 +673,7 @@ Category per creature: `backgrounds` / `wta_backgrounds` / `ctdbs_backgrounds`.
 257. The renamed specialization displays grouped under its base name
 258. Renaming to a colliding name is rejected with a surfaced error
 259. Changing a specialized trait's value charges or refunds correctly
-260. Removing a creation-picked trait fails with an informative error
+260. Removing a creation-picked trait silently succeeds and orphans its creation-pool slot (defect)
 261. Removing a purchased trait succeeds and refunds correctly
 262. The removed trait disappears from the category view and the sheet
 263. The removal is recorded in the log
@@ -666,7 +688,7 @@ Category per creature: `backgrounds` / `wta_backgrounds` / `ctdbs_backgrounds`.
 269. The renamed specialization displays grouped under its base name
 270. Renaming to a colliding name is rejected with a surfaced error
 271. Changing a specialized trait's value charges or refunds correctly
-272. Removing a creation-picked trait fails with an informative error
+272. Removing a creation-picked trait silently succeeds and orphans its creation-pool slot (defect)
 273. Removing a purchased trait succeeds and refunds correctly
 274. The removed trait disappears from the category view and the sheet
 275. The removal is recorded in the log
