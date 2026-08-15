@@ -116,6 +116,35 @@ items change assumptions baked into the numbered tests below, so read this befor
 
 ### Facts the numbered tests depend on
 
+- **The character log paginates; the experience view does not. Do not conflate them.**
+  `CharacterLogView.update_collection_query_and_fetch` genuinely calls `q.skip(self.start)` and
+  `q.limit(self.changeBy)`, and its Prev/Next handlers are live — `/log/0/10`, `/log/10/10` and
+  `/log/20/10` return three disjoint pages. It is `CharacterExperienceView` whose skip/limit lines and
+  Prev/Next controls are commented out, which is why item 74 cannot pass. An earlier brief
+  generalised the experience finding to the log and was wrong; items 332, 355 and 375 pass.
+- **The trait change page can quote a stale price.** `SimpleTraitChangeView.register` rebuilds its
+  `fauxtrait` only when the `SimpleTrait` *object identity* changes, and the router hands back the
+  same cached instance for the life of the page. Measured: after raising Physical 5→6 (quoted 3,
+  charged 3), reopening the same page and sliding to 7 quoted **6** rather than the 3-point
+  increment. The save itself is correct — it charges against the real trait — so this is display-only,
+  but a player is shown the wrong price. Same memoization family as `CharacterLogView` and
+  `CharacterHistoryView`.
+- **A cost of 0 renders as an empty cell**, because `format_entry` returns the value only when truthy.
+  Zero and "not recorded" are indistinguishable in the log UI. Relatedly, the `wta_rites` change page
+  renders a literal `Cost: NaN` / `Final: NaN` before `_.isFinite` silently zeroes the spend.
+- **Changing a Kith can write two identical `define` rows for the same Art**, when that Art is an
+  affinity of both the old and new Kith: it is destroyed and re-granted, producing two
+  rendered-identical rows in the same minute.
+- **Admin and player logs agree exactly.** Both read the same `VampireChange` rows; measured row for
+  row across all 12 columns on all three venues, with no admin-only or player-only rows. The troupe
+  AST sees the same count as the owner; a stranger reaches the splash screen, renders zero rows, and
+  can read zero rows from their own session.
+- **Changelings own no `core` log rows until a rename.** Since no `ctdbs_*` field is tracked, changing
+  Kith and Court produces only Art side-effect rows (`define`/`remove`) and no text row at all — the
+  rename is the only `core` row a Changeling can ever have.
+- **Picking a Kith inside the creation wizard drives `ctdbs_arts_1_remaining` to −2** and aborts pool
+  spending; pick the Kith immediately *after* completing creation instead.
+
 - **`tracked_texts` decides what reaches the audit log, and it is venue-lopsided.** The allowlist in
   `beforeSave("Vampire")` is exactly: `name, clan, state, archetype, archetype_2, faction, title,
   sect, antecedence, wta_breed, wta_auspice, wta_tribe, wta_camp, wta_faction`. So **renames are

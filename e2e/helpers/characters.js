@@ -112,7 +112,12 @@ function resolveVenue(venue) {
 }
 
 let nameCounter = 0;
-/** Unique, readable character name so roster and rename assertions never collide. */
+/**
+ * Unique, readable character name so roster and rename assertions never collide.
+ * The app itself enforces no uniqueness on `name` - the whole database could hold
+ * characters with the same name - so uniqueness is this helper's job, not a
+ * property tests may assume. Never locate a character by name alone; use its id.
+ */
 function uniqueName(prefix) {
   nameCounter++;
   return `${prefix} ${Date.now().toString(36)}${nameCounter}`;
