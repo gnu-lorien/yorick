@@ -116,6 +116,21 @@ items change assumptions baked into the numbered tests below, so read this befor
 
 ### Facts the numbered tests depend on
 
+- **Select-to-print has no per-character checkboxes.** Its only checkbox is a `playable` *filter*
+  field, alongside category, antecedence and result-type selects; "Print Shown" prints whatever the
+  shared filter currently matches. Items 147-149 are still meaningful against that mechanism — narrow
+  to a subset, print, assert the excluded character is absent — but item 146's wording was wrong.
+- **The category filter never offers a Changeling-only category.** Only the Vampire and Werewolf
+  categories are wired into the Summarize and Select-to-Print filter dropdowns.
+- **The relationship graph is a `vis.Network` canvas**, not DOM. Nodes must be located via
+  `network.getPositions()` → `network.canvasToDOM()` → the canvas bounding rect, and physics does not
+  auto-fit, so call `network.fit()` first or a node can sit at an off-canvas coordinate. Playwright's
+  `page.mouse.click(x, y, { modifiers: ['Control'] })` does **not** register as vis.js's multiselect
+  modifier; wrap the click in explicit `keyboard.down('Control')` / `keyboard.up('Control')` instead.
+- **`character-print-view.html` is dead code.** `CharacterPrintView` imports it but renders through
+  `character-print-parent.html`, which *is* venue-aware — Werewolf gets Breed/Gnosis/Rage/Gifts,
+  Changeling gets Kith/Court/Arts. Judging print coverage from the wrong template will mislead you.
+
 - **Only `extended_print_text` reaches the printable sheet.** `CharacterPrintView` wires an
   `ExtendedPrintTextView` into `#cpp-extended-print-text`; there is no region or child view for
   `background` or `notes`, for any creature type, and no `cpp-background` / `cpp-notes` element exists
@@ -532,13 +547,18 @@ snapshot no longer shows the **previous** value.
 141. A stranger user cannot open any of the three characters
 142. **`#troupe/:id/characters/summarize/all` renders one row per character with populated trait columns**
 143. The summarize view shows each character's actual attribute and skill values, not blanks
-144. Switching the summarize view to CSV renders a header row plus three data rows
+144. Switching the summarize view to CSV renders three data rows and, correctly, **no header row** —
+     neither CSV template emits one
 145. Filtering the summarize view by creature type shows only the matching characters
-146. **`#troupe/:id/characters/selecttoprint/all` lists all three with selection checkboxes**
+146. **`#troupe/:id/characters/selecttoprint/all` lists all three and offers the shared filter form**
+     (category, antecedence, result type, playable) — there are **no per-character selection
+     checkboxes**; "Print Shown" prints whatever the filter currently matches
 147. **Selecting two of the three and printing renders exactly two sheets**
 148. **The printed sheets contain each selected character's actual trait values**
 149. The unselected character does not appear in the print output
-150. **`#troupe/:id/characters/relationships/network` renders one node per troupe character**
+150. **`#troupe/:id/characters/relationships/network` renders one node per troupe character** — the graph
+     is a `vis.Network` `<canvas>`, so nodes have no DOM elements and must be located through the
+     network's own `getPositions()` / `canvasToDOM()`
 151. Adding a relationship between two characters renders an edge in the network graph
 152. A character leaving via `#character/:cid/troupes/leave` disappears from the roster
 153. After leaving, `sampast` loses access to that character

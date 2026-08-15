@@ -3,11 +3,11 @@
  *
  * Troupe list items render as `a.troupe-listing[name][backendid]`, which is how
  * a troupe's real object id is recovered without hardcoding one. The previous
- * suite pinned `WOad4CBTsG` into every troupe test; fixtures here create their
- * own troupes so specs can run in any order against any database.
+ * suite pinned one fixed troupe id into every troupe test; fixtures here
+ * create their own troupes so specs can run in any order against any database.
  */
 
-const { navigateToHash, waitForJqmLoader, normalize } = require('./jqm-helpers');
+const { navigateToHash, waitForJqmLoader, waitForActivePage, normalize, selectBackformOption } = require('./jqm-helpers');
 
 let troupeCounter = 0;
 function uniqueTroupeName(prefix = 'E2E Troupe') {
@@ -61,38 +61,143 @@ async function listTroupes(page) {
 }
 
 /**
- * Add a user to a troupe's staff by username.
- *
- * INCOMPLETE — see the Task 0 report. Picking a user from
- * `#troupe/:id/staff/add` navigates to `#troupe/:id/staff/edit/:uid`, where a
- * role (LST / AST / Narrator) still has to be chosen and saved. This helper
- * currently performs only the first step, so the staff list stays empty. The
- * role-selection step needs to be added before Task 7 tests 130-131 can pass;
- * it throws rather than returning quietly so nothing builds on a false success.
+ * Troupe staff role codes to the exact visible label
+ * `TroupeEditStaffView`'s Backform `<select name="role">` renders them with —
+ * see `views/TroupeEditStaffView.js`. The underlying DOM `value` for each
+ * `<option>` is JSON-quoted by `Backform.JSONFormatter` (literally `"AST"`,
+ * quote characters included — the same landmine `selectBackformOption`'s own
+ * doc comment in jqm-helpers.js describes for other Backform selects), which
+ * is exactly why role selection below goes through that helper rather than
+ * `selectOption` on the raw value.
  */
-async function addStaff(page, troupeId, username, { allowIncomplete = false } = {}) {
-  await navigateToHash(page, `troupe/${troupeId}/staff/add`, '#troupe-add-staff');
+const STAFF_ROLE_LABELS = {
+  LST: 'Lead Storyteller',
+  AST: 'Assistant Storyteller',
+  Narrator: 'Narrator',
+  None: 'Not on Staff'
+};
 
-  const entry = page.locator('#troupe-add-staff ul li a').filter({ hasText: new RegExp(`\\b${username}\\b`) }).first();
-  if (await entry.count() === 0) {
-    const available = await page.locator('#troupe-add-staff ul li a')
-      .evaluateAll((els) => els.slice(0, 12).map((e) => e.textContent.replace(/\s+/g, ' ').trim()));
-    throw new Error(`user "${username}" not offered in the staff picker. Available: ${available.join(' | ')}`);
+/**
+ * Open the staff-edit form for a user, driving the real first step of the
+ * flow: `#troupe/:id/staff/add` (UsersView) lists every user; clicking one
+ * navigates to `#troupe/:id/staff/edit/:uid` (TroupeEditStaffView.register()),
+ * which asynchronously queries `troupe.get_roles()` and throws if any of the
+ * three per-troupe roles (`LST_<id>`/`AST_<id>`/`Narrator_<id>`) is not yet
+ * visible to that query — which can happen for a troupe created moments ago,
+ * since `TroupeNewView`'s submit handler saves those three Role objects itself
+ * right after saving the Troupe, and the jQuery Mobile loader alone is not a
+ * reliable signal that write has landed (see waitForJqmLoader's known
+ * limitation in jqm-helpers.js). Retrying the whole navigation — not just
+ * waiting longer on one attempt — is what recovers from that race: it re-runs
+ * `register()` from scratch against whatever the server holds by then.
+ *
+ * Returns the target user's id, read back from the hash the click landed on
+ * rather than tracked separately by the caller.
+ */
+async function openStaffEditForUser(page, troupeId, username, { timeout = 20000 } = {}) {
+  const deadline = Date.now() + timeout;
+  let lastError = null;
+
+  while (Date.now() < deadline) {
+    await navigateToHash(page, `troupe/${troupeId}/staff/add`, '#troupe-add-staff');
+
+    const entry = page.locator('#troupe-add-staff ul li a').filter({ hasText: new RegExp(`\\b${username}\\b`) }).first();
+    if (await entry.count() === 0) {
+      const available = await page.locator('#troupe-add-staff ul li a')
+        .evaluateAll((els) => els.slice(0, 12).map((e) => e.textContent.replace(/\s+/g, ' ').trim()));
+      lastError = new Error(`user "${username}" not offered in the staff picker. Available: ${available.join(' | ')}`);
+      await page.waitForTimeout(300);
+      continue;
+    }
+
+    await entry.click();
+    await waitForJqmLoader(page);
+
+    try {
+      await waitForActivePage(page, 'troupe-edit-staff', 8000);
+      await page.locator('#troupe-edit-staff-form select[name="role"]').waitFor({ state: 'attached', timeout: 8000 });
+
+      const hash = await page.evaluate(() => window.location.hash);
+      const m = hash.match(/staff\/edit\/([^/]+)$/);
+      if (!m) throw new Error(`picking "${username}" landed on an unexpected hash: ${hash}`);
+      return m[1];
+    } catch (e) {
+      lastError = e;
+      await page.waitForTimeout(500);
+    }
   }
 
-  await entry.click();
+  throw new Error(
+    `could not open the staff-edit form for "${username}" on troupe ${troupeId} within ${timeout}ms` +
+    (lastError ? `; last error: ${lastError.message}` : '')
+  );
+}
+
+/**
+ * Add a user to a troupe's staff with a given role, or change an existing
+ * staff member's role — the same UI action either way.
+ *
+ * COMPLETES the previously-unfinished second half of this flow (see the
+ * Task 0 report and the comment above `openStaffEditForUser`): picking a user
+ * from `#troupe/:id/staff/add` only lands on `#troupe/:id/staff/edit/:uid`;
+ * a role still has to be chosen from that page's Backform `<select
+ * name="role">` and the form saved, which calls
+ * `Parse.Cloud.run("change_troupe_staff", ...)`.
+ *
+ * There is no separate "edit" entry point anywhere in the UI —
+ * `#troupe-staff`'s rows are plain `<li>` text, not links (see
+ * troupe-staff-list.html) — so re-adding an *existing* staff member through
+ * this same `#troupe/:id/staff/add` picker, with a different role selected on
+ * the form that opens, is genuinely how a real user would change someone's
+ * role: `TroupeEditStaffView.register()` pre-selects whichever role (if any)
+ * the picked user currently holds. That is why this one function serves both
+ * "add" and "edit".
+ *
+ * `submit` moves the hash to `#troupe/:id` from inside a `.always()` — win or
+ * lose (see TroupeEditStaffView.js) — so the redirect alone proves nothing.
+ * This polls the troupe's own `#troupe-staff` region (via `readStaff`, a real
+ * re-render off `troupe.get_staff()`) until the expected row actually appears,
+ * the same "verify the real effect, not the navigation" discipline
+ * `waitForMembership` below already uses for troupe join/leave.
+ */
+async function addStaff(page, troupeId, username, role = 'AST', { timeout = 30000 } = {}) {
+  const label = STAFF_ROLE_LABELS[role];
+  if (!label) {
+    throw new Error(`unknown troupe staff role "${role}"; expected one of ${Object.keys(STAFF_ROLE_LABELS).join(', ')}`);
+  }
+
+  const uid = await openStaffEditForUser(page, troupeId, username, { timeout });
+
+  await selectBackformOption(page, '#troupe-edit-staff-form select[name="role"]', label);
+  await page.locator('#troupe-edit-staff-form button[type="submit"], #troupe-edit-staff-form button').first().click();
+
+  await page.waitForFunction((h) => window.location.hash === h, `#troupe/${troupeId}`, { timeout }).catch(() => { /* see doc comment: the redirect fires even on failure */ });
   await waitForJqmLoader(page);
 
-  const staff = await readStaff(page, troupeId);
-  const added = staff.some((row) => row.indexOf(username) !== -1);
-  if (!added && !allowIncomplete) {
-    throw new Error(
-      `selecting "${username}" did not add them to the staff list. The add-staff flow ` +
-      `continues to #troupe/${troupeId}/staff/edit/<uid> where a role must be chosen and ` +
-      `saved; that step is not implemented yet. Pass { allowIncomplete: true } to proceed anyway.`
-    );
+  const deadline = Date.now() + timeout;
+  let staff = [];
+  while (Date.now() < deadline) {
+    staff = await readStaff(page, troupeId);
+    const row = staff.find((r) => r.indexOf(username) !== -1);
+    if (row && row.indexOf(role + ':') === 0) {
+      return { uid, role, row };
+    }
+    await page.waitForTimeout(500);
   }
-  return added;
+
+  throw new Error(
+    `"${username}" was not recorded with role "${role}" on troupe ${troupeId}'s staff list within ${timeout}ms; ` +
+    `staff currently reads: ${JSON.stringify(staff)}`
+  );
+}
+
+/** The role code (e.g. "AST") a user currently holds on a troupe's staff list, read off `readStaff`, or null. */
+async function readStaffRole(page, troupeId, username) {
+  const staff = await readStaff(page, troupeId);
+  const row = staff.find((r) => r.indexOf(username) !== -1);
+  if (!row) return null;
+  const m = row.match(/^(\w+):/);
+  return m ? m[1] : null;
 }
 
 /** Names currently listed in a troupe's staff section. */
@@ -181,6 +286,61 @@ async function readCharacterTroupes(page, characterId) {
   });
 }
 
+/** Count troupes whose name starts with `prefix`. */
+async function countTroupesByPrefix(page, prefix) {
+  return page.evaluate((p) => {
+    const q = new window.Parse.Query('Troupe');
+    q.startsWith('name', p);
+    return q.count();
+  }, prefix);
+}
+
+/**
+ * Destroy every troupe whose name starts with `prefix`, together with the
+ * three per-troupe Roles (`LST_<id>`/`AST_<id>`/`Narrator_<id>`) the real
+ * "New Troupe" form creates alongside it (see TroupeNewView.js). Without this,
+ * Role rows accumulate forever — nothing else in the application ever cleans
+ * them up. `role:Administrator` holds class-level `delete` on both `Troupe`
+ * and `_Role` (see database_seed/_SCHEMA.json), and `devuser` is a member, so
+ * this only ever needs to run logged in as the admin fixture user.
+ */
+async function destroyTroupesByPrefix(page, prefix) {
+  return page.evaluate(async (p) => {
+    const Parse = window.Parse;
+    const q = new Parse.Query('Troupe');
+    q.startsWith('name', p);
+    q.limit(1000);
+    const troupes = await q.find();
+    const result = { troupes: troupes.length, roles: 0, errors: [] };
+    if (troupes.length === 0) return result;
+
+    const roleNames = [];
+    troupes.forEach((t) => {
+      ['LST_', 'AST_', 'Narrator_'].forEach((rolePrefix) => roleNames.push(rolePrefix + t.id));
+    });
+
+    try {
+      const rq = new Parse.Query(Parse.Role);
+      rq.containedIn('name', roleNames);
+      rq.limit(1000);
+      const roles = await rq.find();
+      if (roles.length) {
+        await Parse.Object.destroyAll(roles);
+        result.roles = roles.length;
+      }
+    } catch (e) {
+      result.errors.push('Role sweep: ' + (e && e.message ? e.message : String(e)));
+    }
+
+    try {
+      await Parse.Object.destroyAll(troupes);
+    } catch (e) {
+      result.errors.push('Troupe: ' + (e && e.message ? e.message : String(e)));
+    }
+    return result;
+  }, prefix);
+}
+
 module.exports = {
   uniqueTroupeName,
   createTroupe,
@@ -188,9 +348,12 @@ module.exports = {
   listTroupes,
   addStaff,
   readStaff,
+  readStaffRole,
   joinTroupe,
   leaveTroupe,
   waitForMembership,
   readRoster,
-  readCharacterTroupes
+  readCharacterTroupes,
+  countTroupesByPrefix,
+  destroyTroupesByPrefix
 };
