@@ -116,6 +116,31 @@ items change assumptions baked into the numbered tests below, so read this befor
 
 ### Facts the numbered tests depend on
 
+- **Re-dating a notation *forwards* double-counts it.** `_propagate_experience_notation_change`
+  (models/Character.js) recomputes only rows `[0..index]`, seeding from row `index + 1`. When a
+  notation moves *down* the list (older) the rows it passed fall inside that window and are corrected;
+  when it moves *up* (newer) they fall outside it, keep cumulative totals that still include the moved
+  row, and the moved row is then recomputed on top of one of them. Measured: a 4-earned/3-spent
+  notation moved up one position took a character from 45/6/39 to 56/11/45. Item 60 re-dates
+  *backwards*, which it asks for equally well and which the app handles correctly; the forwards case
+  is isolated in an extra test (60b) that repairs the ledger before asserting, so it cannot corrupt
+  the rows later tests read.
+- **No XP notation operation is audit-logged.** There is no cloud hook on `ExperienceNotation`, and
+  `experience_earned` / `experience_spent` are absent from `beforeSave("Vampire")`'s `tracked_texts`.
+  An add, an edit and a delete together produced zero new `VampireChange` rows. **Items 321, 344 and
+  364 in Task 12 inherit this** and cannot assert an XP transaction in the log.
+- **Experience pagination is dead code.** `CharacterExperienceView.register(character, start, changeBy)
+  accepts both parameters and uses neither; the skip/limit lines and the Prev/Next controls are
+  commented out. `/experience/0/10` and `/experience/10/10` return the identical full set, so item 74
+  cannot pass.
+- **`waitForJqmLoader` may be a no-op against this app's loader.** `.ui-loader` is positioned `fixed`,
+  and fixed elements report `offsetParent === null` in Chrome — one of the conditions the helper
+  treats as "hidden", so it can return immediately. Reported with evidence: a read taken the instant
+  `editNotationField` returned showed pre-edit totals beside post-edit row values. Every suite passes
+  today because other, stronger waits carry the load, so the helper is deliberately left alone rather
+  than destabilising 139 green tests mid-run — but anything timing-sensitive should poll for the value
+  it expects rather than trusting the loader wait.
+
 - **`ctdbs_backgrounds` purchases cost nothing**, the same class of bug as `wta_rites`:
   `BNSCTDBS_ChangelingCosts.calculate_trait_cost` has branches for `ctdbs_arts`, `ctdbs_merits`,
   `ctdbs_flaws` and `ctdbs_realms`, but none for `ctdbs_backgrounds`, so the cost resolves to
