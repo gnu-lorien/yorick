@@ -116,6 +116,31 @@ items change assumptions baked into the numbered tests below, so read this befor
 
 ### Facts the numbered tests depend on
 
+- **SECURITY: an anonymous, unauthenticated request can create a `Vampire` row.** Verified directly
+  with a session-less REST POST, which returned a new objectId. `#characternew` also has no
+  `enforce_logged_in()` gate, so the creation form is reachable logged out. This is the most serious
+  defect the suite found and is not a test artefact.
+- **SECURITY: every Patronage is world-readable.** `PatronageView` calls `acl.setPublicReadAccess(true)`
+  on save and the class permits `find`/`get` for `*`, so any authenticated user can read another
+  user's patronage records by direct query even though the admin *page* is gated. The page is
+  protected; the data is not.
+- **`#administration` has no access gate at all** — zero `is_ad` checks in the route and no template
+  conditional, so a plain member reaches the identical 13-link admin menu. Compare
+  `administration_users`, which has two such checks: the gating is inconsistent per route, not absent
+  by design.
+- **Password reset cannot work in this deployment.** `index.js` configures no `emailAdapter`, so
+  `requestPasswordReset` rejects deterministically with "An appName, publicServerURL, and emailAdapter
+  are required". The button wiring itself is correct.
+- **`characterlog` and `characterexperience` have no `.fail()` handler**, so a denied fetch leaves the
+  loading overlay stuck with no redirect. Access is still correctly refused; only the symptom is
+  ungraceful. Contrast `show_character_helper`, which does redirect cleanly.
+- **Protections are frequently server-side only.** The rule editors rely entirely on class-level
+  permissions (code 119 on save), and `Description` relies entirely on per-row ACLs (code 101), since
+  its class permissions are wide open. Asserting on the page rather than the refusal would give a
+  green test over a hole.
+- **jQuery Mobile replaces checkboxes with a styled label** that intercepts pointer events; click the
+  enhanced label, not the raw input.
+
 - **The character log paginates; the experience view does not. Do not conflate them.**
   `CharacterLogView.update_collection_query_and_fetch` genuinely calls `q.skip(self.start)` and
   `q.limit(self.changeBy)`, and its Prev/Next handlers are live — `/log/0/10`, `/log/10/10` and
