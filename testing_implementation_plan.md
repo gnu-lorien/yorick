@@ -116,6 +116,28 @@ items change assumptions baked into the numbered tests below, so read this befor
 
 ### Facts the numbered tests depend on
 
+- **`ctdbs_backgrounds` purchases cost nothing**, the same class of bug as `wta_rites`:
+  `BNSCTDBS_ChangelingCosts.calculate_trait_cost` has branches for `ctdbs_arts`, `ctdbs_merits`,
+  `ctdbs_flaws` and `ctdbs_realms`, but none for `ctdbs_backgrounds`, so the cost resolves to
+  `undefined` and is silently zeroed. (Note the irony that a branch exists for `ctdbs_realms`, which
+  has no seed data at all.)
+- **Two further categories have zero Description rows**: `ctdbs_holdings_specializations` and
+  `ctdbs_arts_affinities_links`. Nothing can ever be added through their pickers. **Item 315 in
+  Task 11 lists both** — assert their absence deliberately rather than expecting options.
+- **"Banality" does not exist anywhere in the repository** — no model field, no seed data, no template.
+  Item 242 should assert Glamour only.
+- **Kith auto-grants its affinity Arts for free.** `ChangelingBetaSlice.update_text("ctdbs_kith", …)`
+  reads `art_1..3` from the Kith's `bnsctdbs_KithRule` row and calls
+  `update_trait(art, 1, "ctdbs_arts", 1)` — free_value 1, so the Art costs nothing but does consume
+  `ctdbs_arts_1_remaining`. Repicking reconciles correctly; **unpicking does not reverse it**, leaving
+  the granted Arts and the spent pool behind (item 220). This makes it impossible to buy an affinity
+  Art fresh, so affinity discounts must be demonstrated via an upgrade.
+- **Art costs are cumulative like Disciplines, not flat like Gifts**: affinity 4/level (1 → 4, 2 → 12),
+  non-affinity 6/level (1 → 6, 2 → 18).
+- **Some example trait names in this plan do not exist in the seed data.** "Chicanery" and "Freehold"
+  are not present; the Changeling suite substitutes real seeded names. Check a name exists before
+  building a test around it.
+
 - **The creation pool badge undercounts for every Werewolf and Changeling category.**
   `VampireCreation.remaining_picks()` sizes its loop from a hardcoded `tops` map holding only
   `skills / disciplines / backgrounds / attributes / merits / flaws`, so any `wta_*` or `ctdbs_*`

@@ -661,6 +661,28 @@ async function readAffinities(page, characterId) {
 }
 
 /**
+ * Assertion-side read-back of the Art affinity list `BNSCTDBS_ChangelingCosts.
+ * art_is_affinity` intersects against an Art trait's own name.
+ *
+ * `ChangelingBetaSlice.get_arts_affinities()` delegates to `Costs.
+ * get_arts_affinities`, which is `bnsctdbs_KithRule.art_1..3` for the
+ * character's own `ctdbs_kith` (via `BNSCTDBS_KithRules.
+ * get_arts_affinities_for_kith`) concatenated with the names of anything the
+ * character owns in `ctdbs_arts_affinities_links` - the Changeling analogue of
+ * Werewolf's `extra_affinity_links` above.
+ */
+async function readArtAffinities(page, characterId) {
+  return runInApp(page, ['app/models/ChangelingBetaSlice'], `
+    return mods[0].get_character(arg.id, "all").then(function (c) {
+      return {
+        kith: c.get("ctdbs_kith") || null,
+        affinities: _.without(c.get_arts_affinities(), undefined)
+      };
+    });
+  `, { id: characterId });
+}
+
+/**
  * True once the character has left the creation wizard.
  *
  * Completion is stored on the character's `creation` object, not on the
@@ -1090,6 +1112,7 @@ module.exports = {
   readCreation,
   readInClanDisciplines,
   readAffinities,
+  readArtAffinities,
   createCompletedCharacter,
   deleteCharacter,
   countCharactersByPrefix,
