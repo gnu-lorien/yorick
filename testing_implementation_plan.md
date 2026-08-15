@@ -116,6 +116,29 @@ items change assumptions baked into the numbered tests below, so read this befor
 
 ### Facts the numbered tests depend on
 
+- **The approved snapshot is a rollback of current state, not a stored copy.**
+  `get_transformed_last_approved` clones the *current* character and rolls back every change recorded
+  after the last approved one. So immediately after approving, the approved sheet equals current
+  state, and it only diverges once a new change lands. It renders through
+  `character-print-parent.html` into `#printable-sheet`, with attributes as bare numbers, most traits
+  as `"Name x2"` and merits as `"Name (1)"`.
+- **Stale-approval detection is real and observable.** `EditView.templateHelpers` compares the newest
+  approval's change id against the newest recorded change id and renders the literal text
+  `No unapproved changes` while they match. Editing a previously-approved trait flips it back to
+  "Approve changes up to N+1".
+- **`Vampire.get_character` never refetches.** A storyteller session that loaded a character before
+  the player's change renders stale values indefinitely — meaning an ST could approve a change their
+  screen never showed. Reload before every approval cycle.
+- **`#simpletrait-new` is one page element shared by every category**, so navigating picker-to-picker
+  satisfies `waitForActivePage` instantly against the *previous* list and the subsequent `changePage`
+  is swallowed. Park on the character sheet between pickers.
+- **Approval refusals never reach the screen.** `approve_change` calls `a.save()` with no failure
+  handler, so the server's reason is invisible to the user. The rules themselves are real and enforced
+  server-side: a player approving their own character gets code 141 "Players cannot approve their own
+  character changes", and a non-storyteller gets 141 "Approver does not have Storyteller role for this
+  troupe". Note that a probe which fails *before* reaching the cloud function proves nothing — hand it
+  a valid change id so the request arrives well-formed.
+
 - **Select-to-print has no per-character checkboxes.** Its only checkbox is a `playable` *filter*
   field, alongside category, antecedence and result-type selects; "Print Shown" prints whatever the
   shared filter currently matches. Items 147-149 are still meaningful against that mechanism — narrow
@@ -463,7 +486,8 @@ reason, earned value, and spent value.
 Fixture: a fully created Vampire owned by `sampmem`, joined to a troupe with `sampast` as Assistant Storyteller.
 
 76. Setup: baseline Vampire is created and completed by `sampmem` and joined to the troupe
-77. Before any approval, `#character/:cid/approved` shows only the creation baseline
+77. Before any approval, `#character/:cid/approved` lands on `#character-print-no-approval` ("No
+    approved versions of your character") — there is **no creation-baseline snapshot**
 
 Each of tests 78–87 performs one player-side change, has `sampast` approve it, and then asserts three things:
 the approval count incremented by one, `#character/:cid/approved` reflects the **new** value, and the approved
@@ -479,9 +503,13 @@ snapshot no longer shows the **previous** value.
 85. **Approval 8/10** — Background `Resources` +1; approved snapshot matches step 8
 86. **Approval 9/10** — Merit added; approved snapshot matches step 9
 87. **Approval 10/10** — Text attribute `Title` changed; approved snapshot matches step 10
-88. `#character/:cid/approval` lists all ten approvals in chronological order with the approver's name on each
-89. Each approval row links to the change it approved and displays that change's old → new values
-90. After a further unapproved change, the sheet flags the character as containing unapproved edits
+88. `#character/:cid/approval` lists all ten approvals in chronological order; the "approver" cell shows
+    the `_User` **object id**, not a name (`format_approval` returns `sub.id` for pointers)
+89. Selecting an approval on the approvals slider repopulates `#approval-viewing` with the change it
+    approved — the `change` cell is a plain `<td>` holding an object id, **not a link**
+90. After a further unapproved change, the sheet flags unapproved edits — **unsatisfiable**: the
+    `#character` template never mentions approval state and the route never fetches it; the only such
+    signal lives in the approval view (asserted by item 93)
 91. `#character/:cid/approved` still shows the step-10 snapshot while the pending change exists
 92. `#character/:cid/print` shows the current pending values, demonstrably different from the approved snapshot
 93. False-approval detection: modifying a trait after its approval marks that approval as stale in the approval view
