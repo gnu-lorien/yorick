@@ -116,6 +116,22 @@ items change assumptions baked into the numbered tests below, so read this befor
 
 ### Facts the numbered tests depend on
 
+- **`tracked_texts` decides what reaches the audit log, and it is venue-lopsided.** The allowlist in
+  `beforeSave("Vampire")` is exactly: `name, clan, state, archetype, archetype_2, faction, title,
+  sect, antecedence, wta_breed, wta_auspice, wta_tribe, wta_camp, wta_faction`. So **renames are
+  logged** (item 113 passes), Vampire and Werewolf text changes are logged, and **no `ctdbs_*` field
+  is logged at all** — no Changeling text change ever produces a `VampireChange` row, which is why
+  item 369 is unsatisfiable. XP and long-text fields are likewise absent.
+- **Nothing on the printable sheet is an image.** There is not one `<img>` tag in any print template,
+  so the portrait cannot appear there, on the standalone print page or in the identical structure
+  embedded in the history and approval views.
+- **Character names are not unique and nothing enforces it.** Renaming onto an existing name succeeds
+  silently with the ordinary success message.
+- **Portrait surfaces render the 128px thumbnail, not the original.** Only the portrait page's own
+  preview shows the upload at its true dimensions. Verify colour; expect 128×128 elsewhere.
+- **Portrait rows need explicit teardown.** `CharacterPortrait` and `TroupePortrait` carry no `owner`
+  back-pointer, so prefix sweeps cannot find them; capture their ids and destroy them directly.
+
 - **The approved snapshot is a rollback of current state, not a stored copy.**
   `get_transformed_last_approved` clones the *current* character and rolls back every change recorded
   after the last approved one. So immediately after approving, the approved sheet equals current
@@ -531,7 +547,8 @@ snapshot no longer shows the **previous** value.
 103. **Renamed name appears in the approved view at `#character/:cid/approved`**
 104. **Renamed name appears in the log view header at `#character/:cid/log/0/10`**
 105. **Renamed name appears in the costs view at `#character/:cid/costs`**
-106. **Renamed name appears in the XP history view header**
+106. Renamed name appears in the XP history view header — **unsatisfiable**: `experienceNotationsAllView`
+     never renders the character's name anywhere, only the totals and the notation table
 107. **Renamed name appears in the history timeline view at `#character/:cid/history/0`**
 108. **Renamed name appears in the troupe roster at `#troupe/:id/characters/all`**
 109. **Renamed name appears in the troupe summarize view**
@@ -539,11 +556,15 @@ snapshot no longer shows the **previous** value.
 111. **Renamed name appears in the admin characters list at `#administration/characters/all`**
 112. **Renamed name appears in the admin characters summarize view**
 113. The rename is recorded in the character log as a name-change entry with old and new name
-114. Renaming to collide with an existing character name is rejected with a surfaced error
+114. Renaming to collide with an existing character name is rejected — **unsatisfiable**: no
+     name-uniqueness validation exists anywhere, client or server; the collision succeeds silently
+     with the same success message as a legitimate rename
 115. Portrait upload: submit `portrait-red-200x200.png` at `#character/:cid/portrait`; success is confirmed
 116. **The sheet header `img` src fetches with HTTP 200 and an image content-type**
-117. **The fetched sheet-header image decodes to 200×200 with a red dominant color, matching the fixture**
-118. **The uploaded portrait renders and byte-matches in the printable sheet `#character/:cid/print`**
+117. **The sheet header decodes to 128×128 with the fixture's dominant colour** — every surface but the
+     portrait page's own preview renders `get_thumbnail_sync(128)`, not the original (item 115)
+118. Portrait renders in the printable sheet — **unsatisfiable**: `CharacterPrintView` renders no
+     `<img>` at all; there is not one image tag in any print template
 119. **The uploaded portrait renders and byte-matches in the character list item on `#characters?all`**
 120. **The uploaded portrait renders and byte-matches in the troupe roster list item**
 121. **The uploaded portrait renders and byte-matches in the troupe select-to-print list item**
@@ -900,7 +921,8 @@ log (reached via `#administration/character/:id`, viewed as `devuser`).
 366. Change 3 — purchase an Art; the log records the cost
 367. Change 4 — add and specialize a Holdings specialization; the log records both
 368. Change 5 — remove a purchased Art; the log records the removal and refund
-369. Change 6 — change Kith and Court; the log records `old_text` → `new_text` for each
+369. Change 6 — change Kith and Court; the log records them — **unsatisfiable**: no `ctdbs_*` field
+     appears in `tracked_texts`, so no Changeling text change is ever logged
 370. Change 7 — raise Glamour and Banality sources; the log records each
 371. Change 8 — add a Freehold background at an increased rating; the log records the cost
 372. Change 9 — edit all three long texts; the log records each edit
