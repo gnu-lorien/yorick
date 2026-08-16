@@ -120,10 +120,14 @@ items change assumptions baked into the numbered tests below, so read this befor
   with a session-less REST POST, which returned a new objectId. `#characternew` also has no
   `enforce_logged_in()` gate, so the creation form is reachable logged out. This is the most serious
   defect the suite found and is not a test artefact.
-- **SECURITY: every Patronage is world-readable.** `PatronageView` calls `acl.setPublicReadAccess(true)`
-  on save and the class permits `find`/`get` for `*`, so any authenticated user can read another
-  user's patronage records by direct query even though the admin *page* is gated. The page is
-  protected; the data is not.
+- **Every Patronage is world-readable, and that is intended.** `PatronageView` calls
+  `acl.setPublicReadAccess(true)` on save and the class permits `find`/`get` for `*`, so anyone can
+  read a patronage record by id or find a user's patronages by owner. This is the feature working:
+  patron status must be publicly verifiable so that anybody can confirm a character is associated
+  with a paid Patron. The admin *page* stays gated because administering patronages is a different
+  act from verifying one. Test 384b asserts the public readability positively, so that privacy added
+  here in future fails loudly rather than silently removing the guarantee; it was briefly and
+  wrongly pinned red as an exposure.
 - **`#administration` has no access gate at all** — zero `is_ad` checks in the route and no template
   conditional, so a plain member reaches the identical 13-link admin menu. Compare
   `administration_users`, which has two such checks: the gating is inconsistent per route, not absent
