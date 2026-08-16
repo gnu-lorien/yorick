@@ -116,6 +116,22 @@ items change assumptions baked into the numbered tests below, so read this befor
 
 ### Facts the numbered tests depend on
 
+- **Renown, Rage and Banality are DEFERRED FEATURES, not defects.** Ruled by the owner: they are
+  planned for a future release and **are not to be tested** until built. Renown has no trait category,
+  Rage is a hardcoded print-only constant, and Banality does not exist anywhere in the repository.
+  `creation-werewolf` 212 and `lifecycle-werewolf` 350 are `test.skip()`; `creation-werewolf` 213 and
+  215 were *split* instead, keeping their real Gnosis and Gift/Rite-print coverage and dropping only
+  the deferred assertions. See `remediation_implementation_plan.md` R40.
+- **The Description catalogue was refreshed from `data/all_greensboro_descriptions_20260816.csv`.**
+  All seven previously-empty categories now have rows — including `luminary_disciplines`, a Vampire
+  category whose emptiness had gone unnoticed — and existing catalogues grew substantially (clans
+  42→49, merits 157→311, rituals 52→162, `ctdbs_kiths` 11→15). The merge is category-aware:
+  `ctdbs_flaws`, `ctdbs_kith_group_types`, `ctdbs_kiths` and `ctdbs_merits` keep their dev rows,
+  because greensboro lacks the columns that carry their data (`cost`, `kith`, `art_1..3`, `realm`,
+  `court`), and the app reads `.get("cost")` at 26 call sites. Verified: zero dev-only values lost and
+  no category shrank. **The refresh also corrected the misspelling "Seeling" to "Seelie"** — expect
+  hardcoded trait names in tests to need checking against the catalogue rather than assumed.
+
 - **SECURITY: an anonymous, unauthenticated request can create a `Vampire` row.** Verified directly
   with a session-less REST POST, which returned a new objectId. `#characternew` also has no
   `enforce_logged_in()` gate, so the creation form is reachable logged out. This is the most serious

@@ -362,21 +362,27 @@ to the two newer venues, so a Vampire category with no content looks more like a
 unfinished feature.
 *Verify:* `creation-changeling.spec.js` test 237; `descriptions-by-creature.spec.js` item 315.
 
-**R40. Three Werewolf/Changeling concepts are unimplemented, not merely unseeded.** Distinct from R39,
-because these have no category at all — there is nothing to author rows *into*:
+**R40. DEFERRED FEATURES — Renown, Rage and Banality are planned for a future release.** Ruled by the
+owner: these are **not defects and are not to be tested** until they are built. They differ from R39
+in kind — R39 is a catalogue with no rows, whereas these have no trait category at all, so there is
+nothing to author rows *into*:
 
-- **Renown** (Glory, Honor, Wisdom) — absent from `ALL_SIMPLETRAIT_CATEGORIES`, no seed data, and on
+- **Renown** (Glory, Honor, Wisdom) — absent from `ALL_SIMPLETRAIT_CATEGORIES`, no seed data, on
   neither the live nor the print sheet.
 - **Rage** — a hardcoded print-only constant (10 boxes, split 7) tied to no character data.
-- **Banality** — does not exist anywhere in the repository: no field, no data, no template.
+- **Banality** — no field, no seed data, no template anywhere in the repository.
 
-These are unimplemented features rather than bugs. **This is the one question in this plan still
-open:** the owner has ruled on audit scope, name uniqueness, the rule classes, immutability and
-patronage dating, and has been told exactly what content is missing — but whether to *implement*
-Renown, Rage and Banality or to remove the vestigial references is undecided. Do not guess; the tests
-covering them (`creation-werewolf` 212, 213, 215 and `lifecycle-werewolf` 350) stay pinned until it is
-answered.
-*Verify:* `creation-werewolf.spec.js` tests 212, 213, 215; `lifecycle-werewolf.spec.js` test 350.
+**Test treatment, already applied.** Two tests were purely about these concepts and are now
+`test.skip()` with a pointer back to this item: `creation-werewolf` 212 and `lifecycle-werewolf` 350.
+Two others *also* carried real coverage and were therefore **split rather than skipped**, because
+skipping them would have silently dropped working assertions:
+
+| Test | Kept | Removed |
+|---|---|---|
+| `creation-werewolf` 213 | Gnosis is auto-added at value 10 / free_value 6 and renders on the sheet | the Rage assertions |
+| `creation-werewolf` 215 | the printable sheet renders the purchased Gift and Rite with real values | the Renown-section assertions |
+
+When these features land, unskip 212 and 350 and add Rage/Renown coverage back to 213 and 215.
 
 **R41. Invert test 114 — non-unique names are intended.** Ruled on by the owner: names are explicitly
 **not** required to be unique, and uniqueness must not be enforced. Nothing enforces it today, so the
@@ -547,6 +553,34 @@ silently remove a guarantee. Turned around, it defends the decision instead.
 
 Five tests remain genuine work: `xp-history` 75 and `lifecycle-*` 321 / 344 / 364 (XP logging, R47b),
 and `lifecycle-changeling` 369 (Changeling text logging, R47a).
+
+## 4b. Known Outstanding — Read Before Running The Suite
+
+**The Description catalogue was refreshed** from `data/all_greensboro_descriptions_20260816.csv`
+(see R39). All seven previously-empty categories now have rows, and the existing catalogues grew
+substantially. The merge is verified: zero dev-only values lost, no category shrank.
+
+Four tests that had encoded the *old, empty* state were updated to assert the new reality, and one
+hardcoded trait name was corrected — the refresh fixed the misspelling **"Seeling" → "Seelie"**. Expect
+any test that names a trait literally to need checking against the catalogue rather than assumed.
+
+**One test is left failing and it is not the data's fault:**
+
+`lifecycle-werewolf.spec.js` **355** ("Player log paginates correctly across at least three pages").
+Pagination itself is proven in the same test by URL navigation — three disjoint pages compared as an
+ordered multiset. What fails is the final step, which drives the log's own **Next** button. After
+`readLogPage`, the app ends up with the log hash set but `#character` still the active jQuery Mobile
+page, so the Next button is present and enabled but not on screen, and the click times out against a
+control no user could see.
+
+That is **R28/R30/R33's swallowed-`changePage` defect**, not a pagination bug and not a consequence of
+the data refresh — it is the same family this codebase hits whenever a view short-circuits a
+re-render. The last attempted fix routes through `openLog` (the hard-reload path) and was **not
+verified before hand-off**; treat it as unproven. Either finish it as part of Phase 4, or temporarily
+reduce 355 to its URL-based assertions with a comment pointing at R28.
+
+**Do not "fix" this by forcing the click.** A forced click on an invisible control would assert that a
+user can press a button they cannot see.
 
 ## 5. Verification Checklist
 

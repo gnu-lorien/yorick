@@ -1338,33 +1338,42 @@ test.describe('Task 8c - Changeling Creation In The UI', () => {
     expect(after.spent, 'Spent XP after buying a background').not.toBe(before.spent);
   });
 
-  test.fail('237 ctdbs_holdings_specializations cannot be added - zero seed data at any layer', async () => {
-    // GAP (file-level finding 9, confirmed live at every layer a UI path
-    // could exist): no seeded Description in this category, and no
-    // `ctdbs_backgrounds` row (in particular "Holdings" itself) carries
-    // `requires_specialization`, so there is no specialization route into it
-    // either - unlike every other `*_specializations` category, which is
-    // seeded with exactly one "Custom" row for exactly that purpose.
+  test('237 ctdbs_holdings_specializations is now seeded and offers real options', async () => {
+    // Previously a GAP pinned red: this category had no seeded Description at
+    // any layer, so nothing could ever be added to it. The catalogue was
+    // backfilled from data/all_greensboro_descriptions_20260816.csv, which
+    // supplied the rows that were simply never authored, and the picker now
+    // works. Asserting a non-empty picker rather than an exact count keeps
+    // this robust against the catalogue growing again.
     const cid = state.xpCharacter.id;
 
     await navigateToHash(page, `simpletraits/ctdbs_holdings_specializations/${cid}/new`, '#simpletrait-new');
-    const options = await page.locator('#simpletrait-new a.simpletrait').count();
-    // This passes: the picker genuinely offers nothing to add.
-    expect(options, 'the "add new" picker for ctdbs_holdings_specializations').toBe(0);
+    const offered = await page.locator('#simpletrait-new a.simpletrait')
+      .evaluateAll((els) => els.map((e) => (e.getAttribute('name') || e.textContent).replace(/\s+/g, ' ').trim()).filter(Boolean));
+    expect(offered.length, 'the "add new" picker for ctdbs_holdings_specializations').toBeGreaterThan(0);
 
-    // This also passes: the category is real enough to render a live-sheet
-    // link to its (permanently empty) category page - the render machinery
-    // works, it simply has nothing to show.
+    // The sheet renders a link to the category page, as it always did.
     await navigateToHash(page, `character?${cid}`, '#character');
     const link = page.locator(`#character a[href="#simpletraits/ctdbs_holdings_specializations/${cid}/all"]`);
     await expect(link).toHaveCount(1);
-    await navigateToHash(page, `simpletraits/ctdbs_holdings_specializations/${cid}/all`, '#simpletraitcategory-all');
-    const rows = await page.locator('#simpletraitcategory-all li').count();
-    expect(rows, 'the (empty) category listing').toBe(0);
 
-    // The plan's actual expectation - fails, because nothing was ever added,
-    // so nothing new renders on the sheet.
-    expect(options, 'an addition should have been possible so something new could render').toBeGreaterThan(0);
+    // What the gap used to prevent, and what the plan actually asks for: add
+    // one through the real picker and see it render. The listing starts empty
+    // for this character, so the delta is what proves the addition, not the
+    // absolute count.
+    await navigateToHash(page, `simpletraits/ctdbs_holdings_specializations/${cid}/all`, '#simpletraitcategory-all');
+    const before = await page.locator('#simpletraitcategory-all li').count();
+
+    const chosen = offered[0];
+    await purchaseTrait(page, cid, 'ctdbs_holdings_specializations', chosen, { value: 1 });
+
+    await navigateToHash(page, `simpletraits/ctdbs_holdings_specializations/${cid}/all`, '#simpletraitcategory-all');
+    const after = await page.locator('#simpletraitcategory-all li').count();
+    expect(after, 'the category listing after adding one').toBe(before + 1);
+    await expect(page.locator('#simpletraitcategory-all')).toContainText(chosen);
+
+    const stored = await readTraits(page, cid, 'ctdbs_holdings_specializations', 'Changeling');
+    expect(stored.map((t) => t.name), 'the trait is persisted, not just rendered').toContain(chosen);
   });
 
   test('238 ctdbs_arts_affinities_links: Kith drives Art affinity, measured at the real change-page cost', async () => {
@@ -1446,7 +1455,11 @@ test.describe('Task 8c - Changeling Creation In The UI', () => {
     // into `get_arts_affinities()` alongside the Kith-derived list above.
     await navigateToHash(page, `simpletraits/ctdbs_arts_affinities_links/${cid}/new`, '#simpletrait-new');
     const linkOptions = await page.locator('#simpletrait-new a.simpletrait').count();
-    expect(linkOptions, 'the "add new" picker for ctdbs_arts_affinities_links').toBe(0);
+    // This category was empty until the catalogue was backfilled from
+    // data/all_greensboro_descriptions_20260816.csv; extra affinity links can
+    // now genuinely be added, matching the Werewolf equivalent which always
+    // had rows.
+    expect(linkOptions, 'the "add new" picker for ctdbs_arts_affinities_links').toBeGreaterThan(0);
 
     await navigateToHash(page, `character?${cid}`, '#character');
     const affinityLinkOnSheet = page.locator(`#character a[href="#simpletraits/ctdbs_arts_affinities_links/${cid}/all"]`);
