@@ -73,6 +73,7 @@ const { loginAsAdmin, loginAsMember, loginAsAST, loginAsStranger } = require('./
 const {
   navigateToHash,
   waitForJqmLoader,
+  waitForActivePage,
   runInApp,
   hardReload,
   normalize,
@@ -103,7 +104,7 @@ const {
   countTroupesByPrefix,
   destroyTroupesByPrefix
 } = require('./helpers/troupes');
-const { readLogRows } = require('./helpers/logs');
+const { readLogRows, openLog } = require('./helpers/logs');
 const { seedNotations, readXpTotals } = require('./helpers/xp');
 const L = require('./helpers/lifecycle');
 
@@ -480,23 +481,19 @@ test.describe('Task 12b - Werewolf lifecycle and dual audit log', () => {
     expect(row.cost).toBeGreaterThan(AFFINITY_GIFT_PER_POINT);
   });
 
-  test('347 Change 4 - add and specialize a territory specialization; the log records both (wta_territory_specializations is empty, so the chain runs on the Territory background)', async () => {
+  test('347 Change 4 - add and specialize a Territory specialization; the log records both', async () => {
     const cid = state.character.id;
 
-    // The category the plan names offers nothing at all - measured through the
-    // real picker, not merely inferred from the seed data.
+    // This category was empty until the catalogue was backfilled from
+    // data/all_greensboro_descriptions_20260816.csv, and the chain below used to
+    // run on the Territory background purely as a substitute. It is now seeded, so
+    // assert that directly; the background chain is kept because it is the
+    // specialization mechanic this item is really about.
     await L.parkOnSheet(memberPage, cid);
     await navigateToHash(memberPage, `simpletraits/wta_territory_specializations/${cid}/new`, '#simpletrait-new');
     const offered = await memberPage.locator('#simpletrait-new a.simpletrait')
-      .evaluateAll((els) => els.map((e) => e.getAttribute('name')));
-    expect(offered, 'wta_territory_specializations has no seeded Descriptions to pick').toEqual([]);
-    const seededCount = await memberPage.evaluate(async () => {
-      const q = new window.Parse.Query('Description');
-      q.equalTo('category', 'wta_territory_specializations');
-      return q.count();
-    });
-    expect(seededCount, 'and none exist in the catalogue either').toBe(0);
-    console.log('[t12-werewolf] 347 measured: wta_territory_specializations offers 0 options and has 0 Descriptions');
+      .evaluateAll((els) => els.map((e) => e.getAttribute('name')).filter(Boolean));
+    expect(offered.length, 'wta_territory_specializations is seeded and offers options').toBeGreaterThan(0);
 
     // The chain the item is actually about, run against the seeded Territory
     // background.
@@ -599,7 +596,13 @@ test.describe('Task 12b - Werewolf lifecycle and dual audit log', () => {
     state.campAfter = campAfter;
   });
 
-  test.fail('350 Change 7 - raise Renown (Glory, Honor, Wisdom); the log records each', async () => {
+  test.skip('350 Change 7 - raise Renown (Glory, Honor, Wisdom); the log records each [DEFERRED]', async () => {
+    // DEFERRED FEATURE, not a defect. Renown (Glory/Honor/Wisdom), Rage and
+    // Banality are planned for a future release: they have no trait category,
+    // no seed data and no sheet rendering today, so there is nothing to test
+    // yet. Skipped rather than pinned red, because `test.fail()` asserts "this
+    // is broken" and these are simply unbuilt. Unskip when they land.
+    // See remediation_implementation_plan.md R40.
     // Renown has no representation anywhere in this application (finding 2).
     // Everything measured below passes; only the plan's literal expectation
     // fails, because there is no action a player could take to produce a row.
@@ -778,8 +781,17 @@ test.describe('Task 12b - Werewolf lifecycle and dual audit log', () => {
         JSON.stringify(repeated.map(([f, n]) => ({ n, f }))));
     }
 
-    await L.readLogPage(memberPage, cid, 0, 10);
-    await memberPage.locator('#character-log button.next').click();
+    // Re-open the log immediately before driving its Next control. Going
+    // through readLogPage leaves the app back on #character with the log hash
+    // set - the swallowed-changePage state documented in jqm-helpers - so the
+    // Next button is present and enabled but not on screen, and clicking it
+    // times out against a control no user could see. openLog takes the
+    // hard-reload path, which forces a genuine first registration of the view.
+    await openLog(memberPage, cid, 0, 10);
+    await waitForActivePage(memberPage, 'character-log');
+    const nextButton = memberPage.locator('#character-log.ui-page-active button.next');
+    await nextButton.waitFor({ state: 'visible', timeout: 20000 });
+    await nextButton.click();
     await waitForJqmLoader(memberPage);
     await memberPage.waitForFunction(
       (h) => window.location.hash === h,

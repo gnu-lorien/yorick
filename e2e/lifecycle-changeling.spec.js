@@ -128,7 +128,9 @@ const FIXTURE_PREFIX = 'E2E T12C ';
 
 const KITH_BEFORE = 'Ghillie Dhu';
 const KITH_AFTER = 'Clurichaun';
-const COURT_BEFORE = 'Seeling';
+// The catalogue previously carried the misspelling "Seeling"; the refresh from
+// data/all_greensboro_descriptions_20260816.csv corrected it to "Seelie".
+const COURT_BEFORE = 'Seelie';
 const COURT_AFTER = 'Unseelie';
 
 const XP_AWARD = 25;
@@ -484,23 +486,19 @@ test.describe('Task 12c - Changeling lifecycle and dual audit log', () => {
     expect(row).toMatchObject({ value: 1, cost: NON_AFFINITY_ART_AT_1, old_value: null });
   });
 
-  test('367 Change 4 - add and specialize a Holdings specialization; the log records both (ctdbs_holdings_specializations is empty, so the chain runs on the Holdings background)', async () => {
+  test('367 Change 4 - add and specialize a Holdings specialization; the log records both', async () => {
     const cid = state.character.id;
 
-    // The category the plan names offers nothing at all - measured through the
-    // real picker, not merely inferred from the seed data.
+    // This category was empty until the catalogue was backfilled from
+    // data/all_greensboro_descriptions_20260816.csv, and the chain below used to
+    // run on the Holdings background purely as a substitute. It is now seeded, so
+    // assert that directly; the background chain is kept because it is the
+    // specialization mechanic this item is really about.
     await L.parkOnSheet(memberPage, cid);
     await navigateToHash(memberPage, `simpletraits/ctdbs_holdings_specializations/${cid}/new`, '#simpletrait-new');
     const offered = await memberPage.locator('#simpletrait-new a.simpletrait')
-      .evaluateAll((els) => els.map((e) => e.getAttribute('name')));
-    expect(offered, 'ctdbs_holdings_specializations has no seeded Descriptions to pick').toEqual([]);
-    const seededCount = await memberPage.evaluate(async () => {
-      const q = new window.Parse.Query('Description');
-      q.equalTo('category', 'ctdbs_holdings_specializations');
-      return q.count();
-    });
-    expect(seededCount, 'and none exist in the catalogue either').toBe(0);
-    console.log('[t12-changeling] 367 measured: ctdbs_holdings_specializations offers 0 options and has 0 Descriptions');
+      .evaluateAll((els) => els.map((e) => e.getAttribute('name')).filter(Boolean));
+    expect(offered.length, 'ctdbs_holdings_specializations is seeded and offers options').toBeGreaterThan(0);
 
     const owned = (await readTraits(memberPage, cid, 'ctdbs_backgrounds', 'Changeling')).map((t) => t.name);
     expect(owned, 'Holdings is not already owned').not.toContain(HOLDINGS_BASE);

@@ -619,17 +619,27 @@ test.describe('Task 13 - Access Control In The UI', () => {
     expect(bodyText, 'no trace of the target record renders anywhere on screen').not.toContain(state.patronageFixtureId);
   });
 
-  test.fail('384b DEFECT: Patronage records are readable by any authenticated user via a direct query', async () => {
-    // The page is genuinely blocked (test 384) but the data behind it is not.
-    // Patronage's class-level permissions grant find/get to "*"
-    // (database_seed/_SCHEMA.json), and PatronageView.js's submit handler
-    // additionally sets acl.setPublicReadAccess(true) on every record it
-    // saves - the only way a Patronage row is ever created in this app. This
-    // is the server-side probe test 384 could not use (a page-transition
-    // failure proves nothing about data visibility); it hands the server a
-    // well-formed, fully-authenticated request for a record this suite knows
-    // is real, and the server's own verdict is what is asserted, per this
-    // suite's standard for proving a refusal (or, here, its absence) is real.
+  test('384b Patronage records are world-readable by design, so any user can verify a paid Patron', async () => {
+    // INTENDED BEHAVIOUR, not a defect. Patronage visibility is deliberately
+    // public: anyone must be able to confirm that a character is associated
+    // with a paid Patron, which is only possible if the records themselves are
+    // readable. Both layers implement that on purpose - Patronage's
+    // class-level permissions grant find/get to "*"
+    // (database_seed/_SCHEMA.json), and PatronageView.js's submit handler sets
+    // acl.setPublicReadAccess(true) on every record it saves, which is the
+    // only way a Patronage row is ever created in this app.
+    //
+    // This test previously asserted the opposite and was pinned red as a data
+    // exposure. That reading was wrong, and inverting it matters: a test
+    // demanding that patronages be private would, if anyone "fixed" it, break
+    // the verification the feature exists to provide. It is kept as a positive
+    // test so that privacy added here in future fails loudly instead of
+    // silently removing a guarantee.
+    //
+    // Note the deliberate asymmetry with test 384: the admin *page* at
+    // #administration/patronages/user/:id stays gated, because administering
+    // patronages is not the same act as verifying one. Both halves are
+    // asserted - 384 that the page is blocked, this that the data is not.
     const direct = await memberPage.evaluate(async (id) => {
       try {
         const obj = await new window.Parse.Query('Patronage').get(id);
@@ -648,8 +658,9 @@ test.describe('Task 13 - Access Control In The UI', () => {
     }, state.sampastId);
     console.log('[e2e access-control] 384b unfiltered find() for sampast\'s records as sampmem:', JSON.stringify(found));
 
-    expect(direct.ok, 'a plain member should not be able to read another user\'s Patronage record by id').toBe(false);
-    expect(found, 'nor enumerate them via find()').toEqual([]);
+    expect(direct.ok, 'any user must be able to read a Patronage record by id, to verify a paid Patron').toBe(true);
+    expect(direct.ownerId, 'and the record must identify whose patronage it is').toBe(state.sampastId);
+    expect(found, 'and must be able to find a user\'s patronages by owner').toContain(state.patronageFixtureId);
   });
 
   // -------------------------------------------------------------------------

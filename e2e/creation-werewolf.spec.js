@@ -1192,7 +1192,12 @@ test.describe('Task 8b - Werewolf Creation In The UI', () => {
     expect(after.spent, 'Spent XP after buying a Rite').not.toBe(before.spent);
   });
 
-  test.fail('212 Renown allocation (Glory, Honor, Wisdom) renders with correct values on the sheet', async () => {
+  test.skip('212 Renown allocation (Glory, Honor, Wisdom) renders with correct values on the sheet [DEFERRED]', async () => {
+    // DEFERRED FEATURE, not a defect. Renown (Glory/Honor/Wisdom) has no trait
+    // category, no seed data and no sheet rendering today, so there is nothing to
+    // test yet. Skipped rather than pinned red: test.fail() asserts "this is
+    // broken", and this is simply unbuilt. Unskip when it lands.
+    // See remediation_implementation_plan.md R40.
     // GAP (file-level finding 5, confirmed live at every layer a UI path
     // could exist): no wizard step, no Description rows, no sheet section.
     const cid = state.xpCharacter.id;
@@ -1209,7 +1214,11 @@ test.describe('Task 8b - Werewolf Creation In The UI', () => {
     expect(sheetText, 'the sheet has no Renown/Glory/Honor/Wisdom section to read values from').toMatch(/glory/i);
   });
 
-  test.fail('213 Gnosis renders with a correct value on the sheet; Rage does not, because it is not real character data', async () => {
+  test('213 Gnosis renders a real per-character value on the sheet', async () => {
+    // Rage is a DEFERRED FEATURE, not a defect - see remediation_implementation_plan.md
+    // R40. It is a hardcoded print-only constant tied to no character data, planned for
+    // a future release. The Rage assertions that lived here were removed rather than the
+    // whole test skipped, so the real Gnosis coverage below keeps running.
     const cid = state.xpCharacter.id;
 
     // These pass: Gnosis is real (file-level finding 6). `Werewolf.create`
@@ -1223,16 +1232,8 @@ test.describe('Task 8b - Werewolf Creation In The UI', () => {
     const gnosisLink = page.locator(`#character a[href="#simpletraits/wta_gnosis_sources/${cid}/all"]`);
     await expect(gnosisLink).toHaveCount(1);
 
-    const sheetText = normalize(await page.locator('#character').textContent());
-    // Also passes: unlike Gnosis, "rage"/"rage_sources" is not a category
-    // `ALL_SIMPLETRAIT_CATEGORIES` lists at all, so the live sheet never
-    // mentions Rage anywhere - it exists only as a hardcoded print-only
-    // constant (test 215), never tied to any trait this or any character owns.
-    expect(sheetText).not.toMatch(/\brage\b/i);
-
-    // The plan's actual expectation for Rage - fails, because the live sheet
-    // has no per-character Rage figure to assert a value against.
-    expect(sheetText, 'the live sheet has no per-character Rage value to read').toMatch(/\brage\b/i);
+    await navigateToHash(page, `simpletraits/wta_gnosis_sources/${cid}/all`, '#simpletraitcategory-all');
+    expect(normalize(await page.locator('#simpletraitcategory-all').textContent())).toContain('Gnosis');
   });
 
   test('214 wta_totem_bonus_traits render in the Pack section', async () => {
@@ -1261,7 +1262,11 @@ test.describe('Task 8b - Werewolf Creation In The UI', () => {
     expect(normalize(await page.locator('#simpletraitcategory-all').textContent())).toContain(`${TOTEM_BONUS_NAME} x1`);
   });
 
-  test.fail('215 The Werewolf printable sheet renders Gifts and Rites with real values, but has no Renown section', async () => {
+  test('215 The Werewolf printable sheet renders Gifts and Rites with real values', async () => {
+    // A Renown section is a DEFERRED FEATURE, not a defect - see
+    // remediation_implementation_plan.md R40. The assertions about its absence were
+    // removed rather than the whole test skipped, keeping the Gift and Rite print
+    // coverage below alive.
     const cid = state.xpCharacter.id;
 
     await navigateToHash(page, `character/${cid}/print`, '#printable-sheet');
@@ -1274,13 +1279,5 @@ test.describe('Task 8b - Werewolf Creation In The UI', () => {
     expect(printText).toContain(`${AFFINITY_GIFT_NAME} x1`);
     expect(printText).toContain(`${RITE_NAME} x1`);
 
-    // Also passes: same gap as test 212. The closest thing on the print
-    // sheet is the hardcoded "Rage" box display (test 213), which is not
-    // Renown and is not driven by any real trait either way.
-    expect(printText).not.toMatch(/glory|honor|wisdom/i);
-
-    // The plan's actual expectation - fails, because nothing on this page is
-    // a Renown section.
-    expect(printText, 'the printable sheet has no Renown section to read real values from').toMatch(/glory/i);
   });
 });
