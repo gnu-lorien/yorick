@@ -149,32 +149,54 @@ var get_vampire_change_acl = function(vampire) {
     return acl;
 };
 
-Parse.Cloud.beforeSave("Vampire", function(request, response) {
-    // A character always belongs to somebody, so refuse to write one for a
-    // request that has nobody attached to it.
-    //
-    // This is not theoretical. Vampire's class-level permissions granted
-    // create to "*", so a bare REST POST carrying only the public application
-    // id - no session token, no user - was accepted and came back with a real
-    // object id. Werewolf and ChangelingBetaSlice are both
-    // Parse.Object.extend("Vampire", ...) over the same underlying class, so
-    // the hole covered all three creature types.
-    //
-    // database_seed/_SCHEMA.json now asks for requiresAuthentication on create
-    // as well, but that is only a second line of defence: seed_db.js imports
-    // the schema file solely when the database has no users at all, so an
-    // already-seeded deployment keeps whatever class-level permissions its
-    // live _SCHEMA collection was created with. This guard is what protects
-    // those, and it runs ahead of the class-level check either way.
-    //
-    // Neither legitimate write path is affected: Model.create
-    // (public/scripts/app/models/Vampire.js) only ever runs for a logged-in
-    // user - it builds the character's ACL out of Parse.User.current() - and
-    // every save cloud code makes on a character's behalf passes useMasterKey,
-    // which sets request.master here.
+/**
+ * Refuse a write that has nobody attached to it.
+ *
+ * Characters and everything hanging off them always belong to somebody, so a
+ * request carrying neither a user nor the master key has no business writing
+ * one. This is not theoretical: these classes granted create to "*", and a bare
+ * REST POST carrying only the public application id - no session token, no user
+ * - was accepted. Measured on a live server, an anonymous request could write a
+ * SimpleTrait and an ExperienceNotation onto a named player's character, and
+ * that player then saw both on their own sheet.
+ *
+ * database_seed/_SCHEMA.json asks for requiresAuthentication on create as well,
+ * but that is only a second line of defence: seed_db.js imports the schema file
+ * solely when the database has no users at all, so an already-seeded deployment
+ * keeps whatever class-level permissions its live _SCHEMA collection was
+ * created with. This guard is what protects those, and it runs ahead of the
+ * class-level check either way.
+ *
+ * It also settles a request that would otherwise never be answered. Omitting
+ * owner used to hang beforeSave("SimpleTrait") indefinitely - it walks off the
+ * missing pointer and calls neither response.success nor response.error -
+ * which is reachable without authenticating. Guarding at the top of each hook
+ * closes that off before the hook body can wander.
+ *
+ * No legitimate write path is affected. The character models
+ * (public/scripts/app/models/) only ever run for a logged-in user, building
+ * each row's ACL out of the character's own owner, and every save cloud code
+ * makes on a character's behalf passes useMasterKey, which sets request.master.
+ *
+ * Answers the request itself when it refuses, so callers read as:
+ *
+ *     if (!require_a_user(request, response, "Traits")) { return; }
+ *
+ * @return {boolean} true when the request may go ahead
+ */
+var require_a_user = function(request, response, noun) {
     if (!request.master && !request.user) {
-        return response.error("Characters can only be created or modified by a logged in user.");
+        response.error(noun + " can only be changed by a logged in user.");
+        return false;
     }
+    return true;
+};
+
+Parse.Cloud.beforeSave("Vampire", function(request, response) {
+    // Werewolf and ChangelingBetaSlice are both Parse.Object.extend("Vampire",
+    // ...) over this same underlying class, so this covers all three creature
+    // types.
+    if (!require_a_user(request, response, "Characters")) { return; }
 
     var tracked_texts = [
         "name",
@@ -259,6 +281,12 @@ var isMeaningfulChange = function (vc) {
 }
 
 Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
+    // Ahead of everything else: this hook copies the trait into a
+    // VampireChange audit row, so an unguarded anonymous write did not merely
+    // land a trait on somebody's sheet, it also wrote itself into the log the
+    // approvals workflow reads.
+    if (!require_a_user(request, response, "Traits")) { return; }
+
     console.log("beforeSave SimpleTrait");
     var vc = new Parse.Object("VampireChange");
     var modified_trait = request.object;
@@ -346,6 +374,8 @@ Parse.Cloud.afterSave("SimpleTrait", function(request) {
 });
 
 Parse.Cloud.beforeDelete("SimpleTrait", function(request, response) {
+    if (!require_a_user(request, response, "Traits")) { return; }
+
     var vc = new Parse.Object("VampireChange");
     var trait = request.object;
     console.log("beforeDelete SimpleTrait Getting the server trait data " + trait.id);
@@ -382,6 +412,30 @@ Parse.Cloud.beforeDelete("SimpleTrait", function(request, response) {
         error.message = failStr;
         response.error(error);
     });
+});
+
+// The remaining character child rows. Each is created client-side by the
+// character models as the logged-in owner, and touched by cloud code only with
+// the master key, so the guard is the whole of the hook - there is no existing
+// behaviour here to sit in front of, unlike SimpleTrait and Vampire.
+//
+// ExperienceNotation is the one with teeth: an anonymous write to it was
+// measured landing 99999 earned XP on another player's character, visible to
+// that player on their own sheet.
+
+Parse.Cloud.beforeSave("ExperienceNotation", function(request, response) {
+    if (!require_a_user(request, response, "Experience entries")) { return; }
+    response.success();
+});
+
+Parse.Cloud.beforeSave("LongText", function(request, response) {
+    if (!require_a_user(request, response, "Character texts")) { return; }
+    response.success();
+});
+
+Parse.Cloud.beforeSave("VampireCreation", function(request, response) {
+    if (!require_a_user(request, response, "Character creation records")) { return; }
+    response.success();
 });
 
 Parse.Cloud.afterSave("Patronage", function(request) {
