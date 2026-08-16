@@ -14,7 +14,21 @@ named precisely enough to find.
 
 Work started against this plan. **Everything below is a statement about this branch, not a plan.**
 
-**Landed:** R1–R21, R24–R27, R30, R31, R34–R38, R41–R44, R46–R48, R49, R50.
+**Landed:** R1–R21, R24–R27, R30, R31, R34–R38, R41–R44, R46–R50.
+
+**Three defects found while implementing, and fixed here rather than filed:**
+
+1. `beforeSave("Vampire")` used `tracked_texts` only as a *gate* and then wrote a
+   `core` row for every dirty key, so a save that touched a text attribute also
+   logged `change_count`, the trait arrays and everything else in flight. Latent
+   until R47a added the Changeling texts and turned it into 32 core rows on one
+   character's creation picks.
+2. An audit hook that does its own I/O *before* responding can break the
+   operation it observes. R47b's first cut did, and staled the entire XP ledger
+   on a single date edit. The record is now dispatched behind the response.
+3. `CharacterExperienceView` saved a notation that the balance propagation was
+   already saving, with pre-propagation values, racing it. Benign until (2) made
+   the ordering matter.
 
 **Deliberately not done, with the reason:**
 

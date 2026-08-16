@@ -1291,9 +1291,14 @@ test.describe('Task 4 - XP History', () => {
     expect(firstPage.length, 'the first page holds exactly ten entries').toBe(10);
     expect(secondPage.length, 'the second page holds the remainder').toBe(total - 10);
 
-    const seen = firstPage.map((r) => `${r.date}|${r.reason}|${r.earned}|${r.spent}`);
-    const second = secondPage.map((r) => `${r.date}|${r.reason}|${r.earned}|${r.spent}`);
-    expect(second.filter((k) => seen.indexOf(k) !== -1), 'no entry appears on both pages').toEqual([]);
+    // Keyed on the notation's real id, not on its rendered values: the padding
+    // rows above are all "Unspecified reason" with the same zero deltas and are
+    // created within the same second, so a value fingerprint collapses several
+    // distinct rows into one and would report a duplicate that is not there.
+    const seen = firstPage.map((r) => r.notationId);
+    const second = secondPage.map((r) => r.notationId);
+    expect(seen.filter((id) => !id), 'every rendered row exposes its notation id').toEqual([]);
+    expect(second.filter((id) => seen.indexOf(id) !== -1), 'no entry appears on both pages').toEqual([]);
     expect(new Set(seen.concat(second)).size, 'the two pages cover every entry exactly once').toBe(total);
   });
 
@@ -1311,14 +1316,19 @@ test.describe('Task 4 - XP History', () => {
     // ignore saves that touch only `earned`/`spent`: those are the running
     // balances every row above an edited one gets re-saved with, and logging
     // them would bury the operation under its own bookkeeping.
-    await openXp(page, state.characterId);
+    // A page big enough to hold the whole history, for the same reason test 74
+    // needs one: the ledger is past ten rows by now and the route really
+    // paginates, so on the default page of ten the table would not grow when
+    // the probe row below is added.
+    const WHOLE_HISTORY = 50;
+    await openXp(page, state.characterId, 0, WHOLE_HISTORY);
     const before = await waitForXp(page, 'the settled table', ({ rows }) => (rows.length ? null : 'no rows'));
     const changesBefore = await countChangeRows(page, state.characterId);
     await openLog(page, state.characterId, 0, 10);
     const logBefore = await readLogRows(page);
 
     // One of each operation, on a row created and destroyed by this test.
-    await openXp(page, state.characterId);
+    await openXp(page, state.characterId, 0, WHOLE_HISTORY);
     await addNotation(page);
     await renameByReason(page, DEFAULT_REASON, R.logProbe);
     await editByReason(page, R.logProbe, 'earned', 25);

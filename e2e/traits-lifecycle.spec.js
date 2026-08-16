@@ -812,7 +812,9 @@ test.describe('Task 9 - Trait Change Lifecycle In The UI', () => {
         const picked = before.find((t) => t.name === venue.creationPickTrait);
         expect(picked, `${venue.creationPickTrait} still present before the removal`).toBeTruthy();
 
-        const poolBefore = (await readCreation(page, cid, venue.name))[`${venue.chainCategory}_1_remaining`];
+        const creationBefore = await readCreation(page, cid, venue.name);
+        const poolBefore = creationBefore[`${venue.chainCategory}_1_remaining`];
+        const picksBefore = creationBefore[`${venue.chainCategory}_1_picks`];
 
         await openTraitChange(page, cid, venue.chainCategory, venue.creationPickTrait);
         await expect(page.locator('#simpletrait-changing .remove')).toHaveCount(1);
@@ -831,10 +833,11 @@ test.describe('Task 9 - Trait Change Lifecycle In The UI', () => {
           creationAfter[`${venue.chainCategory}_1_remaining`],
           'the creation pool slot the trait was holding is handed back'
         ).toBe(poolBefore + 1);
+        // `readCreation` reports a picks array as its length, not its contents.
         expect(
-          creationAfter[`${venue.chainCategory}_1_picks`].map((p) => p.objectId || p.id),
-          'and the trait is no longer listed as one of the picks'
-        ).not.toContain(picked.id);
+          creationAfter[`${venue.chainCategory}_1_picks`],
+          'and the trait is no longer one of the recorded picks'
+        ).toBe(picksBefore - 1);
       });
 
       // ---------------------------------------------------------------
