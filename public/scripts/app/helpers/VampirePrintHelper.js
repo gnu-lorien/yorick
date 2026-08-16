@@ -2,7 +2,7 @@
 define([
     "jquery",
     "backbone",
-], function( $, Backbone, character_print_view_html) {
+], function( $, Backbone) {
 
     var Mixin = {
         format_simpletext: function(attrname) {
