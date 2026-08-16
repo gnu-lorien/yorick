@@ -988,13 +988,22 @@ test.describe('Task 5 - Approvals', () => {
     await memberPage.locator('#character-approval .approve-change').first().click();
     await memberPage.waitForTimeout(5000);
 
-    // Nothing happened: no eleventh approval, and the button did not flip to
-    // "No unapproved changes" the way a successful approval makes it.
+    // Nothing was persisted: no eleventh approval, and the button did not flip
+    // to "No unapproved changes" the way a successful approval makes it.
     const after = await A.readApprovalsFromView(memberPage);
     expect(after, 'no approval was persisted by the owner\'s click').toEqual(before);
     const afterEdit = await A.readEditRegion(memberPage);
-    expect(afterEdit.mode, 'the approve control is still offered, so the click achieved nothing').toBe('button');
+    expect(afterEdit.mode, 'the approve control is still offered, so nothing was approved').toBe('button');
     expect(afterEdit.upTo).toBe(edit.upTo);
+
+    // What remediation R3 added. `approve_change` used to call `a.save()` with
+    // no failure handler at all, so the server's refusal had nowhere to go: the
+    // button simply did nothing and said nothing, and only a direct probe could
+    // observe that the character was protected. The reason now reaches the
+    // player.
+    const banner = memberPage.locator('#global-error-region');
+    await expect(banner, 'the refusal is surfaced, not swallowed').toBeVisible();
+    expect(await banner.textContent()).toContain('Players cannot approve their own character changes');
 
     // Read-back through a fresh storyteller view, so this is not just the
     // owner's own stale DOM.
@@ -1002,9 +1011,8 @@ test.describe('Task 5 - Approvals', () => {
     expect(rows, 'still exactly ten approvals server-side').toHaveLength(10);
     expect(rows.map((r) => r.approverName), 'none of them by sampmem').not.toContain('sampmem');
 
-    // Why it was refused. `approve_change` calls `a.save()` with no failure
-    // handler, so the server's reason never reaches the screen; this is the only
-    // way to record it.
+    // And the server-side rule itself, probed directly, so the refusal is
+    // proven at both layers rather than only where it is rendered.
     const probe = await probeApprovalSave(memberPage, cid);
     expect(probe.ok, 'the server refuses an owner-created approval').toBe(false);
     expect(probe.message).toContain('Players cannot approve their own character changes');

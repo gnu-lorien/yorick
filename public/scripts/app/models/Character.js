@@ -601,6 +601,30 @@ define([
             return self.fetch_recorded_changes();
         },
 
+        /**
+         * `recorded_changes` is the approval and history *timeline*, not the
+         * whole audit log.
+         *
+         * Every row in it is replayed by `get_transformed`, which assumes a
+         * row describes either a trait (any category but "core") or a text
+         * attribute ("core"). R47b added `experience` rows for XP notations,
+         * and those are neither: replaying one manufactures a FauxSimpleTrait
+         * in a category no venue has, and the approval view - which
+         * reconstructs the character at every step - never finishes rendering.
+         *
+         * They belong in the log, which queries VampireChange directly, and
+         * not in a timeline of approvable states: "approve up to this XP
+         * award" is not a thing a storyteller can act on.
+         */
+        _recorded_changes_query: function () {
+            var self = this;
+            return new Parse.Query(VampireChange)
+                .equalTo("owner", self)
+                .notEqualTo("category", "experience")
+                .addAscending("createdAt")
+                .limit(1000);
+        },
+
         update_recorded_changes: function() {
             var self = this;
             if (0 == self.recorded_changes.models.length) {
@@ -609,8 +633,7 @@ define([
             self._recordedChangesFetch = self._recordedChangesFetch || Parse.Promise.as();
             self._recordedChangesFetch = self._recordedChangesFetch.always(function () {
                 var lastCreated = _.last(self.recorded_changes.models).createdAt;
-                var q = new Parse.Query(VampireChange);
-                q.equalTo("owner", self).addAscending("createdAt").limit(1000);
+                var q = self._recorded_changes_query();
                 q.greaterThan("createdAt", lastCreated);
                 self.recorded_changes.query = q;
                 return self.recorded_changes.fetch({add: true});
@@ -623,9 +646,7 @@ define([
             self._recordedChangesFetch = self._recordedChangesFetch || Parse.Promise.as();
             self._recordedChangesFetch = self._recordedChangesFetch.always(function () {
                 console.log("Resetting recorded changes");
-                var q = new Parse.Query(VampireChange);
-                q.equalTo("owner", self).addAscending("createdAt").limit(1000);
-                self.recorded_changes.query = q;
+                self.recorded_changes.query = self._recorded_changes_query();
 
                 return self.recorded_changes.fetch({reset: true});
             });
@@ -687,6 +708,12 @@ define([
             var description = [];
 
             _.each(changes, function(change) {
+                if (change.get("category") == "experience") {
+                    // Belt and braces with `_recorded_changes_query`: an XP
+                    // notation is not a trait and not a text attribute, so
+                    // there is nothing here to replay onto the character.
+                    return;
+                }
                 if (change.get("category") != "core") {
                     // Find current
                     var category = change.get("category");
