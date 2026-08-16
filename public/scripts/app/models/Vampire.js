@@ -74,6 +74,15 @@ define([
             }
             return Parse.Object.fetchAllIfNeeded([self.get("creation")]).then(function (creations) {
                 var creation = creations[0];
+                if (creation && creation.get("completed")) {
+                    // R22: these counters are creation-time bookkeeping and
+                    // nothing reads them once the wizard is finished, so
+                    // writing to them afterwards only produced meaningless
+                    // negatives - a post-creation Kith change drove
+                    // ctdbs_arts_1_remaining to -3, which then read as an
+                    // overspend that had never happened.
+                    return Parse.Promise.as(self);
+                }
                 var stepName = category + "_" + freeValue + "_remaining";
                 var listName = category + "_" + freeValue + "_picks";
                 creation.addUnique(listName, modified_trait);

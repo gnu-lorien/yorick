@@ -842,18 +842,39 @@ test.describe('Task 13 - Access Control In The UI', () => {
   // 389 - password reset (unsatisfiable in this deployment - see file header)
   // -------------------------------------------------------------------------
 
-  test.fail('389 Admin can trigger a password reset for a user and sees confirmation', async () => {
-    // DEFECT (environment configuration, not access control): index.js's
-    // ParseServer settings configure no `emailAdapter`. Measured live:
-    // Parse.User.requestPasswordReset always rejects with code 1, "An
+  test('389 Admin can trigger a password reset for a user and sees confirmation', async () => {
+    // FIXED by remediation R51.
+    //
+    // Was an environment-configuration defect rather than an access-control
+    // one: index.js configured no `emailAdapter`, so
+    // `Parse.User.requestPasswordReset` always rejected with code 1, "An
     // appName, publicServerURL, and emailAdapter are required for password
-    // reset and email verification functionality." The button itself is
-    // wired correctly - ResetButtonView.js calls the real API and renders
-    // whichever outcome comes back into `.message` - and access to it is
-    // correctly admin-gated (test 385 proves sampmem cannot even reach this
-    // page); it is the underlying feature that cannot produce item 389's
-    // literal "confirmation" against this server configuration. Driven for
-    // real, not skipped, so the actual message is captured and reported.
+    // reset and email verification functionality." The button itself was wired
+    // correctly - ResetButtonView.js calls the real API and renders whichever
+    // outcome comes back into `.message` - and access to it was correctly
+    // admin-gated (test 385 proves sampmem cannot even reach this page).
+    //
+    // The server now defaults to an adapter that *captures* outbound mail in
+    // memory and sends nothing, per the ruling that this suite must never send
+    // real email. So this drives the real button, asserts the real
+    // confirmation, and then proves the mail was genuinely produced - without a
+    // message leaving the process.
+    // A reset needs somewhere to send. sampmem is seeded with no email at all,
+    // so one is set here as sampmem - a user may write their own record, so
+    // this needs no master key and is what a real user does on their profile.
+    // `.invalid` is reserved by RFC 2606 and can never route anywhere, even if
+    // someone later points MAIL_ADAPTER_MODULE at a real provider.
+    const email = `sampmem+${Date.now().toString(36)}@example.invalid`;
+    await memberPage.evaluate(async (address) => {
+      const user = window.Parse.User.current();
+      user.set('email', address);
+      await user.save();
+    }, email);
+    state.sampmemEmail = email;
+
+    const before = await adminPage.evaluate(
+      () => window.Parse.Cloud.run('get_captured_emails').then((mail) => mail.length));
+
     await navigateToHash(adminPage, `administration/user/${state.sampmemId}`, '#administration-user-view');
 
     const button = adminPage.locator('#reset-password-view button');
@@ -865,8 +886,17 @@ test.describe('Task 13 - Access Control In The UI', () => {
 
     const text = await message.textContent();
     console.log('[e2e access-control] 389 password reset result:', JSON.stringify(text));
-
     expect(text, 'the admin sees a password-reset confirmation').toBe('Password Reset Email Sent');
+
+    // The confirmation is not the app talking to itself: a reset mail really
+    // was generated, addressed to the user whose reset was requested.
+    const captured = await adminPage.evaluate(
+      () => window.Parse.Cloud.run('get_captured_emails'));
+    expect(captured.length, 'exactly one message was produced').toBe(before + 1);
+    const mail = captured[captured.length - 1];
+    expect(mail.to, 'addressed to the target user').toBe(state.sampmemEmail);
+    expect(`${mail.subject} ${mail.text}`.toLowerCase(), 'and it is a password reset')
+      .toContain('password');
   });
 
   // -------------------------------------------------------------------------

@@ -902,6 +902,68 @@ Parse.Cloud.define("vote_for_referendum", function(request, response) {
     });
 });
 
+/** Resolve to `true` only for a master-key call or a member of an admin role. */
+var require_administrator = function (request) {
+    if (request.master) {
+        return Parse.Promise.as(true);
+    }
+    if (!request.user) {
+        return Parse.Promise.error("Unauthorized: Must be logged in.");
+    }
+    return new Parse.Query(Parse.Role)
+        .equalTo("users", request.user)
+        .find({useMasterKey: true})
+        .then(function (roles) {
+            var isAdmin = _.some(roles, function (r) {
+                return _.includes(["Administrator", "SiteAdministrator"], r.get("name"));
+            });
+            if (!isAdmin) {
+                return Parse.Promise.error("Unauthorized: Administrator access is required.");
+            }
+            return Parse.Promise.as(true);
+        });
+};
+
+// R51, second half. Parse never returns another user's `email` to a client -
+// it is private to that user - so `AdministrationUserView`'s reset button read
+// an empty address off its own copy of the record and failed with "you must
+// provide an email" even once an adapter was configured. An administrator does
+// not need to see the address to reset it, so the lookup happens here under the
+// master key and the address is never sent to the browser.
+Parse.Cloud.define("request_password_reset_for", function(request, response) {
+    var user_id = request.params.user_id;
+    require_administrator(request).then(function () {
+        if (!user_id) {
+            return Parse.Promise.error("No user was named.");
+        }
+        return new Parse.Query(Parse.User).get(user_id, {useMasterKey: true});
+    }).then(function (user) {
+        var email = user.get("email");
+        if (!email) {
+            return Parse.Promise.error("That user has no email address on file.");
+        }
+        return Parse.User.requestPasswordReset(email);
+    }).then(function () {
+        response.success(true);
+    }, function (error) {
+        response.error(_.isString(error) ? error : error.message);
+    });
+});
+
+// Only while the in-memory capture adapter is in use - see index.js and
+// cloud/MemoryEmailAdapter.js - and only for administrators even then, because
+// the captured bodies carry live password-reset links. With a real mail
+// provider configured this function does not exist at all.
+if (global.__yorickCapturedEmail) {
+    Parse.Cloud.define("get_captured_emails", function(request, response) {
+        require_administrator(request).then(function () {
+            response.success(global.__yorickCapturedEmail.captured());
+        }, function (error) {
+            response.error(_.isString(error) ? error : error.message);
+        });
+    });
+}
+
 Parse.Cloud.define("get_my_patronage_status", function(request, response) {
     if (_.isUndefined(request.user)) {
         console.log("Cannot request patronage status unless logged in");

@@ -1065,6 +1065,41 @@ test.describe('Task 8c - Changeling Creation In The UI', () => {
     expect(await sampleXp('229 all three Arts spent')).toEqual(BASELINE_XP);
   });
 
+  test('229b Picking a Kith with the Art pool spent is refused, not overspent (R22)', async () => {
+    // Test 229 leaves the wizard with all three Art picks spent and no Kith,
+    // which is exactly the state this is about.
+    //
+    // A Kith's affinity Arts are granted free, but they do consume the
+    // character's own Art picks - that is the rule, and tests 218/219 measure
+    // it. What was missing was any check that picks remain: the grant
+    // decremented regardless, driving `ctdbs_arts_1_remaining` to -2 and
+    // making `spendAllCreationPools` abort with "creation overspent a pool".
+    // Remediation R22 refuses the pick instead, and says why. Refusing rather
+    // than clamping is deliberate - clamping would silently drop a grant the
+    // character is entitled to.
+    const cid = state.wizardId;
+    const before = await readCreation(page, cid, 'Changeling');
+    expect(before.ctdbs_arts_1_remaining, 'test 229 spent the Art pool').toBe(0);
+    const artsBefore = (await readTraits(page, cid, 'ctdbs_arts', 'Changeling')).map((t) => t.name).sort();
+
+    await navigateToHash(page, `charactercreate/simpletext/ctdbs_kiths/ctdbs_kith/${cid}/pick`, '#simpletext-new');
+    await page.locator(`#simpletext-new a.simpletext[name="${WIZARD_KITH}"]`).first().click();
+
+    const banner = page.locator('#global-error-region');
+    await expect(banner, 'the refusal is told to the player').toBeVisible({ timeout: 15000 });
+    const text = await banner.textContent();
+    expect(text).toContain(WIZARD_KITH);
+    expect(text, 'and names what is in the way').toMatch(/Art pick/i);
+
+    // Nothing moved: no Kith, no Arts granted, the pool untouched and not negative.
+    expect((await readCharacterTexts(page, cid, 'Changeling')).ctdbs_kith, 'the Kith was not set').toBeNull();
+    expect((await readTraits(page, cid, 'ctdbs_arts', 'Changeling')).map((t) => t.name).sort())
+      .toEqual(artsBefore);
+    const after = await readCreation(page, cid, 'Changeling');
+    expect(after.ctdbs_arts_1_remaining, 'the pool is untouched, and never negative').toBe(0);
+    expect(await sampleXp('229b Kith refused for want of Art picks')).toEqual(BASELINE_XP);
+  });
+
   // -------------------------------------------------------------------------
   // 230-233 - merits and flaws (the point-sum pools)
   // -------------------------------------------------------------------------

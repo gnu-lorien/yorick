@@ -96,13 +96,19 @@ define([
             "click": function (e) {
                 e.preventDefault();
                 var self = this;
-                var email = self.model.get("email");
                 var button = self.$("button");
                 var message = self.$(".message");
                 $.mobile.loading("show");
                 self.undelegateEvents();
                 button.attr("disabled", true);
-                Parse.User.requestPasswordReset(email).then(function () {
+                // R51: this used to read `self.model.get("email")` and hand it
+                // to `Parse.User.requestPasswordReset`. Parse never returns
+                // another user's email to a client - it is private to that
+                // user - so the address was always empty here and the call
+                // failed with "you must provide an email". An administrator
+                // does not need to see the address to reset it: the cloud
+                // function looks it up under the master key.
+                Parse.Cloud.run("request_password_reset_for", {user_id: self.model.id}).then(function () {
                     message.text("Password Reset Email Sent");
                 }, function (error) {
                     message.text(_.escape(error.message));
