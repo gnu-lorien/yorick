@@ -103,15 +103,62 @@ var crop_and_thumb = function(req, res) {
     });
 };
 
+/**
+ * Refuse a write that has nobody attached to it.
+ *
+ * Characters, the rows hanging off them, and uploads all belong to somebody, so
+ * a request carrying neither a user nor the master key has no business writing
+ * one. This is not theoretical: these classes granted create to "*", and a bare
+ * REST POST carrying only the public application id - no session token, no user
+ * - was accepted. Measured on a live server, an anonymous request could write a
+ * SimpleTrait and an ExperienceNotation onto a named player's character, and
+ * that player then saw both on their own sheet.
+ *
+ * database_seed/_SCHEMA.json asks for requiresAuthentication on create as well,
+ * but that is only a second line of defence: seed_db.js imports the schema file
+ * solely when the database has no users at all, so an already-seeded deployment
+ * keeps whatever class-level permissions its live _SCHEMA collection was
+ * created with. This guard is what protects those, and it runs ahead of the
+ * class-level check either way.
+ *
+ * It also settles requests that were previously answered badly or not at all.
+ * Omitting owner used to hang beforeSave("SimpleTrait") indefinitely - it walks
+ * off the missing pointer and calls neither response.success nor
+ * response.error - and an anonymous portrait POST with no file crashed
+ * crop_and_thumb, returning HTTP 500 or resetting the connection. Guarding at
+ * the top of each hook settles the request before the body can wander.
+ *
+ * No legitimate write path is affected. The character models
+ * (public/scripts/app/models/) only ever run for a logged-in user, building
+ * each row's ACL out of the character's own owner, and every save cloud code
+ * makes on a character's behalf passes useMasterKey, which sets request.master.
+ *
+ * Answers the request itself when it refuses, so callers read as:
+ *
+ *     if (!require_a_user(request, response, "Traits")) { return; }
+ *
+ * @return {boolean} true when the request may go ahead
+ */
+var require_a_user = function(request, response, noun) {
+    if (!request.master && !request.user) {
+        response.error(noun + " can only be changed by a logged in user.");
+        return false;
+    }
+    return true;
+};
+
 Parse.Cloud.beforeSave("TroupePortrait", function(request, response) {
+    if (!require_a_user(request, response, "Troupe portraits")) { return; }
     crop_and_thumb(request, response);
 });
 
 Parse.Cloud.beforeSave("CharacterPortrait", function(request, response) {
+    if (!require_a_user(request, response, "Character portraits")) { return; }
     crop_and_thumb(request, response);
 });
 
 Parse.Cloud.beforeSave("ReferendumPortrait", function(request, response) {
+    if (!require_a_user(request, response, "Referendum portraits")) { return; }
     crop_and_thumb(request, response);
 });
 
@@ -147,49 +194,6 @@ var get_vampire_change_acl = function(vampire) {
         }
     }
     return acl;
-};
-
-/**
- * Refuse a write that has nobody attached to it.
- *
- * Characters and everything hanging off them always belong to somebody, so a
- * request carrying neither a user nor the master key has no business writing
- * one. This is not theoretical: these classes granted create to "*", and a bare
- * REST POST carrying only the public application id - no session token, no user
- * - was accepted. Measured on a live server, an anonymous request could write a
- * SimpleTrait and an ExperienceNotation onto a named player's character, and
- * that player then saw both on their own sheet.
- *
- * database_seed/_SCHEMA.json asks for requiresAuthentication on create as well,
- * but that is only a second line of defence: seed_db.js imports the schema file
- * solely when the database has no users at all, so an already-seeded deployment
- * keeps whatever class-level permissions its live _SCHEMA collection was
- * created with. This guard is what protects those, and it runs ahead of the
- * class-level check either way.
- *
- * It also settles a request that would otherwise never be answered. Omitting
- * owner used to hang beforeSave("SimpleTrait") indefinitely - it walks off the
- * missing pointer and calls neither response.success nor response.error -
- * which is reachable without authenticating. Guarding at the top of each hook
- * closes that off before the hook body can wander.
- *
- * No legitimate write path is affected. The character models
- * (public/scripts/app/models/) only ever run for a logged-in user, building
- * each row's ACL out of the character's own owner, and every save cloud code
- * makes on a character's behalf passes useMasterKey, which sets request.master.
- *
- * Answers the request itself when it refuses, so callers read as:
- *
- *     if (!require_a_user(request, response, "Traits")) { return; }
- *
- * @return {boolean} true when the request may go ahead
- */
-var require_a_user = function(request, response, noun) {
-    if (!request.master && !request.user) {
-        response.error(noun + " can only be changed by a logged in user.");
-        return false;
-    }
-    return true;
 };
 
 Parse.Cloud.beforeSave("Vampire", function(request, response) {

@@ -4,6 +4,42 @@ Follow-on to commit `8473dc2`, which closed the same hole for `Vampire`. That
 fix was scoped to one class because that is what was reported; this plan covers
 the rest of the classes that share its shape.
 
+---
+
+## Status: all five steps executed
+
+| Step | State | Commit |
+|---|---|---|
+| 1a — character child rows, bare user guard | done | `a90664e` |
+| 1b — cross-character ownership check | **not done** | open question 2 below |
+| 2 — `ReferendumBallot` | done | `26d07f2` |
+| 3 — `Description` | done | `26d07f2` |
+| 4 — dead classes | done | `26d07f2` |
+| 5 — audit expectations | done | this commit |
+
+The anonymous-create survey now reports **anonymously writable: none**, and
+`audit_db_permissions.js` passes with zero errors against a correctly seeded
+database.
+
+Two things changed relative to the plan as first written, both worth reading:
+
+- **Step 5 found what this plan's own survey missed.** The new
+  "any class with public create" check immediately flagged `CharacterPortrait`,
+  `TroupePortrait` and `VampireApproval` — none of which appear in the table
+  below, because the original survey skipped the portrait classes as needing a
+  file field. `CharacterPortrait` and `TroupePortrait` were genuinely
+  unprotected: an anonymous POST with no file did not get refused, it crashed
+  `crop_and_thumb`, returning HTTP 500 and an outright connection reset. That is
+  not protection, and anything supplying a valid file would have gone straight
+  through. Both are now guarded and permission-locked. `VampireApproval` was
+  already refused by its own hook; its permission was brought in line so the two
+  layers agree. This is the check doing exactly the job step 5 was written for.
+- **Step 2 cannot fix Task 3's finding 5, and slightly entrenches it.** See
+  step 2 below.
+
+Step 1b is the one substantive item left, and it is the difference between
+"no anonymous writes" (true now) and "no cross-character writes" (still false).
+
 Everything below was measured against a running server with its own in-memory
 database, not inferred from the schema. The probe scripts are described in
 [Appendix: how this was measured](#appendix-how-this-was-measured) so the

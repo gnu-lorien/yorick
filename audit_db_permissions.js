@@ -36,6 +36,60 @@ const SENSITIVE_RULE_COLLECTIONS = [
     'bnsmetv1_TechniqueRule'
 ];
 
+/**
+ * The create permission every remediated class is expected to carry.
+ *
+ * This exists because a class-level permission change in
+ * database_seed/_SCHEMA.json does not reach a database that already has users:
+ * seed_db.js imports the seed directory only on a cold database. So the schema
+ * file states the intent and this states the same intent for databases already
+ * in flight - `--fix` is what actually reconciles them.
+ *
+ * Only `create` is asserted. Read permissions are deliberately left open on
+ * most of these because per-row ACLs do the filtering, and `update`/`delete`
+ * are left alone for the same reason - notably on Description, where each row's
+ * ACL already restricts writes to Administrator and produces the "Object not
+ * found" that the access-control suite asserts. Tightening those to a role
+ * would change the refusal code for no security gain.
+ */
+const EXPECTED_CREATE_CLP = {
+    // Characters and everything hanging off them. Guarded in cloud code too;
+    // these are the second line of defence.
+    Vampire: { requiresAuthentication: true },
+    SimpleTrait: { requiresAuthentication: true },
+    ExperienceNotation: { requiresAuthentication: true },
+    LongText: { requiresAuthentication: true },
+    VampireCreation: { requiresAuthentication: true },
+    // Uploads. Guarded in cloud code too. Before that guard existed, an
+    // anonymous POST with no file crashed the thumbnail hook rather than being
+    // refused, which is why the create permission never looked like the problem.
+    CharacterPortrait: { requiresAuthentication: true },
+    TroupePortrait: { requiresAuthentication: true },
+    ReferendumPortrait: {},
+    // Already refused anonymous creates via its own beforeSave; the permission
+    // is brought in line so the two layers agree rather than relying on one.
+    VampireApproval: { requiresAuthentication: true },
+    // Global reference data, editable only through the admin bulk editor.
+    Description: { "role:Administrator": true },
+    // Written solely by the vote_for_referendum cloud function, with the master
+    // key, so no client may create one directly.
+    ReferendumBallot: {},
+    // Unreferenced anywhere in the app. Locked rather than dropped.
+    ChangeType: {},
+    InClanDisciplines: {}
+};
+
+/**
+ * Classes whose public create permission is legitimate.
+ *
+ * `_User` create is signup, and `_Session` is managed by Parse itself. Anything
+ * else with `create: {"*": true}` is a finding by default - which is the point,
+ * because a class added without an explicit class_permissions entry inherits
+ * Parse's fully public default silently. LongText and ReferendumBallot were
+ * invisible to this auditor for years for exactly that reason.
+ */
+const PUBLIC_CREATE_ALLOWED = ['_User', '_Session'];
+
 async function auditDatabase(mongoUri, fixMode) {
     console.log('='.repeat(70));
     console.log(' YORICK DATABASE PERMISSION & SECURITY AUDITOR');
@@ -102,6 +156,59 @@ async function auditDatabase(mongoUri, fixMode) {
             }
         }
 
+        // Check the remediated create permissions, per class.
+        for (const colName of Object.keys(EXPECTED_CREATE_CLP)) {
+            const schemaDoc = schemaMap[colName];
+            if (!schemaDoc) {
+                report('WARN', 'Schema', `Collection '${colName}' not found in _SCHEMA.`);
+                continue;
+            }
+
+            const clp = (schemaDoc._metadata && schemaDoc._metadata.class_permissions) || {};
+            const expected = EXPECTED_CREATE_CLP[colName];
+            const actual = clp.create || {};
+
+            if (JSON.stringify(actual) === JSON.stringify(expected)) {
+                report('PASS', 'CLP Security', `Collection '${colName}' create permission matches the expected ${JSON.stringify(expected)}.`);
+                continue;
+            }
+
+            report('FAIL', 'CLP Security',
+                `Collection '${colName}' create permission is ${JSON.stringify(actual)}, expected ${JSON.stringify(expected)}. ` +
+                `A seeded database keeps the permissions it was created with, so this drifts from _SCHEMA.json until repaired.`);
+            if (fixMode) {
+                await schemaCollection.updateOne(
+                    { _id: colName },
+                    { $set: { '_metadata.class_permissions.create': expected } }
+                );
+                console.log(`        -> [FIXED] Set create permission for '${colName}' in _SCHEMA.`);
+            }
+        }
+
+        // Catch the root cause rather than the instances: any class at all that
+        // can be created by an anonymous request. A class added without an
+        // explicit class_permissions entry inherits Parse's fully public
+        // default, so this is what stops the next one going unnoticed.
+        for (const schemaDoc of schemas) {
+            const colName = schemaDoc._id;
+            if (PUBLIC_CREATE_ALLOWED.indexOf(colName) !== -1) continue;
+            if (Object.prototype.hasOwnProperty.call(EXPECTED_CREATE_CLP, colName)) continue;
+
+            const clp = (schemaDoc._metadata && schemaDoc._metadata.class_permissions) || {};
+            // No class_permissions entry at all is the same thing as fully
+            // public, and is easier to miss.
+            const missing = !schemaDoc._metadata || !schemaDoc._metadata.class_permissions;
+            const publicCreate = clp.create && clp.create['*'] === true;
+
+            if (missing) {
+                report('FAIL', 'CLP Security',
+                    `Collection '${colName}' has no class_permissions at all, so it inherits Parse's fully public default - anyone can create rows in it.`);
+            } else if (publicCreate) {
+                report('FAIL', 'CLP Security',
+                    `Collection '${colName}' allows create by anyone ("*").`);
+            }
+        }
+
         // Check VampireApproval CLP & Trigger Architecture
         const approvalSchema = schemaMap['VampireApproval'];
         if (approvalSchema) {
@@ -162,10 +269,17 @@ async function auditDatabase(mongoUri, fixMode) {
         // 3. Record-Level ACL Audits
         // ====================================================================
         console.log('\n--- 3. Record-Level ACL Invariants Audits ---');
+        // LongText, VampireCreation and ReferendumBallot were missing here.
+        // That mattered: an anonymously created row carries no ACL at all, which
+        // Parse stores as public read/write, so this check is what finds the
+        // wreckage a create hole leaves behind even after the hole is closed.
         const collectionsToCheck = [
             { name: 'Vampire', checkOwner: true },
             { name: 'SimpleTrait', checkOwner: true },
             { name: 'ExperienceNotation', checkOwner: true },
+            { name: 'LongText', checkOwner: true },
+            { name: 'VampireCreation', checkOwner: true },
+            { name: 'ReferendumBallot', checkOwner: false },
             { name: 'VampireChange', checkOwner: false }
         ];
 
