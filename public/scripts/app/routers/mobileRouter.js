@@ -46,7 +46,8 @@ define([
     "../models/Werewolf",
     "../views/CharactersSelectToPrintView",
     "../views/CharacterLongTextView",
-    "../models/ChangelingBetaSlice"
+    "../models/ChangelingBetaSlice",
+    "../helpers/ReportError"
 ], function (require,
     $,
     Parse,
@@ -89,7 +90,8 @@ define([
     Werewolf,
     CharactersSelectToPrintView,
     CharacterLongTextView,
-    ChangelingBetaSlice
+    ChangelingBetaSlice,
+    ReportError
 ) {
 
     // Extends Backbone.Router
@@ -333,9 +335,12 @@ define([
                     self.administrationPatronageView.render();
                     $("#administration-patronage-view").find("div[role='main']").append(self.administrationPatronageView.el);
                     $.mobile.changePage("#administration-patronage-view", { reverse: false, changeHash: false });
-                }).fail(PromiseFailReport).fail(function () {
+                }).always(function () {
+                    // The loader must come down whichever way the route
+                    // ends. Hiding it only on the failure path leaves a
+                    // stuck spinner that swallows the next click.
                     $.mobile.loading("hide");
-                });
+                }).fail(PromiseFailReport);
             });
         },
 
@@ -355,15 +360,21 @@ define([
             });
         },
 
+        // Both of these used to have no failure handler at all, so a denied
+        // fetch left `ui-loading` spinning forever with no way out.
+        // `show_character_helper` below is the shape to copy: hide the
+        // loader, report, and send the user back where they came from.
         characterlog: function (cid, start, changeBy) {
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
             self.get_character(cid, "all").done(function (character) {
                 self.characterLogView.register(character, start, changeBy);
-                var activePage = $(".ui-page-active").attr("id");
-                var r = $.mobile.changePage("#character-log", { reverse: false, changeHash: false });
+                $.mobile.changePage("#character-log", { reverse: false, changeHash: false });
+            }).always(function () {
                 $.mobile.loading("hide");
+            }).fail(ReportError.on("Couldn't open the character log")).fail(function () {
+                window.location.hash = "#characters?all";
             });
         },
 
@@ -373,9 +384,11 @@ define([
             self.set_back_button("#character?" + cid);
             self.get_character(cid, "all").done(function (character) {
                 self.characterExperienceView.register(character, start, changeBy);
-                var activePage = $(".ui-page-active").attr("id");
-                var r = $.mobile.changePage("#experience-notations-all", { reverse: false, changeHash: false });
+                $.mobile.changePage("#experience-notations-all", { reverse: false, changeHash: false });
+            }).always(function () {
                 $.mobile.loading("hide");
+            }).fail(ReportError.on("Couldn't open the experience history")).fail(function () {
+                window.location.hash = "#characters?all";
             });
         },
 
@@ -813,9 +826,12 @@ define([
                             }).render();
                         $.mobile.changePage("#administration-patronages-view", { reverse: false, changeHash: false });
                     }
-                }).fail(PromiseFailReport).fail(function () {
+                }).always(function () {
+                    // The loader must come down whichever way the route
+                    // ends. Hiding it only on the failure path leaves a
+                    // stuck spinner that swallows the next click.
                     $.mobile.loading("hide");
-                });
+                }).fail(PromiseFailReport);
             });
         },
 
@@ -835,9 +851,12 @@ define([
                             new PatronagesCSVView({ el: "#administration-patronages-view-csv-list", collection: patronages }).render();
                         $.mobile.changePage("#administration-patronages-view-csv", { reverse: false, changeHash: false });
                     }
-                }).fail(PromiseFailReport).fail(function () {
+                }).always(function () {
+                    // The loader must come down whichever way the route
+                    // ends. Hiding it only on the failure path leaves a
+                    // stuck spinner that swallows the next click.
                     $.mobile.loading("hide");
-                });
+                }).fail(PromiseFailReport);
             });
         },
 
@@ -859,9 +878,12 @@ define([
                     self.administrationPatronageView.render();
                     $("#administration-patronage-view").find("div[role='main']").append(self.administrationPatronageView.el);
                     $.mobile.changePage("#administration-patronage-view", { reverse: false, changeHash: false });
-                }).fail(PromiseFailReport).fail(function () {
+                }).always(function () {
+                    // The loader must come down whichever way the route
+                    // ends. Hiding it only on the failure path leaves a
+                    // stuck spinner that swallows the next click.
                     $.mobile.loading("hide");
-                });
+                }).fail(PromiseFailReport);
             });
         },
 
@@ -883,9 +905,12 @@ define([
                     self.administrationPatronageView.render();
                     $("#administration-patronage-view").find("div[role='main']").append(self.administrationPatronageView.el);
                     $.mobile.changePage("#administration-patronage-view", { reverse: false, changeHash: false });
-                }).fail(PromiseFailReport).fail(function () {
+                }).always(function () {
+                    // The loader must come down whichever way the route
+                    // ends. Hiding it only on the failure path leaves a
+                    // stuck spinner that swallows the next click.
                     $.mobile.loading("hide");
-                });
+                }).fail(PromiseFailReport);
             });
         },
 
@@ -1208,9 +1233,12 @@ define([
                 }).then(function (characters) {
                     self.characters.register("#character?<%= character_id %>");
                     $.mobile.changePage("#characters-all", { reverse: false, changeHash: false });
-                }).fail(PromiseFailReport).fail(function () {
+                }).always(function () {
+                    // The loader must come down whichever way the route
+                    // ends. Hiding it only on the failure path leaves a
+                    // stuck spinner that swallows the next click.
                     $.mobile.loading("hide");
-                });
+                }).fail(PromiseFailReport);
             }
         },
 

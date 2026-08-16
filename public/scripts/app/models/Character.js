@@ -19,14 +19,70 @@ define([
     "../models/FauxSimpleTrait",
     "../collections/Approvals",
     "../models/Approval",
-    "../models/LongText"
-], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSMETV1_VampireCosts, PromiseFailReport, ExpirationMixin, UserChannel, FauxSimpleTrait, Approvals, Approval, LongText ) {
+    "../models/LongText",
+    "../helpers/ReportError"
+], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSMETV1_VampireCosts, PromiseFailReport, ExpirationMixin, UserChannel, FauxSimpleTrait, Approvals, Approval, LongText, ReportError ) {
 
     // The Model constructor
     var instance_methods = _.extend({
+        /**
+         * Hand a creation pool slot back if this trait is holding one.
+         *
+         * `unpick_from_creation` does this for the wizard's own unpick link,
+         * which knows the slot index it is releasing. Nothing did it for a
+         * plain removal, so removing a creation-picked trait destroyed the
+         * trait, refunded its cost, and left `<category>_<i>_remaining`
+         * permanently one short - and once creation is complete there is no
+         * route back to reclaim the slot.
+         *
+         * The slot is found by searching the pick lists for the trait rather
+         * than trusting its `free_value`, because the trait's free value can
+         * be edited after it was picked.
+         */
+        release_creation_pick_for_trait: function (trait) {
+            var self = this;
+            if (!self.has("creation")) {
+                return Parse.Promise.as(self);
+            }
+            return self.fetch_all_creation_elements().then(function () {
+                var creation = self.get("creation");
+                if (!creation) {
+                    return Parse.Promise.as(self);
+                }
+                var category = trait.get("category");
+                var released = false;
+                _.each(_.range(-1, 10), function (i) {
+                    var picks_name = category + "_" + i + "_picks";
+                    var remaining_name = category + "_" + i + "_remaining";
+                    var holds = _.some(creation.get(picks_name), function (pick) {
+                        return pick && (pick === trait || (trait.id && pick.id === trait.id));
+                    });
+                    if (!holds) {
+                        return;
+                    }
+                    creation.remove(picks_name, trait);
+                    if (_.contains(self.get_sum_creation_categories(), category)) {
+                        var sum = _.sum(creation.get(picks_name), "attributes.value");
+                        creation.set(remaining_name, 7 - sum);
+                    } else {
+                        creation.increment(remaining_name, 1);
+                    }
+                    released = true;
+                });
+                if (!released) {
+                    return Parse.Promise.as(self);
+                }
+                return creation.save().then(function () {
+                    return Parse.Promise.as(self);
+                });
+            });
+        },
+
         remove_trait: function (trait) {
             var self = this;
-            return trait.destroy().then(function () {
+            return self.release_creation_pick_for_trait(trait).then(function () {
+                return trait.destroy();
+            }).then(function () {
                 var en_options = {
                     alteration_spent: (trait.get("cost") || 0) * -1,
                     reason: "Removed " + trait.get("name"),
@@ -154,8 +210,19 @@ define([
                     }
                     var cost = self.calculate_trait_cost(modified_trait);
                     var spend = self.calculate_trait_to_spend(modified_trait);
-                    if (!_.isFinite(spend)) {
-                        spend = 0;
+                    if (!_.isFinite(cost) || !_.isFinite(spend)) {
+                        // A category with no branch in the venue's cost engine
+                        // used to land here and be quietly zeroed, which made
+                        // the whole category free - that is how `wta_rites`
+                        // and `ctdbs_backgrounds` went unnoticed. Each engine
+                        // now returns 0 for categories that are *meant* to be
+                        // free and `undefined` only when no rule exists, so
+                        // reaching this point is a real gap and is refused out
+                        // loud rather than granted for nothing.
+                        var message = "No experience cost rule for category \"" + category + "\"";
+                        console.log("update_trait refusing " + modified_trait.get("name") + ": " + message);
+                        ReportError(message, "Couldn't update " + modified_trait.get("name"));
+                        return Parse.Promise.error({code: 3, message: message});
                     }
                     modified_trait.set("cost", cost);
                     self.increment("change_count");
@@ -390,12 +457,26 @@ define([
         on_update_experience_notation: function(en, changes, options) {
             var self = this;
             var propagate = false, changed = false;
-            var altered_ens, changed_index;
+            var altered_ens, changed_index, previous_index;
             var return_promise = Parse.Promise.as([]);
             options = options || {};
             var c = changes.changes;
             if (c.entered) {
                 changed = true;
+                // Capture the row's position *before* the re-sort.
+                //
+                // The list is newest-first and each row's running total is the
+                // sum of itself and every older row.
+                // `_propagate_experience_notation_change` recomputes
+                // `[0..index]` seeded from `index + 1`, which is only enough
+                // when a notation moves *down* (older): the rows it passed then
+                // sit inside that window. Moving *up* (newer) leaves the rows it
+                // passed below the new index - outside the window - still
+                // counting it, and the moved row is then recomputed on top of
+                // one of them, so its earned and spent land in the totals twice.
+                // Widening the window to the further of the two positions covers
+                // every row between them in both directions.
+                previous_index = self.experience_notations.indexOf(en);
                 self.experience_notations.sort();
             }
             if (c.alteration_earned || c.alteration_spent) {
@@ -405,6 +486,9 @@ define([
                 return Parse.Promise.as([]);
             }
             changed_index = self.experience_notations.indexOf(en);
+            if (!_.isUndefined(previous_index) && previous_index > changed_index) {
+                changed_index = previous_index;
+            }
             return self._finalize_triggered_experience_notation_changes(changed_index, self.experience_notations);
         },
 

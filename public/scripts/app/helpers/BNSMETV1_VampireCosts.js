@@ -5,6 +5,30 @@ define([
     "../collections/BNSMETV1_ClanRules"
 ], function( _, Parse, FallbackClanRules ) {
 
+    // See BNSWTAV1_WerewolfCosts for why this list exists: categories that
+    // genuinely cost nothing, so that an *unlisted* category can be treated
+    // as a missing rule rather than as free.
+    var FREE_CATEGORIES = [
+        "focus_physicals",
+        "focus_mentals",
+        "focus_socials",
+        "health_levels",
+        "willpower_sources",
+        "lore_specializations",
+        "academics_specializations",
+        "drive_specializations",
+        "linguistics_specializations",
+        "extra_in_clan_disciplines",
+        "haven_specializations",
+        "contacts_specializations",
+        "allies_specializations",
+        "sabbat_rituals",
+        "vampiric_texts",
+        "influence_elite_specializations",
+        "influence_underworld_specializations",
+        "status_traits"
+    ];
+
     var VampireCosts = Parse.Object.extend("VampireCosts", {
         initialize: function() {
             var self = this;
@@ -174,6 +198,16 @@ define([
                 }
                 return mod_value * ic_luminary_cost;
             }
+
+            if (_.contains(FREE_CATEGORIES, category)) {
+                return 0;
+            }
+
+            // Deliberately `undefined`, not 0: there is no rule for this
+            // category, which is a different thing from a rule that says
+            // "free". `Character.update_trait` turns this into a visible
+            // refusal rather than a silent giveaway.
+            return undefined;
         }
     });
 

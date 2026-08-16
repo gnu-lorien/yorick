@@ -9,11 +9,77 @@ define([
     "backform",
     "text!../templates/character-summarize-list-item-csv.html",
     "text!../templates/character-summarize-list-item-csv-header-grouped.html",
-    "../helpers/PromiseFailReport",
+    "../helpers/ReportError",
     "papaparse"
-], function (_, $, Backbone, Parse, character_summarize_list_item_html, Marionette, Backform, character_summarize_list_item_csv_html, character_summarize_list_item_csv_header_grouped_html, PromiseFailReport, Papa) {
+], function (_, $, Backbone, Parse, character_summarize_list_item_html, Marionette, Backform, character_summarize_list_item_csv_html, character_summarize_list_item_csv_header_grouped_html, ReportError, Papa) {
 
     var ruleName = "";
+
+    // Column name -> "number" | "boolean" | "string", learned from rows that
+    // already exist in the class being edited.
+    //
+    // Everything arrives from the CSV textarea as a string. Sending a string
+    // to a Number column is a 400 ("expected Number but got String"), which
+    // is why only the literal column "order" was ever editable numerically.
+    // Parse Server's schema endpoint needs the master key, so it is not
+    // reachable from the browser; sampling live rows is. Columns no sampled
+    // row has a value for stay strings, exactly as before.
+    var fieldTypes = {};
+
+    var type_of = function (v) {
+        if (_.isNumber(v)) {
+            return "number";
+        }
+        if (_.isBoolean(v)) {
+            return "boolean";
+        }
+        if (_.isString(v)) {
+            return "string";
+        }
+        return undefined;
+    };
+
+    var learn_field_types = function () {
+        return new Parse.Query(ruleName).limit(200).find().then(function (rows) {
+            _.each(rows, function (row) {
+                _.each(row.attributes, function (value, key) {
+                    if (_.has(fieldTypes, key)) {
+                        return;
+                    }
+                    var t = type_of(value);
+                    if (t) {
+                        fieldTypes[key] = t;
+                    }
+                });
+            });
+            return Parse.Promise.as(fieldTypes);
+        });
+    };
+
+    // Returns `undefined` for a value that should not be written at all.
+    var coerce_field = function (key, value, existing) {
+        if (_.isUndefined(value) || _.isNull(value) || "" === value) {
+            return undefined;
+        }
+
+        var type = fieldTypes[key];
+        // What the row itself already holds beats the sample.
+        var current = existing ? existing.get(key) : undefined;
+        type = type_of(current) || type;
+        if ("order" == key) {
+            type = "number";
+        }
+
+        if ("number" == type) {
+            var n = Number(value);
+            return _.isFinite(n) ? n : undefined;
+        }
+        if ("boolean" == type) {
+            var s = String(value).toLowerCase();
+            return "true" == s || "1" == s || "yes" == s;
+        }
+        return value;
+    };
 
     var DataForm = Backform.Form.extend({
         fields: [
@@ -34,7 +100,11 @@ define([
                 var results = Papa.parse(self.model.get("descriptiondata"), { header: true });
                 console.log(results);
                 if (0 != results.errors.length) {
-                    console.log(JSON.stringify(results.errors));
+                    ReportError(
+                        _.map(results.errors, function (err) {
+                            return err.message + (_.isUndefined(err.row) ? "" : " (row " + err.row + ")");
+                        }),
+                        "Couldn't read the edited rules");
                     return;
                 }
 
@@ -48,7 +118,13 @@ define([
                         // If found, use that as the update object
                         // Otherwise create a new update object
                         if (!toupdate) {
-                            toupdate = new Parse.Object(self.ruleName, {
+                            // `ruleName` is module-scoped, not a property of
+                            // the view - the lookup query above uses it
+                            // correctly. `self.ruleName` was `undefined`, so
+                            // Parse fell through to its `(attributes,
+                            // options)` signature and every new rule 404'd on
+                            // save.
+                            toupdate = new Parse.Object(ruleName, {
                                 name: d.name,
                                 category: d.category
                             });
@@ -77,29 +153,32 @@ define([
                         })
 
                         _.each(final, function (value, key) {
-                            if (key == "order") {
-                                toupdate.set(key, _.parseInt(value));
-                            } else {
-                                toupdate.set(key, value);
+                            var coerced = coerce_field(key, value, toupdate);
+                            if (!_.isUndefined(coerced)) {
+                                toupdate.set(key, coerced);
                             }
                         })
                         console.log(toupdate.attributes);
                         disguy = " " + toupdate.id + " " + toupdate.attributes.name;
                         return toupdate.save();
                     }).fail(function (e) {
+                        // Keep logging the raw error object - it carries the
+                        // Parse error code, which a wrapped Error would lose -
+                        // and keep the chain *rejected* so the single
+                        // reporting handler below actually runs. Swallowing it
+                        // here is what made a 404ing save look like a
+                        // successful one.
                         console.log(e);
-                        console.log("Error on saving disguy?" + disguy);
+                        console.log("Error saving rule row" + (disguy || (" " + d.category + " " + d.name)));
+                        return Parse.Promise.error(e);
                     })
                     // Return the promise so we can wait on them all
                 });
 
                 Parse.Promise.when(promises).then(function () {
-                    console.log(JSON.stringify(arguments));
                     console.log("Saved all of that");
-                    //return Parse.Object.saveAll(arguments);
-                }).then(function () {
-                    console.log("Saved all of that");
-                }).fail(PromiseFailReport);
+                    ReportError.clear();
+                }).fail(ReportError.on("Couldn't save the rule changes"));
                 // Wait on all of the promises and report back
             }
         }
@@ -155,7 +234,7 @@ define([
                     fields: all_fields,
                     data: descriptions
                 }));
-            }).fail(PromiseFailReport);
+            }).fail(ReportError.on("Couldn't load the rules for that category"));
 
             this.$el.enhanceWithin();
         },
@@ -200,6 +279,10 @@ define([
             return self;
         },
         update_rule_name: function (inRuleName) {
+            if (inRuleName !== ruleName) {
+                // One view instance is reused across all five rule editors.
+                fieldTypes = {};
+            }
             ruleName = inRuleName;
         },
         update_categories: function () {
@@ -207,8 +290,10 @@ define([
             var q = new Parse.Query(ruleName);
             q.select("category");
             var categories = {};
-            return q.each(function (d) {
-                categories[d.get("category")] = 1;
+            return learn_field_types().then(function () {
+                return q.each(function (d) {
+                    categories[d.get("category")] = 1;
+                });
             }).then(function () {
                 console.log(categories);
                 var form = self.sections.currentView;

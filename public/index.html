@@ -465,9 +465,16 @@
     <script id="simpleTraitChangeView" type="text/template">
     <p><%= c.get("name") %> <%= b.get("name") %> <%= b.get("value") %></p>
     <% var cost = character.calculate_trait_to_spend(trait); %>
-    <p>Cost: <%= cost %></p>
+    <% var cost_known = _.isFinite(cost); %>
+    <%
+       /* A category with no cost branch used to render a literal "Cost: NaN"
+          and "Final: NaN" to the player. Whatever the cost engine cannot
+          work out, say so in words - never show arithmetic on a
+          non-number. */
+    %>
+    <p>Cost: <%= cost_known ? cost : "unknown - no cost rule for this category" %></p>
     <p>Available XP: <%= character.experience_available() %></p>
-    <p>Final: <%= character.experience_available() - cost %></p>
+    <p>Final: <%= cost_known ? character.experience_available() - cost : "unknown" %></p>
 </script>
 
     <script id="simpleTraitChangeChange" type="text/template">

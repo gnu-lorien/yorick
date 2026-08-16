@@ -151,8 +151,11 @@ define([
         },
 
         format_entry: function(log, entry) {
-            if (log.get(entry)) {
-                return log.get(entry);
+            // See CharacterApprovalView.format_entry: a recorded 0 must not
+            // render as an empty cell.
+            if (log.has(entry)) {
+                var v = log.get(entry);
+                return _.isDate(v) ? moment(v).format('lll') : v;
             }
             var attr = log[entry];
             if (_.isDate(attr)) {

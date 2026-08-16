@@ -400,6 +400,8 @@ const XP_FRESH_ART_COST = 6;
 /** A seeded `ctdbs_backgrounds` Description, substituted for the plan's unseeded "Freehold" (finding 12). */
 const XP_BACKGROUND_NAME = 'Seeming';
 const XP_BACKGROUND_VALUE = 3;
+/** Cumulative on `get_cost_table(2)` == [2, 4, 6, ...]: 2 + 4 + 6. See R15. */
+const XP_BACKGROUND_COST = 12;
 /** `bptLookup[3]` in templates/print/glamour.html - the Glamour box total test 239 expects. */
 const XP_GLAMOUR_BOXES = 12;
 
@@ -1298,44 +1300,51 @@ test.describe('Task 8c - Changeling Creation In The UI', () => {
     expect(traits[0]).toMatchObject({ name: XP_FRESH_ART_NAME, value: 1, free_value: 0, cost: XP_FRESH_ART_COST });
   });
 
-  test.fail('236 Post-creation background purchase (ctdbs_backgrounds at 3) renders, but does not deduct XP', async () => {
+  test('236 Post-creation background purchase (ctdbs_backgrounds at 3) renders and deducts XP', async () => {
     // The plan names "Freehold" - not a seeded ctdbs_backgrounds Description
     // under any spelling (file-level finding 12). "Seeming" is substituted:
     // real, seeded, and its value is what test 239's Glamour check reads.
     //
-    // DEFECT (file-level finding 4, confirmed live): `calculate_trait_cost`'s
-    // only background-shaped branch checks the literal string "backgrounds",
-    // which never matches this venue's real category, "ctdbs_backgrounds".
-    // Execution falls through to the function's final `return 0;`. The
-    // background is genuinely bought and genuinely renders - only "deducts
-    // XP" is false.
+    // FIXED by remediation R15 (with R16).
+    //
+    // Was: `calculate_trait_cost`'s only background-shaped branch checked the
+    // literal string "backgrounds", which never matches this venue's real
+    // category, "ctdbs_backgrounds", so execution fell through to the
+    // function's final `return 0;` and the purchase was free. The background
+    // was genuinely bought and genuinely rendered - only "deducts XP" was
+    // false.
+    //
+    // Now: the branch matches both spellings and charges the same cumulative
+    // 2-per-level table the other two venues use for Backgrounds. R16
+    // additionally replaced that `return 0` fallthrough with an explicit list
+    // of genuinely-free categories, so the next category anyone forgets to
+    // price refuses out loud instead of being silently free.
     const cid = state.xpCharacter.id;
     const before = await readSheetXp(page, cid);
 
     await openNewTraitChange(page, cid, 'ctdbs_backgrounds', XP_BACKGROUND_NAME);
     await setTraitChangeSliders(page, { value: XP_BACKGROUND_VALUE });
     const quote = await readTraitChangeView(page);
-    // The player is shown this literally, before saving anything: a clean,
-    // finite, wrong "Cost: 0" - not the "Cost: NaN" Werewolf's wta_rites gap
-    // produces, because this branch's fallthrough is an explicit `return 0`,
-    // not a missing case.
-    expect(quote.cost).toBe(0);
+    // Cumulative on get_cost_table(2) == [2, 4, 6, ...]: 2 + 4 + 6 = 12.
+    expect(quote.cost).toBe(XP_BACKGROUND_COST);
+    expect(quote.final).toBe(before.available - XP_BACKGROUND_COST);
 
     await saveTraitChange(page, cid, 'ctdbs_backgrounds');
 
-    // These pass: the background is bought and genuinely renders, both in the
-    // trait list and on the category listing page the sheet's "Backgrounds"
-    // link leads to.
+    // The background is bought and genuinely renders, both in the trait list
+    // and on the category listing page the sheet's "Backgrounds" link leads to.
     const traits = await readTraits(page, cid, 'ctdbs_backgrounds', 'Changeling');
     expect(traits.map((t) => t.name)).toContain(XP_BACKGROUND_NAME);
+    expect(traits.find((t) => t.name === XP_BACKGROUND_NAME))
+      .toMatchObject({ value: XP_BACKGROUND_VALUE, free_value: 0, cost: XP_BACKGROUND_COST });
     await navigateToHash(page, `simpletraits/ctdbs_backgrounds/${cid}/all`, '#simpletraitcategory-all');
     expect(normalize(await page.locator('#simpletraitcategory-all').textContent())).toContain(`${XP_BACKGROUND_NAME} x${XP_BACKGROUND_VALUE}`);
 
-    // This is the defect: XP never moves, even though the seeded cost table
-    // (`get_cost_table(2)`, cumulative) would charge a real amount if the
-    // category name matched.
+    // And the XP really moves.
     const after = await readSheetXp(page, cid);
-    expect(after.spent, 'Spent XP after buying a background').not.toBe(before.spent);
+    expect(after.spent - before.spent, 'Spent XP after buying a background').toBe(XP_BACKGROUND_COST);
+    expect(after.available - before.available).toBe(-XP_BACKGROUND_COST);
+    expect(after.earned).toBe(before.earned);
   });
 
   test('237 ctdbs_holdings_specializations is now seeded and offers real options', async () => {

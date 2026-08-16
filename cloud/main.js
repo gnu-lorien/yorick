@@ -268,12 +268,21 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
         if (!isMeaningfulChange(vc)) {
             console.log("Update does not actually encode a change for trait " + (modified_trait.id ? modified_trait.get("name") : modified_trait.id));
             response.success();
+            // `return` ends this callback only, not the chain - the
+            // remaining `.then()`s still run. Hand them `undefined` and let
+            // them short-circuit explicitly, rather than letting
+            // `vampire.id` throw into the error handler and call
+            // `response.error()` after we have already succeeded.
             return;
         }
 
         console.log("beforeSave SimpleTrait Sending query for the vampire " + vc.get("owner").id + " because " + (modified_trait.id ? modified_trait.get("name") : modified_trait.id));
         return new Parse.Query("Vampire").get(vc.get("owner").id, {useMasterKey: true});
     }).then(function(vampire) {
+        if (_.isUndefined(vampire)) {
+            // Already responded above; nothing left to record.
+            return;
+        }
         console.log("beforeSave SimpleTrait Getting acl vampire " + vampire.id);
         var acl = get_vampire_change_acl(vampire);
         vc.setACL(acl);
@@ -281,6 +290,9 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
         console.log("beforeSave SimpleTrait Sending save acl vampire " + vampire.id);
         return vc.save({}, {useMasterKey: true});
     }).then(function (vc) {
+        if (_.isUndefined(vc)) {
+            return;
+        }
         request.object.set("definition_change", vc);
         response.success();
         if (!request.object.id) {
@@ -696,44 +708,52 @@ Parse.Cloud.define("vote_for_referendum", function(request, response) {
     })
     */
     
-    var referendum, patronage, ballot;
-    new Parse.Query("Referendum").get(referendum_id).fail(function (error) {
-        response.error("Couldn't find referendum " + referendum_id + " because of " + JSON.stringify(error));
-    }).then(function (found) {
+    // Every refusal below returns a *rejected* promise so that it actually
+    // terminates the chain.
+    //
+    // The previous shape was a run of `.then(...).fail(...)` pairs in which a
+    // refusal did `response.error(msg); return;`. That ends only its own
+    // callback: the next `.then()` still ran, received `undefined`, read that
+    // as "no existing ballot", and saved one - with `casterpatronagestatus`
+    // hardcoded `true`. A non-patron was told their vote was refused and had
+    // it recorded anyway, as though they were a patron. The interleaved
+    // `.fail()` handlers made it worse: each returned a plain value, which
+    // resolves a Parse.Promise, so a genuine error was converted back into a
+    // success part-way down the chain.
+    var referendum, patronage, ballot, caster_is_patron = false;
+
+    new Parse.Query("Referendum").get(referendum_id).then(function (found) {
         referendum = found;
         var q = new Parse.Query("Patronage")
             .equalTo("owner", request.user)
             .descending("expiresOn");
         return q.first({useMasterKey: true});
-    }).fail(function (error) {
-        response.error("Error finding patronage " + JSON.stringify(error));
+    }, function (error) {
+        return Parse.Promise.error("Couldn't find referendum " + referendum_id + " because of " + JSON.stringify(error));
     }).then(function (found) {
-        if (_.isUndefined(found)) {
-            response.error("No patronage found");
-            return;
+        if (_.isUndefined(found) || !found) {
+            return Parse.Promise.error("No patronage found");
         }
         patronage = found;
-        
+
         var expiredSeconds = new Date(patronage.get("expiresOn")).getTime();
         var nowSeconds = new Date().getTime();
         if (expiredSeconds < nowSeconds) {
-            response.error("Latest patronage is expired");
-            return;
+            return Parse.Promise.error("Latest patronage is expired");
         }
-        
+        // Recorded from the check that just passed, rather than asserted.
+        caster_is_patron = true;
+
         var q = new Parse.Query("ReferendumBallot")
             .equalTo("owner", referendum)
             .equalTo("caster", request.user);
         return q.first({useMasterKey: true});
-    }).fail(function (error) {
-        response.error("Unknown failure trying to find existing ballots. " + JSON.stringify(error));
     }).then(function (found) {
         console.log("Hunted for referendums and now seeing what I found " + JSON.stringify(found));
-        if (!_.isUndefined(found)) {
-            response.error("Existing ballot found." + JSON.stringify(found));
-            return;
+        if (!_.isUndefined(found) && found) {
+            return Parse.Promise.error("Existing ballot found." + JSON.stringify(found));
         }
-        
+
         console.log("Creating the ballot");
         ballot = new Parse.Object("ReferendumBallot");
         var acl = new Parse.ACL;
@@ -746,18 +766,18 @@ Parse.Cloud.define("vote_for_referendum", function(request, response) {
         ballot.setACL(acl);
         ballot.set("owner", referendum);
         ballot.set("caster", request.user);
-        ballot.set("casterpatronagestatus", true);
+        ballot.set("casterpatronagestatus", caster_is_patron);
         ballot.set("choice", request.params.ballot_option);
-        
+
         console.log("Saving the ballot");
         return ballot.save();
-    }).fail(function (error) {
-        console.log("Ballot failed to save");
-        response.error("Couldn't properly cast ballot because " + JSON.stringify(error));
     }).then(function (saved) {
         console.log("Ballot saved");
         response.success("Ballot has been cast");
-    })
+    }, function (error) {
+        console.log("Ballot was not cast: " + JSON.stringify(error));
+        response.error(_.isString(error) ? error : ((error && error.message) ? error.message : JSON.stringify(error)));
+    });
 });
 
 Parse.Cloud.define("get_my_patronage_status", function(request, response) {
@@ -771,23 +791,22 @@ Parse.Cloud.define("get_my_patronage_status", function(request, response) {
     var q = new Parse.Query("Patronage")
         .equalTo("owner", request.user)
         .descending("expiresOn");
-    q.first({useMasterKey: true}).fail(function (error) {
-        response.error("Error finding patronage " + JSON.stringify(error));
-    }).then(function (found) {
-        if (_.isUndefined(found)) {
-            response.success(false);
-            return;
+    // Same flaw R11 fixes in `vote_for_referendum`: an interleaved `.fail()`
+    // that returns a plain value resolves the chain, so a genuine query
+    // error used to produce `response.error(...)` *and* then
+    // `response.success(false)` from the following `.then()`.
+    q.first({useMasterKey: true}).then(function (found) {
+        if (_.isUndefined(found) || !found) {
+            return response.success(false);
         }
         patronage = found;
-        
+
         var expiredSeconds = new Date(patronage.get("expiresOn")).getTime();
         var nowSeconds = new Date().getTime();
-        if (expiredSeconds < nowSeconds) {
-            response.success(false);
-        } else {
-            response.success(true);
-        }
-    })
+        response.success(expiredSeconds >= nowSeconds);
+    }, function (error) {
+        response.error("Error finding patronage " + JSON.stringify(error));
+    });
 });
 
 function matchUserInRoles(all_roles_to_check, user_id) {

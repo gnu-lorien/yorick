@@ -300,8 +300,12 @@ const NON_AFFINITY_GIFT_NAME = 'Delirium of Voluptha';
 const AFFINITY_GIFT_COST_PER_LEVEL = 4;
 const NON_AFFINITY_GIFT_COST_PER_LEVEL = 6;
 
-/** A seeded `wta_rites` Description with no cost data - see file-level finding 4. */
+/** A seeded `wta_rites` Description. It carries no cost data of its own; the
+ *  price comes from `calculate_trait_cost`'s `"wta_rites"` branch, added by
+ *  remediation R14. */
 const RITE_NAME = 'Seasonal';
+/** Per that branch: `mod_value * 2`, matching the Vampire's Rituals. */
+const RITE_COST_PER_LEVEL = 2;
 /** A seeded `wta_totem_bonus_traits` Description, for test 214. */
 const TOTEM_BONUS_NAME = 'Pack Link';
 
@@ -1160,36 +1164,93 @@ test.describe('Task 8b - Werewolf Creation In The UI', () => {
       .toEqual([AFFINITY_GIFT_NAME, NON_AFFINITY_GIFT_NAME].sort());
   });
 
-  test.fail('211 Post-creation wta_rites purchase renders on the sheet, but does not deduct XP', async () => {
-    // DEFECT (file-level finding 4, confirmed live): `calculate_trait_cost`
-    // has no case for "wta_rites" and none of the seeded Descriptions in that
-    // category set an `experience_cost_type` override, so the cost comes
-    // back `undefined`; `Character.update_trait`'s own `_.isFinite(spend)`
-    // guard silently forces the resulting NaN to 0 before ever writing an
-    // experience notation. The Rite is genuinely bought and genuinely
-    // renders - only "deducts XP" is false.
+  test('211 Post-creation wta_rites purchase renders on the sheet and deducts XP', async () => {
+    // FIXED by remediation R14 (with R9 and R16).
+    //
+    // Was: `calculate_trait_cost` had no case for "wta_rites" and no seeded
+    // Description in that category sets an `experience_cost_type` override,
+    // so the cost came back `undefined`; `Character.update_trait`'s
+    // `_.isFinite(spend)` guard silently forced the resulting NaN to 0 before
+    // ever writing an experience notation, and the player was shown a literal
+    // "Cost: NaN" while being charged nothing.
+    //
+    // Now: Rites are priced at RITE_COST_PER_LEVEL - the same 2-per-level the
+    // codebase already charges for the Vampire's Rituals, of which Rites are
+    // the direct analogue (BNSMETV1_VampireCosts, "rituals"). R9 additionally
+    // guarantees that no cost the engine cannot work out is ever rendered as
+    // arithmetic on NaN, and R16 makes a category with no rule refuse the
+    // purchase out loud instead of granting it free.
     const cid = state.xpCharacter.id;
     const before = await readSheetXp(page, cid);
 
     await openNewTraitChange(page, cid, 'wta_rites', RITE_NAME);
     await setTraitChangeSliders(page, { value: 1 });
     const quote = await readTraitChangeView(page);
-    // The player is shown this literally, before saving anything.
-    expect(quote.text).toContain('Cost: NaN');
+    // The player is shown a real number, before saving anything.
+    expect(quote.text).not.toContain('NaN');
+    expect(quote.cost).toBe(RITE_COST_PER_LEVEL);
+    expect(quote.final).toBe(before.available - RITE_COST_PER_LEVEL);
 
     await saveTraitChange(page, cid, 'wta_rites');
 
-    // These pass: the Rite is bought and genuinely renders, both in the
-    // trait list and on the category listing page the sheet's "Rites" link
-    // leads to.
+    // The Rite is bought and genuinely renders, both in the trait list and on
+    // the category listing page the sheet's "Rites" link leads to.
     const traits = await readTraits(page, cid, 'wta_rites', 'Werewolf');
     expect(traits.map((t) => t.name)).toContain(RITE_NAME);
+    expect(traits.find((t) => t.name === RITE_NAME))
+      .toMatchObject({ value: 1, free_value: 0, cost: RITE_COST_PER_LEVEL });
     await navigateToHash(page, `simpletraits/wta_rites/${cid}/all`, '#simpletraitcategory-all');
     expect(normalize(await page.locator('#simpletraitcategory-all').textContent())).toContain(`${RITE_NAME} x1`);
 
-    // This is the defect: XP never moves.
+    // And the XP really moves.
     const after = await readSheetXp(page, cid);
-    expect(after.spent, 'Spent XP after buying a Rite').not.toBe(before.spent);
+    expect(after.spent - before.spent, 'Spent XP after buying a Rite').toBe(RITE_COST_PER_LEVEL);
+    expect(after.available - before.available).toBe(-RITE_COST_PER_LEVEL);
+    expect(after.earned).toBe(before.earned);
+  });
+
+  test('211b A category with no cost rule is refused out loud, not granted for free (R16)', async () => {
+    // The "60b" pattern this suite uses for a finding that needs isolating
+    // without destabilising a numbered test.
+    //
+    // R14 and R15 each fixed one category whose missing cost branch made it
+    // silently free. R16 is the guard that stops the *next* one going
+    // unnoticed: each venue's cost engine now lists the categories that are
+    // genuinely free and returns `undefined` for anything else, and
+    // `Character.update_trait` refuses an unresolvable cost instead of
+    // zeroing it. Without this test the guard itself is untested, and the old
+    // behaviour - buy anything, charge nothing - would look identical.
+    //
+    // `#simpletrait/spacer/...` is the app's own route for "start a new trait
+    // with these attributes", so this drives the same code path a real
+    // purchase does, just with a category no cost engine has ever heard of.
+    const cid = state.xpCharacter.id;
+    const before = await readSheetXp(page, cid);
+    const madeUpCategory = 'e2e_category_with_no_cost_rule';
+
+    await navigateToHash(
+      page,
+      `simpletrait/spacer/${madeUpCategory}/${cid}/Unpriced%20Thing/1/0/new`,
+      '#simpletrait-change');
+
+    // R9: whatever the engine cannot work out, the page says so in words -
+    // it never renders arithmetic on a non-number.
+    const quote = await readTraitChangeView(page);
+    expect(quote.text).not.toContain('NaN');
+    expect(quote.cost, 'no numeric cost is quoted for a category with no rule').toBeNull();
+
+    await page.locator('#simpletrait-changing .save').click();
+
+    // The refusal is visible to the player, not just to the console.
+    const banner = page.locator('#global-error-region');
+    await expect(banner).toBeVisible({ timeout: 15000 });
+    expect(await banner.textContent()).toMatch(/no experience cost rule/i);
+
+    // And nothing was bought: no trait, no XP movement.
+    const traits = await readTraits(page, cid, madeUpCategory, 'Werewolf');
+    expect(traits, 'the unpriced trait must not have been created').toHaveLength(0);
+    const after = await readSheetXp(page, cid);
+    expect(after).toEqual(before);
   });
 
   test.skip('212 Renown allocation (Glory, Honor, Wisdom) renders with correct values on the sheet [DEFERRED]', async () => {

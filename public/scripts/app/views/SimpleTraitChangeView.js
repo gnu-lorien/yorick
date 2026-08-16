@@ -5,8 +5,9 @@ define([
 	"jquery",
 	"backbone",
 	"../models/SimpleTrait",
-    "../helpers/PromiseFailReport"
-], function( $, Backbone, SimpleTrait, PromiseFailReport ) {
+    "../helpers/PromiseFailReport",
+    "../helpers/ReportError"
+], function( $, Backbone, SimpleTrait, PromiseFailReport, ReportError ) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend({
@@ -145,8 +146,15 @@ define([
                 };
                 up.then(function (newtrait) {
                     console.log("asaved", self.category, newtrait);
+                    ReportError.clear();
                     window.location.hash = "#simpletraits/" + self.category + "/" + self.character.id + "/all";
-                }, PromiseFailReport);
+                }, function (error) {
+                    // Stay on the page, drop the spinner, and say what went
+                    // wrong. Previously a refused save reported to trackJs and
+                    // nothing else: the button just stopped responding.
+                    $.mobile.loading("hide");
+                    ReportError(error, "Couldn't save this trait");
+                });
             });
             return false;
         },

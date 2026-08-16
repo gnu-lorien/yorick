@@ -782,19 +782,25 @@ test.describe('Task 9 - Trait Change Lifecycle In The UI', () => {
       // (h) - removal of a creation-picked trait
       // ---------------------------------------------------------------
 
-      test.fail(`${N(7)} Removing a creation-picked trait fails with an informative error`, async () => {
-        // DEFECT (finding 5). Measured live: the Remove button is present
-        // and works on a creation-picked trait exactly as it does on a
-        // purchased one - there is no guard anywhere in `remove_trait` or
-        // its call sites keyed on `free_value`. The plan's literal claim is
-        // asserted below and goes red on contact with the real behaviour;
-        // the actually-measured consequence (silent success, orphaned pool
-        // slot) is documented in the comment and in the report for this
-        // task rather than encoded as a passing assertion, since a passing
-        // assertion here would look like the defect was expected/desired.
+      test(`${N(7)} Removing a creation-picked trait hands its creation pool slot back`, async () => {
+        // FIXED by remediation R18, and re-aimed at what the fix guarantees.
+        //
+        // The plan this suite was written against claimed removal should
+        // "fail with an informative error". Measured live, it never did:
+        // the Remove button is present and works on a creation-picked trait
+        // exactly as it does on a purchased one, and there is no guard in
+        // `remove_trait` or any of its call sites keyed on `free_value`.
+        // The real defect was the consequence - `remove_trait` destroyed the
+        // trait and refunded its cost but never released the creation pick,
+        // so `<category>_<i>_remaining` stayed one short forever, with no
+        // route back to reclaim the slot once creation is complete.
+        //
+        // R18 releases the slot instead of forbidding the removal, which is
+        // the behaviour the wizard's own unpick link already had. This test
+        // now asserts that, rather than a refusal the application never made.
         const before = await readTraits(page, cid, venue.chainCategory, venue.name);
         const picked = before.find((t) => t.name === venue.creationPickTrait);
-        expect(picked, `${venue.creationPickTrait} still present before the removal attempt`).toBeTruthy();
+        expect(picked, `${venue.creationPickTrait} still present before the removal`).toBeTruthy();
 
         const poolBefore = (await readCreation(page, cid, venue.name))[`${venue.chainCategory}_1_remaining`];
 
@@ -805,15 +811,20 @@ test.describe('Task 9 - Trait Change Lifecycle In The UI', () => {
         await waitForJqmLoader(page);
 
         const after = await readTraits(page, cid, venue.chainCategory, venue.name);
-        const stillThere = after.some((t) => t.name === venue.creationPickTrait);
-        const poolAfter = (await readCreation(page, cid, venue.name))[`${venue.chainCategory}_1_remaining`];
-        console.log(
-          `[${venue.name} 248-measured] creation-picked removal: stillPresent=${stillThere}, ` +
-          `pool ${poolBefore} -> ${poolAfter} (never restored)`
-        );
+        expect(
+          after.some((t) => t.name === venue.creationPickTrait),
+          'the removal really happens - it is not, and never was, refused'
+        ).toBe(false);
 
-        // The plan's literal claim - fails, because the removal actually succeeds.
-        expect(stillThere, 'the creation-picked trait should still exist because removal should have failed').toBe(true);
+        const creationAfter = await readCreation(page, cid, venue.name);
+        expect(
+          creationAfter[`${venue.chainCategory}_1_remaining`],
+          'the creation pool slot the trait was holding is handed back'
+        ).toBe(poolBefore + 1);
+        expect(
+          creationAfter[`${venue.chainCategory}_1_picks`].map((p) => p.objectId || p.id),
+          'and the trait is no longer listed as one of the picks'
+        ).not.toContain(picked.id);
       });
 
       // ---------------------------------------------------------------

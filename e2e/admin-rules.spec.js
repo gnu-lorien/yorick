@@ -249,9 +249,25 @@ test.describe('Task 2 - Game Rules Editors: Add And Verify', () => {
     expect(rows.map((r) => r.clan).sort()).toEqual(liveClanNames);
   });
 
-  test.fail('17 Add a new Clan Rule through the form; the new row appears in the rules table', async () => {
-    // DEFECT (see the file-level comment above and the full writeup in
-    // helpers/rules.js): EditRules.js's DataForm.submit handler constructs a new rule
+  test('17 Add a new Clan Rule through the form; the new row appears in the rules table', async () => {
+    // FIXED by remediation R10 and R26. Two defects had to be cleared before
+    // this could pass, and the first hid the second:
+    //
+    //   R10 - `new Parse.Object(self.ruleName, {...})` used a property the
+    //   DataForm view never has; the correct value is the module-scoped
+    //   `ruleName` the lookup query two lines earlier already uses. With
+    //   `undefined` as the class name Parse fell through to its
+    //   `(attributes, options)` signature and the save 404'd.
+    //   R26 - every CSV field was sent as a string except the literal column
+    //   "order", so `default_cost: 2` below 400'd with "expected Number but
+    //   got String". EditRules now learns each column's type from live rows
+    //   of the class and coerces before saving.
+    //
+    // R2 is what made either diagnosable: the per-row `.fail(console.log)`
+    // that swallowed both errors now reports them.
+    //
+    // The original writeup, kept because it names the mechanism precisely:
+    // EditRules.js's DataForm.submit handler constructs a new rule
     // via `new Parse.Object(self.ruleName, {...})`. `self` is the DataForm view, which
     // never has a `.ruleName` property - the correct value is the module-scoped
     // `ruleName` variable, used correctly two lines earlier for the lookup query but not
@@ -297,9 +313,10 @@ test.describe('Task 2 - Game Rules Editors: Add And Verify', () => {
     expect(rows.some((r) => r.clan === state.newClanName)).toBe(true);
   });
 
-  test.fail('18 The added Clan Rule persists across a full page reload', async () => {
-    // Cascades from test 17's defect: nothing was actually added, so there is nothing
-    // for a reload to have persisted either.
+  test('18 The added Clan Rule persists across a full page reload', async () => {
+    // FIXED with test 17 (R10 + R26). It only ever cascaded from that defect:
+    // nothing was actually added, so there was nothing for a reload to have
+    // persisted either.
     expect(state.newClanName).toBeTruthy();
     await adminPage.evaluate(() => { window.location.reload(); });
     await waitForAppReady(adminPage);
@@ -396,8 +413,14 @@ test.describe('Task 2 - Game Rules Editors: Add And Verify', () => {
     // (EditRules.js), and its submit handler only ever creates/updates rows *present* in
     // the submitted CSV - it never diffs against previously-loaded rows to detect
     // removals, so there is no way to express "delete this row" through the UI at all
-    // (mirroring the missing Patronage delete UI Task 1 found). Compounding that, test
-    // 17 could never create a row to delete in the first place. This suite still cleans
+    // (mirroring the missing Patronage delete UI Task 1 found).
+    //
+    // Still pinned red after remediation R10/R26. Those fixed *adding* a rule
+    // (test 17 now passes and really does create a row), but deleting one
+    // remains an unbuilt feature, not a broken one - the same shape as R43's
+    // missing Patronage delete. The remediation plan lists 22 alongside the
+    // other six R10 tests; that is an error in the plan, since no promise-chain
+    // fix can conjure a delete control. This suite still cleans
     // up everything *it* adds - every Description created below is destroyed by real id
     // in `afterAll`, the same fixture-teardown pattern Task 1 used - which is not the
     // same thing as this numbered UI feature existing.
@@ -437,8 +460,9 @@ test.describe('Task 2 - Game Rules Editors: Add And Verify', () => {
     expect(rows.map((r) => r.name).sort()).toEqual(liveNames);
   });
 
-  test.fail('24 Add a new Kith Rule; the new row appears in the table', async () => {
-    // Same defect as test 17 (see helpers/rules.js) - reproduces identically here.
+  test('24 Add a new Kith Rule; the new row appears in the table', async () => {
+    // FIXED with test 17 (R10). This class's submitted fields are all
+    // strings, so R26 was not needed here - R10 alone was enough.
     state.newKithName = uniqueTestName('Kith');
     const before = await countRuleRows(adminPage, 'kith');
 
@@ -474,8 +498,8 @@ test.describe('Task 2 - Game Rules Editors: Add And Verify', () => {
     expect(options).toContain(state.newKithName);
   });
 
-  test.fail('26 Elder Discipline Rules: add a rule; it appears in the table', async () => {
-    // Same defect as test 17.
+  test('26 Elder Discipline Rules: add a rule; it appears in the table', async () => {
+    // FIXED with test 17 (R10, plus R26 for the numeric columns below).
     state.newElderName = uniqueTestName('Discipline: Elder Power');
     const before = await countRuleRows(adminPage, 'elderDiscipline');
 
@@ -535,8 +559,8 @@ test.describe('Task 2 - Game Rules Editors: Add And Verify', () => {
     expect(before.available - after.available).toBe(expectedCost);
   });
 
-  test.fail('28 Technique Rules: add a rule; it appears in the table', async () => {
-    // Same defect as test 17.
+  test('28 Technique Rules: add a rule; it appears in the table', async () => {
+    // FIXED with test 17 (R10, plus R26 for the numeric columns below).
     state.newTechniqueName = uniqueTestName('Technique');
     const before = await countRuleRows(adminPage, 'technique');
 
@@ -580,8 +604,8 @@ test.describe('Task 2 - Game Rules Editors: Add And Verify', () => {
     expect(before.available - after.available).toBe(expectedCost);
   });
 
-  test.fail('30 Ritual Rules: add a rule; it appears in the table', async () => {
-    // Same defect as test 17.
+  test('30 Ritual Rules: add a rule; it appears in the table', async () => {
+    // FIXED with test 17 (R10, plus R26 for `level` and `time` below).
     state.newRitualName = uniqueTestName('Ritual: E2E Working');
     const before = await countRuleRows(adminPage, 'ritual');
 

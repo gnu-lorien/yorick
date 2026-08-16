@@ -5,6 +5,27 @@ define([
     "../collections/BNSCTDBS_KithRules"
 ], function( _, Parse, BNSCTDBS_KithRules ) {
 
+    // See BNSWTAV1_WerewolfCosts for why this list exists: categories that
+    // genuinely cost nothing, so that an *unlisted* category can be treated
+    // as a missing rule rather than as free.
+    var FREE_CATEGORIES = [
+        "focus_physicals",
+        "focus_mentals",
+        "focus_socials",
+        "health_levels",
+        "willpower_sources",
+        "lore_specializations",
+        "academics_specializations",
+        "drive_specializations",
+        "linguistics_specializations",
+        "ctdbs_arts_affinities_links",
+        "ctdbs_holdings_specializations",
+        "contacts_specializations",
+        "allies_specializations",
+        "influence_elite_specializations",
+        "influence_underworld_specializations"
+    ];
+
     var ChangelingBetaSliceCosts = Parse.Object.extend("ChangelingBetaSliceCosts", {
         initialize: function() {
             var self = this;
@@ -102,7 +123,13 @@ define([
                 return mod_value * -1;
             }
             
-            if ("backgrounds" == category) {
+            // "backgrounds" is the Vampire/Werewolf spelling and is not in
+            // this venue's category list at all; `ctdbs_backgrounds` is the
+            // one Changelings actually use, and it had no branch, so every
+            // Background purchase resolved to the `return 0` fallthrough at
+            // the bottom and cost nothing. Both spellings are priced on the
+            // same 2-per-level table the other two venues use.
+            if ("backgrounds" == category || "ctdbs_backgrounds" == category) {
                 return self.get_trait_cost_on_table(self.get_cost_table(2), trait);
             }
 
@@ -122,8 +149,16 @@ define([
                 var realms = character.realms().length;
                 return self.get_cost_on_table(self.get_cost_table(8), realms);
             }
-            
-            return 0;
+
+            if (_.contains(FREE_CATEGORIES, category)) {
+                return 0;
+            }
+
+            // Was `return 0`, which made every category anyone forgot to
+            // price silently free - exactly how `ctdbs_backgrounds` went
+            // unnoticed. Deliberately `undefined` now; `Character.update_trait`
+            // turns it into a visible refusal.
+            return undefined;
         }
     });
 
