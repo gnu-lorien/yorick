@@ -12,7 +12,11 @@ named precisely enough to find.
 
 ## 0. Implementation Status
 
-Work started against this plan. **Everything below is a statement about this branch, not a plan.**
+**Everything in this section is a statement about this branch, not a plan.**
+
+`npx playwright test` reports **444 passed, 0 failed** (~41 minutes). Every test still
+failing is a `test.fail()` failing as declared; the list is at the end of this section.
+`node e2e/check-syntax.js` passes.
 
 **Landed:** R1–R21, R24–R27, R30, R31, R34–R38, R41–R44, R46–R50.
 
@@ -41,10 +45,28 @@ Work started against this plan. **Everything below is a statement about this bra
 | **R39, R40, R45** | Already resolved before this work: the Description catalogue was refreshed (see §4b), Renown/Rage/Banality are deferred features needing no code, and `character-print-view.html` was deleted in commit `bce2486`. |
 | **R51** | Needs a deployment decision. Configuring an `emailAdapter` means choosing a mail provider and putting credentials somewhere; that is not a code fix this session can make on its own authority. |
 
-**Two tests are deliberately still `test.fail()`, and both are plan errors rather than remaining defects:**
+**Two of the plan's own claims turned out to be wrong, and are recorded as such:**
 
-- `admin-rules` **22** asserts a delete control for rule rows that has never existed. The plan lists it with the other six R10 tests; no promise-chain fix can conjure a missing feature. It is the rule-editor twin of R43's missing Patronage delete, which *was* built.
+- `admin-rules` **22** asserts a delete control for rule rows that has never existed. The plan lists it with the other six R10 tests; no promise-chain fix can conjure a missing feature. It is the rule-editor twin of R43's missing Patronage delete, which *was* built. Still `test.fail()`.
 - `traits-lifecycle` N(7) (**248/260/272**) asserted that removing a creation-picked trait "fails with an informative error". It never did and should not — the defect was the orphaned pool slot, which R18 fixed. Re-aimed at what R18 guarantees rather than at a refusal the application never made, so it is now a normal passing test.
+
+### Every test still failing, and why
+
+All are `test.fail()` failing as declared. Nothing here is a regression.
+
+| Test | Why |
+|---|---|
+| `access-control` 389 | R51 — no `emailAdapter`. Needs a deployment decision. |
+| `admin-referendums` 38, 39, 46, 52, 53 | Referendum defects outside this plan's R-numbers. Untouched. |
+| `admin-rules` 22 | The missing rule-delete feature above. |
+| `approvals` 90 | Unapproved-edit flag on the sheet. Not an R-number. |
+| `assets-rename-portrait` 106, 118 | XP-header name and print-sheet portrait bytes. Not R-numbers. |
+| `creation-changeling` 239 | Banality — a deferred feature per R40. |
+| `lifecycle-werewolf` 355b | **New, and split out of 355 deliberately.** R30 got the Next click through and the hash really does move to `/log/10/10`, but the table still does not re-render — one layer below what R30 fixed. Open with R28/R33. Splitting it let 356–360 run for the first time. |
+| `long-texts` 286 | Long texts on the Werewolf/Changeling print sheets. Not an R-number. |
+
+Two tests remain skipped, both deferred features per R40: `creation-werewolf` 212 and
+`lifecycle-werewolf` 350. `character-sheet`'s "SimpleTrait Edit View" skip predates this work.
 
 ---
 
