@@ -164,7 +164,20 @@ Parse.Cloud.beforeSave("Vampire", function(request, response) {
         "wta_auspice",
         "wta_tribe",
         "wta_camp",
-        "wta_faction"
+        "wta_faction",
+        // R47a. Vampire and Werewolf text attributes were tracked from the
+        // start; the Changeling ones were simply never added, so a Changeling
+        // owned no `core` log row at all until it was renamed. That is an
+        // oversight of this allowlist, not a design choice - the log's purpose
+        // is a backend record of what really happened, in every venue.
+        //
+        // Long texts stay off this list deliberately (R47c): they can be large
+        // enough that logging them would bloat the trail, and
+        // `update_long_text` never calls `Vampire#save()` either, so this hook
+        // would not fire for them anyway. Belt and braces, both intended.
+        "ctdbs_kith",
+        "ctdbs_fealty_court",
+        "ctdbs_kith_group_type"
     ];
     var v = request.object;
     var desired_changes = _.intersection(tracked_texts, v.dirtyKeys());
@@ -366,6 +379,108 @@ Parse.Cloud.beforeDelete("SimpleTrait", function(request, response) {
         var failStr = "beforeDelete SimpleTrait Failed to delete for trait " + request.object.id + " because of " + pretty(error);
         console.log(failStr);
         error.message = failStr;
+        response.error(error);
+    });
+});
+
+// R47b - the audit trail for experience.
+//
+// Nothing hooked `ExperienceNotation` and the XP fields are absent from
+// `tracked_texts`, so an add, an edit and a delete together produced zero log
+// rows - and a hand-written XP award is the thing a storyteller does most
+// often. The log is immutable by design, so an *edited* notation appends a new
+// row rather than amending the original, which is the right shape anyway: the
+// point is to show what really happened.
+//
+// Only these four fields count as an operation. `earned` and `spent` are the
+// running balances, and `Character._propagate_experience_notation_change`
+// re-saves every row above an edited one to keep them correct; logging those
+// re-saves would bury the operation that caused them under its own bookkeeping.
+var EXPERIENCE_NOTATION_TRACKED = [
+    "reason",
+    "entered",
+    "alteration_earned",
+    "alteration_spent"
+];
+
+var experience_notation_change = function (notation, type, serverData, user) {
+    var vc = new Parse.Object("VampireChange");
+    vc.set({
+        "name": notation.get("reason"),
+        "category": "experience",
+        "owner": notation.get("owner"),
+        "type": type,
+        "old_value": serverData.alteration_earned,
+        "value": notation.get("alteration_earned"),
+        "old_cost": serverData.alteration_spent,
+        "cost": notation.get("alteration_spent"),
+        "old_text": serverData.reason,
+        "new_text": notation.get("reason"),
+        "instigator": user
+    });
+    return vc;
+};
+
+var save_experience_notation_change = function (notation, vc) {
+    var owner = notation.get("owner");
+    if (!owner || !owner.id) {
+        // Nothing to attach the record to, and no ACL to derive.
+        return Parse.Promise.as(null);
+    }
+    return new Parse.Query("Vampire").get(owner.id, {useMasterKey: true}).then(function (vampire) {
+        vc.set("owner", vampire);
+        vc.setACL(get_vampire_change_acl(vampire));
+        return vc.save({}, {useMasterKey: true});
+    });
+};
+
+Parse.Cloud.beforeSave("ExperienceNotation", function(request, response) {
+    var notation = request.object;
+    var user = request.user;
+
+    if (_.isUndefined(notation.id)) {
+        var vc = experience_notation_change(notation, "define", {}, user);
+        save_experience_notation_change(notation, vc).then(function () {
+            response.success();
+        }, function (error) {
+            console.log("beforeSave ExperienceNotation failed to record a define: " + error.message);
+            response.error(error);
+        });
+        return;
+    }
+
+    if (0 === _.intersection(EXPERIENCE_NOTATION_TRACKED, notation.dirtyKeys()).length) {
+        return response.success();
+    }
+
+    new Parse.Query("ExperienceNotation").get(notation.id, {useMasterKey: true}).then(function (stored) {
+        return stored._getServerData();
+    }).then(function (serverData) {
+        return save_experience_notation_change(
+            notation,
+            experience_notation_change(notation, "update", serverData || {}, user));
+    }).then(function () {
+        response.success();
+    }, function (error) {
+        console.log("beforeSave ExperienceNotation failed to record an update: " + error.message);
+        response.error(error);
+    });
+});
+
+Parse.Cloud.beforeDelete("ExperienceNotation", function(request, response) {
+    var notation = request.object;
+    var user = request.user;
+
+    new Parse.Query("ExperienceNotation").get(notation.id, {useMasterKey: true}).then(function (stored) {
+        return stored._getServerData();
+    }).then(function (serverData) {
+        return save_experience_notation_change(
+            notation,
+            experience_notation_change(notation, "remove", serverData || {}, user));
+    }).then(function () {
+        response.success();
+    }, function (error) {
+        console.log("beforeDelete ExperienceNotation failed to record a removal: " + error.message);
         response.error(error);
     });
 });

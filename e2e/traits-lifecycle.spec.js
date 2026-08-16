@@ -682,12 +682,16 @@ test.describe('Task 9 - Trait Change Lifecycle In The UI', () => {
         ).toBe(true);
       });
 
-      test.fail(`${N(5)} Renaming a trait to collide with an existing trait name is rejected with a surfaced error`, async () => {
-        // DEFECT (finding 4). The plan's claim is a conjunction - rejected
-        // AND surfaced. The first half is real and asserted here as passing
-        // evidence (visible in the trace even though the test as a whole is
-        // pinned red by `test.fail()`); the second half is the defect, and
-        // it is the assertion this test actually fails on.
+      test(`${N(5)} Renaming a trait to collide with an existing trait name is rejected with a surfaced error`, async () => {
+        // FIXED by remediation R6 (built on R1).
+        //
+        // The plan's claim is a conjunction - rejected AND surfaced. The
+        // first half was always real: the colliding name never persisted.
+        // The second half was the defect - the only trace of the rejection
+        // was a `console.log` in `SimpleTraitSpecializationView.save_clicked`,
+        // which no player ever sees. That handler now reports through
+        // `ReportError` before redirecting, and the banner follows the
+        // redirect onto the category page the user actually lands on.
 
         // Build a second, independent trait sharing the same base name -
         // finding 6 explains the mechanism (native requires_specialization
@@ -719,8 +723,8 @@ test.describe('Task 9 - Trait Change Lifecycle In The UI', () => {
         await waitForHash(page, `#simpletraits/${venue.chainCategory}/${cid}/all`);
         await waitForJqmLoader(page);
 
-        // Passing evidence: the rename is genuinely rejected and the
-        // trait's stored name is untouched (finding 4's "data" half).
+        // The rename is genuinely rejected and the trait's stored name is
+        // untouched - the half that always worked.
         const traitsAfter = await readTraits(page, cid, venue.chainCategory, venue.name);
         const targetAfter = traitsAfter.find((t) => t.id === second.id);
         expect(targetAfter.name, 'the collided-into name must be rejected, not persisted').toBe(`${venue.specializeBase}: Second One`);
@@ -731,14 +735,12 @@ test.describe('Task 9 - Trait Change Lifecycle In The UI', () => {
         const rejectionLogged = consoleTexts.some((t) => /Couldn't specialize trait/.test(t));
         expect(rejectionLogged, 'the rejection is at least logged to the console (DevTools-only)').toBe(true);
 
-        // The actual defect - this is the assertion that fails. Measured
-        // live: no popup, no inline error text, nothing distinguishes this
-        // page from a successful save; the only trace of the rejection is
-        // the console.log above, which a real player never sees.
-        const popupCount = await page.locator('[data-role="popup"], .ui-popup-active, #popup-global-error').count();
+        // What R6 added: the refusal is now readable on the page the user
+        // was redirected to, not only in DevTools.
+        const popupCount = await page.locator('[data-role="popup"], .ui-popup-active, #popup-global-error, #global-error-region').count();
         const visibleText = normalize(await page.locator('.ui-page-active').textContent());
         const surfaced = popupCount > 0 || /match|collide|already exists|cannot|error/i.test(visibleText);
-        expect(surfaced, 'DEFECT: no popup, inline message, or error text renders anywhere for a rejected rename').toBe(true);
+        expect(surfaced, 'a rejected rename must render a message somewhere the player can read it').toBe(true);
       });
 
       test(`${N(6)} Changing the value of a specialized trait charges or refunds the correct XP difference`, async () => {

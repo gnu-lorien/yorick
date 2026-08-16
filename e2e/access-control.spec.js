@@ -486,23 +486,20 @@ test.describe('Task 13 - Access Control In The UI', () => {
   // 381 - the administration landing page itself
   // -------------------------------------------------------------------------
 
-  test.fail('381 sampmem is blocked from #administration', async () => {
-    // DEFECT: no such block exists. mobileRouter.js's `administration` handler
-    // is `enforce_logged_in().then(function () { ...; $.mobile.changePage
+  test('381 sampmem is blocked from #administration', async () => {
+    // FIXED by remediation R35 (and R36, which closed the same gap on the
+    // sibling routes this menu links to).
+    //
+    // Was: mobileRouter.js's `administration` handler was
+    // `enforce_logged_in().then(function () { ...; $.mobile.changePage
     // ("#administration", ...); })` - no `is_ad` check, unlike its own sibling
     // routes one click away (`administration_users`, `administration_user`,
-    // `administration_patronages`, `administration_patronages_csv` all guard
-    // on `Parse.User.current().get("admininterface")`). The `#administration`
-    // template (public/index.html) is a bare `<ul>` of links with no
-    // conditional either.
+    // `administration_patronages`, `administration_patronages_csv` all guarded
+    // on `Parse.User.current().get("admininterface")`), and `#administration`'s
+    // markup is a bare `<ul>` of links with no conditional either. sampmem
+    // reached the page and saw the identical 13-link menu an admin sees.
     //
-    // This asserts what item 381's own claim requires - that the route
-    // genuinely does not become active for sampmem - which is what actually
-    // fails and is why `test.fail()` is correct here. The stronger, positive
-    // proof of the defect (sampmem sees the *identical* link set an admin
-    // does, not merely "a page rendered") is captured via console.log first
-    // so it reaches the report even though the assertion below throws before
-    // a second `expect` could run.
+    // Now: the router has a shared `enforce_admin()` and this route uses it.
     await navigateToHash(memberPage, 'characters?all', '#characters-all');
     const before = await activePageId(memberPage);
 
@@ -510,18 +507,17 @@ test.describe('Task 13 - Access Control In The UI', () => {
     await memberPage.waitForTimeout(2000);
     const after = await activePageId(memberPage);
 
-    const memberLinks = after === 'administration'
-      ? await memberPage.locator('#administration a').evaluateAll((els) => els.map((e) => e.getAttribute('href')).sort())
-      : [];
+    console.log('[e2e access-control] 381 evidence: parked on', before, '-> after attempt:', after);
+    expect(after, 'sampmem is blocked from #administration, the way every sibling admin route blocks a non-admin').not.toBe('administration');
+
+    // The refusal is told to the user rather than being a silent no-op.
+    await expect(memberPage.locator('#global-error-region')).toBeVisible();
+    expect(await memberPage.locator('#global-error-region').textContent()).toMatch(/administrator access/i);
+
+    // And an admin is still let in, so this is a gate and not a wall.
     await navigateToHash(adminPage, 'administration', '#administration');
     const adminLinks = await adminPage.locator('#administration a').evaluateAll((els) => els.map((e) => e.getAttribute('href')).sort());
-
-    console.log('[e2e access-control] 381 evidence: parked on', before, '-> after attempt:', after);
-    console.log('[e2e access-control] 381 evidence: sampmem sees links', JSON.stringify(memberLinks));
-    console.log('[e2e access-control] 381 evidence: devuser sees links', JSON.stringify(adminLinks));
-    console.log('[e2e access-control] 381 evidence: identical menu offered to both?', JSON.stringify(memberLinks) === JSON.stringify(adminLinks));
-
-    expect(after, 'sampmem should be blocked from #administration, the way every sibling admin route blocks a non-admin').not.toBe('administration');
+    expect(adminLinks.length, 'devuser still sees the full menu').toBeGreaterThan(0);
   });
 
   // -------------------------------------------------------------------------
@@ -529,33 +525,51 @@ test.describe('Task 13 - Access Control In The UI', () => {
   // -------------------------------------------------------------------------
 
   test('382 sampmem cannot save an edit to global Clan Rules', async () => {
-    // Reality check first: the route itself renders for sampmem (no `is_ad`
-    // gate - Task 2 found this too). The real protection is server-side:
-    // bnsmetv1_ClanRule's class-level permissions restrict update/create to
-    // role:Administrator (database_seed/_SCHEMA.json). The rejection is
-    // surfaced only to the console - EditRules.js's DataForm swallows every
-    // individual save failure with console.log and shows nothing in the DOM -
-    // so a test that only checks page appearance would be fooled.
-    const capture = captureParseErrors(memberPage);
-    try {
-      await openRuleEditor(memberPage, 'clan');
-      expect(await activePageId(memberPage)).toBe('administration-descriptions');
+    // Two layers, and both are asserted.
+    //
+    // R37 added the route gate this page never had: the editor used to render
+    // in full for a non-admin, who discovered the refusal only on submit - and
+    // before R2, not even then, because EditRules swallowed every individual
+    // save failure. It no longer renders for them at all.
+    //
+    // The server-side protection is unchanged and is still the one that
+    // matters: bnsmetv1_ClanRule's class-level permissions restrict
+    // update/create to role:Administrator (database_seed/_SCHEMA.json). It is
+    // probed directly now, because the UI that used to carry the probe is
+    // (correctly) no longer reachable by this user.
+    await navigateToHash(memberPage, 'characters?all', '#characters-all');
+    await navigateToHash(memberPage, 'administration/bnsmetv1_clan_rules');
+    await memberPage.waitForTimeout(2000);
+    expect(
+      await activePageId(memberPage),
+      'the rule editor does not render for a non-admin'
+    ).not.toBe('administration-descriptions');
 
-      const target = await resolveOnlyReachableClanRule(memberPage);
-      expect(target, 'a Clan Rule row exists to probe').not.toBeNull();
+    const target = await adminPage.evaluate(async () => {
+      const r = await new window.Parse.Query('bnsmetv1_ClanRule').first();
+      return r ? Object.assign({ id: r.id }, r.attributes) : null;
+    });
+    expect(target, 'a Clan Rule row exists to probe').not.toBeNull();
 
-      await submitRuleRow(memberPage, 'clan', { clan: target.clan, weakness_1: 'SAMPMEM SHOULD NOT PERSIST' });
+    const denied = await memberPage.evaluate(async (id) => {
+      const obj = new window.Parse.Object('bnsmetv1_ClanRule');
+      obj.id = id;
+      obj.set('weakness_1', 'SAMPMEM SHOULD NOT PERSIST');
+      try {
+        await obj.save();
+        return null;
+      } catch (e) {
+        return { code: e && e.code, message: e && e.message };
+      }
+    }, target.id);
+    console.log('[e2e access-control] 382 refusal:', JSON.stringify(denied));
+    expect(denied, 'the server refuses the update with a named permission error').toBeTruthy();
+    expect(denied.code).toBe(119);
+    expect(denied.message).toMatch(/permission denied/i);
+    expect(denied.message).toContain('bnsmetv1_ClanRule');
 
-      const denied = capture.errors.find((e) => e.code === 119 && /permission denied/i.test(e.message));
-      console.log('[e2e access-control] 382 refusal:', JSON.stringify(denied));
-      expect(denied, 'the server refuses the update with a named permission error').toBeTruthy();
-      expect(denied.message).toContain('bnsmetv1_ClanRule');
-
-      const stillOriginal = await getRuleRowById(adminPage, 'clan', target.id);
-      expect(stillOriginal.weakness_1, 'the row is unchanged server-side').toBe(target.weakness_1);
-    } finally {
-      capture.stop();
-    }
+    const stillOriginal = await getRuleRowById(adminPage, 'clan', target.id);
+    expect(stillOriginal.weakness_1, 'the row is unchanged server-side').toBe(target.weakness_1);
   });
 
   // -------------------------------------------------------------------------
@@ -563,32 +577,36 @@ test.describe('Task 13 - Access Control In The UI', () => {
   // -------------------------------------------------------------------------
 
   test('383 sampmem cannot save an edit to global Kith Rules', async () => {
-    // Same mechanism as 382, a different rule class: bnsctdbs_KithRule's
+    // Same two layers as 382, a different rule class: bnsctdbs_KithRule's
     // class-level permissions also restrict update/create/delete to
-    // role:Administrator. Unlike ClanRule, KithRule genuinely has `name` and
-    // `category` fields, so the target row is addressed by them rather than
-    // by the "only reachable row" workaround Task 2 needed for Clan.
-    const capture = captureParseErrors(memberPage);
-    try {
-      await openRuleEditor(memberPage, 'kith');
-      expect(await activePageId(memberPage)).toBe('administration-descriptions');
+    // role:Administrator, and R37 gated its editor route too.
+    await navigateToHash(memberPage, 'characters?all', '#characters-all');
+    await navigateToHash(memberPage, 'administration/bnsctdbs_kith_rules');
+    await memberPage.waitForTimeout(2000);
+    expect(
+      await activePageId(memberPage),
+      'the rule editor does not render for a non-admin'
+    ).not.toBe('administration-descriptions');
 
-      await submitRuleRow(memberPage, 'kith', {
-        name: state.kithTarget.name,
-        category: state.kithTarget.category,
-        realm: 'SAMPMEM SHOULD NOT PERSIST'
-      });
+    const denied = await memberPage.evaluate(async (id) => {
+      const obj = new window.Parse.Object('bnsctdbs_KithRule');
+      obj.id = id;
+      obj.set('realm', 'SAMPMEM SHOULD NOT PERSIST');
+      try {
+        await obj.save();
+        return null;
+      } catch (e) {
+        return { code: e && e.code, message: e && e.message };
+      }
+    }, state.kithTarget.id);
+    console.log('[e2e access-control] 383 refusal:', JSON.stringify(denied));
+    expect(denied, 'the server refuses the update with a named permission error').toBeTruthy();
+    expect(denied.code).toBe(119);
+    expect(denied.message).toMatch(/permission denied/i);
+    expect(denied.message).toContain('bnsctdbs_KithRule');
 
-      const denied = capture.errors.find((e) => e.code === 119 && /permission denied/i.test(e.message));
-      console.log('[e2e access-control] 383 refusal:', JSON.stringify(denied));
-      expect(denied, 'the server refuses the update with a named permission error').toBeTruthy();
-      expect(denied.message).toContain('bnsctdbs_KithRule');
-
-      const stillOriginal = await getRuleRowById(adminPage, 'kith', state.kithTarget.id);
-      expect(stillOriginal.realm, 'the row is unchanged server-side').toBe(state.kithTarget.realm);
-    } finally {
-      capture.stop();
-    }
+    const stillOriginal = await getRuleRowById(adminPage, 'kith', state.kithTarget.id);
+    expect(stillOriginal.realm, 'the row is unchanged server-side').toBe(state.kithTarget.realm);
   });
 
   // -------------------------------------------------------------------------
@@ -931,22 +949,35 @@ test.describe('Task 13 - Access Control In The UI', () => {
     state.createdDescriptionIds.push(fixture.id);
     expect(fixture.value).toBe('original value');
 
-    // Overwrite attempt, driven through the real admin bulk-editor UI - the
-    // same one Task 2's test 37 already proved this mechanism against for a
-    // different fixture.
-    const capture = captureParseErrors(memberPage);
-    try {
-      await updateDescriptionViaAdmin(memberPage, {
-        category: fixture.category,
-        name: fixture.name,
-        value: 'sampmem tampered value'
-      });
-      const denied = capture.errors.find((e) => e.code === 101);
-      console.log('[e2e access-control] 391 overwrite refusal:', JSON.stringify(denied));
-      expect(denied, 'the overwrite is refused with Object not found').toBeTruthy();
-    } finally {
-      capture.stop();
-    }
+    // The overwrite used to be driven through the real admin bulk editor.
+    // Remediation R36 gated `#administration/descriptions` behind
+    // `enforce_admin()` along with its ungated siblings, so that UI is - by
+    // design now - unreachable for sampmem. Both halves are still proven:
+    // the route no longer renders, and the underlying ACL still refuses a
+    // direct write, which is the protection that actually matters and the
+    // one this item is about.
+    await navigateToHash(memberPage, 'characters?all', '#characters-all');
+    await navigateToHash(memberPage, 'administration/descriptions');
+    await memberPage.waitForTimeout(2000);
+    expect(
+      await activePageId(memberPage),
+      'the Descriptions admin does not render for a non-admin'
+    ).not.toBe('administration-descriptions');
+
+    const overwriteProbe = await memberPage.evaluate(async (id) => {
+      const obj = new window.Parse.Object('Description');
+      obj.id = id;
+      obj.set('value', 'sampmem tampered value');
+      try {
+        await obj.save();
+        return { ok: true };
+      } catch (e) {
+        return { ok: false, code: e && e.code, message: e && e.message };
+      }
+    }, fixture.id);
+    console.log('[e2e access-control] 391 overwrite refusal:', JSON.stringify(overwriteProbe));
+    expect(overwriteProbe.ok, 'the overwrite is refused server-side').toBe(false);
+    expect(overwriteProbe.code, 'Object not found - Parse hides an ACL-denied row rather than naming the permission').toBe(101);
 
     const afterOverwrite = await getDescriptionByName(adminPage, fixture.category, fixture.name);
     expect(afterOverwrite.value, 'the value is unchanged after the overwrite attempt').toBe('original value');
@@ -1022,33 +1053,32 @@ test.describe('Task 13 - Access Control In The UI', () => {
     const parkedOn = await activePageId(memberPage);
     expect(parkedOn).toBe('characters-all');
 
-    // DEFECT distinct from 392's clean redirect: characterlog's handler is
-    // `self.get_character(cid, "all").done(function (character) {...})` with
-    // no `.fail()` at all (mobileRouter.js) - a denied fetch leaves the hash
-    // pointed at the attempted route, the active page never changes, and
-    // `$.mobile.loading("hide")` (inside the never-run .done() callback)
-    // never fires, so the loading overlay is left stuck. The character is
-    // still genuinely inaccessible either way (proven below by the same
-    // direct-fetch probe test 392 used) - this is "no visible error is a
-    // finding, not a reason to weaken a test" in practice: the real, if
-    // ungraceful, behaviour is what gets asserted.
+    // FIXED by remediation R4. These two routes used to be
+    // `self.get_character(cid, "all").done(function (character) {...})` with no
+    // `.fail()` at all, so a denied fetch left the hash pointed at the
+    // attempted route, the active page never changed, and
+    // `$.mobile.loading("hide")` - inside the never-run `.done()` callback -
+    // never fired, leaving the loading overlay stuck across the next click.
+    // They now behave like `show_character_helper` and like test 392's route:
+    // the loader comes down, the failure is reported, and the user is sent
+    // back somewhere they can actually be.
     await navigateToHash(memberPage, `character/${cid}/log/0/10`);
     await memberPage.waitForTimeout(2500);
-    expect(await activePageId(memberPage), 'the log route never transitions away from where sampmem was').toBe(parkedOn);
-    expect(await memberPage.evaluate(() => window.location.hash), 'the hash is left pointed at the attempted route').toContain('/log/0/10');
+    expect(
+      await memberPage.evaluate(() => window.location.hash),
+      'the log route redirects rather than stranding the user on a page that never loads'
+    ).toBe('#characters?all');
     const stuckLog = await memberPage.evaluate(() => document.documentElement.classList.contains('ui-loading'));
-    await clearStuckLoader(memberPage);
 
     await navigateToHash(memberPage, `character/${cid}/experience/0/10`);
     await memberPage.waitForTimeout(2500);
-    expect(await activePageId(memberPage), 'the experience route also never transitions').toBe(parkedOn);
-    expect(await memberPage.evaluate(() => window.location.hash)).toContain('/experience/0/10');
+    expect(await memberPage.evaluate(() => window.location.hash)).toBe('#characters?all');
     const stuckExp = await memberPage.evaluate(() => document.documentElement.classList.contains('ui-loading'));
-    await clearStuckLoader(memberPage);
 
-    console.log('[e2e access-control] 393 stuck-loader symptom observed:', JSON.stringify({ stuckLog, stuckExp }));
-    expect(stuckLog, 'the missing .fail() handler leaves the loading overlay stuck on the log route').toBe(true);
-    expect(stuckExp, 'same defect on the experience route').toBe(true);
+    console.log('[e2e access-control] 393 loader state after each denied route:', JSON.stringify({ stuckLog, stuckExp }));
+    expect(stuckLog, 'the loading overlay is no longer left stuck on the log route').toBe(false);
+    expect(stuckExp, 'nor on the experience route').toBe(false);
+    expect(await activePageId(memberPage), 'and the user lands somewhere usable').toBe(parkedOn);
 
     // The rule that actually did the refusing, proven directly - the same
     // probe test 392 used, since both routes' first step is the identical

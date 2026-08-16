@@ -524,10 +524,13 @@
     <p>Spent: <%= character.get("experience_spent") %></p>
     <p>Available: <%= character.experience_available() %></p>
     <button class="add ui-btn ui-btn-icon-plus">Add New Experience Notation</button>
-    <!--
-    <button class="previous ui-btn ui-btn-icon-left">View Previous</button>
-    <button class="next ui-btn ui-btn-icon-left">View Next</button>
-    -->
+    <% /* R48: these were commented out because the route's start/changeBy
+          parameters were accepted and never used. They page for real now. */ %>
+    <% if (total > changeBy) { %>
+    <p>Showing <%= total ? start + 1 : 0 %>-<%= Math.min(start + changeBy, total) %> of <%= total %></p>
+    <button class="previous ui-btn ui-btn-icon-left" <%= start <= 0 ? 'disabled="disabled"' : '' %>>View Previous</button>
+    <button class="next ui-btn ui-btn-icon-left" <%= start + changeBy >= total ? 'disabled="disabled"' : '' %>>View Next</button>
+    <% } %>
     <% var headers =      ["entered", "reason", "alteration_earned", "alteration_spent", "available"]; %>
     <% var pretty_names = ["Date", "Reason", "Earned?", "Spent?", "Available"]; %>
     <% var editable = ["entered", "reason", "alteration_earned", "alteration_spent"]; %>
@@ -564,7 +567,15 @@
                         <% } %>
                     </td>
                     <td>
-                        <%= format_entry(log, h) %>
+                        <%
+                           /* "available" is not a stored property - not on the
+                              model and not on the view - so asking
+                              format_entry for it rendered a permanently blank
+                              cell under a column headed "Available". The
+                              running balance is earned minus spent, which is
+                              what the delta row above already shows. */
+                        %>
+                        <% if ("available" == h) { %><%= log.get("earned") - log.get("spent") %><% } else { %><%= format_entry(log, h) %><% } %>
                     </td>
                     <% }); %>
                     <td><a href="#" class="experience-notation-delete ui-btn ui-icon-delete ui-btn-icon-notext ui-corner-all ui-btn-inline" notation-id="<%= log.cid %>">Delete</a></td>
@@ -938,9 +949,16 @@
 
     <div id="administration-user-patronages-view" data-role="page" data-title="Patronages">
         <div role="main" class="ui-content">
-            <form class="profile-form">
-
-            </form>
+            <h3 id="administration-user-patronages-heading">Patronages</h3>
+            <!-- R44: this page used to hold nothing but an empty <form>, while
+                 the route pointed AdministrationUserView at it - a LayoutView
+                 whose regions (#abs-form, #patronage-list-region, ...) only
+                 exist inside #administration-user-view. Marionette threw on
+                 construction, inside a legacy promise callback that does not
+                 catch synchronous throws, so the route died before changePage
+                 and the loader stuck. The route now renders the patronage list
+                 into the region below. -->
+            <ul id="administration-user-patronages-list" data-role="listview" data-inset="true"></ul>
         </div>
     </div>
 

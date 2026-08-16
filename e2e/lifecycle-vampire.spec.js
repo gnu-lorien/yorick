@@ -73,8 +73,8 @@
  * asserted as that exact number *and* against the price the change page
  * quoted before the save.
  *
- * **9. DEFECT found here: the trait change page quotes a stale price when the
- * same trait is re-opened within one page session.**
+ * **9. FIXED by remediation R31 - the trait change page used to quote a stale
+ * price when the same trait was re-opened within one page session.**
  * `SimpleTraitChangeView.register(character, simpletrait, category)` rebuilds
  * `self.fauxtrait` - the object `calculate_trait_to_spend` is applied to for
  * every displayed price - only when `simpletrait !== self.simpletrait`, i.e.
@@ -87,10 +87,11 @@
  * increment. The *save* is unaffected, because `save_clicked` copies the
  * slider values onto the real trait and charges
  * `calculate_trait_to_spend(realTrait)`, which sees the persisted cost: the
- * character was charged 3, correctly. So this is a display defect, in the same
- * memoization family as `CharacterLogView` and `CharacterHistoryView`. Test
- * 322 reloads between the two edits so its quote assertions measure the real
- * incremental price, and logs the stale figure as evidence.
+ * character was charged 3, correctly. So this was a display defect, in the same
+ * memoization family as `CharacterLogView` and `CharacterHistoryView`. The
+ * working copy is now rebuilt from the trait's current attributes on every
+ * visit, and test 322 asserts the no-reload quote rather than reloading past
+ * the problem and logging the stale figure as evidence.
  *
  * **8. The admin route is the ordinary character sheet.**
  * `administration_character` delegates to `show_character_helper`, i.e. it
@@ -468,26 +469,28 @@ test.describe('Task 12a - Vampire lifecycle and dual audit log', () => {
 
     const quotes = [];
     for (const target of [start.value + 1, start.value + 2]) {
-      // A full reload before each edit, and the reason is a real defect found
-      // here (see finding 9 in the header): `SimpleTraitChangeView.register`
-      // rebuilds its `fauxtrait` - the object every displayed price is
-      // computed from - only when the SimpleTrait's *object identity* changes.
-      // mobileRouter hands it the same cached SimpleTrait on every visit
-      // within one page session, so re-opening the same trait's change page
-      // after saving it quotes a price derived from the cost the trait had on
-      // the *first* visit. Measured below and logged; the save itself is
-      // correct because `save_clicked` charges against the real trait, not the
-      // faux one.
+      // FIXED by remediation R31, and asserted here rather than worked around.
+      //
+      // `SimpleTraitChangeView.register` used to rebuild its `fauxtrait` - the
+      // object every displayed price is computed from - only when the
+      // SimpleTrait's *object identity* changed. mobileRouter hands it the same
+      // cached SimpleTrait on every visit within one page session, so
+      // re-opening a trait's change page after saving it quoted a price derived
+      // from the cost the trait had on the *first* visit. The save was always
+      // correct, because `save_clicked` charges against the real trait; only
+      // the number the player was shown was wrong. This test used to reload
+      // before each edit to dodge that, and log the stale figure as evidence.
+      // The reload stays for the second half of the loop's own reasons, but the
+      // no-reload quote is now checked first and must be right.
       if (quotes.length > 0) {
         await L.parkOnSheet(memberPage, cid);
         await openTraitChange(memberPage, cid, 'attributes', 'Physical');
         await setTraitChangeSliders(memberPage, { value: target });
-        const staleQuote = await readTraitChangeView(memberPage);
-        console.log(
-          `[t12-vampire] 322 measured (defect): re-opening the same trait's change page without a ` +
-          `reload quotes ${staleQuote.cost} for ${start.value} -> ${target}; the correct incremental ` +
-          `price is ${ATTRIBUTE_PER_POINT}`
-        );
+        const requoted = await readTraitChangeView(memberPage);
+        expect(
+          requoted.cost,
+          're-opening the same trait\'s change page without a reload quotes the real incremental price'
+        ).toBe(ATTRIBUTE_PER_POINT);
       }
       await hardReload(memberPage);
 
@@ -750,8 +753,9 @@ test.describe('Task 12a - Vampire lifecycle and dual audit log', () => {
     state.changes.technique = { name: technique, cost: TECHNIQUE_PER_LEVEL };
   });
 
-  test.fail('329 Change 9 - edit all three long texts; the log records each edit', async () => {
-    // DEFECT, re-measured on this character rather than inherited:
+  test('329 Change 9 - edit all three long texts; the log deliberately records none of them', async () => {
+    // The two mechanisms that keep long texts out of the log, re-measured on
+    // this character rather than inherited:
     // `Character.update_long_text` saves only the separate `LongText` object
     // and never calls `Vampire#save()`, so `beforeSave("Vampire")` does not
     // run at all for a long-text edit - and even if it did, none of
@@ -778,8 +782,12 @@ test.describe('Task 12a - Vampire lifecycle and dual audit log', () => {
     expect(directCount, 'no VampireChange row names any long-text field').toBe(0);
     console.log('[t12-vampire] 329 measured: three long-text edits produced 0 new log rows');
 
-    // The plan's literal expectation. Fails, deliberately.
-    expect(after.length - before.length, 'the log should record each long-text edit').toBe(3);
+    // INVERTED, per remediation R47c and the owner's ruling behind it: long
+    // texts can be large enough that logging them would bloat the audit trail,
+    // so they stay out of it on purpose. Turned around rather than deleted, so
+    // that anyone who later adds long texts to `tracked_texts` fails here,
+    // loudly, instead of silently removing an intended guarantee.
+    expect(after.length - before.length, 'a long-text edit writes no log row, by design').toBe(0);
   });
 
   test('330 Change 10 - rename the character; the log records the old and new name', async () => {

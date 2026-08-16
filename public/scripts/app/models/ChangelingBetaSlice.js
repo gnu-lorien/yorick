@@ -307,8 +307,41 @@ define([
         unpick_text: function(target) {
             var self = this;
             self._updateTraitWrapper = self._updateTraitWrapper || Parse.Promise.as();
+
+            if ("ctdbs_kith" != target) {
+                self._updateTraitWrapper = self._updateTraitWrapper.always(function () {
+                    return self.constructor.__super__.unpick_text.apply(self, [target]);
+                });
+                return self._updateTraitWrapper;
+            }
+
+            // Picking a Kith auto-grants its affinity Arts free and consumes
+            // the Arts creation pool; `update_text` reconciles both on every
+            // repick. Unpicking used to be a bare passthrough, so it cleared
+            // the text and left the granted Arts and the spent pool slots
+            // behind - with the Kith gone there was no route back to reclaim
+            // them. The affinities have to be read *before* the text is
+            // cleared, since they are derived from the Kith.
             self._updateTraitWrapper = self._updateTraitWrapper.always(function () {
+                return Parse.Object.fetchAllIfNeeded(self.get("ctdbs_arts") || []);
+            });
+            self._unpick_previous_arts(self.get_arts_affinities());
+            self._updateTraitWrapper = self._updateTraitWrapper.then(function () {
                 return self.constructor.__super__.unpick_text.apply(self, [target]);
+            });
+            self._updateTraitWrapper = self._updateTraitWrapper.then(function () {
+                var creation = self.get("creation");
+                if (!creation) {
+                    return Parse.Promise.as(self);
+                }
+                self.progress("Saving the creation after releasing the Kith's Arts");
+                return creation.save();
+            }).then(function () {
+                // Callers - `charactercreateunpicksimpletext` among them -
+                // read `c.id` off this promise to build the redirect, so it
+                // must resolve with the character and not with whatever the
+                // last save happened to return.
+                return Parse.Promise.as(self);
             });
             return self._updateTraitWrapper;
         },

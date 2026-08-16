@@ -562,11 +562,13 @@ test.describe('Task 4 - XP History', () => {
     const actual = await waitForXp(page, 'the four seeded rows', rowCountIs(4));
     assertTable(actual, '55 four rows');
 
-    // DEFECT (finding 2): the value row's own Available cell is permanently
-    // blank, because the template asks `format_entry(log, "available")` for a
-    // property that exists on neither the model nor the view. Pinned so a fix
-    // trips this test instead of landing unnoticed. The number a reader actually
-    // sees - and everything below asserts - is the delta row's running balance.
+    // FIXED by remediation R50. The value row's Available cell was permanently
+    // blank, because the template asked `format_entry(log, "available")` for a
+    // property that exists on neither the model nor the view - a column headed
+    // "Available" with nothing under it. It now carries the same running
+    // balance the delta row does. jQuery Mobile's responsive table prepends the
+    // column label to every cell, which is why each reads "Available <n>"
+    // rather than a bare number.
     const valueRowAvailableCells = await page.evaluate((sel) => {
       const pg = document.querySelector(sel);
       const rows = Array.from(pg.querySelectorAll('table tbody tr'));
@@ -577,9 +579,10 @@ test.describe('Task 4 - XP History', () => {
       }
       return out;
     }, PAGE);
-    expect(valueRowAvailableCells, 'the per-entry Available cell renders its label and no value').toEqual([
-      'Available', 'Available', 'Available', 'Available'
-    ]);
+    expect(
+      valueRowAvailableCells,
+      'the per-entry Available cell shows that row\'s running balance'
+    ).toEqual(actual.rows.map((r) => `Available ${r.runningAvailable}`));
   });
 
   test('56 The header totals equal the column sums of the four rows', async () => {
@@ -745,10 +748,11 @@ test.describe('Task 4 - XP History', () => {
     assertTable(after, '60 after re-sort');
   });
 
-  test.fail('60b Re-dating a notation forwards must not double-count it (defect found while implementing 60)', async () => {
-    // DEFECT (finding 6), derived from the source and confirmed live.
-    // `Character.on_update_experience_notation` re-sorts the collection, takes
-    // the moved notation's *new* index, and hands it to
+  test('60b Re-dating a notation forwards must not double-count it (defect found while implementing 60)', async () => {
+    // FIXED by remediation R17.
+    //
+    // Was: `Character.on_update_experience_notation` re-sorted the
+    // collection, took the moved notation's *new* index, and handed it to
     // `_propagate_experience_notation_change`, which recomputes
     // `models[0..index]` accumulating from `models[index + 1]`. That window is
     // correct only when a row moves *down*: the rows it passed then lie inside
@@ -758,6 +762,10 @@ test.describe('Task 4 - XP History', () => {
     // top of one of them, so its earned and spent are counted twice. Measured
     // live: moving a 4-earned / 3-spent notation up one position took Earned from
     // 52 to 56 and Spent from 8 to 11.
+    //
+    // Now: the handler captures the row's index *before* the re-sort and
+    // widens the propagation window to the further of the two positions, so
+    // every row between them is recomputed whichever way the row moved.
     //
     // Everything is mutated and repaired *before* the first assertion, so this
     // test leaves the ledger exactly as it found it however it ends. The repair
@@ -1240,16 +1248,22 @@ test.describe('Task 4 - XP History', () => {
     expect(edited.totals.spent, 'hand-written spend has no trait behind it').toBeGreaterThan(0);
   });
 
-  test.fail('74 With more than ten entries, /experience/0/10 and /experience/10/10 paginate with no duplicates', async () => {
-    // DEFECT (finding 7). `characterexperience` passes `:start`/`:changeBy` to
-    // `CharacterExperienceView.register`, which accepts both parameters and uses
-    // neither: `initialize` hardcodes `start = 0` / `changeBy = 10`,
-    // `fetch_experience_notations` builds its query with no `skip` or `limit`,
-    // and the `skip`/`limit` lines in `update_collection_query_and_fetch` are
-    // commented out - as are the View Previous / View Next buttons in the
-    // template, so there is no in-page affordance either. Every page of the route
-    // therefore renders the entire history. Asserted as it should behave; this
-    // test is expected to fail until the view honours its own route parameters.
+  test('74 With more than ten entries, /experience/0/10 and /experience/10/10 paginate with no duplicates', async () => {
+    // FIXED by remediation R48.
+    //
+    // Was: `characterexperience` passed `:start`/`:changeBy` to
+    // `CharacterExperienceView.register`, which accepted both parameters and
+    // used neither - `initialize` hardcoded `start = 0` / `changeBy = 10`,
+    // the query carried no `skip` or `limit`, and the `skip`/`limit` lines in
+    // `update_collection_query_and_fetch` were commented out, as were the View
+    // Previous / View Next buttons. Every page of the route rendered the whole
+    // history.
+    //
+    // The page is now taken at render time rather than in the query, which is
+    // the one difference from `CharacterLogView`: this view renders the
+    // character's own `experience_notations` collection, the same one
+    // `_propagate_experience_notation_change` walks to keep every running
+    // balance correct, so skipping rows in that query would corrupt the ledger.
     const start = await waitForXp(page, 'the settled table', rowCountIs(state.expected.length));
 
     // Push the history past ten entries.
@@ -1278,13 +1292,20 @@ test.describe('Task 4 - XP History', () => {
     expect(new Set(seen.concat(second)).size, 'the two pages cover every entry exactly once').toBe(total);
   });
 
-  test.fail('75 Every XP notation add, edit and delete produces a corresponding entry in the character log', async () => {
-    // DEFECT (finding 8). `VampireChange` rows come from the `SimpleTrait`
-    // before/after hooks and from the tracked-text branch of
-    // `beforeSave("Vampire")` in cloud/main.js. Nothing hooks
-    // `ExperienceNotation`, and `experience_earned` / `experience_spent` are not
-    // tracked texts, so a hand-written XP award - the thing a storyteller does
-    // most often - leaves no audit trail at all. Asserted as it should behave.
+  test('75 Every XP notation add, edit and delete produces a corresponding entry in the character log', async () => {
+    // FIXED by remediation R47b.
+    //
+    // Was: `VampireChange` rows came only from the `SimpleTrait` before/after
+    // hooks and from the tracked-text branch of `beforeSave("Vampire")`.
+    // Nothing hooked `ExperienceNotation`, and `experience_earned` /
+    // `experience_spent` are not tracked texts, so a hand-written XP award -
+    // the thing a storyteller does most often - left no audit trail at all.
+    //
+    // `beforeSave`/`beforeDelete` hooks on `ExperienceNotation` now record the
+    // operation, the reason and the earned/spent deltas. They deliberately
+    // ignore saves that touch only `earned`/`spent`: those are the running
+    // balances every row above an edited one gets re-saved with, and logging
+    // them would bury the operation under its own bookkeeping.
     await openXp(page, state.characterId);
     const before = await waitForXp(page, 'the settled table', ({ rows }) => (rows.length ? null : 'no rows'));
     const changesBefore = await countChangeRows(page, state.characterId);

@@ -504,8 +504,17 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#characters?all");
-            self.characterNewView.render();
-            $.mobile.changePage("#character-new", { reverse: false, changeHash: false });
+            // R38: this route had no `enforce_logged_in()` at all, so the
+            // new-character form rendered in full for an anonymous visitor.
+            // The related anonymous-write hole on the `Vampire` class itself
+            // is owned by another session and is deliberately untouched here;
+            // the route gate is independent of it.
+            self.enforce_logged_in().then(function () {
+                self.characterNewView.render();
+                $.mobile.changePage("#character-new", { reverse: false, changeHash: false });
+            }).always(function () {
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
         },
 
         charactercreate: function (cid) {
@@ -534,7 +543,25 @@ define([
             self.set_back_button("#charactercreate/" + cid);
             self.withCharacterCreateView().then(function () {
                 return self.get_character(cid, [category]);
-            }).done(function (c) {
+            }).then(function (c) {
+                // Creation pool enforcement used to be presentational only:
+                // the wizard stops rendering a pick link once a pool is
+                // exhausted, but this route checked nothing, so a hand-typed
+                // URL walked the counter past zero and corrupted the
+                // character. The check belongs here, where the decision is
+                // actually made.
+                return c.fetch_all_creation_elements().then(function () {
+                    var creation = c.get("creation");
+                    var remaining = creation ? creation.get(category + "_" + i + "_remaining") : undefined;
+                    if (_.isNumber(remaining) && remaining <= 0) {
+                        return Parse.Promise.error({
+                            code: Parse.Error.VALIDATION_ERROR,
+                            message: "No creation picks left for " + category + " at rating " + i + "."
+                        });
+                    }
+                    return Parse.Promise.as(c);
+                });
+            }).then(function (c) {
                 var specialCategory;
                 if ("disciplines" == category) {
                     specialCategory = "in clan disciplines";
@@ -551,6 +578,9 @@ define([
                     "#charactercreate/simpletraits/<%= self.category %>/<%= self.character.id %>/specialize/<%= b.linkId() %>/" + i);
             }).then(function () {
                 $.mobile.changePage("#character-create-simpletrait-new", { reverse: false, changeHash: false });
+            }).fail(ReportError.on("Couldn't open that pick")).fail(function () {
+                $.mobile.loading("hide");
+                window.location.hash = "#charactercreate/" + cid;
             });
         },
 
@@ -790,19 +820,43 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#administration/users/all");
-            require(["../views/AdministrationUserView"], function (AdministrationUserPatronagesView) {
-                self.enforce_logged_in().then(function () {
+            // R44: this used to construct `AdministrationUserView` against
+            // `#administration-user-patronages-view`. That view's regions
+            // (#abs-form, #patronage-list-region, ...) only exist inside
+            // `#administration-user-view`, so Marionette threw on
+            // construction - inside a legacy Parse.Promise callback, which
+            // does not catch synchronous throws - and the route died before
+            // `changePage`, leaving the loader stuck. The page was broken for
+            // everyone, admin included. It renders the one thing it is named
+            // for now: that user's patronages.
+            require(["../views/PatronagesView"], function (PatronagesView) {
+                var user;
+                self.enforce_admin().then(function () {
                     return new Parse.Query("User").get(id);
-                }).then(function (user) {
-                    var is_ad = Parse.User.current().get("admininterface");
-                    if (is_ad) {
-                        self.administrationUserPatronagesView = self.administrationUserPatronagesView || new AdministrationUserPatronagesView({ el: "#administration-user-patronages-view" });
-                        self.administrationUserPatronagesView.register(user);
-                        $.mobile.changePage("#administration-user-patronages-view", { reverse: false, changeHash: false });
+                }).then(function (found) {
+                    user = found;
+                    return self.get_patronages();
+                }).then(function (patronages) {
+                    var theirs = _.filter(patronages.models, function (p) {
+                        var owner = p.get("owner");
+                        return owner && owner.id === id;
+                    });
+                    if (self.administrationUserPatronagesView) {
+                        self.administrationUserPatronagesView.destroy();
                     }
+                    self.administrationUserPatronagesView = new PatronagesView({
+                        el: "#administration-user-patronages-list",
+                        collection: new Patronages(theirs),
+                        back_url_base: "#administration/patronage/"
+                    });
+                    self.administrationUserPatronagesView.render();
+                    $("#administration-user-patronages-heading")
+                        .text("Patronages for " + user.get("username"));
+                    $("#administration-user-patronages-view").enhanceWithin();
+                    $.mobile.changePage("#administration-user-patronages-view", { reverse: false, changeHash: false });
                 }).always(function () {
                     $.mobile.loading("hide");
-                }).fail(PromiseFailReport);
+                }).fail(self.admin_route_failed("Couldn't list that user's patronages"));
             });
         },
 
@@ -818,7 +872,13 @@ define([
                 }).then(function (patronages, users) {
                     var is_ad = Parse.User.current().get("admininterface");
                     if (is_ad) {
-                        self.administrationPatronagesView = self.administrationPatronageView ||
+                        // Singular/plural mismatch: this used to read
+                        // `self.administrationPatronageView` - the *detail*
+                        // view - so once any detail or new-patronage route had
+                        // run, every later visit to the list route reused that
+                        // object instead and the list stayed empty for the rest
+                        // of the session.
+                        self.administrationPatronagesView = self.administrationPatronagesView ||
                             new PatronagesView({
                                 el: "#administration-patronages-view-list",
                                 collection: patronages,
@@ -847,7 +907,14 @@ define([
                 }).then(function (patronages, users) {
                     var is_ad = Parse.User.current().get("admininterface");
                     if (is_ad) {
-                        self.administrationPatronagesCSVView = self.administrationPatronageCSVView ||
+                        // Deliberately rebuilt every visit: the view renders
+                        // once at construction, so reusing it would show the
+                        // collection as it stood on the first visit. (It had
+                        // the same singular/plural typo R34 fixes on the list
+                        // route above, but here the typo was load-bearing -
+                        // `administrationPatronageCSVView` is never assigned,
+                        // so the left-hand side always won.)
+                        self.administrationPatronagesCSVView =
                             new PatronagesCSVView({ el: "#administration-patronages-view-csv-list", collection: patronages }).render();
                         $.mobile.changePage("#administration-patronages-view-csv", { reverse: false, changeHash: false });
                     }
@@ -866,7 +933,9 @@ define([
             $.mobile.loading("show");
             self.set_back_button("#administration/patronages");
             require(["../views/PatronageView"], function (PatronageView) {
-                self.enforce_logged_in().then(function () {
+                // R36: the list and CSV routes checked `admininterface`; the
+                // individual patronage routes did not.
+                self.enforce_admin().then(function () {
                     return Parse.Promise.when(
                         self.get_patronage(id),
                         UserChannel.get_users());
@@ -883,7 +952,7 @@ define([
                     // ends. Hiding it only on the failure path leaves a
                     // stuck spinner that swallows the next click.
                     $.mobile.loading("hide");
-                }).fail(PromiseFailReport);
+                }).fail(self.admin_route_failed("Couldn't open that patronage"));
             });
         },
 
@@ -892,7 +961,8 @@ define([
             $.mobile.loading("show");
             self.set_back_button("#administration/patronages");
             require(["../views/PatronageView"], function (PatronageView) {
-                self.enforce_logged_in().then(function () {
+                // R36: as with the detail route above, this one had no gate.
+                self.enforce_admin().then(function () {
                     return Parse.Promise.when(
                         new Patronage,
                         UserChannel.get_users());
@@ -910,7 +980,7 @@ define([
                     // ends. Hiding it only on the failure path leaves a
                     // stuck spinner that swallows the next click.
                     $.mobile.loading("hide");
-                }).fail(PromiseFailReport);
+                }).fail(self.admin_route_failed("Couldn't start a new patronage"));
             });
         },
 
@@ -919,7 +989,7 @@ define([
             self.set_back_button("#administration");
             $.mobile.loading("show");
             require(["../views/DescriptionsView"], function (DescriptionsView) {
-                self.enforce_logged_in().then(function () {
+                self.enforce_admin().then(function () {
                     self.administrationDescriptionsView = self.administrationDescriptionsView ||
                         new DescriptionsView().setup();
                     return self.administrationDescriptionsView.update_categories();
@@ -936,7 +1006,11 @@ define([
             self.set_back_button("#administration");
             $.mobile.loading("show");
             require(["../views/EditRules"], function (EditRules) {
-                self.enforce_logged_in().then(function () {
+                // R37: this page relied entirely on class-level
+                // permissions, so it rendered in full for a non-admin who
+                // then discovered the refusal only on submit - and, before
+                // R2, not even then.
+                self.enforce_admin().then(function () {
                     self.administrationEditRules = self.administrationEditRules ||
                         new EditRules().setup();
                     self.administrationEditRules.update_rule_name("bnsctdbs_KithRule");
@@ -954,7 +1028,11 @@ define([
             self.set_back_button("#administration");
             $.mobile.loading("show");
             require(["../views/EditRules"], function (EditRules) {
-                self.enforce_logged_in().then(function () {
+                // R37: this page relied entirely on class-level
+                // permissions, so it rendered in full for a non-admin who
+                // then discovered the refusal only on submit - and, before
+                // R2, not even then.
+                self.enforce_admin().then(function () {
                     self.administrationEditRules = self.administrationEditRules ||
                         new EditRules().setup();
                     self.administrationEditRules.update_rule_name("bnsmetv1_ClanRule");
@@ -972,7 +1050,11 @@ define([
             self.set_back_button("#administration");
             $.mobile.loading("show");
             require(["../views/EditRules"], function (EditRules) {
-                self.enforce_logged_in().then(function () {
+                // R37: this page relied entirely on class-level
+                // permissions, so it rendered in full for a non-admin who
+                // then discovered the refusal only on submit - and, before
+                // R2, not even then.
+                self.enforce_admin().then(function () {
                     self.administrationEditRules = self.administrationEditRules ||
                         new EditRules().setup();
                     self.administrationEditRules.update_rule_name("bnsmetv1_ElderDisciplineRule");
@@ -990,7 +1072,11 @@ define([
             self.set_back_button("#administration");
             $.mobile.loading("show");
             require(["../views/EditRules"], function (EditRules) {
-                self.enforce_logged_in().then(function () {
+                // R37: this page relied entirely on class-level
+                // permissions, so it rendered in full for a non-admin who
+                // then discovered the refusal only on submit - and, before
+                // R2, not even then.
+                self.enforce_admin().then(function () {
                     self.administrationEditRules = self.administrationEditRules ||
                         new EditRules().setup();
                     self.administrationEditRules.update_rule_name("bnsmetv1_TechniqueRule");
@@ -1008,7 +1094,11 @@ define([
             self.set_back_button("#administration");
             $.mobile.loading("show");
             require(["../views/EditRules"], function (EditRules) {
-                self.enforce_logged_in().then(function () {
+                // R37: this page relied entirely on class-level
+                // permissions, so it rendered in full for a non-admin who
+                // then discovered the refusal only on submit - and, before
+                // R2, not even then.
+                self.enforce_admin().then(function () {
                     self.administrationEditRules = self.administrationEditRules ||
                         new EditRules().setup();
                     self.administrationEditRules.update_rule_name("bnsmetv1_RitualRule");
@@ -1289,6 +1379,45 @@ define([
             } else {
                 return Parse.Promise.as(Parse.User.current());
             }
+        },
+
+        /**
+         * Route-level administrator gate.
+         *
+         * Gating was inconsistent per route rather than absent by design:
+         * `administration_users` and `administration_user` checked
+         * `admininterface`, while `#administration` itself - the front door
+         * listing all thirteen destinations - checked nothing, and neither did
+         * the five rule editors, the Descriptions admin, the individual
+         * patronage routes, or the referendum admin. Most destinations are
+         * protected server-side, so the gap was information disclosure and
+         * confusion rather than a breach; but a page a non-admin cannot use
+         * should not render for them, and discovering the refusal only on
+         * submit is worse than being told up front.
+         */
+        enforce_admin: function () {
+            var self = this;
+            return self.enforce_logged_in().then(function () {
+                if (Parse.User.current().get("admininterface")) {
+                    return Parse.Promise.as(Parse.User.current());
+                }
+                return Parse.Promise.error(new Parse.Error(
+                    Parse.Error.OPERATION_FORBIDDEN,
+                    "Administrator access is required for that page."));
+            });
+        },
+
+        /** The shared tail for an admin route: report, drop the loader, leave. */
+        admin_route_failed: function (context) {
+            return function (error) {
+                $.mobile.loading("hide");
+                if (Parse.User.current()) {
+                    // A logged-out visitor is already on #login courtesy of
+                    // `enforce_logged_in`; do not bounce them again.
+                    window.location.hash = "";
+                }
+                return ReportError(error, context);
+            };
         },
 
         get_character: function (id, categories) {
@@ -1883,16 +2012,16 @@ define([
 
         administration: function () {
             var self = this;
-            self.enforce_logged_in().then(function () {
+            self.enforce_admin().then(function () {
                 self.set_back_button("#");
                 $.mobile.changePage("#administration", { reverse: false, changeHash: false });
-            })
+            }).fail(self.admin_route_failed("Couldn't open the administration menu"));
         },
 
         administration_characters_all: function () {
             var self = this;
             $.mobile.loading("show");
-            self.enforce_logged_in().then(function () {
+            self.enforce_admin().then(function () {
                 self.set_back_button("#administration");
                 return self.get_administrator_characters();
             }).then(function () {
@@ -1900,7 +2029,7 @@ define([
                 $.mobile.changePage("#characters-all", { reverse: false, changeHash: false });
             }).always(function () {
                 $.mobile.loading("hide");
-            }).fail(PromiseFailReport);
+            }).fail(self.admin_route_failed("Couldn't list every character"));
         },
 
         administration_characters_summarize: function () {
@@ -1908,7 +2037,7 @@ define([
             $.mobile.loading("show");
             self.set_back_button("#administration");
             require(["../views/CharactersSummarizeListView"], function (CharactersSummarizeListView) {
-                self.enforce_logged_in().then(function () {
+                self.enforce_admin().then(function () {
                     return self.get_administrator_summarize_characters();
                 }).then(function () {
                     self.administrationSummarizeCharacters = self.administrationSummarizeCharacters || new CharactersSummarizeListView({ collection: self.characters.collection }).setup();
@@ -1971,14 +2100,16 @@ define([
             $.mobile.loading("show");
             self.set_back_button("#administration");
             require(["../views/ReferendumsListView"], function (ReferendumsListView) {
-                self.enforce_logged_in().then(function () {
+                // R36: the admin referendum routes had no gate either, and the
+                // detail one shows every caster's ballot.
+                self.enforce_admin().then(function () {
                     self.referendumsListView = self.referendumsListView || new ReferendumsListView({ el: "#referendums-list" }).render();
                     return self.referendumsListView.register("#administration/referendum/<%= referendum_id %>");
                 }).then(function () {
                     $.mobile.changePage("#referendums-list", { reverse: false, changeHash: false });
                 }).always(function () {
                     $.mobile.loading("hide");
-                });
+                }).fail(self.admin_route_failed("Couldn't list the referendums"));
             });
         },
 
@@ -1987,7 +2118,8 @@ define([
             $.mobile.loading("show");
             self.set_back_button("#administration/referendums");
             require(["../models/Referendum", "../collections/ReferendumBallots", "../views/ReferendumView"], function (Referendum, Ballots, ReferendumView) {
-                self.enforce_logged_in().then(function () {
+                // R36: see the list route above.
+                self.enforce_admin().then(function () {
                     var q = new Parse.Query(Referendum);
                     q.include("portrait");
                     var ballots = new Ballots;
@@ -2008,7 +2140,7 @@ define([
                     $.mobile.changePage("#referendum", { reverse: false, changeHash: false });
                 }).always(function () {
                     $.mobile.loading("hide");
-                });
+                }).fail(self.admin_route_failed("Couldn't open that referendum"));
             });
         },
 

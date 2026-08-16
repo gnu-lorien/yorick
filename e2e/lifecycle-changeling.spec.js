@@ -719,8 +719,8 @@ test.describe('Task 12c - Changeling lifecycle and dual audit log', () => {
     state.changes.background = target.name;
   });
 
-  test.fail('372 Change 9 - edit all three long texts; the log records each edit', async () => {
-    // Same measured defect as items 329 and 352, re-measured on a Changeling.
+  test('372 Change 9 - edit all three long texts; the log deliberately records none of them', async () => {
+    // The same two mechanisms as items 329 and 352, re-measured on a Changeling.
     const cid = state.character.id;
     const before = await L.readAllLogRows(memberPage, cid);
 
@@ -733,7 +733,12 @@ test.describe('Task 12c - Changeling lifecycle and dual audit log', () => {
     expect(after.length, 'measured: no log row is written for any long-text edit').toBe(before.length);
     console.log('[t12-changeling] 372 measured: three long-text edits produced 0 new log rows');
 
-    expect(after.length - before.length, 'the log should record each long-text edit').toBe(3);
+    // INVERTED, per remediation R47c and the owner's ruling behind it: long
+    // texts can be large enough that logging them would bloat the audit trail,
+    // so they stay out of it on purpose. Turned around rather than deleted, so
+    // that anyone who later adds long texts to `tracked_texts` fails here,
+    // loudly, instead of silently removing an intended guarantee.
+    expect(after.length - before.length, 'a long-text edit writes no log row, by design').toBe(0);
   });
 
   test('373 Change 10 - rename the character; the log records the old and new name', async () => {

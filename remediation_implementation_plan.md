@@ -10,6 +10,30 @@ named precisely enough to find.
 
 ---
 
+## 0. Implementation Status
+
+Work started against this plan. **Everything below is a statement about this branch, not a plan.**
+
+**Landed:** R1–R21, R24–R27, R30, R31, R34–R38, R41–R44, R46–R48, R49, R50.
+
+**Deliberately not done, with the reason:**
+
+| Item | Why not |
+|---|---|
+| **R7** | Withdrawn by the plan itself. |
+| **R22** | Needs an owner ruling first. Whether a Kith's auto-granted Arts should consume the player's *own* Art creation picks is a rules question, and `creation-changeling` 218/219/229 already assert that they do, calling it "the central mechanic". The `-2` overspend is a consequence of that choice plus ordering, not an independent bug, and any fix changes numbers three passing tests pin. See R21, which fixed the half that is unambiguous. |
+| **R23** | Not attempted. |
+| **R28, R29, R32, R33** | Not attempted. R29 in particular is not a safe blind change: `Model.get_character` caches on the router for the life of the page and callers rely on that instance holding unsaved local state, so "always refetch" both recurses and drops the query's `include`s. It needs a deliberate cache-invalidation design and a full-suite run, not a one-line edit. R30 and R31 - the two members of that family with contained fixes - are done. |
+| **R39, R40, R45** | Already resolved before this work: the Description catalogue was refreshed (see §4b), Renown/Rage/Banality are deferred features needing no code, and `character-print-view.html` was deleted in commit `bce2486`. |
+| **R51** | Needs a deployment decision. Configuring an `emailAdapter` means choosing a mail provider and putting credentials somewhere; that is not a code fix this session can make on its own authority. |
+
+**Two tests are deliberately still `test.fail()`, and both are plan errors rather than remaining defects:**
+
+- `admin-rules` **22** asserts a delete control for rule rows that has never existed. The plan lists it with the other six R10 tests; no promise-chain fix can conjure a missing feature. It is the rule-editor twin of R43's missing Patronage delete, which *was* built.
+- `traits-lifecycle` N(7) (**248/260/272**) asserted that removing a creation-picked trait "fails with an informative error". It never did and should not — the defect was the orphaned pool slot, which R18 fixed. Re-aimed at what R18 guarantees rather than at a refusal the application never made, so it is now a normal passing test.
+
+---
+
 ## 1. Start Here — Context For A Fresh Session
 
 ### What already exists
@@ -323,6 +347,37 @@ problem rather than a direct breach — but it is the front door.
 **R36. Audit every `administration/*` route for a gate.** R35 is one instance; the pattern is
 inconsistent across the router. Produce a table of route → gate present, and fix the gaps.
 *Verify:* extend `access-control.spec.js` test 390's parameterized route sweep.
+
+**R36 audit — done.** Every route was checked against `mobileRouter.js` as it stood before this
+work. The router now has one shared `enforce_admin()` (plus `admin_route_failed()` for the common
+failure tail) and every route below routes through it.
+
+| Route | Gate before | Now |
+|---|---|---|
+| `administration` | **none** | `enforce_admin` (R35) |
+| `administration/characters/all` | **none** | `enforce_admin` |
+| `administration/characters/summarize` | **none** | `enforce_admin` |
+| `administration/character/:id` | none — but `show_character_helper` refuses per-character server-side | unchanged; a storyteller reaching a character they may read is not a leak |
+| `administration/users/all` | inline `is_ad` | unchanged |
+| `administration/user/:id` | inline `is_ad` | unchanged |
+| `administration/patronages/user/:id` | inline `is_ad` | `enforce_admin` (and R44 made the page work at all) |
+| `administration/patronages` | inline `is_ad` | unchanged |
+| `administration/patronagescsv` | inline `is_ad` | unchanged |
+| `administration/patronage/:id` | **none** | `enforce_admin` |
+| `administration/patronages/new[/:userid]` | **none** | `enforce_admin` |
+| `administration/descriptions` | **none** | `enforce_admin` |
+| `administration/bnsctdbs_kith_rules` | **none** | `enforce_admin` (R37) |
+| `administration/bnsmetv1_clan_rules` | **none** | `enforce_admin` (R37) |
+| `administration/bnsmetv1_elder_discipline_rules` | **none** | `enforce_admin` (R37) |
+| `administration/bnsmetv1_technique_rules` | **none** | `enforce_admin` (R37) |
+| `administration/bnsmetv1_ritual_rules` | **none** | `enforce_admin` (R37) |
+| `administration/referendums` | **none** | `enforce_admin` |
+| `administration/referendum/:id` | **none** | `enforce_admin` — this one shows every caster's ballot |
+
+Four tests drove one of these pages *as a non-admin* to prove a server-side refusal, which is no
+longer reachable for them. Each was rewritten to assert both layers — the page does not render, and
+a direct probe is still refused — rather than dropping the server-side half: `access-control` 382,
+383, 391, `admin-rules` 36, 37, and `admin-patronage` 15.
 
 **R37. Rule editors are protected only server-side.** `bnsmetv1_ClanRule` and `bnsctdbs_KithRule` rely
 entirely on class-level permissions (Parse code 119 on save). The editor renders fully for a

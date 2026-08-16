@@ -49,9 +49,13 @@ define([
                 changed = true;
             }
 
-            if (changed) {
-                self.update_collection_query_and_fetch();
-            }
+            // R30: this used to refetch only `if (changed)` - that is, only
+            // when `start`, `changeBy` or the character reference differed from
+            // last time. "Read the log, act, read the log again" passes the
+            // identical parameters both times, so the second read silently
+            // returned the rows from before the action. Entering the log page
+            // is a request to see the log as it is now; always ask.
+            self.update_collection_query_and_fetch();
 
             return self;
         },

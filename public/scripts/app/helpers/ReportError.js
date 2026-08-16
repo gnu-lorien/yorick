@@ -109,6 +109,12 @@ define([
     // `context` names what was being attempted, so the message reads as
     // "Couldn't save the rule: ..." rather than a bare Parse message.
     var report = function (error, context) {
+        if (error && Parse.Error.USERNAME_MISSING === error.code) {
+            // "Not logged in" - `enforce_logged_in` has already put the user
+            // on the login page, which says everything a banner would.
+            // `PromiseFailReport` skips this code for the same reason.
+            return Parse.Promise.error(error);
+        }
         var message = message_for(error);
         var full = context ? (context + ": " + message) : message;
 

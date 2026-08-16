@@ -6,6 +6,10 @@ define([
     "../models/Description"
 ], function( _, Parse, Backbone, Description ) {
 
+    // The highest level any trait can reach - `max_trait_value` in the
+    // venue models. Cost tables must cover every level a slider can select.
+    var MAX_TRAIT_LEVEL = 20;
+
     var Descriptions = Backbone.Collection.extend( {
         model: Description
     } );
@@ -82,13 +86,29 @@ define([
             return combined.length != 0;
         },
 
+        /**
+         * A cumulative cost table, one entry per trait level.
+         *
+         * This used to be `_.range(1, 10)` - nine entries - while
+         * `max_trait_value` lets a trait reach 20. Because `_.take` past the
+         * end of an array silently returns the whole array,
+         * `get_cost_on_table` charged levels 10-20 exactly what level 9 cost,
+         * and the plateau looked like a deliberate cap rather than an
+         * off-by-eleven.
+         */
         get_cost_table: function(cost_per_entry) {
-            return _.map(_.range(1, 10), function(i) {
+            return _.map(_.range(1, MAX_TRAIT_LEVEL + 1), function(i) {
                 return i * cost_per_entry;
             });
         },
 
         get_cost_on_table: function(ct, value) {
+            if (value > ct.length) {
+                // Never under-charge in silence. `_.take` would return the
+                // whole table and read as a correct total; an unusable
+                // number is refused out loud by Character.update_trait.
+                return undefined;
+            }
             return _.chain(ct).take(value).sum().value();
         },
 

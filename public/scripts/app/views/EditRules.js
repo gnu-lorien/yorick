@@ -26,6 +26,47 @@ define([
     // row has a value for stay strings, exactly as before.
     var fieldTypes = {};
 
+    // The columns that actually identify a row, per class.
+    //
+    // The lookup used to be `.equalTo("category", d.category).equalTo("name",
+    // d.name)` for every class. `bnsmetv1_ClanRule` rows carry neither - all
+    // 42 seeded rows have only `clan` - so that query resolved to
+    // "category does not exist AND name does not exist", which every row
+    // matches. `.first()` then returned whichever row Parse's default
+    // ordering put first, regardless of which clan the submitted row was
+    // about: there was no way through this UI to choose which row an edit
+    // targeted, and a create could never find the row it had just made.
+    var IDENTITY_COLUMNS = {
+        "bnsmetv1_ClanRule": ["clan"],
+        "bnsctdbs_KithRule": ["category", "name"],
+        "bnsmetv1_ElderDisciplineRule": ["name"],
+        "bnsmetv1_TechniqueRule": ["name"],
+        "bnsmetv1_RitualRule": ["name"],
+        "Description": ["category", "name"]
+    };
+
+    var identity_columns = function () {
+        return IDENTITY_COLUMNS[ruleName] || ["category", "name"];
+    };
+
+    // The query that decides update-vs-insert, or `undefined` when the
+    // submitted row carries no usable identity - in which case it is a new
+    // row, not a licence to overwrite an arbitrary existing one.
+    var identity_query = function (d) {
+        var columns = identity_columns();
+        var q = new Parse.Query(ruleName);
+        var usable = true;
+        _.each(columns, function (column) {
+            var value = d[column];
+            if (_.isUndefined(value) || _.isNull(value) || "" === value) {
+                usable = false;
+                return;
+            }
+            q.equalTo(column, value);
+        });
+        return usable ? q : undefined;
+    };
+
     var type_of = function (v) {
         if (_.isNumber(v)) {
             return "number";
@@ -109,12 +150,14 @@ define([
                 }
 
                 var promises = _.map(results.data, function (d, i) {
-                    // Find any existing data that matches the category and name
-                    var q = new Parse.Query(ruleName)
-                        .equalTo("category", d.category)
-                        .equalTo("name", d.name);
+                    // Find any existing row this submission is about, keyed on
+                    // the columns that actually identify a row of this class.
+                    var columns = identity_columns();
+                    var label = _.map(columns, function (c) { return d[c]; }).join(" ");
+                    var q = identity_query(d);
                     var disguy;
-                    return q.first().then(function (toupdate) {
+                    var lookup = q ? q.first() : Parse.Promise.as(undefined);
+                    return lookup.then(function (toupdate) {
                         // If found, use that as the update object
                         // Otherwise create a new update object
                         if (!toupdate) {
@@ -124,13 +167,10 @@ define([
                             // Parse fell through to its `(attributes,
                             // options)` signature and every new rule 404'd on
                             // save.
-                            toupdate = new Parse.Object(ruleName, {
-                                name: d.name,
-                                category: d.category
-                            });
-                            console.log("Didn't find existing object for " + d.category + " " + d.name);
+                            toupdate = new Parse.Object(ruleName, _.pick(d, columns));
+                            console.log("Didn't find existing object for " + label);
                         } else {
-                            console.log("Found existing object for " + d.category + " " + d.name);
+                            console.log("Found existing object for " + label);
                         }
 
                         // Set the ACL to be writable by administrators
@@ -141,11 +181,16 @@ define([
                         acl.setRoleWriteAccess("Administrator", true);
                         toupdate.setACL(acl);
 
-                        var final = _.omit(d, function (key) {
-                            if (_.includes(["name", "category"], key)) {
+                        // Note the argument here is the *value*, not the key -
+                        // lodash 3's `_.omit` predicate is `(value, key)`. The
+                        // practical effect is to drop blank cells, which is
+                        // what keeps an empty CSV column from clearing a field
+                        // or 400ing a numeric one, so it is left as-is.
+                        var final = _.omit(d, function (value) {
+                            if (_.includes(["name", "category"], value)) {
                                 return true;
                             }
-                            if ("" == key) {
+                            if ("" == value) {
                                 return true;
                             }
 
@@ -159,7 +204,7 @@ define([
                             }
                         })
                         console.log(toupdate.attributes);
-                        disguy = " " + toupdate.id + " " + toupdate.attributes.name;
+                        disguy = " " + toupdate.id + " " + label;
                         return toupdate.save();
                     }).fail(function (e) {
                         // Keep logging the raw error object - it carries the
@@ -169,7 +214,7 @@ define([
                         // here is what made a 404ing save look like a
                         // successful one.
                         console.log(e);
-                        console.log("Error saving rule row" + (disguy || (" " + d.category + " " + d.name)));
+                        console.log("Error saving rule row" + (disguy || (" " + label)));
                         return Parse.Promise.error(e);
                     })
                     // Return the promise so we can wait on them all

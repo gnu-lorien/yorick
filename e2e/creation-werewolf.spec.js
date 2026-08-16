@@ -51,10 +51,11 @@
  * defect, not merely observed, because the Karma equivalent passes `0`
  * explicitly at the model layer and correctly reaches 4.
  *
- * **3. DEFECT - the Backgrounds pool badge is wrong throughout the wizard,
- * even though the trait picks underneath it are entirely correct (tests 191,
- * 202).** `VampireCreation.remaining_picks(category)` (models/VampireCreation.
- * js) hardcodes a `tops` map keyed on Vampire's own bare category names -
+ * **3. FIXED by remediation R20 - the Backgrounds pool badge was wrong
+ * throughout the wizard, even though the trait picks underneath it were
+ * entirely correct (tests 191, 202).** `VampireCreation.remaining_picks
+ * (category)` (models/VampireCreation.js) used to hardcode a `tops` map keyed
+ * on Vampire's own bare category names -
  * `{skills: 4, disciplines: 2, backgrounds: 3, attributes: 7, merits: 0,
  * flaws: 0}` - with no entry for any `wta_*` or `ctdbs_*` category. For an
  * unlisted category it falls back to `start = tops[category] || 1`, so
@@ -69,8 +70,9 @@
  * (so `start=1` happens to be exactly right), and `wta_merits`/`wta_flaws`
  * are sum pools keyed at `_0_remaining` (which `_.range(1,-1,-1)` always
  * includes regardless of `start`). `wta_backgrounds` is the one category
- * where the map's Vampire-only keys actually produce a wrong number, so it is
- * the one pinned here.
+ * where the map's Vampire-only keys actually produced a wrong number, so it is
+ * the one test 202 asserts against. `remaining_picks` now sums the sub-pools
+ * that actually exist on the record instead of consulting a per-venue table.
  *
  * **4. DEFECT - `wta_rites` (and `wta_totem_bonus_traits`) purchases cost 0
  * XP unconditionally (test 211).** `calculate_trait_cost` has no case for
@@ -469,13 +471,10 @@ test.describe('Task 8b - Werewolf Creation In The UI', () => {
     expect(await sampleXp('191 wizard start')).toEqual(BASELINE_XP);
 
     // The pool badges the rest of this suite reads, at their documented start
-    // values - with one deliberate exception. DEFECT (file-level finding 3,
-    // confirmed live): `Backgrounds` reads 1, not the true 3, because
-    // `VampireCreation.remaining_picks()`'s hardcoded `tops` map has no entry
-    // for "wta_backgrounds" and falls back to summing only the rating-1 slot.
-    // The real per-rating counters underneath are correct, as test 202
-    // proves - pinned here as the wrong number the badge actually shows,
-    // not the "3" a human would expect.
+    // values. `Backgrounds` used to read 1 rather than the true 3 - see
+    // file-level finding 3 and test 202 - until remediation R20 made
+    // `VampireCreation.remaining_picks` sum the sub-pools that actually exist
+    // on the record instead of consulting a Vampire-only table.
     const creationState = await readCreationState(page, state.wizardId);
     expect(creationState.pools).toEqual({
       Attributes: 3,
@@ -483,7 +482,7 @@ test.describe('Task 8b - Werewolf Creation In The UI', () => {
       'Social Focus': 1,
       'Mental Focus': 1,
       Skills: 10,
-      Backgrounds: 1,
+      Backgrounds: 3,
       Gifts: 3,
       Merits: SUM_POOL_BUDGET,
       Flaws: SUM_POOL_BUDGET
@@ -798,27 +797,66 @@ test.describe('Task 8b - Werewolf Creation In The UI', () => {
     expect(await sampleXp('201 all ten skills spent')).toEqual(BASELINE_XP);
   });
 
+  test('201b An exhausted creation pool is enforced by the route, not just by the absent link (R25)', async () => {
+    // The "60b" pattern this suite uses for a finding that needs its own test.
+    //
+    // Test 201 leaves every skill pool at zero. The wizard stops rendering a
+    // pick link at that point, but until remediation R25 that was the *only*
+    // thing stopping a pick: `charactercreatepicksimpletrait` checked nothing,
+    // so a hand-typed URL walked the counter past zero and left the character
+    // holding more creation picks than the rules allow - with no route back,
+    // since the wizard would no longer render an unpick link for a slot it
+    // does not believe exists.
+    const cid = state.wizardId;
+    const before = await readCreation(page, cid, 'Werewolf');
+    expect(before.skills_4_remaining, 'test 201 spent this pool').toBe(0);
+    const traitsBefore = await readTraits(page, cid, 'skills', 'Werewolf');
+
+    await navigateToHash(page, `charactercreate/simpletraits/skills/${cid}/pick/4`);
+    await waitForActivePage(page, 'character-create', 15000);
+
+    expect(
+      await activePageId(page),
+      'the picker never opens for an exhausted pool'
+    ).not.toBe('character-create-simpletrait-new');
+
+    const banner = page.locator('#global-error-region');
+    await expect(banner, 'and the refusal is told to the player, not swallowed').toBeVisible();
+    expect(await banner.textContent()).toMatch(/no creation picks left/i);
+
+    const after = await readCreation(page, cid, 'Werewolf');
+    expect(after.skills_4_remaining, 'the counter is untouched').toBe(0);
+    expect(
+      await readTraits(page, cid, 'skills', 'Werewolf'),
+      'and no extra skill was added'
+    ).toHaveLength(traitsBefore.length);
+
+    expect(await sampleXp('201b exhausted-pool pick refused')).toEqual(BASELINE_XP);
+  });
+
   test('202 wta_backgrounds pools 3/2/1 each decrement correctly', async () => {
     const before = await readCreation(page, state.wizardId, 'Werewolf');
     expect(before.wta_backgrounds_3_remaining).toBe(1);
     expect(before.wta_backgrounds_2_remaining).toBe(1);
     expect(before.wta_backgrounds_1_remaining).toBe(1);
-    // DEFECT (file-level finding 3, confirmed live): the badge reads 1, not
-    // the true 3 - see test 191's note. Pinned here as the number it actually
-    // shows.
-    expect((await readCreationState(page, state.wizardId)).pools.Backgrounds).toBe(1);
+    // FIXED by remediation R20. The badge used to read 1 rather than the true
+    // 3, and stayed frozen at 1 through the rating-3 and rating-2 picks: its
+    // loop was sized from a hardcoded map of Vampire's bare category names, so
+    // every `wta_*` category fell back to a top rating of 1 and only the
+    // rating-1 and rating-0 sub-pools were counted. `remaining_picks` now sums
+    // the sub-pools that actually exist on the record, so the badge tracks the
+    // per-rating counters it was always supposed to summarise.
+    expect((await readCreationState(page, state.wizardId)).pools.Backgrounds).toBe(3);
 
     const picked3 = await pickCreationTrait(page, state.wizardId, 'wta_backgrounds', 3, BACKGROUND_PICKS[3]);
     expect(picked3).toBe(BACKGROUND_PICKS[3]);
     expect((await readCreation(page, state.wizardId, 'Werewolf')).wta_backgrounds_3_remaining, 'the real counter').toBe(0);
-    // The badge does not move: it was never reading the 3-slot pool at all.
-    expect((await readCreationState(page, state.wizardId)).pools.Backgrounds, 'the badge, unmoved').toBe(1);
+    expect((await readCreationState(page, state.wizardId)).pools.Backgrounds, 'the badge follows the 3-slot pick').toBe(2);
 
     const picked2 = await pickCreationTrait(page, state.wizardId, 'wta_backgrounds', 2, BACKGROUND_PICKS[2]);
     expect(picked2).toBe(BACKGROUND_PICKS[2]);
     expect((await readCreation(page, state.wizardId, 'Werewolf')).wta_backgrounds_2_remaining, 'the real counter').toBe(0);
-    // Still unmoved, for the same reason.
-    expect((await readCreationState(page, state.wizardId)).pools.Backgrounds, 'the badge, still unmoved').toBe(1);
+    expect((await readCreationState(page, state.wizardId)).pools.Backgrounds, 'and the 2-slot pick').toBe(1);
 
     const picked1 = await pickCreationTrait(page, state.wizardId, 'wta_backgrounds', 1, BACKGROUND_PICKS[1]);
     expect(picked1).toBe(BACKGROUND_PICKS[1]);
@@ -826,9 +864,7 @@ test.describe('Task 8b - Werewolf Creation In The UI', () => {
     expect(after.wta_backgrounds_3_remaining).toBe(0);
     expect(after.wta_backgrounds_2_remaining).toBe(0);
     expect(after.wta_backgrounds_1_remaining).toBe(0);
-    // Only now does the badge move - because the *1*-slot pool it actually
-    // reads has itself reached 0, not because the other two are also spent.
-    expect((await readCreationState(page, state.wizardId)).pools.Backgrounds, 'the badge, now that the 1-slot itself is spent').toBe(0);
+    expect((await readCreationState(page, state.wizardId)).pools.Backgrounds, 'and reaches zero with the last one').toBe(0);
 
     const traits = await readTraits(page, state.wizardId, 'wta_backgrounds', 'Werewolf');
     expect(Object.fromEntries(traits.map((t) => [t.name, t.value]))).toEqual({
@@ -913,15 +949,16 @@ test.describe('Task 8b - Werewolf Creation In The UI', () => {
     expect(xpAfter).toEqual({ earned: 30, spent: MERIT_VALUE, available: 30 - MERIT_VALUE });
   });
 
-  test.fail('205 Change the picked wta_merit\'s value from 2 to 3; the pool sum updates', async () => {
-    // DEFECT (file-level finding 2, confirmed live). `SimpleTraitChangeView.
-    // js` is one shared file, not per-venue, so this is the identical bug
-    // Task 8a found for Vampire: `save_clicked` persists via `character.
-    // update_trait(self.simpletrait)` with no `free_value` argument, so
-    // `update_creation_rules_for_changed_trait` (models/Werewolf.js) writes
+  test('205 Change the picked wta_merit\'s value from 2 to 3; the pool sum updates', async () => {
+    // FIXED by remediation R19 - one fix, three venues, because
+    // `SimpleTraitChangeView.js` is one shared file.
+    //
+    // Was: `save_clicked` persisted via `character.update_trait
+    // (self.simpletrait)` with no `free_value` argument, so
+    // `update_creation_rules_for_changed_trait` (models/Werewolf.js) wrote
     // `wta_merits_undefined_remaining` / `wta_merits_undefined_picks` instead
-    // of `wta_merits_0_*`. The number is right (4), the key is wrong, and the
-    // pool a player sees never moves.
+    // of `wta_merits_0_*`. The number was right (4), the key was wrong, and
+    // the pool a player sees never moved.
     const newValue = MERIT_VALUE + 1;
 
     const label = await openTraitChange(page, state.wizardId, 'wta_merits', MERIT_NAME);
@@ -944,14 +981,11 @@ test.describe('Task 8b - Werewolf Creation In The UI', () => {
     expect(traits[0]).toMatchObject({ name: MERIT_NAME, value: newValue, cost: newValue });
     expect(await readSheetXp(page, state.wizardId)).toEqual({ earned: 30, spent: newValue, available: 30 - newValue });
 
-    // This is the defect: the pool the player is shown never moves.
+    // What R19 fixed: the write lands on the key the pool badge reads.
     const creation = await readCreation(page, state.wizardId, 'Werewolf');
     const junkKeys = Object.keys(creation).filter((k) => k.indexOf('undefined') !== -1);
-    expect(
-      creation.wta_merits_0_remaining,
-      `wta_merits_0_remaining should be ${SUM_POOL_BUDGET - newValue}; the write landed on ` +
-      `${JSON.stringify(junkKeys.map((k) => [k, creation[k]]))} instead`
-    ).toBe(SUM_POOL_BUDGET - newValue);
+    expect(junkKeys, 'no `<category>_undefined_*` keys are written any more').toEqual([]);
+    expect(creation.wta_merits_0_remaining).toBe(SUM_POOL_BUDGET - newValue);
     expect((await readCreationState(page, state.wizardId)).pools.Merits).toBe(SUM_POOL_BUDGET - newValue);
   });
 
@@ -977,10 +1011,11 @@ test.describe('Task 8b - Werewolf Creation In The UI', () => {
     // XP is refunded in full: `remove_trait` posts `-cost` as a spent alteration.
     expect(await readSheetXp(page, state.wizardId)).toEqual(BASELINE_XP);
 
-    // Residue from the defect in test 205: the bogus key is never cleaned up.
-    // It is inert (nothing reads it) but recorded here so a future fix can be
-    // seen to remove it.
-    expect(creation.wta_merits_undefined_remaining).toBe(SUM_POOL_BUDGET - (MERIT_VALUE + 1));
+    // This used to record the residue of test 205's defect - an inert
+    // `wta_merits_undefined_remaining` key nothing reads - "so a future fix can
+    // be seen to remove it". Remediation R19 is that fix, so the assertion is
+    // inverted rather than deleted: no such key is written at all now.
+    expect(Object.keys(creation).filter((k) => k.indexOf('undefined') !== -1)).toEqual([]);
   });
 
   test('207 Pick a wta_flaw; the flaw pool sum updates', async () => {

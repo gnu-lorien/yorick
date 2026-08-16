@@ -683,7 +683,7 @@ test.describe('Task 12b - Werewolf lifecycle and dual audit log', () => {
     console.log('[t12-werewolf] 351 measured: wta_rites purchase quoted NaN, charged 0, logged a zero cost');
   });
 
-  test.fail('352 Change 9 - edit all three long texts; the log records each edit', async () => {
+  test('352 Change 9 - edit all three long texts; the log deliberately records none of them', async () => {
     // Same measured defect as the Vampire suite's item 329, re-measured on a
     // Werewolf: `update_long_text` saves only the separate `LongText` object,
     // so `beforeSave("Vampire")` never runs, and none of the three long-text
@@ -700,7 +700,12 @@ test.describe('Task 12b - Werewolf lifecycle and dual audit log', () => {
     expect(after.length, 'measured: no log row is written for any long-text edit').toBe(before.length);
     console.log('[t12-werewolf] 352 measured: three long-text edits produced 0 new log rows');
 
-    expect(after.length - before.length, 'the log should record each long-text edit').toBe(3);
+    // INVERTED, per remediation R47c and the owner's ruling behind it: long
+    // texts can be large enough that logging them would bloat the audit trail,
+    // so they stay out of it on purpose. Turned around rather than deleted, so
+    // that anyone who later adds long texts to `tracked_texts` fails here,
+    // loudly, instead of silently removing an intended guarantee.
+    expect(after.length - before.length, 'a long-text edit writes no log row, by design').toBe(0);
   });
 
   test('353 Change 10 - rename the character; the log records the old and new name', async () => {
