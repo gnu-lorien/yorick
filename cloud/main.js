@@ -194,8 +194,18 @@ Parse.Cloud.beforeSave("Vampire", function(request, response) {
     
     // TODO: Update the history permissions if troupes has changed
     
+    // `desired_changes`, not `dirtyKeys()`.
+    //
+    // This used to write a `core` row for *every* dirty key once any tracked
+    // one was among them, so a single save that happened to touch a text
+    // attribute also logged `change_count`, the trait arrays, and everything
+    // else in flight - as `old_text`/`new_text` pairs holding stringified
+    // objects. `tracked_texts` is an allowlist and has to govern what gets
+    // written, not merely whether anything does. Latent until R47a added the
+    // Changeling texts, which made a Changeling's creation picks trip the gate
+    // and produced 32 core rows where the venue expects a handful.
     var new_values = {};
-    _.each(v.dirtyKeys(), function(k) {
+    _.each(desired_changes, function(k) {
         new_values[k] = v.get(k);
     })
     var vToFetch = new Vampire({id: v.id});
@@ -403,6 +413,10 @@ var EXPERIENCE_NOTATION_TRACKED = [
     "alteration_spent"
 ];
 
+// Only the values the operation carries. The previous values would need a
+// read-back of the stored row, and doing that inline is exactly what broke
+// propagation - see the note above the hooks. What the ruling asks for is the
+// operation, its reason and its deltas, and all three are on the object here.
 var experience_notation_change = function (notation, type, serverData, user) {
     var vc = new Parse.Object("VampireChange");
     vc.set({
@@ -434,55 +448,48 @@ var save_experience_notation_change = function (notation, vc) {
     });
 };
 
+// The audit record is written *after* the hook has already let the operation
+// through, never before it.
+//
+// The first cut of this did the recording inline - fetch the stored row, write
+// the VampireChange, then `response.success()`. That reliably broke XP
+// propagation: editing a notation's date re-saves every row above it in one
+// `Parse.Object.saveAll`, and holding each of those saves open on a
+// round-trip of its own left the running balances unwritten. The whole ledger
+// went stale on a single date edit (xp-history 60 caught it).
+//
+// An audit trail must not be able to break the thing it observes, so the
+// decision is made here - `dirtyKeys()` is only available in `beforeSave` -
+// and the write is dispatched behind the response. A failed record is logged
+// and nothing else; the operation still stands.
+var record_experience_notation = function (notation, type, user) {
+    save_experience_notation_change(
+        notation,
+        experience_notation_change(notation, type, {}, user)
+    ).fail(function (error) {
+        console.log("Failed to record an ExperienceNotation " + type + ": " +
+            ((error && error.message) ? error.message : JSON.stringify(error)));
+    });
+};
+
 Parse.Cloud.beforeSave("ExperienceNotation", function(request, response) {
     var notation = request.object;
-    var user = request.user;
+    var is_new = _.isUndefined(notation.id);
 
-    if (_.isUndefined(notation.id)) {
-        var vc = experience_notation_change(notation, "define", {}, user);
-        save_experience_notation_change(notation, vc).then(function () {
-            response.success();
-        }, function (error) {
-            console.log("beforeSave ExperienceNotation failed to record a define: " + error.message);
-            response.error(error);
-        });
-        return;
-    }
-
-    if (0 === _.intersection(EXPERIENCE_NOTATION_TRACKED, notation.dirtyKeys()).length) {
+    // Propagation re-saves every row above an edited one to correct its
+    // running balance; only `earned`/`spent` change there. Recording those
+    // would bury the operation that caused them under its own bookkeeping.
+    if (!is_new && 0 === _.intersection(EXPERIENCE_NOTATION_TRACKED, notation.dirtyKeys()).length) {
         return response.success();
     }
 
-    new Parse.Query("ExperienceNotation").get(notation.id, {useMasterKey: true}).then(function (stored) {
-        return stored._getServerData();
-    }).then(function (serverData) {
-        return save_experience_notation_change(
-            notation,
-            experience_notation_change(notation, "update", serverData || {}, user));
-    }).then(function () {
-        response.success();
-    }, function (error) {
-        console.log("beforeSave ExperienceNotation failed to record an update: " + error.message);
-        response.error(error);
-    });
+    response.success();
+    record_experience_notation(notation, is_new ? "define" : "update", request.user);
 });
 
 Parse.Cloud.beforeDelete("ExperienceNotation", function(request, response) {
-    var notation = request.object;
-    var user = request.user;
-
-    new Parse.Query("ExperienceNotation").get(notation.id, {useMasterKey: true}).then(function (stored) {
-        return stored._getServerData();
-    }).then(function (serverData) {
-        return save_experience_notation_change(
-            notation,
-            experience_notation_change(notation, "remove", serverData || {}, user));
-    }).then(function () {
-        response.success();
-    }, function (error) {
-        console.log("beforeDelete ExperienceNotation failed to record a removal: " + error.message);
-        response.error(error);
-    });
+    response.success();
+    record_experience_notation(request.object, "remove", request.user);
 });
 
 Parse.Cloud.afterSave("Patronage", function(request) {

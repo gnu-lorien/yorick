@@ -363,11 +363,28 @@ test.describe('Task 12c - Changeling lifecycle and dual audit log', () => {
       expect(row.free_value).toBe(row.value);
     }
 
-    // The venue-defining fact this whole file rests on: no Changeling text
-    // field is tracked, so even the *first* Kith and Court picks produced no
-    // "core" row, unlike a Vampire's clan or a Werewolf's tribe.
-    expect(L.matchingRows(rows, { category: 'core' }), 'no core row exists at all for a Changeling').toEqual([]);
-    console.log(`[t12-changeling] 362: ${rows.length} log rows after creation for ${state.creationPicks.length} picks, and 0 core rows`);
+    // This file used to rest on the opposite fact: no Changeling text field was
+    // tracked, so even the *first* Kith and Court picks produced no "core" row,
+    // unlike a Vampire's clan or a Werewolf's tribe. Remediation R47a added the
+    // three `ctdbs_*` texts to the allowlist, because that omission was an
+    // oversight rather than a design choice - the log is meant to be a backend
+    // record of what really happened, in every venue.
+    const coreRows = L.matchingRows(rows, { category: 'core' });
+    for (const attribute of ['ctdbs_kith', 'ctdbs_fealty_court']) {
+      expect(
+        L.matchingRows(coreRows, { name: attribute }).length,
+        `the ${attribute} pick is logged, like a Vampire's clan or a Werewolf's tribe`
+      ).toBeGreaterThan(0);
+    }
+    // Only the tracked attributes, and nothing else that happened to be dirty
+    // on the same save - the allowlist governs what is written now, not merely
+    // whether anything is.
+    const TRACKED = ['name', 'archetype', 'antecedence', 'ctdbs_kith', 'ctdbs_fealty_court', 'ctdbs_kith_group_type'];
+    expect(
+      [...new Set(coreRows.map((r) => r.name))].filter((n) => !TRACKED.includes(n)),
+      'no untracked attribute leaks into the core log'
+    ).toEqual([]);
+    console.log(`[t12-changeling] 362: ${rows.length} log rows after creation for ${state.creationPicks.length} picks, and ${coreRows.length} core rows`);
   });
 
   test('363 Baseline: the printable sheet matches every creation choice made', async () => {

@@ -1266,7 +1266,12 @@ test.describe('Task 4 - XP History', () => {
     // balance correct, so skipping rows in that query would corrupt the ledger.
     const start = await waitForXp(page, 'the settled table', rowCountIs(state.expected.length));
 
-    // Push the history past ten entries.
+    // Seed on a page big enough to hold everything. The default page size is
+    // ten, and now that the route really paginates, a table already showing
+    // ten rows does not grow when an eleventh notation is added - which is the
+    // whole point of the item, but it also means `addNotation`'s "wait for the
+    // table to grow" check has to be given a page it can grow on.
+    await openXp(page, state.characterId, 0, 50);
     while ((await readXpRows(page)).length <= 10) {
       await addNotation(page);
     }
@@ -1276,7 +1281,7 @@ test.describe('Task 4 - XP History', () => {
 
     const stored = await storedNotations(page, state.characterId);
     const total = stored.notations.length;
-    expect(total).toBe(all.rows.length);
+    expect(total, 'a page of fifty shows the whole history').toBe(all.rows.length);
 
     await openXp(page, state.characterId, 0, 10);
     const firstPage = await readXpRows(page);

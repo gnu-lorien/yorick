@@ -102,8 +102,15 @@ define([
             var en = self.collection.getByCid(id);
             var updatedEntered = moment(d, MOMENT_FORMAT);
             if (updatedEntered.isValid()) {
+                // No `en.save()` here on purpose. Setting `entered` fires
+                // `Character.on_update_experience_notation`, which re-sorts the
+                // ledger and saves every row whose running balance moved -
+                // including this one. Saving it again in parallel raced that
+                // batch: this row carried its *pre*-propagation earned/spent,
+                // so whichever write landed last decided the balance. It
+                // happened to be benign until the audit hook added a round-trip
+                // to the notation save and tipped the ordering.
                 en.set("entered", updatedEntered.toDate());
-                en.save();
                 $("#popupEditEntered").popup("close");
             } else {
                 // Can't do validation this way because then we would have to watch for
@@ -131,8 +138,9 @@ define([
             n = _.isFinite(n) ? n : 0;
             var en = self.collection.getByCid(id);
             var type = self.$("#alterationpopupEdit #alteration-type").val();
+            // As with the date popup above: the propagation this `set` kicks
+            // off saves this row itself, so an explicit save here only races it.
             en.set("alteration_" + type, n);
-            en.save();
             $("#alterationpopupEdit").popup("close");
         },
 

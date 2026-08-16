@@ -125,6 +125,8 @@ const BACKGROUND_PER_LEVEL = 2;
 const TERRITORY_BASE = 'Territory';
 const TERRITORY_SUFFIX = 'Riverfront';
 const RITE_NAME = 'Caern';
+/** Per `calculate_trait_cost`'s `"wta_rites"` branch, added by R14: 2 per level. */
+const RITE_COST_PER_LEVEL = 2;
 
 test.describe.configure({ mode: 'serial' });
 
@@ -651,7 +653,14 @@ test.describe('Task 12b - Werewolf lifecycle and dual audit log', () => {
     expect(sheetCategories, 'a Renown category should exist to raise').toContain('wta_renown');
   });
 
-  test('351 Change 8 - add a Rite; the log records it (at the zero cost the cost engine actually charges)', async () => {
+  test('351 Change 8 - add a Rite; the log records it at the cost the engine charges', async () => {
+    // Rewritten for remediation R14. `BNSWTAV1_WerewolfCosts.calculate_trait_cost`
+    // had no `wta_rites` branch, so the cost came back `undefined`, the change
+    // page rendered a literal "Cost: NaN" / "Final: NaN", and
+    // `update_trait`'s `_.isFinite` guard zeroed the spend - every Rite was
+    // silently free. Rites are now priced at RITE_COST_PER_LEVEL, matching the
+    // Vampire Rituals they are the analogue of, and R9 additionally guarantees
+    // the page never renders arithmetic on a non-number.
     const cid = state.character.id;
 
     const xpBefore = await readSheetXp(memberPage, cid);
@@ -660,21 +669,18 @@ test.describe('Task 12b - Werewolf lifecycle and dual audit log', () => {
     await setTraitChangeSliders(memberPage, { value: 1 });
     const quote = await readTraitChangeView(memberPage);
 
-    // DEFECT, measured: with no `wta_rites` branch in
-    // `BNSWTAV1_WerewolfCosts.calculate_trait_cost` the cost is `undefined`,
-    // so the change page renders "Cost: NaN" and "Final: NaN" - which
-    // `readTraitChangeView` reports as nulls because "NaN" is not a number it
-    // can parse.
-    expect(quote.text, 'the change page shows an unparseable cost').toMatch(/Cost:\s*NaN/);
-    expect(quote.cost, 'so no numeric quote is displayed at all').toBeNull();
+    expect(quote.text, 'the change page never shows NaN').not.toContain('NaN');
+    expect(quote.cost, 'a real quote is displayed').toBe(RITE_COST_PER_LEVEL);
 
     await saveTraitChange(memberPage, cid, 'wta_rites');
     const xpAfter = await readSheetXp(memberPage, cid);
-    expect(xpAfter, 'update_trait\'s _.isFinite guard zeroes the spend, so nothing is charged').toEqual(xpBefore);
+    expect(xpAfter.spent - xpBefore.spent, 'and the Rite is charged for').toBe(RITE_COST_PER_LEVEL);
+    expect(xpAfter.available - xpBefore.available).toBe(-RITE_COST_PER_LEVEL);
 
     const rites = await readTraits(memberPage, cid, 'wta_rites', 'Werewolf');
-    expect(rites.map((t) => t.name), 'the Rite is bought and stored regardless').toContain(RITE_NAME);
-    expect(rites.find((t) => t.name === RITE_NAME)).toMatchObject({ value: 1, free_value: 0, cost: 0 });
+    expect(rites.map((t) => t.name), 'the Rite is bought and stored').toContain(RITE_NAME);
+    expect(rites.find((t) => t.name === RITE_NAME))
+      .toMatchObject({ value: 1, free_value: 0, cost: RITE_COST_PER_LEVEL });
 
     await navigateToHash(memberPage, `character/${cid}/print`, '#printable-sheet');
     expect(normalize(await memberPage.locator('#printable-sheet').textContent()), 'and it prints')
@@ -683,8 +689,7 @@ test.describe('Task 12b - Werewolf lifecycle and dual audit log', () => {
     const rows = await L.readAllLogRows(memberPage, cid);
     const row = L.freshestRow(rows, { category: 'wta_rites', name: RITE_NAME, type: 'define' });
     expect(row).toMatchObject({ value: 1, old_value: null });
-    expect(L.numCost(row.cost), 'the logged cost is the zero the engine actually charged').toBe(0);
-    console.log('[t12-werewolf] 351 measured: wta_rites purchase quoted NaN, charged 0, logged a zero cost');
+    expect(L.numCost(row.cost), 'the logged cost is what the engine charged').toBe(RITE_COST_PER_LEVEL);
   });
 
   test('352 Change 9 - edit all three long texts; the log deliberately records none of them', async () => {

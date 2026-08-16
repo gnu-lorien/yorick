@@ -582,7 +582,15 @@ test.describe('Task 9 - Trait Change Lifecycle In The UI', () => {
         const after = await readLogRows(page);
 
         expect(after.length, 'log row count unchanged after re-saving the same value').toBe(before.length);
-        expect(after[0], 'the freshest row is still the original define, not a new one').toMatchObject({
+        // Scoped to this trait's own category rather than taking the freshest
+        // row overall: since remediation R47b the log also carries `experience`
+        // rows, and the notation the original purchase wrote is saved *after*
+        // the trait itself, so it - not the define - is the newest row in the
+        // whole log. What this test is actually about is that no second row
+        // appeared for the trait.
+        const traitRows = after.filter((r) => r.category === venue.chainCategory && r.name === venue.plainTrait);
+        expect(traitRows.length, 'exactly one row for this trait, the original define').toBe(1);
+        expect(traitRows[0]).toMatchObject({
           category: venue.chainCategory, name: venue.plainTrait, type: 'define', value: 1
         });
 
