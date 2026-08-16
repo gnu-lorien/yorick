@@ -1,6 +1,8 @@
 # Yorick Application Remediation Plan
 
-**51 numbered fixes across 7 phases, every one tied to an existing test or a named decision.**
+**53 actionable fixes across 7 phases, every one tied to an existing test or a named decision.**
+
+Numbered R1–R51, with R47 split into R47a/b/c once audit scope was decided, and R7 withdrawn. All six open questions have been ruled on — see [Decisions Already Made](#4-decisions-already-made) before starting, because four of them change what "correct" means.
 
 This plan fixes defects found by the E2E suite built in `testing_implementation_plan.md`. It is
 written to be executed from a **fresh session** with no prior context: everything needed is here or
@@ -131,9 +133,9 @@ the suite must still pass.
 but nothing tells the user. The only trace is a `console.log`.
 *Verify:* `traits-lifecycle.spec.js` tests 246, 258, 270 (all three venues).
 
-**R7. Character rename collisions must surface, or be allowed deliberately.** See R41 — this needs a
-product decision first.
-*Verify:* `assets-rename-portrait.spec.js` test 114.
+**R7. WITHDRAWN — character names are deliberately not unique.** Ruled on by the owner: uniqueness is
+**not** required and must not be enforced. Nothing to fix here; the work is in R41, which inverts the
+test that wrongly expected a rejection.
 
 **R8. `format_entry` must distinguish zero from absent.** It returns the value only when truthy, so a
 cost of `0` renders as an empty cell — indistinguishable from "not recorded". Return `0` explicitly.
@@ -337,30 +339,61 @@ route gate itself is independent and safe to add.
 
 ## Phase 6 — Missing Data And Dead Code
 
-**R39. Six Description categories have no source data anywhere.** Nothing can ever be picked from
-them: `ctdbs_noble_houses`, `ctdbs_realms`, `wta_monikers`, `ctdbs_holdings_specializations`,
-`ctdbs_arts_affinities_links`, `wta_territory_specializations`. The first three were dropped from the
-test plan by decision; the other three still have tests asserting their emptiness. Authoring the game
-data is a content task, not an engineering one — decide per category whether to populate or remove the
-feature.
+**R39. Exactly seven Description categories have no content, and it was never written.** Measured
+against the live database: of the **62** categories the three models reference, **55 have data and 7
+are empty**. For all seven there is no source anywhere — nothing in `database_seed/Description.json`,
+nothing in any CSV under `data/`, nothing in `all_dev_descriptions.csv`. For contrast
+`extra_affinity_links` has 30 rows in that CSV, which proves the seed pipeline works: this content was
+never authored, not lost in loading.
+
+| Category | Venue | Note |
+|---|---|---|
+| `ctdbs_noble_houses` | Changeling (text attribute) | dropped from the test plan by decision |
+| `ctdbs_realms` | Changeling | dropped from the test plan by decision; oddly, the cost engine *does* have a branch for it |
+| `wta_monikers` | Werewolf | dropped from the test plan by decision |
+| `ctdbs_holdings_specializations` | Changeling | still has a test asserting emptiness |
+| `ctdbs_arts_affinities_links` | Changeling | still has a test asserting emptiness; the Werewolf equivalent has 30 rows |
+| `wta_territory_specializations` | Werewolf | still has a test asserting emptiness |
+| **`luminary_disciplines`** | **Vampire** | **not previously reported — found while answering this question** |
+
+This is a content task, not an engineering one. Per category, either author the rows or remove the
+category from the model. `luminary_disciplines` is the notable one: every other empty category belongs
+to the two newer venues, so a Vampire category with no content looks more like an oversight than an
+unfinished feature.
 *Verify:* `creation-changeling.spec.js` test 237; `descriptions-by-creature.spec.js` item 315.
 
-**R40. Renown has no UI path at all.** Glory, Honor and Wisdom are absent from
-`ALL_SIMPLETRAIT_CATEGORIES`, have no seed data, and appear on neither the live nor the print sheet.
-"Rage" is likewise a hardcoded print-only constant tied to no character data, and "Banality" does not
-exist anywhere in the repository. These are unimplemented features, not bugs.
+**R40. Three Werewolf/Changeling concepts are unimplemented, not merely unseeded.** Distinct from R39,
+because these have no category at all — there is nothing to author rows *into*:
+
+- **Renown** (Glory, Honor, Wisdom) — absent from `ALL_SIMPLETRAIT_CATEGORIES`, no seed data, and on
+  neither the live nor the print sheet.
+- **Rage** — a hardcoded print-only constant (10 boxes, split 7) tied to no character data.
+- **Banality** — does not exist anywhere in the repository: no field, no data, no template.
+
+These are unimplemented features rather than bugs. **This is the one question in this plan still
+open:** the owner has ruled on audit scope, name uniqueness, the rule classes, immutability and
+patronage dating, and has been told exactly what content is missing — but whether to *implement*
+Renown, Rage and Banality or to remove the vestigial references is undecided. Do not guess; the tests
+covering them (`creation-werewolf` 212, 213, 215 and `lifecycle-werewolf` 350) stay pinned until it is
+answered.
 *Verify:* `creation-werewolf.spec.js` tests 212, 213, 215; `lifecycle-werewolf.spec.js` test 350.
 
-**R41. Decide whether character names should be unique.** Nothing enforces it, client or server;
-renaming onto an existing name succeeds silently. The codebase treats names as non-unique elsewhere
-(identify by id), so this may be intended — **but test 114 currently asserts a rejection that never
-happens.** Either implement uniqueness or invert the test, as was done for patronage readability.
-*Verify:* `assets-rename-portrait.spec.js` test 114.
+**R41. Invert test 114 — non-unique names are intended.** Ruled on by the owner: names are explicitly
+**not** required to be unique, and uniqueness must not be enforced. Nothing enforces it today, so the
+application is already correct; the test is what is wrong. Invert it to assert positively that a
+rename onto an existing name **succeeds**, the same treatment patronage readability got, so that
+anyone who later "fixes" this by adding uniqueness fails loudly instead of silently removing intended
+behaviour. Identify characters by id, never by name — that constraint already holds throughout the
+suite and the helpers.
+*Verify:* `assets-rename-portrait.spec.js` test 114 becomes a positive pass.
 
-**R42. `paidOn` is dead data.** Only `expiresOn` is consulted for patron status
-(`ExpirationMixin.isActive`, `get_my_patronage_status`, `vote_for_referendum`), so a future-dated
-patronage is active immediately.
-*Verify:* `admin-patronage.spec.js` test 11.
+**R42. Invert test 11 — a future-dated patronage is active on purpose.** Ruled on by the owner: only
+`expiresOn` should gate patron status, deliberately, to avoid time-zone confusion around the start of
+a patronage. `paidOn` is therefore recorded for reference rather than consulted, and the current
+behaviour of `ExpirationMixin.isActive`, `get_my_patronage_status` and `vote_for_referendum` is
+correct. Invert the test to assert that a patronage with a future `paidOn` and a future `expiresOn`
+**is** active.
+*Verify:* `admin-patronage.spec.js` test 11 becomes a positive pass.
 
 **R43. There is no way to delete a Patronage.** No button, no list control, no route.
 *Verify:* `admin-patronage.spec.js` test 13.
@@ -371,12 +404,16 @@ markup is an empty `<form>`. Marionette throws on construction inside a legacy p
 route dies before `changePage`.
 *Verify:* `admin-patronage.spec.js` test 7.
 
-**R45. Remove dead code.** `character-print-view.html` is imported by `CharacterPrintView` but never
-rendered — the real template is the venue-aware `character-print-parent.html`. It actively misleads:
-judging print coverage from it produces wrong conclusions. The `bnsmetv1_ElderDisciplineRule`,
-`bnsmetv1_TechniqueRule` and `bnsmetv1_RitualRule` classes likewise have **no runtime consumer at all**
-and no cost field — XP comes from a generation-keyed formula in `BNSMETV1_VampireCosts.js`. Decide
-whether to wire them up or delete them.
+**R45. Remove one piece of dead code; keep the rule tables.** `character-print-view.html` is imported
+by `CharacterPrintView` but never rendered — the real template is the venue-aware
+`character-print-parent.html`. It actively misleads: judging print coverage from it produces wrong
+conclusions. **Delete it.**
+
+The `bnsmetv1_ElderDisciplineRule`, `bnsmetv1_TechniqueRule` and `bnsmetv1_RitualRule` classes have no
+runtime consumer and no cost field, but the owner has ruled they **stay** — they are informational
+reference data, and XP legitimately comes from the generation-keyed formula in
+`BNSMETV1_VampireCosts.js` instead. **No tests are needed for them**, so do not add coverage; the
+existing admin-rules tests that exercise their editors are sufficient.
 
 **R46. `#profile/:id` links to a route that does not exist** (only `patronage/:id` does).
 
@@ -384,30 +421,41 @@ whether to wire them up or delete them.
 
 ## Phase 7 — Reporting And Observability Coverage
 
-**R47. Decide what the audit log is for, then make it consistent.** `beforeSave("Vampire")`'s
-`tracked_texts` allowlist is exactly:
+**R47. Close the two real audit-log gaps; the third is intended.** Ruled on by the owner, the log's
+purpose is a backend record of what really happened, so `beforeSave("Vampire")`'s `tracked_texts`
+allowlist needs two additions and one deliberate omission. It is currently exactly:
 
 ```
 name, clan, state, archetype, archetype_2, faction, title, sect, antecedence,
 wta_breed, wta_auspice, wta_tribe, wta_camp, wta_faction
 ```
 
-The consequences are uneven in ways that look accidental rather than designed:
-
-| Change | Logged? | Consequence |
+| Change | Today | Required |
 |---|---|---|
-| Rename | yes | — |
-| Vampire text (clan, sect, title) | yes | — |
-| Werewolf text (breed, auspice, tribe, camp) | yes | — |
-| **Changeling text (kith, court, group type)** | **no** | A Changeling owns **no `core` log row at all** until a rename |
-| **XP notation add / edit / delete** | **no** | No hook on `ExperienceNotation`; XP fields absent from the allowlist |
-| **Long text edits** | **no** | `update_long_text` never calls `Vampire#save()`, so the hook never fires |
+| Rename, Vampire text, Werewolf text | logged | unchanged |
+| **Changeling text** (`ctdbs_kith`, `ctdbs_fealty_court`, `ctdbs_kith_group_type`) | **not logged** | **must be logged, like the other venues** |
+| **XP notation add / edit / delete** | **not logged** | **must be logged** |
+| **Long text edits** | not logged | **intended — long texts can be very large, and must stay out of the log** |
 
-If the log is meant to be a complete audit trail, all three gaps need closing — the Changeling one by
-adding `ctdbs_*` fields to the allowlist, the XP one by adding a hook on `ExperienceNotation`, and the
-long-text one by either saving the parent or adding a `beforeSave("LongText")`.
-*Verify:* `lifecycle-*.spec.js` tests 321, 329, 344, 352, 364, 369, 372; `xp-history.spec.js` test 75;
-`long-texts.spec.js` test 285. **Nine pinned tests — the second-largest win in this plan.**
+**R47a — log Changeling text changes.** Add the `ctdbs_*` text attributes to `tracked_texts`. Today a
+Changeling owns no `core` log row at all until a rename, which is purely an oversight of the allowlist
+rather than a design choice.
+*Verify:* `lifecycle-changeling.spec.js` test 369.
+
+**R47b — log XP notation operations.** There is no hook on `ExperienceNotation` and the XP fields are
+absent from the allowlist, so an add, an edit and a delete together produce zero rows. Add a hook on
+`ExperienceNotation` recording the operation, the reason, and the earned/spent deltas. Note the
+interaction with R49: the log is immutable, so an *edited* notation must append a new row rather than
+amend the original — which is the right shape anyway, since the point is to show what really happened.
+*Verify:* `xp-history.spec.js` test 75; `lifecycle-*.spec.js` tests 321, 344, 364.
+
+**R47c — long texts stay unlogged, and the tests must say so.** Ruled intended: long texts can be
+large enough that logging them would bloat the audit trail. `update_long_text` never calls
+`Vampire#save()`, so the hook never fires, and the fields are absent from the allowlist — belt and
+braces, both correct. Invert the four tests to assert positively that a long-text edit produces **no**
+new log row, so that anyone who later adds long texts to the allowlist fails loudly.
+*Verify:* `long-texts.spec.js` test 285 and `lifecycle-*.spec.js` tests 329, 352, 372 all become
+positive passes.
 
 **R48. Experience pagination is dead code.** `CharacterExperienceView.register(character, start,
 changeBy)` accepts both parameters and uses neither; the skip/limit lines and the Prev/Next controls
@@ -416,11 +464,24 @@ that `CharacterLogView` **does** paginate correctly — copy its implementation 
 one.
 *Verify:* `xp-history.spec.js` test 74.
 
-**R49. `VampireChange` rows can never be deleted by an administrator.** `_SCHEMA.json` grants `delete`
-only to `role:SiteAdministrator`, and no user holds it. They also accumulate during teardown, since
-destroying a trait fires a `beforeDelete` that writes a "remove" row. The current database holds
-~13,500. Decide whether this is intended immutability — a defensible choice for an audit log — and if
-so document it; if not, grant `Administrator` delete.
+**R49. Audit-log immutability is intended and is genuinely enforced — with one hole to close.** Ruled
+on by the owner: if a player cheats, the backend must hold a record that **nobody** is allowed to
+change, so the log always shows what really happened. Verified against the live schema, the guarantee
+holds where it matters:
+
+| Operation | Permitted to |
+|---|---|
+| `create` / `update` / `delete` | `role:SiteAdministrator` only — and no user holds that role |
+| `find` / `get` | `*`, then narrowed per row by ACL (a stranger reads zero rows) |
+| **`addField`** | **`*` — anyone can extend the class schema** |
+
+Rows are written by the cloud hooks, which run with master-key privileges, which is why `create` being
+restricted does not prevent legitimate logging.
+
+**The one gap is `addField`.** An "immutable" record that any client can add arbitrary fields to is
+weaker than it reads. Restrict `addField` to `role:SiteAdministrator` to match the other write
+operations. Nothing else here needs changing, and the accumulation during teardown is a test-hygiene
+consequence of immutability working as designed, not a defect — leave it.
 
 **R50. The XP history "Available" cell is permanently blank.** The template calls
 `format_entry(log, "available")`, which reads a property that exists on neither the model nor the view.
@@ -444,29 +505,48 @@ is not.
 | 4 | Phase 3 | Data integrity. R19 fixes three venues at once. |
 | 5 | Phase 4 | Caching. Do this as a group — the bugs share a shape and a fix strategy, and each removal of a test workaround validates the next. |
 | 6 | Phase 5 | Access control. Coordinate R38 with the other session first. |
-| 7 | R47 | Largest remaining test win, but needs a product decision on audit scope. |
-| 8 | Phases 6, 7 remainder | Mostly decisions rather than code. |
+| 7 | R47a, R47b | Largest remaining test win, and now unblocked — audit scope is decided. Five pinned tests. |
+| 8 | The four test inversions | R41, R42, R47c. No application change at all — these tests assert the opposite of intended behaviour and must be turned around. Quick, and they stop a future "fix" from silently removing a guarantee. |
+| 9 | Phases 6, 7 remainder | Content authoring (R39) and the one remaining open question (R40). |
 
 **Two fixes are worth doing first if you only have an hour:** R10 (seven pinned tests, one wrong
-property name) and R11 (a refused vote being silently recorded).
+property name) and R11 (a refused vote being silently recorded). If you have a second hour, the four
+test inversions in R41/R42/R47c need no application change at all.
 
 ---
 
-## 4. Decisions Needed Before Coding
+## 4. Decisions Already Made
 
-These are not engineering calls, and guessing wrong wastes work:
+All six open questions were ruled on by the owner. They are recorded here because several change what
+"correct" means, and a fresh session must not re-litigate them.
 
-1. **Audit scope (R47)** — should XP, long texts and Changeling text changes be logged? This drives
-   nine tests.
-2. **Name uniqueness (R41)** — enforce, or accept and invert the test?
-3. **Missing game data (R39, R40)** — populate the six empty categories and implement Renown, or
-   remove the features?
-4. **Rule-class purpose (R45)** — the elder discipline, technique and ritual rule tables have no
-   consumer. Wire up or delete?
-5. **Audit-log immutability (R49)** — intended, or an oversight?
-6. **`paidOn` (R42)** — should a future-dated patronage be inactive until then?
+| # | Question | Ruling |
+|---|---|---|
+| 1 | Audit-log scope | **XP notations must be logged. Changeling text changes must be logged, like the other venues. Long texts stay unlogged — they can be large enough to bloat the trail.** See R47a/b/c. |
+| 2 | Name uniqueness | **Names are explicitly *not* required to be unique, and uniqueness must not be enforced.** See R41; R7 is withdrawn. |
+| 3 | Missing game data | Answered in R39: seven categories, none with any source content, including one Vampire category not previously reported. |
+| 4 | The three rule classes | **Keep them — they are informational reference data. No tests needed.** See R45. |
+| 5 | Audit-log immutability | **Intended.** If a player cheats, the backend must hold a record nobody can change. Verified enforced for create/update/delete; `addField` is an open hole to close. See R49. |
+| 6 | Future-dated patronage | **Active is correct**, deliberately, to avoid time-zone confusion. See R42. |
 
----
+### What these rulings change
+
+Four tests currently pinned red are asserting the *wrong* expectation and must be **inverted into
+positive tests**, not fixed in the application:
+
+| Test | Currently asserts | Must assert |
+|---|---|---|
+| `admin-patronage` 11 | a future-dated patronage is inactive | it **is** active |
+| `assets-rename-portrait` 114 | renaming onto an existing name is rejected | it **succeeds** |
+| `long-texts` 285 | long-text edits are logged | they produce **no** log row |
+| `lifecycle-*` 329 / 352 / 372 | long-text edits are logged | they produce **no** log row |
+
+Inverting rather than deleting is deliberate, and is the same treatment patronage readability already
+received: a test that demands the opposite of intended behaviour will, if someone later "fixes" it,
+silently remove a guarantee. Turned around, it defends the decision instead.
+
+Five tests remain genuine work: `xp-history` 75 and `lifecycle-*` 321 / 344 / 364 (XP logging, R47b),
+and `lifecycle-changeling` 369 (Changeling text logging, R47a).
 
 ## 5. Verification Checklist
 
