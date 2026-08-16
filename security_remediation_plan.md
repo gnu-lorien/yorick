@@ -25,7 +25,7 @@ session token at all**:
 | `LongText` | **accepted** | 148 | `Character.js:1013`, client-side as the owner |
 | `VampireCreation` | **accepted** | 297 | `Vampire.js:99`, client-side as the owner |
 | `Description` | **accepted** | 1784 | `DescriptionsView.js:55`, admin bulk editor |
-| `ReferendumBallot` | **accepted** | 0 | `cast_ballot` cloud function, `cloud/main.js:764` |
+| `ReferendumBallot` | **accepted** | 0 | `vote_for_referendum` cloud function, `cloud/main.js:746` |
 | `ChangeType` | **accepted** | 6 | nothing — zero code references |
 | `InClanDisciplines` | **accepted** | 0 | nothing — zero code references |
 
@@ -147,18 +147,23 @@ parity checks in the `lifecycle-*` suites earn their keep.
 
 **`ReferendumBallot`**
 
-Currently a plain client can bypass `cast_ballot` entirely and `POST` a ballot
+Currently a plain client can bypass the vote flow entirely and `POST` a ballot
 directly, with any `choice`, any `caster`, any `owner`, any ACL, and **as many
-times as it likes**. `cast_ballot` is where the patronage requirement and the
-one-ballot-per-user check live (`cloud/main.js:745-780`), and none of it is
-reached. Zero rows exist today, so this is a hole to close before the feature is
-used rather than damage to repair.
+times as it likes**. The `vote_for_referendum` cloud function
+(`cloud/main.js:746`) is where the patronage requirement and the
+one-ballot-per-user check live, and none of it is reached. Zero rows exist
+today, so this is a hole to close before the feature is used rather than damage
+to repair.
 
-The fix has an ordering constraint worth noticing: `cast_ballot` saves with
-`ballot.save()` and **no master key**, so it currently depends on the public
-create permission it is supposed to be the gatekeeper for.
+Note the naming: `vote_for_referendum` is the cloud function;
+`cast_ballot` is the *view* method that calls it, in `ReferendumView.js:59`.
+Client code otherwise only ever queries ballots, never writes them.
 
-1. Change `cast_ballot` to `ballot.save(null, {useMasterKey: true})`.
+The fix has an ordering constraint worth noticing: the function saves with
+`ballot.save()` and **no master key** (`cloud/main.js:833`), so it currently
+depends on the public create permission it is supposed to be the gatekeeper for.
+
+1. Change that save to pass `{useMasterKey: true}`.
 2. Only then set create/update/delete to `{}` — nobody. The master key bypasses
    class-level permissions, so the cloud function keeps working and becomes the
    *only* way a ballot can exist.

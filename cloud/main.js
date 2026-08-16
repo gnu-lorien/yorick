@@ -830,7 +830,14 @@ Parse.Cloud.define("vote_for_referendum", function(request, response) {
         ballot.set("choice", request.params.ballot_option);
         
         console.log("Saving the ballot");
-        return ballot.save();
+        // With the master key, because ReferendumBallot's class-level
+        // permissions now refuse create to everyone. This function is where the
+        // patronage requirement and the one-ballot-per-user check above
+        // actually live, and while the class granted create to "*" a client
+        // could skip all of it and POST a ballot directly - any choice, any
+        // caster, any ACL, as many times as it liked. Making this the only
+        // writer is the point; saving as the user again would reopen the hole.
+        return ballot.save({}, {useMasterKey: true});
     }).fail(function (error) {
         console.log("Ballot failed to save");
         response.error("Couldn't properly cast ballot because " + JSON.stringify(error));
