@@ -491,8 +491,12 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#characters?all");
-            self.characterNewView.render();
-            $.mobile.changePage("#character-new", { reverse: false, changeHash: false });
+            self.enforce_logged_in().then(function () {
+                self.characterNewView.render();
+                $.mobile.changePage("#character-new", { reverse: false, changeHash: false });
+            }).always(function () {
+                $.mobile.loading("hide");
+            });
         },
 
         charactercreate: function (cid) {

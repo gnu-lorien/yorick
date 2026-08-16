@@ -150,6 +150,32 @@ var get_vampire_change_acl = function(vampire) {
 };
 
 Parse.Cloud.beforeSave("Vampire", function(request, response) {
+    // A character always belongs to somebody, so refuse to write one for a
+    // request that has nobody attached to it.
+    //
+    // This is not theoretical. Vampire's class-level permissions granted
+    // create to "*", so a bare REST POST carrying only the public application
+    // id - no session token, no user - was accepted and came back with a real
+    // object id. Werewolf and ChangelingBetaSlice are both
+    // Parse.Object.extend("Vampire", ...) over the same underlying class, so
+    // the hole covered all three creature types.
+    //
+    // database_seed/_SCHEMA.json now asks for requiresAuthentication on create
+    // as well, but that is only a second line of defence: seed_db.js imports
+    // the schema file solely when the database has no users at all, so an
+    // already-seeded deployment keeps whatever class-level permissions its
+    // live _SCHEMA collection was created with. This guard is what protects
+    // those, and it runs ahead of the class-level check either way.
+    //
+    // Neither legitimate write path is affected: Model.create
+    // (public/scripts/app/models/Vampire.js) only ever runs for a logged-in
+    // user - it builds the character's ACL out of Parse.User.current() - and
+    // every save cloud code makes on a character's behalf passes useMasterKey,
+    // which sets request.master here.
+    if (!request.master && !request.user) {
+        return response.error("Characters can only be created or modified by a logged in user.");
+    }
+
     var tracked_texts = [
         "name",
         "clan",
