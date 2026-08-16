@@ -1059,18 +1059,34 @@ test.describe('Task 12a - Vampire lifecycle and dual audit log', () => {
     const cid = state.character.id;
     const rows = state.parity.playerRows; // newest first
 
+    // The timeline is every change that can be *replayed* onto the character,
+    // which since remediation R47b is not quite every row in the log: XP
+    // notation rows are recorded there too, and an XP award is neither a trait
+    // nor a text attribute, so there is no character state to step to. They are
+    // excluded from `recorded_changes` for that reason - feeding them to
+    // `get_transformed` manufactured a fake trait in a category no venue has and
+    // stopped the approval view rendering at all.
+    // Substring rather than equality: jQuery Mobile's responsive table prepends
+    // a column label to each cell, so a category cell reads "experience" on some
+    // rows and "category experience" on others depending on how it reflowed.
+    const isExperience = (r) => /experience/.test(String(r.category));
+    const replayable = rows.filter((r) => !isExperience(r));
+    expect(replayable.length, 'the log carries more than the timeline does').toBeLessThan(rows.length);
+    expect(replayable.filter(isExperience), 'no XP row survives the filter').toEqual([]);
+
     await L.openHistory(memberPage, cid);
     const bounds = await L.readHistoryBounds(memberPage);
-    expect(bounds.changeCount, 'the timeline knows about every recorded change').toBe(rows.length);
-    expect(bounds.max, 'the slider spans every change').toBe(rows.length - 1);
-    expect(bounds.value, 'and starts on the newest').toBe(rows.length - 1);
+    expect(bounds.changeCount, 'the timeline knows about every replayable change').toBe(replayable.length);
+    expect(bounds.max, 'the slider spans every replayable change').toBe(replayable.length - 1);
+    expect(bounds.value, 'and starts on the newest').toBe(replayable.length - 1);
 
     // `recorded_changes` is fetched ascending, so index i corresponds to the
-    // player log's row (length - 1 - i).
+    // replayable rows' (length - 1 - i). Indexed against `replayable` rather
+    // than the raw log for the reason above.
     const steps = [];
     for (let k = 0; k < 12; k++) {
       const index = bounds.max - k;
-      const expected = rows[k];
+      const expected = replayable[k];
       const tables = await L.setHistoryIndex(memberPage, index, expected);
 
       expect(tables.applied, `index ${index} renders a "Most Recent Change Applied" row`).toBeTruthy();
@@ -1083,7 +1099,7 @@ test.describe('Task 12a - Vampire lifecycle and dual audit log', () => {
         expect(tables.tables, 'nothing is reversed at the newest index').toBe(1);
       } else {
         expect(tables.tables, 'a reversed-change table appears once the slider moves back').toBe(2);
-        expect(tables.reversed.name, `index ${index} reverses log row ${k - 1}`).toBe(rows[k - 1].name);
+        expect(tables.reversed.name, `index ${index} reverses log row ${k - 1}`).toBe(replayable[k - 1].name);
       }
 
       const sheet = await L.readHistorySheetText(memberPage);
@@ -1095,24 +1111,24 @@ test.describe('Task 12a - Vampire lifecycle and dual audit log', () => {
     // The snapshots are genuinely different characters, not the same sheet
     // re-rendered: the newest index still carries the new name, and one step
     // back - which un-applies the rename - carries the original.
-    await L.setHistoryIndex(memberPage, bounds.max, rows[0]);
+    await L.setHistoryIndex(memberPage, bounds.max, replayable[0]);
     expect(await L.readHistorySheetText(memberPage), 'the newest snapshot shows the renamed character')
       .toContain(state.renamedName);
 
-    await L.setHistoryIndex(memberPage, bounds.max - 1, rows[1]);
+    await L.setHistoryIndex(memberPage, bounds.max - 1, replayable[1]);
     const rolledBack = await L.readHistorySheetText(memberPage);
     expect(rolledBack, 'one step back restores the pre-rename name').toContain(state.originalName);
     expect(rolledBack, 'and no longer shows the new one').not.toContain(state.renamedName);
 
     // A deeper rollback restores a trait value, not just a text field: before
     // the two Physical edits the attribute reads 7, not 9.
-    const physicalFirstEditIdx = rows.map((r, i) => ({ r, i }))
+    const physicalFirstEditIdx = replayable.map((r, i) => ({ r, i }))
       .filter(({ r }) => r.category === 'attributes' && r.name === 'Physical' && r.type === 'update')
       .map(({ i }) => i)
       .sort((a, b) => b - a)[0];
     expect(physicalFirstEditIdx, 'the Physical edits are in the log').toBeGreaterThan(0);
     const beforeRaise = bounds.max - physicalFirstEditIdx - 1;
-    await L.setHistoryIndex(memberPage, beforeRaise, rows[physicalFirstEditIdx + 1]);
+    await L.setHistoryIndex(memberPage, beforeRaise, replayable[physicalFirstEditIdx + 1]);
     const preRaise = await L.readHistorySheetText(memberPage);
     expect(preRaise, 'the pre-raise snapshot shows the creation value of Physical')
       .toMatch(new RegExp(`Physical\\s*${state.physicalBase}(\\D|$)`));

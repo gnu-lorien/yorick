@@ -795,12 +795,33 @@ test.describe('Task 12b - Werewolf lifecycle and dual audit log', () => {
         JSON.stringify(repeated.map(([f, n]) => ({ n, f }))));
     }
 
-    // Re-open the log immediately before driving its Next control. Going
-    // through readLogPage leaves the app back on #character with the log hash
-    // set - the swallowed-changePage state documented in jqm-helpers - so the
-    // Next button is present and enabled but not on screen, and clicking it
-    // times out against a control no user could see. openLog takes the
-    // hard-reload path, which forces a genuine first registration of the view.
+    // Pagination itself is proven above, by URL: three disjoint pages compared
+    // as an ordered multiset against one full read. Driving the log's own Next
+    // *button* is split into 355b, which is pinned red - see the note there.
+    state.logPages = pages;
+  });
+
+  test.fail('355b The log\'s own Next button advances the rendered page', async () => {
+    // OPEN, and deliberately isolated from 355 so the URL-based proof above
+    // still runs and 356-360 still get a chance to.
+    //
+    // This is remediation R28/R30/R33's swallowed-`changePage` family, not a
+    // pagination defect: after `readLogPage` the app ends up with the log hash
+    // set but `#character` still the active jQuery Mobile page, so the Next
+    // button is present and enabled but not on screen. Routing through
+    // `openLog` (the hard-reload path) gets the button on screen and the click
+    // through - the hash really does move to /log/10/10 - but the table does
+    // not re-render, which is the same short-circuit one layer down. R30 made
+    // `CharacterLogView.register` refetch on every entry, and that was not
+    // enough on its own.
+    //
+    // Deliberately not "fixed" by forcing the click: a forced click on an
+    // invisible control would assert that a user can press a button they
+    // cannot see.
+    const cid = state.character.id;
+    const pages = state.logPages;
+    expect(pages, 'test 355 recorded the pages to compare against').toBeTruthy();
+
     await openLog(memberPage, cid, 0, 10);
     await waitForActivePage(memberPage, 'character-log');
     const nextButton = memberPage.locator('#character-log.ui-page-active button.next');
@@ -919,16 +940,32 @@ test.describe('Task 12b - Werewolf lifecycle and dual audit log', () => {
     const cid = state.character.id;
     const rows = state.parity.playerRows;
 
+    // The timeline is every change that can be *replayed* onto the character,
+    // which since remediation R47b is not quite every row in the log: XP
+    // notation rows are recorded there too, and an XP award is neither a trait
+    // nor a text attribute, so there is no character state to step to. They are
+    // excluded from `recorded_changes` for that reason - feeding them to
+    // `get_transformed` manufactured a fake trait in a category no venue has and
+    // stopped the approval view rendering at all.
+    //
+    // Substring rather than equality: jQuery Mobile's responsive table prepends
+    // a column label to each cell, so a category cell reads "experience" on some
+    // rows and "category experience" on others depending on how it reflowed.
+    const isExperience = (r) => /experience/.test(String(r.category));
+    const replayable = rows.filter((r) => !isExperience(r));
+    expect(replayable.length, 'the log carries more than the timeline does').toBeLessThan(rows.length);
+    expect(replayable.filter(isExperience), 'no XP row survives the filter').toEqual([]);
+
     await L.openHistory(memberPage, cid);
     const bounds = await L.readHistoryBounds(memberPage);
-    expect(bounds.changeCount, 'the timeline knows about every recorded change').toBe(rows.length);
-    expect(bounds.max).toBe(rows.length - 1);
-    expect(bounds.value, 'and starts on the newest').toBe(rows.length - 1);
+    expect(bounds.changeCount, 'the timeline knows about every replayable change').toBe(replayable.length);
+    expect(bounds.max).toBe(replayable.length - 1);
+    expect(bounds.value, 'and starts on the newest').toBe(replayable.length - 1);
 
     const steps = [];
     for (let k = 0; k < 12; k++) {
       const index = bounds.max - k;
-      const expected = rows[k];
+      const expected = replayable[k];
       const tables = await L.setHistoryIndex(memberPage, index, expected);
 
       expect(tables.applied, `index ${index} renders a "Most Recent Change Applied" row`).toBeTruthy();
@@ -941,7 +978,7 @@ test.describe('Task 12b - Werewolf lifecycle and dual audit log', () => {
         expect(tables.tables, 'nothing is reversed at the newest index').toBe(1);
       } else {
         expect(tables.tables).toBe(2);
-        expect(tables.reversed.name, `index ${index} reverses log row ${k - 1}`).toBe(rows[k - 1].name);
+        expect(tables.reversed.name, `index ${index} reverses log row ${k - 1}`).toBe(replayable[k - 1].name);
       }
 
       const sheet = await L.readHistorySheetText(memberPage);
@@ -950,21 +987,21 @@ test.describe('Task 12b - Werewolf lifecycle and dual audit log', () => {
     }
     expect(steps.length).toBeGreaterThanOrEqual(10);
 
-    await L.setHistoryIndex(memberPage, bounds.max, rows[0]);
+    await L.setHistoryIndex(memberPage, bounds.max, replayable[0]);
     expect(await L.readHistorySheetText(memberPage), 'the newest snapshot shows the renamed character')
       .toContain(state.renamedName);
 
-    await L.setHistoryIndex(memberPage, bounds.max - 1, rows[1]);
+    await L.setHistoryIndex(memberPage, bounds.max - 1, replayable[1]);
     const rolledBack = await L.readHistorySheetText(memberPage);
     expect(rolledBack, 'one step back restores the pre-rename name').toContain(state.originalName);
     expect(rolledBack, 'and no longer shows the new one').not.toContain(state.renamedName);
 
-    const physicalFirstEditIdx = rows.map((r, i) => ({ r, i }))
+    const physicalFirstEditIdx = replayable.map((r, i) => ({ r, i }))
       .filter(({ r }) => r.category === 'attributes' && r.name === 'Physical' && r.type === 'update')
       .map(({ i }) => i)
       .sort((a, b) => b - a)[0];
     expect(physicalFirstEditIdx, 'the Physical edits are in the log').toBeGreaterThan(0);
-    await L.setHistoryIndex(memberPage, bounds.max - physicalFirstEditIdx - 1, rows[physicalFirstEditIdx + 1]);
+    await L.setHistoryIndex(memberPage, bounds.max - physicalFirstEditIdx - 1, replayable[physicalFirstEditIdx + 1]);
     expect(await L.readHistorySheetText(memberPage), 'the pre-raise snapshot shows the creation value of Physical')
       .toMatch(new RegExp(`Physical\\s*${state.physicalBase}(\\D|$)`));
     console.log('[t12-werewolf] 359 stepped:', JSON.stringify(steps));

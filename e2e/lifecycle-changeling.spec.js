@@ -140,8 +140,11 @@ const ATTRIBUTE_PER_POINT = 3;
 /** Non-affinity Arts are 6/level cumulative, so value 1 costs 6. */
 const NON_AFFINITY_ART_AT_1 = 6;
 const AFFINITY_ART_AT_1 = 4;
-/** Every `ctdbs_backgrounds` purchase resolves to zero (finding 4). */
-const BACKGROUND_COST = 0;
+/** Remediation R15 gave `ctdbs_backgrounds` the 2-per-level cumulative cost
+ *  table the other two venues already used for Backgrounds; before that every
+ *  purchase in the category resolved to zero (the file's original finding 4). */
+const BACKGROUND_AT_1 = 2;
+const BACKGROUND_AT_2 = 6;
 const HOLDINGS_BASE = 'Holdings';
 const HOLDINGS_SUFFIX = 'Sunken Glade';
 const SEEMING = 'Seeming';
@@ -529,13 +532,14 @@ test.describe('Task 12c - Changeling lifecycle and dual audit log', () => {
     await openNewTraitChange(memberPage, cid, 'ctdbs_backgrounds', HOLDINGS_BASE);
     await setTraitChangeSliders(memberPage, { value: 1 });
     const quote = await readTraitChangeView(memberPage);
-    expect(quote.cost, 'every ctdbs_backgrounds purchase resolves to zero (finding 4)').toBe(BACKGROUND_COST);
+    expect(quote.cost, 'a ctdbs_backgrounds purchase at value 1 costs the first step of the table').toBe(BACKGROUND_AT_1);
     await saveTraitChange(memberPage, cid, 'ctdbs_backgrounds');
     const xpAfterAdd = await readSheetXp(memberPage, cid);
-    expect(xpAfterAdd, 'so nothing is charged').toEqual(xpBefore);
+    expect(xpAfterAdd.spent - xpBefore.spent, 'and that is what is charged').toBe(BACKGROUND_AT_1);
+    expect(xpAfterAdd.available - xpBefore.available).toBe(-BACKGROUND_AT_1);
 
     const added = (await readTraits(memberPage, cid, 'ctdbs_backgrounds', 'Changeling')).find((t) => t.name === HOLDINGS_BASE);
-    expect(added).toMatchObject({ value: 1, free_value: 0, cost: BACKGROUND_COST });
+    expect(added).toMatchObject({ value: 1, free_value: 0, cost: BACKGROUND_AT_1 });
 
     await L.specializeRename(memberPage, cid, 'ctdbs_backgrounds', added.id, HOLDINGS_SUFFIX);
     const xpAfterRename = await readSheetXp(memberPage, cid);
@@ -543,12 +547,12 @@ test.describe('Task 12c - Changeling lifecycle and dual audit log', () => {
 
     const full = `${HOLDINGS_BASE}: ${HOLDINGS_SUFFIX}`;
     const renamed = (await readTraits(memberPage, cid, 'ctdbs_backgrounds', 'Changeling')).find((t) => t.id === added.id);
-    expect(renamed).toMatchObject({ name: full, value: 1, cost: BACKGROUND_COST });
+    expect(renamed).toMatchObject({ name: full, value: 1, cost: BACKGROUND_AT_1 });
 
     const rows = await L.readAllLogRows(memberPage, cid);
     const addRow = L.freshestRow(rows, { category: 'ctdbs_backgrounds', name: HOLDINGS_BASE, type: 'define' });
     expect(addRow).toMatchObject({ value: 1, old_value: null });
-    expect(L.numCost(addRow.cost), 'the add is logged at the zero cost actually charged').toBe(BACKGROUND_COST);
+    expect(L.numCost(addRow.cost), 'the add is logged at the cost actually charged').toBe(BACKGROUND_AT_1);
 
     const renameRow = L.freshestRow(rows, { category: 'ctdbs_backgrounds', name: full, type: 'update' });
     expect(renameRow, 'the rename row carries the old name and an unchanged value').toMatchObject({
@@ -590,12 +594,16 @@ test.describe('Task 12c - Changeling lifecycle and dual audit log', () => {
     expect(L.numCost(removeRow.old_cost), 'the removal row carries the refunded cost').toBe(NON_AFFINITY_ART_AT_1);
   });
 
-  test.fail('369 Change 6 - change Kith and Court; the log records them', async () => {
-    // DEFECT (findings 1 and 2). Every measured assertion below passes: the
-    // two texts really do change, the Kith really does rewrite the Arts, and
-    // the log really does gain rows - just never a `core` row naming either
-    // field, because no `ctdbs_*` key is in `tracked_texts`. Only the plan's
-    // literal expectation fails.
+  test('369 Change 6 - change Kith and Court; the log records them', async () => {
+    // FIXED by remediation R47a.
+    //
+    // Was: every measured assertion below passed - the two texts really did
+    // change, the Kith really did rewrite the Arts, and the log really did gain
+    // rows - but never a `core` row naming either field, because no `ctdbs_*`
+    // key was in `beforeSave("Vampire")`'s `tracked_texts`. A Changeling owned
+    // no `core` row at all until it was renamed, unlike a Vampire's clan or a
+    // Werewolf's tribe, which is an oversight of that allowlist rather than a
+    // design choice.
     const cid = state.character.id;
 
     const before = await L.readAllLogRows(memberPage, cid);
@@ -624,31 +632,33 @@ test.describe('Task 12c - Changeling lifecycle and dual audit log', () => {
     const grew = after.length - before.length;
     const newRows = after.slice(0, Math.max(0, grew));
     console.log(
-      `[t12-changeling] 369 measured: changing Kith and Court added ${grew} rows, ` +
-      `all of them Art side effects: ${JSON.stringify(newRows.map((r) => `${r.category}/${r.name}/${r.type}`))}`
+      `[t12-changeling] 369: changing Kith and Court added ${grew} rows: ` +
+      `${JSON.stringify(newRows.map((r) => `${r.category}/${r.name}/${r.type}`))}`
     );
-    expect(
-      newRows.filter((r) => r.category !== 'ctdbs_arts'),
-      'every row the change produced is an Art side effect of the Kith grant, never a text row'
-    ).toEqual([]);
 
-    // The actual absence, asserted directly and confirmed by a query.
-    expect(L.matchingRows(after, { category: 'core' }), 'still no core row of any kind').toEqual([]);
+    // Both text changes are recorded, with the values they moved between.
+    const kithRow = L.freshestRow(after, { category: 'core', name: 'ctdbs_kith' });
+    expect(kithRow).toMatchObject({ old_text: KITH_BEFORE, new_text: KITH_AFTER });
+    const courtRow = L.freshestRow(after, { category: 'core', name: 'ctdbs_fealty_court' });
+    expect(courtRow).toMatchObject({ old_text: COURT_BEFORE, new_text: COURT_AFTER });
+
+    // Confirmed by a direct query, so this is a data fact and not a rendering one.
     const directCount = await memberPage.evaluate(async (id) => {
       const q = new window.Parse.Query('VampireChange');
       q.equalTo('owner', window.Parse.Object.extend('Vampire').createWithoutData(id));
       q.containedIn('name', ['ctdbs_kith', 'ctdbs_fealty_court']);
       return q.count();
     }, cid);
-    expect(directCount, 'no VampireChange row names either Changeling text field').toBe(0);
+    expect(directCount, 'VampireChange rows name both Changeling text fields').toBeGreaterThanOrEqual(2);
+
+    // The Art side effects of the Kith grant are still there alongside them -
+    // this change rewrites the Arts as well as the text (finding 2).
+    expect(
+      newRows.filter((r) => r.category === 'ctdbs_arts').length,
+      'the Kith grant still rewrites the Arts'
+    ).toBeGreaterThan(0);
 
     expect(await readSheetXp(memberPage, cid), 'text changes never move XP directly').toEqual(xpBefore);
-
-    // The plan's literal expectation. Fails, deliberately.
-    expect(
-      L.matchingRows(after, { category: 'core', name: 'ctdbs_kith' }).length,
-      'the log should record the Kith change'
-    ).toBe(1);
   });
 
   test('370 Change 7 - raise the Glamour source; the log records each edit (Banality does not exist anywhere in the application)', async () => {
@@ -675,7 +685,7 @@ test.describe('Task 12c - Changeling lifecycle and dual audit log', () => {
     await saveTraitChange(memberPage, cid, 'ctdbs_backgrounds');
 
     const raised = (await readTraits(memberPage, cid, 'ctdbs_backgrounds', 'Changeling')).find((t) => t.name === SEEMING);
-    expect(raised).toMatchObject({ value: 2, cost: BACKGROUND_COST });
+    expect(raised).toMatchObject({ value: 2, cost: BACKGROUND_AT_2 });
 
     await navigateToHash(memberPage, `character/${cid}/print`, '#printable-sheet');
     const printAt2 = normalize(await memberPage.locator('#printable-sheet').textContent());
@@ -685,7 +695,7 @@ test.describe('Task 12c - Changeling lifecycle and dual audit log', () => {
     const rows = await L.readAllLogRows(memberPage, cid);
     const define = L.freshestRow(rows, { category: 'ctdbs_backgrounds', name: SEEMING, type: 'define' });
     expect(define).toMatchObject({ value: 1, old_value: null });
-    expect(L.numCost(define.cost)).toBe(BACKGROUND_COST);
+    expect(L.numCost(define.cost)).toBe(BACKGROUND_AT_1);
     const update = L.freshestRow(rows, { category: 'ctdbs_backgrounds', name: SEEMING, type: 'update' });
     expect(update, 'the raise is logged with correct old and new values').toMatchObject({ old_value: 1, value: 2 });
 
@@ -722,21 +732,21 @@ test.describe('Task 12c - Changeling lifecycle and dual audit log', () => {
     await openNewTraitChange(memberPage, cid, 'ctdbs_backgrounds', target.name);
     await setTraitChangeSliders(memberPage, { value: 2 });
     const quote = await readTraitChangeView(memberPage);
-    expect(quote.cost, 'an increased rating still costs nothing (finding 4)').toBe(BACKGROUND_COST);
+    expect(quote.cost, 'an increased rating costs the cumulative table value at 2').toBe(BACKGROUND_AT_2);
     await saveTraitChange(memberPage, cid, 'ctdbs_backgrounds');
     const xpAfter = await readSheetXp(memberPage, cid);
-    expect(xpAfter, 'so the ledger does not move').toEqual(xpBefore);
+    expect(xpAfter.spent - xpBefore.spent, 'and the ledger moves by exactly that').toBe(BACKGROUND_AT_2);
 
     const bought = (await readTraits(memberPage, cid, 'ctdbs_backgrounds', 'Changeling')).find((t) => t.name === target.name);
     expect(bought, `${target.name} at the increased rating`).toMatchObject({
-      value: 2, free_value: 0, cost: BACKGROUND_COST
+      value: 2, free_value: 0, cost: BACKGROUND_AT_2
     });
 
     const rows = await L.readAllLogRows(memberPage, cid);
     const row = L.freshestRow(rows, { category: 'ctdbs_backgrounds', name: target.name, type: 'define' });
     expect(row, 'the log records the increased rating').toMatchObject({ value: 2, old_value: null });
-    expect(L.numCost(row.cost), 'at the zero cost BNSCTDBS_ChangelingCosts actually returns').toBe(BACKGROUND_COST);
-    console.log(`[t12-changeling] 371 measured: "${target.name}" bought at value 2 for 0 XP and logged with a blank cost cell`);
+    expect(L.numCost(row.cost), 'at the cost BNSCTDBS_ChangelingCosts now returns').toBe(BACKGROUND_AT_2);
+    console.log(`[t12-changeling] 371: "${target.name}" bought at value 2 for ${BACKGROUND_AT_2} XP`);
     state.changes.background = target.name;
   });
 
@@ -777,9 +787,20 @@ test.describe('Task 12c - Changeling lifecycle and dual audit log', () => {
     const row = L.freshestRow(rows, { category: 'core', name: 'name', type: 'core_update' });
     expect(row).toMatchObject({ old_text: state.originalName, new_text: state.renamedName });
 
-    // `name` is the *only* tracked text a Changeling has, so this is also the
-    // only `core` row this character will ever own.
-    expect(L.matchingRows(rows, { category: 'core' }).length, 'exactly one core row exists, the rename').toBe(1);
+    // `name` used to be the *only* tracked text a Changeling had, so this was
+    // once the only `core` row the character would ever own. Remediation R47a
+    // added the three `ctdbs_*` texts to the allowlist, so Kith, Court and
+    // Group Type are logged like a Vampire's clan or a Werewolf's tribe - and
+    // this test's own fixture changes Kith and Court in item 369.
+    expect(
+      L.matchingRows(rows, { category: 'core', name: 'name' }).length,
+      'exactly one core row names the rename'
+    ).toBe(1);
+    const coreNames = [...new Set(L.matchingRows(rows, { category: 'core' }).map((r) => r.name))];
+    expect(
+      coreNames.filter((n) => !['name', 'ctdbs_kith', 'ctdbs_fealty_court', 'ctdbs_kith_group_type'].includes(n)),
+      'and every other core row names a tracked Changeling text'
+    ).toEqual([]);
     expect(rows[0], 'the rename is the newest row in the log').toMatchObject({
       category: 'core', name: 'name', new_text: state.renamedName
     });
@@ -877,18 +898,26 @@ test.describe('Task 12c - Changeling lifecycle and dual audit log', () => {
       cost: 2 * ATTRIBUTE_PER_POINT
     });
 
-    // Exactly one row on a Changeling can carry all four cells at once, and
-    // the reason is structural rather than incidental: a row needs a non-zero
-    // *old* cost as well as a new one, which means raising something that
-    // already cost XP. Every `ctdbs_backgrounds` purchase resolves to zero
-    // (finding 4) and so renders blank, Arts here are bought once rather than
-    // upgraded, and a first definition has no old value - which leaves the
-    // second attribute edit as the only qualifying row.
+    // Which rows can carry all four cells at once is structural rather than
+    // incidental: a row needs a non-zero *old* cost as well as a new one,
+    // which means raising something that already cost XP. A first definition
+    // has no old value, and Arts here are bought once rather than upgraded.
+    //
+    // This used to leave the second attribute edit as the *only* qualifying
+    // row, because every `ctdbs_backgrounds` purchase resolved to zero (the
+    // file's original finding 4) and so rendered blank. Remediation R15 priced
+    // the category, so the Seeming raise in item 370 qualifies too.
     const fullyPopulated = rows.filter((r) =>
       r.old_value !== null && r.value !== null && r.old_cost !== null && r.cost !== null);
     expect(fullyPopulated.length, 'at least one row carries all four cells').toBeGreaterThanOrEqual(1);
-    expect(fullyPopulated.map((r) => `${r.category}/${r.name}/${r.type}`))
-      .toEqual(['attributes/Physical/update']);
+    expect(
+      fullyPopulated.map((r) => `${r.category}/${r.name}/${r.type}`),
+      'the second attribute edit is among them'
+    ).toContain('attributes/Physical/update');
+    expect(
+      fullyPopulated.filter((r) => r.type !== 'update'),
+      'and every row carrying all four is a raise of something already paid for'
+    ).toEqual([]);
 
     const paidDefine = L.freshestRow(rows, { category: 'ctdbs_arts', name: state.changes.art, type: 'define' });
     expect(paidDefine.value).not.toBeNull();
@@ -968,16 +997,32 @@ test.describe('Task 12c - Changeling lifecycle and dual audit log', () => {
     const cid = state.character.id;
     const rows = state.parity.playerRows;
 
+    // The timeline is every change that can be *replayed* onto the character,
+    // which since remediation R47b is not quite every row in the log: XP
+    // notation rows are recorded there too, and an XP award is neither a trait
+    // nor a text attribute, so there is no character state to step to. They are
+    // excluded from `recorded_changes` for that reason - feeding them to
+    // `get_transformed` manufactured a fake trait in a category no venue has and
+    // stopped the approval view rendering at all.
+    //
+    // Substring rather than equality: jQuery Mobile's responsive table prepends
+    // a column label to each cell, so a category cell reads "experience" on some
+    // rows and "category experience" on others depending on how it reflowed.
+    const isExperience = (r) => /experience/.test(String(r.category));
+    const replayable = rows.filter((r) => !isExperience(r));
+    expect(replayable.length, 'the log carries more than the timeline does').toBeLessThan(rows.length);
+    expect(replayable.filter(isExperience), 'no XP row survives the filter').toEqual([]);
+
     await L.openHistory(memberPage, cid);
     const bounds = await L.readHistoryBounds(memberPage);
-    expect(bounds.changeCount, 'the timeline knows about every recorded change').toBe(rows.length);
-    expect(bounds.max).toBe(rows.length - 1);
-    expect(bounds.value, 'and starts on the newest').toBe(rows.length - 1);
+    expect(bounds.changeCount, 'the timeline knows about every replayable change').toBe(replayable.length);
+    expect(bounds.max).toBe(replayable.length - 1);
+    expect(bounds.value, 'and starts on the newest').toBe(replayable.length - 1);
 
     const steps = [];
     for (let k = 0; k < 12; k++) {
       const index = bounds.max - k;
-      const expected = rows[k];
+      const expected = replayable[k];
       const tables = await L.setHistoryIndex(memberPage, index, expected);
 
       expect(tables.applied, `index ${index} renders a "Most Recent Change Applied" row`).toBeTruthy();
@@ -990,7 +1035,7 @@ test.describe('Task 12c - Changeling lifecycle and dual audit log', () => {
         expect(tables.tables, 'nothing is reversed at the newest index').toBe(1);
       } else {
         expect(tables.tables).toBe(2);
-        expect(tables.reversed.name, `index ${index} reverses log row ${k - 1}`).toBe(rows[k - 1].name);
+        expect(tables.reversed.name, `index ${index} reverses log row ${k - 1}`).toBe(replayable[k - 1].name);
       }
 
       const sheet = await L.readHistorySheetText(memberPage);
@@ -999,21 +1044,21 @@ test.describe('Task 12c - Changeling lifecycle and dual audit log', () => {
     }
     expect(steps.length).toBeGreaterThanOrEqual(10);
 
-    await L.setHistoryIndex(memberPage, bounds.max, rows[0]);
+    await L.setHistoryIndex(memberPage, bounds.max, replayable[0]);
     expect(await L.readHistorySheetText(memberPage), 'the newest snapshot shows the renamed character')
       .toContain(state.renamedName);
 
-    await L.setHistoryIndex(memberPage, bounds.max - 1, rows[1]);
+    await L.setHistoryIndex(memberPage, bounds.max - 1, replayable[1]);
     const rolledBack = await L.readHistorySheetText(memberPage);
     expect(rolledBack, 'one step back restores the pre-rename name').toContain(state.originalName);
     expect(rolledBack, 'and no longer shows the new one').not.toContain(state.renamedName);
 
-    const physicalFirstEditIdx = rows.map((r, i) => ({ r, i }))
+    const physicalFirstEditIdx = replayable.map((r, i) => ({ r, i }))
       .filter(({ r }) => r.category === 'attributes' && r.name === 'Physical' && r.type === 'update')
       .map(({ i }) => i)
       .sort((a, b) => b - a)[0];
     expect(physicalFirstEditIdx, 'the Physical edits are in the log').toBeGreaterThan(0);
-    await L.setHistoryIndex(memberPage, bounds.max - physicalFirstEditIdx - 1, rows[physicalFirstEditIdx + 1]);
+    await L.setHistoryIndex(memberPage, bounds.max - physicalFirstEditIdx - 1, replayable[physicalFirstEditIdx + 1]);
     expect(await L.readHistorySheetText(memberPage), 'the pre-raise snapshot shows the creation value of Physical')
       .toMatch(new RegExp(`Physical\\s*${state.physicalBase}(\\D|$)`));
     console.log('[t12-changeling] 379 stepped:', JSON.stringify(steps));

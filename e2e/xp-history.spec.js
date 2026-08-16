@@ -1324,7 +1324,7 @@ test.describe('Task 4 - XP History', () => {
     await openXp(page, state.characterId, 0, WHOLE_HISTORY);
     const before = await waitForXp(page, 'the settled table', ({ rows }) => (rows.length ? null : 'no rows'));
     const changesBefore = await countChangeRows(page, state.characterId);
-    await openLog(page, state.characterId, 0, 10);
+    await openLog(page, state.characterId, 0, 200);
     const logBefore = await readLogRows(page);
 
     // One of each operation, on a row created and destroyed by this test.
@@ -1342,7 +1342,10 @@ test.describe('Task 4 - XP History', () => {
     ));
 
     const changesAfter = await countChangeRows(page, state.characterId);
-    await openLog(page, state.characterId, 0, 10);
+    // A page big enough to show the growth. The log paginates too, and by this
+    // point in the file it is well past ten rows, so a full first page of ten
+    // cannot get longer no matter how many rows are added behind it.
+    await openLog(page, state.characterId, 0, 200);
     const logAfter = await readLogRows(page);
 
     expect(
