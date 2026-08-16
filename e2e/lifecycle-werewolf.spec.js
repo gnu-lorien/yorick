@@ -386,7 +386,7 @@ test.describe('Task 12b - Werewolf lifecycle and dual audit log', () => {
   // 344-353 - the ten long-term changes
   // =========================================================================
 
-  test.fail('344 Change 1 - award a 25 XP notation; the log records the transaction', async () => {
+  test('344 Change 1 - award a 25 XP notation; the log records the transaction', async () => {
     // Same measured defect as the Vampire suite's item 321, re-measured here
     // on a Werewolf: no cloud hook exists on `ExperienceNotation`, and
     // `beforeSave("Vampire")` - which serves all three venues, since all three
@@ -406,10 +406,14 @@ test.describe('Task 12b - Werewolf lifecycle and dual audit log', () => {
     expect(totals.available - xpBefore.available).toBe(XP_AWARD);
 
     const after = await L.readAllLogRows(memberPage, cid);
-    expect(after.length, 'no log row was written for the award').toBe(before.length);
-    console.log(`[t12-werewolf] 344 measured: award of ${XP_AWARD} XP produced 0 new log rows (${before.length} -> ${after.length})`);
+    expect(after.length - before.length, 'the log records the XP transaction').toBeGreaterThan(0);
 
-    expect(after.length - before.length, 'the log should record the XP transaction').toBeGreaterThan(0);
+    // Named after the reason the storyteller typed, so the trail says what
+    // the award was for and not merely that a number moved.
+    const awardRow = L.freshestRow(after, { category: 'experience' });
+    expect(awardRow, 'an experience row exists').toBeTruthy();
+    expect(awardRow.name).toBe(reason);
+    expect(L.numCost(awardRow.value), 'and carries the earned delta').toBe(XP_AWARD);
   });
 
   test('345 Change 2 - raise an attribute across two edits; two log rows with correct values and costs', async () => {

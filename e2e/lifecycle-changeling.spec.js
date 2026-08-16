@@ -400,7 +400,7 @@ test.describe('Task 12c - Changeling lifecycle and dual audit log', () => {
   // 364-373 - the ten long-term changes
   // =========================================================================
 
-  test.fail('364 Change 1 - award a 25 XP notation; the log records the transaction', async () => {
+  test('364 Change 1 - award a 25 XP notation; the log records the transaction', async () => {
     // Same measured defect as items 321 and 344, re-measured on a Changeling.
     const cid = state.character.id;
     const reason = `${FIXTURE_PREFIX}storyteller award`;
@@ -416,10 +416,14 @@ test.describe('Task 12c - Changeling lifecycle and dual audit log', () => {
     expect(totals.available - xpBefore.available).toBe(XP_AWARD);
 
     const after = await L.readAllLogRows(memberPage, cid);
-    expect(after.length, 'no log row was written for the award').toBe(before.length);
-    console.log(`[t12-changeling] 364 measured: award of ${XP_AWARD} XP produced 0 new log rows (${before.length} -> ${after.length})`);
+    expect(after.length - before.length, 'the log records the XP transaction').toBeGreaterThan(0);
 
-    expect(after.length - before.length, 'the log should record the XP transaction').toBeGreaterThan(0);
+    // Named after the reason the storyteller typed, so the trail says what
+    // the award was for and not merely that a number moved.
+    const awardRow = L.freshestRow(after, { category: 'experience' });
+    expect(awardRow, 'an experience row exists').toBeTruthy();
+    expect(awardRow.name).toBe(reason);
+    expect(L.numCost(awardRow.value), 'and carries the earned delta').toBe(XP_AWARD);
   });
 
   test('365 Change 2 - raise an attribute across two edits; two log rows with correct values and costs', async () => {

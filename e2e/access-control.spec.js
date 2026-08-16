@@ -614,14 +614,18 @@ test.describe('Task 13 - Access Control In The UI', () => {
   // -------------------------------------------------------------------------
 
   test('384 sampmem cannot view another user\'s patronage page', async () => {
-    // administration_user_patronages gates on `admininterface` before doing
-    // anything else: `if (is_ad) { ...; $.mobile.changePage(...); }` with no
-    // else branch - for sampmem the whole body is skipped and the page simply
-    // never transitions. Identical mechanism to Task 1 test 14 (which proved
-    // this for sampast viewing sampmem's patronage); this proves it for
-    // sampmem viewing sampast's. Deliberately not using navigateToHash's
-    // targetSelector wait, which would retry and eventually reload trying to
-    // reach a page that is never going to become active.
+    // administration_user_patronages gates on administrator status before
+    // doing anything else. It used to do that inline (`if (is_ad) { ...;
+    // $.mobile.changePage(...); }` with no else branch), so for sampmem the
+    // whole body was skipped and the page simply never transitioned.
+    // Remediation R36 routed it through the shared `enforce_admin()`, which
+    // additionally sends the user home and tells them why - so what is
+    // asserted is where they do *not* end up, not that they stay exactly put.
+    // Identical mechanism to Task 1 test 14 (which proves this for sampast
+    // viewing sampmem's patronage); this proves it for sampmem viewing
+    // sampast's. Deliberately not using navigateToHash's targetSelector wait,
+    // which would retry and eventually reload trying to reach a page that is
+    // never going to become active.
     await navigateToHash(memberPage, 'characters?all', '#characters-all');
     const before = await activePageId(memberPage);
     expect(before).toBe('characters-all');
@@ -630,8 +634,7 @@ test.describe('Task 13 - Access Control In The UI', () => {
     await memberPage.waitForTimeout(2500);
 
     const after = await activePageId(memberPage);
-    expect(after, 'the route never transitions away from where sampmem was').toBe('characters-all');
-    expect(after).not.toBe('administration-user-patronages-view');
+    expect(after, 'the route never reaches the per-user patronage page').not.toBe('administration-user-patronages-view');
 
     const bodyText = await memberPage.evaluate(() => document.body.textContent);
     expect(bodyText, 'no trace of the target record renders anywhere on screen').not.toContain(state.patronageFixtureId);

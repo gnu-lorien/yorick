@@ -407,16 +407,16 @@ test.describe('Task 12a - Vampire lifecycle and dual audit log', () => {
   // 321-330 - the ten long-term changes
   // =========================================================================
 
-  test.fail('321 Change 1 - award a 25 XP notation; the log records the XP transaction with the reason', async () => {
-    // DEFECT (measured, not inherited): there is no `Parse.Cloud` hook of any
-    // kind on `ExperienceNotation`, and `beforeSave("Vampire")`'s
-    // `tracked_texts` allowlist - name/clan/state/archetype/archetype_2/
-    // faction/title/sect/antecedence/wta_breed/wta_auspice/wta_tribe/wta_camp/
-    // wta_faction - contains neither `experience_earned` nor
-    // `experience_spent`, so the save that carries the new totals intersects
-    // to an empty change set and returns `response.success()` before writing
-    // anything. The award itself is real and is proven so below; only the
-    // audit trail is missing.
+  test('321 Change 1 - award a 25 XP notation; the log records the XP transaction with the reason', async () => {
+    // FIXED by remediation R47b.
+    //
+    // Was: there was no `Parse.Cloud` hook of any kind on
+    // `ExperienceNotation`, and `beforeSave("Vampire")`'s `tracked_texts`
+    // allowlist contains neither `experience_earned` nor `experience_spent`,
+    // so the save that carries the new totals intersected to an empty change
+    // set and returned `response.success()` before writing anything. The award
+    // itself was real; only the audit trail was missing - and a hand-written
+    // award is the thing a storyteller does most often.
     const cid = state.character.id;
     const reason = `${FIXTURE_PREFIX}storyteller award`;
 
@@ -435,23 +435,25 @@ test.describe('Task 12a - Vampire lifecycle and dual audit log', () => {
     expect(totals.available - xpBefore.available, 'the award moved Available by exactly 25').toBe(XP_AWARD);
 
     const after = await L.readAllLogRows(memberPage, cid);
-    expect(after.length, 'no log row was written for the award').toBe(before.length);
+    expect(after.length - before.length, 'the log records the XP transaction').toBeGreaterThan(0);
 
-    // Assertion-side read-back, to separate "no row exists" (a data fact) from
-    // "a row exists but did not render" (a rendering fact).
+    // Assertion-side read-back, to separate "the row exists" (a data fact) from
+    // "the row rendered" (a rendering fact). Both are asserted.
     const directCount = await memberPage.evaluate(async ({ id, r }) => {
       const q = new window.Parse.Query('VampireChange');
       q.equalTo('owner', window.Parse.Object.extend('Vampire').createWithoutData(id));
       q.contains('name', r);
       return q.count();
     }, { id: cid, r: reason });
-    expect(directCount, 'nothing named after the award reason exists in VampireChange').toBe(0);
+    expect(directCount, 'a VampireChange row is named after the award reason').toBeGreaterThan(0);
+
+    // The trail says what the award was for, not merely that a number moved.
+    const awardRow = L.freshestRow(after, { category: 'experience' });
+    expect(awardRow, 'an experience row exists').toBeTruthy();
+    expect(awardRow.name).toBe(reason);
+    expect(L.numCost(awardRow.value), 'and carries the earned delta').toBe(XP_AWARD);
 
     state.xpAfterAward = totals;
-    console.log(`[t12-vampire] 321 measured: award of ${XP_AWARD} XP produced 0 new log rows (${before.length} -> ${after.length})`);
-
-    // The plan's literal expectation. Fails, deliberately.
-    expect(after.length - before.length, 'the log should record the XP transaction').toBeGreaterThan(0);
   });
 
   test('322 Change 2 - raise Physical across two separate edits; the log has two rows with correct old/new values and costs', async () => {
