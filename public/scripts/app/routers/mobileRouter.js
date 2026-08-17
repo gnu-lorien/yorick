@@ -1444,7 +1444,63 @@ define([
             return Parse.Promise.as(character);
         },
 
+        /**
+         * R29. Take a newer version of the character, without ever discarding
+         * unsaved work.
+         *
+         * `Model.get_character` caches the character on this router and, for
+         * the same id, never re-reads it: a storyteller who loaded a character
+         * before the player's latest change kept rendering the old trait
+         * values for as long as the page lived - so they could approve a change
+         * their screen had never shown them. The suites work around it by
+         * reloading the whole app between cycles.
+         *
+         * The rule this follows is that nothing unsaved may be lost. If the
+         * local copy has pending edits they are saved *and waited on* first;
+         * Parse sends only the dirty keys, so the other session's changes to
+         * other fields survive the merge. Only then is the cache dropped, which
+         * makes the caller re-run its own query - `fetch()` would not do, since
+         * it would quietly drop the `include`s the sheet needs for the portrait
+         * and owner. The user is told the view was behind rather than having it
+         * change under them silently.
+         *
+         * A failed check never blocks the page: if the probe cannot run, the
+         * cached copy is used exactly as before.
+         */
+        _refresh_if_stale: function (id) {
+            var self = this;
+            var cached = self._character;
+            if (!cached || cached.id !== id) {
+                return Parse.Promise.as(null);
+            }
+            return new Parse.Query("Vampire").select("updatedAt").get(id).then(function (latest) {
+                var mine = cached.updatedAt ? cached.updatedAt.getTime() : 0;
+                var theirs = latest.updatedAt ? latest.updatedAt.getTime() : 0;
+                if (theirs <= mine) {
+                    return Parse.Promise.as(null);
+                }
+                var flush = cached.dirty() ? cached.save() : Parse.Promise.as(cached);
+                return flush.then(function () {
+                    self._character = null;
+                    ReportError(
+                        "This character changed somewhere else while you had it open, " +
+                        "so the newest version has been loaded.",
+                        "Refreshed");
+                    return Parse.Promise.as(null);
+                });
+            }, function () {
+                return Parse.Promise.as(null);
+            });
+        },
+
         _get_character: function (id, categories) {
+            var self = this;
+            return self._refresh_if_stale(id).then(function () {
+                return self._get_character_from_cache(id, categories);
+            });
+        },
+
+        _get_character_from_cache: function (id, categories) {
             var self = this;
             if (self.last_fetched_character_id == id) {
                 var p;

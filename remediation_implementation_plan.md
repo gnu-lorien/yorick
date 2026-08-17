@@ -14,11 +14,11 @@ named precisely enough to find.
 
 **Everything in this section is a statement about this branch, not a plan.**
 
-`npx playwright test` reports **444 passed, 0 failed** (~41 minutes). Every test still
+`npx playwright test` reports **445 passed, 0 failed** (~38 minutes). Every test still
 failing is a `test.fail()` failing as declared; the list is at the end of this section.
 `node e2e/check-syntax.js` passes.
 
-**Landed:** R1–R21, R24–R27, R30, R31, R34–R38, R41–R44, R46–R50.
+**Landed:** R1–R22, R24–R27, R29–R31, R34–R38, R41–R44, R46–R51.
 
 **Three defects found while implementing, and fixed here rather than filed:**
 
@@ -39,11 +39,45 @@ failing is a `test.fail()` failing as declared; the list is at the end of this s
 | Item | Why not |
 |---|---|
 | **R7** | Withdrawn by the plan itself. |
-| **R22** | Needs an owner ruling first. Whether a Kith's auto-granted Arts should consume the player's *own* Art creation picks is a rules question, and `creation-changeling` 218/219/229 already assert that they do, calling it "the central mechanic". The `-2` overspend is a consequence of that choice plus ordering, not an independent bug, and any fix changes numbers three passing tests pin. See R21, which fixed the half that is unambiguous. |
 | **R23** | Not attempted. |
-| **R28, R29, R32, R33** | Not attempted. R29 in particular is not a safe blind change: `Model.get_character` caches on the router for the life of the page and callers rely on that instance holding unsaved local state, so "always refetch" both recurses and drops the query's `include`s. It needs a deliberate cache-invalidation design and a full-suite run, not a one-line edit. R30 and R31 - the two members of that family with contained fixes - are done. |
+| **R28, R32, R33** | Not attempted. R30 and R31 - the two members of that family with contained fixes - are done. |
 | **R39, R40, R45** | Already resolved before this work: the Description catalogue was refreshed (see §4b), Renown/Rage/Banality are deferred features needing no code, and `character-print-view.html` was deleted in commit `bce2486`. |
-| **R51** | Needs a deployment decision. Configuring an `emailAdapter` means choosing a mail provider and putting credentials somewhere; that is not a code fix this session can make on its own authority. |
+
+### Three items the owner has since ruled on, now implemented
+
+**R22 — a Kith's auto-granted Arts *do* consume the player's own Art picks.** That
+part was already right; what was missing was any check that picks remain. Creation
+counters are now left alone once creation is complete (they are creation-time
+bookkeeping that nothing reads afterwards, and writing to them produced meaningless
+negatives — a post-creation Kith change drove `ctdbs_arts_1_remaining` to −3). During
+creation, a Kith whose grant would outrun the remaining picks is refused and the reason
+surfaced, rather than decrementing past zero and aborting the wizard's pool spending.
+Refusing rather than clamping is deliberate: clamping would silently drop a grant the
+character is entitled to. New test `creation-changeling` **229b**.
+
+**R29 — never discard unsaved work.** The router now probes for a newer `updatedAt` on
+the way in; if the local copy has pending edits they are saved *and waited on* first
+(Parse sends only the dirty keys, so another session's changes to other fields survive
+the merge), and only then is the cache dropped so the caller re-runs its own query —
+`fetch()` would quietly lose the `include`s the sheet needs for portrait and owner. The
+user is told the view was behind rather than having it change under them. A failed probe
+never blocks the page.
+
+*The verify condition is not met.* Removing `approvals.spec.js`'s `freshApproval` reload
+was tried and item 78 then fails with "exactly one new recorded change since the last
+approval — Received 0": the storyteller's approval view still shows nothing new. So more
+than R29 is needed there, and the remaining part is **not** the character-level staleness
+R29 fixed. The reload is left in place with that measurement recorded next to it.
+
+**R51 — was two defects, not one.** The missing `emailAdapter` was the first; the ruling
+is that these tests must never send real mail, so the default is now an adapter that
+captures outbound mail in memory and sends nothing (`cloud/MemoryEmailAdapter.js`), with
+`MAIL_ADAPTER_MODULE` to send for real. The second only became visible once the first was
+fixed: the reset still failed with "you must provide an email", because
+`ResetButtonView` read the target user's `email` off its own copy and **Parse never
+returns another user's email to a client**. An administrator does not need to see the
+address to reset it, so `request_password_reset_for` looks it up under the master key and
+the address never reaches the browser.
 
 **Two of the plan's own claims turned out to be wrong, and are recorded as such:**
 
@@ -56,7 +90,6 @@ All are `test.fail()` failing as declared. Nothing here is a regression.
 
 | Test | Why |
 |---|---|
-| `access-control` 389 | R51 — no `emailAdapter`. Needs a deployment decision. |
 | `admin-referendums` 38, 39, 46, 52, 53 | Referendum defects outside this plan's R-numbers. Untouched. |
 | `admin-rules` 22 | The missing rule-delete feature above. |
 | `approvals` 90 | Unapproved-edit flag on the sheet. Not an R-number. |

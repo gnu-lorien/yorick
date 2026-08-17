@@ -104,13 +104,23 @@ async function openApproval(page, characterId, { timeout = 60000 } = {}) {
 /**
  * Reload the app and open the approval view on a genuinely fresh character.
  *
- * `Vampire.get_character` caches the character on the router and never
- * refetches it (models/Vampire.js: once `character_cache._character` is set,
- * only a *different* id clears it, and `fetchAllIfNeeded` will not re-read a
- * trait it already holds). A storyteller session that loaded the character
- * before the player's latest change therefore renders the *old* trait values
- * for as long as the page lives — approving from that state would approve a
- * change the view never showed. Reloading is the established remedy.
+ * `Vampire.get_character` caches the character on the router. A storyteller
+ * session that loaded the character before the player's latest change rendered
+ * the *old* trait values for as long as the page lived — approving from that
+ * state would approve a change the view never showed.
+ *
+ * Remediation R29 addressed that directly: the router now checks whether the
+ * server holds a newer version on the way in, saves any unsaved local work and
+ * waits before taking it, and tells the user the view was behind.
+ *
+ * **The reload still cannot come out, and that is a measured result rather than
+ * caution.** Removing it was tried: item 78 then fails with "exactly one new
+ * recorded change since the last approval — Received 0", i.e. the storyteller's
+ * approval view still shows nothing new. So more than R29 is needed here, and
+ * the remaining part has not been identified. Whatever it is, it is not the
+ * character-level staleness R29 fixed. Left as the established remedy, with the
+ * reason recorded so the next attempt starts from what is known rather than
+ * from the original diagnosis.
  *
  * The hash is parked on the character sheet *before* reloading so the app boots
  * on a cheap route rather than re-running the expensive approval route twice.
