@@ -264,8 +264,13 @@ define([
             if (arts_to_remove.length == 0) {
                 return self._updateTraitWrapper;
             }
+            // Iterate what the caller actually asked to remove. This used to
+            // re-derive the list as `self.get_arts_affinities()` and ignore the
+            // argument, which made it impossible for a caller to hold anything
+            // back - see R23 in `_apply_kith`. Every other caller passes exactly
+            // `self.get_arts_affinities()`, so their behaviour is unchanged.
             _
-            .chain(self.get_arts_affinities())
+            .chain(arts_to_remove)
             .each(function (aa) {
                 var thisart = _.find(self.get("ctdbs_arts"), function (arts) {
                     return arts.get("name") == aa;
@@ -324,9 +329,49 @@ define([
             });
         },
 
+        /**
+         * R23. An Art that is an affinity of *both* the outgoing and the
+         * incoming Kith used to be destroyed and immediately re-granted, which
+         * wrote two `define` rows for one Art within the same minute. Since the
+         * log has no id column and `createdAt` is only minute-granular, the two
+         * render identically and read as a duplicated row.
+         *
+         * Retaining the intersection leaves those Arts - and their single
+         * original log row - untouched, so only the Arts that genuinely changed
+         * hands are written. Retention is restricted to Arts the character
+         * already holds *for free*, which keeps it purely a matter of log noise
+         * and never of entitlement:
+         *
+         *   - an affinity the player had unpicked by hand is not held, so the
+         *     incoming Kith must still grant it rather than skip it;
+         *   - an Art the player *paid* for before the Kith made it an affinity
+         *     must still go through destroy-and-regrant, because that is what
+         *     converts it to the free grant they are now entitled to.
+         *
+         * Measured on the Ghillie Dhu -> Clurichaun change, whose affinity sets
+         * share Oakenshield: the change wrote `ctdbs_arts/Oakenshield/remove`
+         * and `ctdbs_arts/Oakenshield/define` within the same minute.
+         *
+         * `_check_kith_art_pool`'s arithmetic is deliberately left alone. It
+         * refuses when `granting > remaining + releasing`, and retention removes
+         * the same count from `granting` and from `releasing`, so the comparison
+         * is unchanged.
+         */
         _apply_kith: function (target, value) {
             var self = this;
-            self._unpick_previous_arts(self.get_arts_affinities());
+            var outgoing = self.get_arts_affinities() || [];
+            var incoming = self.Costs.get_arts_affinities_for_kith(value) || [];
+            var owned = self.get("ctdbs_arts") || [];
+            var retained = _.filter(_.intersection(outgoing, incoming), function (name) {
+                return _.some(owned, function (art) {
+                    if (art.get("name") != name && art.get_base_name() != name) {
+                        return false;
+                    }
+                    return 0 < (art.get("free_value") || 0);
+                });
+            });
+
+            self._unpick_previous_arts(_.difference(outgoing, retained));
             self._updateTraitWrapper = self._updateTraitWrapper.then(function () {
                 console.log("Saving the changeling.");
                 return self.save();
@@ -335,8 +380,9 @@ define([
                 console.log("Applying the original update text");
                 return self.constructor.__super__.update_text.apply(self, [target, value]);
             });
-            console.log("About to add affinities for kith " + value);
-            _.each(self.Costs.get_arts_affinities_for_kith(value), function (aa) {
+            console.log("About to add affinities for kith " + value +
+                (retained.length ? " (retaining " + retained.join(", ") + ")" : ""));
+            _.each(_.difference(incoming, retained), function (aa) {
                 console.log("Updating trait for new art affinity " + aa);
                 self.update_trait(aa, 1, "ctdbs_arts", 1);
             });

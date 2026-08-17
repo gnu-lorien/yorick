@@ -658,6 +658,42 @@ test.describe('Task 12c - Changeling lifecycle and dual audit log', () => {
       'the Kith grant still rewrites the Arts'
     ).toBeGreaterThan(0);
 
+    // FIXED by remediation R23.
+    //
+    // Was: an Art that is an affinity of *both* Kiths was destroyed and
+    // immediately re-granted, so one Kith change wrote
+    // `ctdbs_arts/Oakenshield/remove` and `ctdbs_arts/Oakenshield/define` (plus
+    // the `experience/Removed Oakenshield/define` the removal drags along) for
+    // an Art that never actually moved. With no id column and minute-granular
+    // `createdAt`, the pair renders as a duplicated row.
+    //
+    // The shared Arts are derived rather than hard-coded, so this keeps testing
+    // the real rules rather than a snapshot of them.
+    const artCount = state.kithArts.reduce((m, n) => { m[n] = (m[n] || 0) + 1; return m; }, {});
+    const sharedArts = Object.keys(artCount).filter((n) => artCount[n] > 1);
+    expect(
+      sharedArts.length,
+      `the two Kiths share an affinity Art, so this exercises R23 (Kith Arts: ${state.kithArts.join(', ')})`
+    ).toBeGreaterThan(0);
+
+    for (const art of sharedArts) {
+      expect(
+        newRows.filter((r) => r.category === 'ctdbs_arts' && r.name === art).map((r) => r.type),
+        `"${art}" is an affinity of both Kiths, so the change leaves it alone entirely`
+      ).toEqual([]);
+    }
+
+    // Stated generally, so a different shared Art in future rules is covered
+    // too: nothing is removed and re-defined by one change.
+    const typesByArt = {};
+    newRows.filter((r) => r.category === 'ctdbs_arts').forEach((r) => {
+      (typesByArt[r.name] = typesByArt[r.name] || []).push(r.type);
+    });
+    const churned = Object.keys(typesByArt).filter(
+      (n) => typesByArt[n].includes('remove') && typesByArt[n].includes('define')
+    );
+    expect(churned, 'no Art is both removed and re-defined by a single Kith change').toEqual([]);
+
     expect(await readSheetXp(memberPage, cid), 'text changes never move XP directly').toEqual(xpBefore);
   });
 
@@ -850,10 +886,11 @@ test.describe('Task 12c - Changeling lifecycle and dual audit log', () => {
     // be the first thirty rows of the full read, in order and with the same
     // multiplicity. A multiset comparison rather than a distinct-count is
     // deliberate - the rendered table has no id column and `createdAt` is only
-    // minute-granular, so two genuinely different `VampireChange` rows can be
-    // indistinguishable once rendered (an Art destroyed and immediately
-    // re-granted by a Kith change is exactly that shape). What matters is that
-    // pagination neither dropped a row nor produced an extra copy of one.
+    // minute-granular, so two genuinely different `VampireChange` rows can still
+    // be indistinguishable once rendered. (The Kith change used to be exactly
+    // that shape, destroying and re-granting a shared affinity Art; R23 stopped
+    // it, but the multiset comparison is the stronger assertion either way.)
+    // What matters is that pagination neither dropped a row nor copied one.
     const tally = (arr) => arr.reduce((m, f) => { m[f] = (m[f] || 0) + 1; return m; }, {});
     const pagedFingerprints = pages.flat().map(L.fingerprint);
     const headFingerprints = full.slice(0, 30).map(L.fingerprint);
