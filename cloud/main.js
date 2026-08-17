@@ -103,15 +103,62 @@ var crop_and_thumb = function(req, res) {
     });
 };
 
+/**
+ * Refuse a write that has nobody attached to it.
+ *
+ * Characters, the rows hanging off them, and uploads all belong to somebody, so
+ * a request carrying neither a user nor the master key has no business writing
+ * one. This is not theoretical: these classes granted create to "*", and a bare
+ * REST POST carrying only the public application id - no session token, no user
+ * - was accepted. Measured on a live server, an anonymous request could write a
+ * SimpleTrait and an ExperienceNotation onto a named player's character, and
+ * that player then saw both on their own sheet.
+ *
+ * database_seed/_SCHEMA.json asks for requiresAuthentication on create as well,
+ * but that is only a second line of defence: seed_db.js imports the schema file
+ * solely when the database has no users at all, so an already-seeded deployment
+ * keeps whatever class-level permissions its live _SCHEMA collection was
+ * created with. This guard is what protects those, and it runs ahead of the
+ * class-level check either way.
+ *
+ * It also settles requests that were previously answered badly or not at all.
+ * Omitting owner used to hang beforeSave("SimpleTrait") indefinitely - it walks
+ * off the missing pointer and calls neither response.success nor
+ * response.error - and an anonymous portrait POST with no file crashed
+ * crop_and_thumb, returning HTTP 500 or resetting the connection. Guarding at
+ * the top of each hook settles the request before the body can wander.
+ *
+ * No legitimate write path is affected. The character models
+ * (public/scripts/app/models/) only ever run for a logged-in user, building
+ * each row's ACL out of the character's own owner, and every save cloud code
+ * makes on a character's behalf passes useMasterKey, which sets request.master.
+ *
+ * Answers the request itself when it refuses, so callers read as:
+ *
+ *     if (!require_a_user(request, response, "Traits")) { return; }
+ *
+ * @return {boolean} true when the request may go ahead
+ */
+var require_a_user = function(request, response, noun) {
+    if (!request.master && !request.user) {
+        response.error(noun + " can only be changed by a logged in user.");
+        return false;
+    }
+    return true;
+};
+
 Parse.Cloud.beforeSave("TroupePortrait", function(request, response) {
+    if (!require_a_user(request, response, "Troupe portraits")) { return; }
     crop_and_thumb(request, response);
 });
 
 Parse.Cloud.beforeSave("CharacterPortrait", function(request, response) {
+    if (!require_a_user(request, response, "Character portraits")) { return; }
     crop_and_thumb(request, response);
 });
 
 Parse.Cloud.beforeSave("ReferendumPortrait", function(request, response) {
+    if (!require_a_user(request, response, "Referendum portraits")) { return; }
     crop_and_thumb(request, response);
 });
 
@@ -150,6 +197,11 @@ var get_vampire_change_acl = function(vampire) {
 };
 
 Parse.Cloud.beforeSave("Vampire", function(request, response) {
+    // Werewolf and ChangelingBetaSlice are both Parse.Object.extend("Vampire",
+    // ...) over this same underlying class, so this covers all three creature
+    // types.
+    if (!require_a_user(request, response, "Characters")) { return; }
+
     var tracked_texts = [
         "name",
         "clan",
@@ -256,6 +308,12 @@ var isMeaningfulChange = function (vc) {
 }
 
 Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
+    // Ahead of everything else: this hook copies the trait into a
+    // VampireChange audit row, so an unguarded anonymous write did not merely
+    // land a trait on somebody's sheet, it also wrote itself into the log the
+    // approvals workflow reads.
+    if (!require_a_user(request, response, "Traits")) { return; }
+
     console.log("beforeSave SimpleTrait");
     var vc = new Parse.Object("VampireChange");
     var modified_trait = request.object;
@@ -355,6 +413,8 @@ Parse.Cloud.afterSave("SimpleTrait", function(request) {
 });
 
 Parse.Cloud.beforeDelete("SimpleTrait", function(request, response) {
+    if (!require_a_user(request, response, "Traits")) { return; }
+
     var vc = new Parse.Object("VampireChange");
     var trait = request.object;
     console.log("beforeDelete SimpleTrait Getting the server trait data " + trait.id);
@@ -472,7 +532,14 @@ var record_experience_notation = function (notation, type, user) {
     });
 };
 
+// ExperienceNotation is the one with teeth among the character's child rows:
+// an anonymous write to it was measured landing 99999 earned XP on another
+// player's character, visible to that player on their own sheet. The guard runs
+// first, ahead of the audit record - refusing the write and then recording it
+// would be worse than not recording it at all.
 Parse.Cloud.beforeSave("ExperienceNotation", function(request, response) {
+    if (!require_a_user(request, response, "Experience entries")) { return; }
+
     var notation = request.object;
     var is_new = _.isUndefined(notation.id);
 
@@ -488,8 +555,29 @@ Parse.Cloud.beforeSave("ExperienceNotation", function(request, response) {
 });
 
 Parse.Cloud.beforeDelete("ExperienceNotation", function(request, response) {
+    // A delete is a write. The incoming security work guarded the save; the
+    // same argument applies here, and this hook did not exist to guard when it
+    // was written.
+    if (!require_a_user(request, response, "Experience entries")) { return; }
+
     response.success();
     record_experience_notation(request.object, "remove", request.user);
+});
+
+// The remaining character child rows. Each is created client-side by the
+// character models as the logged-in owner, and touched by cloud code only with
+// the master key, so the guard is the whole of the hook - there is no existing
+// behaviour here to sit in front of, unlike SimpleTrait, Vampire and
+// ExperienceNotation.
+
+Parse.Cloud.beforeSave("LongText", function(request, response) {
+    if (!require_a_user(request, response, "Character texts")) { return; }
+    response.success();
+});
+
+Parse.Cloud.beforeSave("VampireCreation", function(request, response) {
+    if (!require_a_user(request, response, "Character creation records")) { return; }
+    response.success();
 });
 
 Parse.Cloud.afterSave("Patronage", function(request) {
@@ -892,7 +980,19 @@ Parse.Cloud.define("vote_for_referendum", function(request, response) {
         ballot.set("choice", request.params.ballot_option);
 
         console.log("Saving the ballot");
-        return ballot.save();
+        // With the master key, because ReferendumBallot's class-level
+        // permissions now refuse create to everyone. This function is where the
+        // patronage requirement and the one-ballot-per-user check above
+        // actually live, and while the class granted create to "*" a client
+        // could skip all of it and POST a ballot directly - any choice, any
+        // caster, any ACL, as many times as it liked. Making this the only
+        // writer is the point; saving as the user again would reopen the hole.
+        //
+        // The interleaved `.fail()` that used to sit here is gone with R11: it
+        // returned a plain value, which resolves a Parse.Promise, so it turned
+        // a refusal back into a success part-way down the chain. The single
+        // terminal handler below reports every failure now.
+        return ballot.save({}, {useMasterKey: true});
     }).then(function (saved) {
         console.log("Ballot saved");
         response.success("Ballot has been cast");

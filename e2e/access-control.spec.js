@@ -907,19 +907,22 @@ test.describe('Task 13 - Access Control In The UI', () => {
    * Every route here is confirmed, by reading mobileRouter.js's handler body,
    * to call `enforce_logged_in()` itself or through `get_character()` /
    * `show_character_helper()` (which both wrap it) - i.e. genuinely gated,
-   * not merely assumed to be. Two routes that are *not* gated
-   * (`characternew`, which renders its form for a fully anonymous visitor,
-   * and the anonymous-writable `Vampire` create permission behind it) were
-   * found while compiling this list and are deliberately excluded: including
-   * them here would either fail this positive "is redirected" sweep for the
-   * wrong reason or need its own `test.fail()`, and neither is what item 390
-   * asks for. They are reported separately as an incidental finding.
+   * not merely assumed to be.
+   *
+   * `characternew` was the one exception when this list was first compiled:
+   * alone among the character/troupe/admin routes it rendered `#character-new`
+   * unconditionally, for a fully anonymous visitor. It was reported rather
+   * than worked around, and has since been given the same
+   * `enforce_logged_in()` call every sibling route makes, so it now belongs in
+   * this sweep like any other gated route. The anonymous-writable `Vampire`
+   * create permission found behind it is a data-level hole a page-transition
+   * assertion cannot speak to at all, so it gets its own server-side probe in
+   * 390b - the same "companion test" shape 384b uses.
    *
    * Spans every route family: the bare home route, profile, the character
    * list and sheet, two character sub-routes with the missing-`.fail()`
-   * defect from the file header, the creation wizard entry point, both
-   * troupe routes, five distinct `#administration/*` destinations, and
-   * referendums.
+   * defect from the file header, both creation entry points, both troupe
+   * routes, five distinct `#administration/*` destinations, and referendums.
    */
   const PROTECTED_ROUTES = [
     { hash: '', label: 'home' },
@@ -928,6 +931,7 @@ test.describe('Task 13 - Access Control In The UI', () => {
     { hash: 'character?bogus000000', label: 'character sheet' },
     { hash: 'character/bogus000000/log/0/10', label: 'character log' },
     { hash: 'character/bogus000000/experience/0/10', label: 'character experience' },
+    { hash: 'characternew', label: 'new character form' },
     { hash: 'charactercreate/bogus000000', label: 'character creation wizard' },
     { hash: 'troupes', label: 'troupe directory' },
     { hash: 'troupe/new', label: 'new troupe form' },
@@ -958,6 +962,61 @@ test.describe('Task 13 - Access Control In The UI', () => {
       expect(stillAnonymousAfter, 'no session was established by the attempt').toBe(true);
     });
   }
+
+  test('390b A logged-out visitor cannot write a character straight into the Vampire class', async () => {
+    // The route gate above is only half of the protection, and the weaker
+    // half: #characternew is a thin wrapper over Vampire.create, and
+    // Vampire's class-level permissions granted create to "*", so a visitor
+    // who never loads that page at all could POST a row into the character
+    // table directly. Measured live before the fix, from a context with no
+    // Parse session: the save returned a real object id.
+    //
+    // Werewolf and ChangelingBetaSlice are both Parse.Object.extend("Vampire",
+    // ...) over this same underlying class, so one probe covers all three
+    // creature types.
+    //
+    // A server-side probe rather than a UI assertion, for exactly the reason
+    // 384b is one: a page that refuses to render proves nothing about what the
+    // server will accept. The refusal is then confirmed the second way this
+    // file accepts - a before/after read-back proving the table did not grow.
+    const stillAnonymous = await loggedOutPage.evaluate(() => !window.Parse.User.current());
+    expect(stillAnonymous, 'this probe genuinely has no session').toBe(true);
+
+    const before = await adminPage.evaluate(() => new window.Parse.Query('Vampire').count());
+
+    const attempt = await loggedOutPage.evaluate(async () => {
+      try {
+        const Vampire = window.Parse.Object.extend('Vampire');
+        const v = new Vampire();
+        await v.save({ name: 'E2E T13 anonymous create probe' });
+        return { ok: true, id: v.id };
+      } catch (e) {
+        return { ok: false, code: e && e.code, message: e && e.message };
+      }
+    });
+    console.log('[e2e access-control] 390b anonymous Vampire create:', JSON.stringify(attempt));
+
+    expect(attempt.ok, 'the server refuses to create a character for a request with no user attached').toBe(false);
+
+    const after = await adminPage.evaluate(() => new window.Parse.Query('Vampire').count());
+    console.log('[e2e access-control] 390b Vampire row count before/after:', JSON.stringify({ before, after }));
+    expect(after, 'no row reached the character table').toBe(before);
+
+    // Belt and braces: if the refusal ever regresses to a client-side-only
+    // error while the write still lands, the id lookup catches it even though
+    // the count above would not distinguish it from a concurrent delete.
+    if (attempt.id) {
+      const orphan = await adminPage.evaluate(async (id) => {
+        try {
+          const found = await new window.Parse.Query('Vampire').get(id);
+          return { exists: true, name: found.get('name') };
+        } catch (e) {
+          return { exists: false, code: e && e.code };
+        }
+      }, attempt.id);
+      expect(orphan.exists, 'no orphaned character row was left behind').toBe(false);
+    }
+  });
 
   // -------------------------------------------------------------------------
   // 391 - global Descriptions

@@ -506,9 +506,11 @@ define([
             self.set_back_button("#characters?all");
             // R38: this route had no `enforce_logged_in()` at all, so the
             // new-character form rendered in full for an anonymous visitor.
-            // The related anonymous-write hole on the `Vampire` class itself
-            // is owned by another session and is deliberately untouched here;
-            // the route gate is independent of it.
+            // Both sessions working on this reached the same gate
+            // independently; the anonymous-*write* hole behind it - `Vampire`
+            // and its child classes granting create to "*" - is closed by the
+            // security remediation merged alongside this, at the class-level
+            // permissions and again in `require_a_user` in cloud/main.js.
             self.enforce_logged_in().then(function () {
                 self.characterNewView.render();
                 $.mobile.changePage("#character-new", { reverse: false, changeHash: false });
