@@ -350,9 +350,16 @@ test.describe('Task 10 - Long Texts In The UI', () => {
     await expect(page.locator('#long-text textarea[name="text"]')).toHaveValue(primed);
   });
 
-  test.fail('285 Long text edits are recorded in the character log', async () => {
-    // DEFECT, confirmed independently of the Task 0 write-up that first flagged
-    // it: update_long_text (models/Character.js) only ever calls
+  test('285 Long text edits are deliberately NOT recorded in the character log', async () => {
+    // INVERTED, per remediation R47c and the owner's ruling behind it: long
+    // texts can be large enough that logging them would bloat the audit trail,
+    // so they stay out of it on purpose. Two independent mechanisms already
+    // guarantee that - belt and braces, both intended - and this test now
+    // defends them instead of demanding they be removed. Anyone who later adds
+    // long texts to `tracked_texts` fails here, loudly.
+    //
+    // The mechanisms, confirmed independently of the Task 0 write-up that first
+    // flagged this: update_long_text (models/Character.js) only ever calls
     // `lt.save()` on the separate `LongText` Parse object - it never calls
     // `Vampire#save()` at all, so `beforeSave("Vampire")` (cloud/main.js) never
     // even runs for a long-text edit. And even if it did, that hook's own
@@ -385,9 +392,12 @@ test.describe('Task 10 - Long Texts In The UI', () => {
       q.equalTo('name', 'notes');
       return q.count();
     }, vampireId);
-    expect(directCount).toBe(0);
+    expect(directCount, 'no VampireChange row is written for a long-text edit').toBe(0);
 
-    expect(logsAfter.length - logsBefore.length).toBeGreaterThan(0);
+    expect(
+      logsAfter.length - logsBefore.length,
+      'and nothing new appears in the log view either'
+    ).toBe(0);
   });
 
   test.fail('286 All three long texts render correctly on the Werewolf and Changeling printable sheets', async () => {

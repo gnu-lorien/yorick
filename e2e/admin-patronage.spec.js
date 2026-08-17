@@ -319,25 +319,26 @@ test.describe('Task 1 - Patronage Lifecycle And Patron Status', () => {
     expect(text).toContain('"Active"');
   });
 
-  test.fail('07 Per-user view lists exactly the one created record for sampmem', async () => {
-    // DEFECT: #administration/patronages/user/:id is broken for every user,
-    // admin included. mobileRouter.js's administration_user_patronages route
-    // reuses AdministrationUserView.js bound to a *different* container
-    // (`el: "#administration-user-patronages-view"`) than the one its
-    // `regions` hash (#abs-form, #patronage-list-region, #patronage-list, ...)
-    // was written against (#administration-user-view). Marionette resolves a
-    // LayoutView's named regions scoped to its own `$el`
-    // (`_buildRegions` sets `parentEl` to the view's el), and
-    // #administration-user-patronages-view's markup in index.html is just an
-    // empty `<form>` - none of those ids exist inside it. The first
-    // `showChildView` call in the constructor throws
+  test('07 Per-user view lists exactly the one created record for sampmem', async () => {
+    // FIXED by remediation R44.
+    //
+    // Was: #administration/patronages/user/:id was broken for every user,
+    // admin included. The route reused AdministrationUserView.js bound to a
+    // *different* container (`el: "#administration-user-patronages-view"`)
+    // than the one its `regions` hash (#abs-form, #patronage-list-region,
+    // #patronage-list, ...) was written against (#administration-user-view).
+    // Marionette resolves a LayoutView's named regions scoped to its own `$el`,
+    // and that page's markup was just an empty `<form>` - none of those ids
+    // existed inside it. The first `showChildView` threw
     // `Marionette.Error: An "el" #abs-form must exist in DOM` before
-    // `$.mobile.changePage` ever runs, and because it is thrown inside a
-    // legacy Parse.Promise `.then()` callback (which, unlike an A+ promise,
-    // does not catch synchronous throws), it surfaces as an uncaught
-    // exception rather than a `.fail()` rejection. The hash updates but the
-    // page never transitions. Confirmed live against this server, both as
-    // devuser and as sampast (test 14).
+    // `$.mobile.changePage` ever ran, and because it was thrown inside a legacy
+    // Parse.Promise `.then()` callback (which, unlike an A+ promise, does not
+    // catch synchronous throws), it surfaced as an uncaught exception rather
+    // than a `.fail()` rejection: the hash updated, the page never
+    // transitioned, and the loading overlay stuck.
+    //
+    // Now: the page has a real list region and the route renders that user's
+    // patronages into it - the one thing the route is named for.
     const pageErrors = [];
     const onError = (err) => pageErrors.push(err.message);
     adminPage.on('pageerror', onError);
@@ -346,20 +347,16 @@ test.describe('Task 1 - Patronage Lifecycle And Patron Status', () => {
     await adminPage.waitForTimeout(3000);
 
     adminPage.off('pageerror', onError);
-    // Leave the page usable for the rest of the suite: the crash above never
-    // reaches the `$.mobile.loading("hide")` in the route's own `.always()`
-    // (same uncaught-exception reason - the exception bypasses the promise
-    // chain entirely), so the loading overlay is stuck showing - confirmed
-    // live - and would otherwise intercept later clicks (see clearStuckLoader
-    // above for the same overlay getting stuck a different way).
-    await clearStuckLoader(adminPage);
-
-    expect(pageErrors.some((m) => m.includes('must exist in DOM'))).toBe(true);
+    expect(pageErrors, 'the route no longer throws on construction').toEqual([]);
 
     const activeId = await adminPage.evaluate(() => document.querySelector('.ui-page-active').id);
     expect(activeId).toBe('administration-user-patronages-view');
+    expect(
+      await adminPage.evaluate(() => document.documentElement.classList.contains('ui-loading')),
+      'and the loader comes down'
+    ).toBe(false);
 
-    const rows = adminPage.locator('#administration-user-patronages-view li');
+    const rows = adminPage.locator('#administration-user-patronages-list li');
     await expect(rows).toHaveCount(1);
     await expect(rows.first()).toContainText('sampmem');
   });
@@ -402,22 +399,24 @@ test.describe('Task 1 - Patronage Lifecycle And Patron Status', () => {
     await expect(strangerOptions).toContainText('You are not currently a Patron of Underground Theater');
   });
 
-  test.fail('11 Create a second patronage with a future paidOn; the user is not yet an active Patron', async () => {
-    // DEFECT: `paidOn` is dead data. Every place active-Patron status is
-    // computed - ExpirationMixin.isActive()/status() (models/Patronage.js,
-    // via helpers/ExpirationMixin.js) and the `get_my_patronage_status` and
-    // `vote_for_referendum` cloud functions (cloud/main.js) - reads only
-    // `expiresOn`; none of them ever look at `paidOn`. So a patronage record
-    // with a future `paidOn` is treated as immediately active as soon as it
-    // exists, as long as `expiresOn` is in the future (which it naturally
-    // would be for a forward-dated purchase). Separately, and independently
-    // fatal to this test: patronage A from test 03 is still active at this
-    // point, and `get_my_patronage_status` takes the record with the *latest*
-    // expiresOn (`.descending("expiresOn").first()`) - adding a second record
-    // can only raise that ceiling, never lower it, so once any one of a
-    // user's patronages is active, nothing that merely creates another record
-    // can make the user "not yet" a Patron. Confirmed live: the status reads
-    // true both before and after creating this record.
+  test('11 Create a second patronage with a future paidOn; the user is an active Patron - only expiresOn gates status', async () => {
+    // INVERTED, per remediation R42 and the owner's ruling behind it: only
+    // `expiresOn` gates patron status, deliberately, to avoid time-zone
+    // confusion around the start of a patronage. `paidOn` is recorded for
+    // reference rather than consulted, so the current behaviour of
+    // `ExpirationMixin.isActive`, `get_my_patronage_status` and
+    // `vote_for_referendum` is correct and the test was what was wrong.
+    //
+    // Turned around rather than deleted, the same treatment patronage
+    // world-readability got: anyone who later "fixes" this by making `paidOn`
+    // gate status now fails loudly instead of silently removing an intended
+    // guarantee.
+    //
+    // A second reason the original expectation could never hold, worth keeping
+    // on the record: patronage A from test 03 is still active at this point,
+    // and `get_my_patronage_status` takes the record with the *latest*
+    // expiresOn (`.descending("expiresOn").first()`) - adding a record can
+    // only raise that ceiling, never lower it.
     state.patronageBPaidOn = daysFromNow(60 + RUN_JITTER_DAYS);
     state.patronageBExpiresOn = daysFromNow(425 + RUN_JITTER_DAYS);
 
@@ -443,15 +442,18 @@ test.describe('Task 1 - Patronage Lifecycle And Patron Status', () => {
     // Delete this fixture immediately (via Parse, as devuser/Administrator -
     // there is no other way; see test 13) so it does not leak into tests 12
     // and 13, which depend on patronage A being the only record governing
-    // sampmem's status from here on. This happens before the assertion below
-    // so it still runs even though that assertion is expected to fail.
+    // sampmem's status from here on. Kept ahead of the assertion so the
+    // cleanup runs whatever the assertion does.
     await adminPage.evaluate(async (id) => {
       const obj = new window.Parse.Object('Patronage');
       obj.id = id;
       await obj.destroy();
     }, created);
 
-    expect(statusWithFuturePatronage).toBe(false);
+    expect(
+      statusWithFuturePatronage,
+      'a future paidOn does not delay patron status; only expiresOn gates it'
+    ).toBe(true);
   });
 
   test('12 Edit the patronage expiresOn to a past date; the user loses active-Patron status in #profile', async () => {
@@ -479,28 +481,58 @@ test.describe('Task 1 - Patronage Lifecycle And Patron Status', () => {
     await expect(row).toContainText('Expired');
   });
 
-  test.fail('13 Delete the patronage; the user loses Patron status and the row disappears from the list and CSV views', async () => {
-    // DEFECT: there is no way to delete a Patronage anywhere in the UI.
-    // PatronageView.js's Backform only defines owner/paidOn/expiresOn/submit
-    // fields (no delete control), PatronageListView's template
-    // (templates/patronage-list-item.html) renders a single navigating <a>
-    // per row with no delete icon or swipe action, and mobileRouter.js
-    // defines no patronage-delete route - the only `.remove()` calls near
-    // "patronage" in the router are Backbone.View#remove() (detaching a
-    // stale form before re-rendering), not Parse.Object#destroy(). Per this
-    // suite's own convention ("Real UI interaction only ... never as a
-    // substitute for the interaction under test"), a direct Parse call
-    // cannot stand in for the missing UI action, so this is left failing
-    // rather than fabricating a delete that does not exist for the user.
+  test('13 Delete the patronage; the user loses Patron status and the row disappears from the list and CSV views', async () => {
+    // FIXED by remediation R43.
+    //
+    // Was: there was no way to delete a Patronage anywhere in the UI.
+    // PatronageView.js's Backform defined only owner/paidOn/expiresOn/submit
+    // fields, PatronageListView's template rendered a single navigating <a>
+    // per row with no delete icon or swipe action, and mobileRouter.js defined
+    // no patronage-delete route - the only `.remove()` calls near "patronage"
+    // in the router were Backbone.View#remove(), not Parse.Object#destroy().
+    // A record created by mistake could only be removed with direct database
+    // access. Per this suite's convention a direct Parse call could not stand
+    // in for the missing UI action, so it was pinned red instead.
+    //
+    // The detail page now carries a real Delete control, and this drives it.
     await navigateToHash(adminPage, `administration/patronage/${state.patronageAId}`, '#administration-patronage-view');
-    const deleteControl = adminPage.locator(
-      [
-        '#administration-patronage-view button:has-text("Delete")',
-        '#administration-patronage-view a:has-text("Delete")',
-        '#administration-patronage-view [class*="delete" i]'
-      ].join(', ')
-    );
+    const deleteControl = adminPage.locator('#administration-patronage-view button.patronage-delete');
     await expect(deleteControl).toBeVisible({ timeout: 5000 });
+
+    await deleteControl.click();
+    await adminPage.waitForFunction(
+      () => window.location.hash === '#administration/patronages',
+      undefined,
+      { timeout: 15000 });
+    await clearStuckLoader(adminPage);
+
+    // The record is genuinely gone, not merely hidden.
+    const stillThere = await adminPage.evaluate(async (id) => {
+      try {
+        await new window.Parse.Query('Patronage').get(id);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }, state.patronageAId);
+    expect(stillThere, 'the Patronage row is destroyed server-side').toBe(false);
+
+    // It is gone from both admin listings.
+    await navigateToHash(adminPage, 'administration/patronages', '#administration-patronages-view');
+    await expect(
+      adminPage.locator(`#administration-patronages-view-list a[href="#administration/patronage/${state.patronageAId}"]`)
+    ).toHaveCount(0);
+
+    await navigateToHash(adminPage, 'administration/patronagescsv', '#administration-patronages-view-csv');
+    expect(
+      await adminPage.locator('#administration-patronages-view-csv').textContent()
+    ).not.toContain(state.patronageAId);
+
+    // And sampmem is no longer a Patron.
+    expect(
+      await memberPage.evaluate(() => window.Parse.Cloud.run('get_my_patronage_status')),
+      'with no patronage left, the user is not an active Patron'
+    ).toBe(false);
   });
 
   test('14 Privacy: sampast cannot view sampmem\'s patronage via the per-user admin route', async () => {
@@ -508,19 +540,21 @@ test.describe('Task 1 - Patronage Lifecycle And Patron Status', () => {
     const before = await astPage.evaluate(() => document.querySelector('.ui-page-active').id);
     expect(before).toBe('user-settings-profile');
 
-    // administration_user_patronages gates on `admininterface` before doing
-    // anything else: `if (is_ad) { ...; $.mobile.changePage(...); }` with no
-    // else branch, so for sampast (storyteller, not admin) the whole body is
-    // skipped and the page simply never transitions - no redirect, just no
-    // navigation. Deliberately not using navigateToHash's targetSelector wait
-    // here: that would retry and eventually reload trying to reach a page
-    // that is never going to become active, which is slow and not what is
-    // being asserted.
+    // administration_user_patronages gates on administrator status before
+    // doing anything else. It used to do that inline (`if (is_ad) { ...;
+    // $.mobile.changePage(...); }` with no else branch), so for sampast
+    // (storyteller, not admin) the whole body was skipped and the page simply
+    // never transitioned - no redirect, just no navigation. Remediation R36
+    // routed it through the shared `enforce_admin()`, which additionally sends
+    // the user home and tells them why, so the assertion is on where they do
+    // *not* end up rather than on staying exactly put. Deliberately not using
+    // navigateToHash's targetSelector wait here: that would retry and
+    // eventually reload trying to reach a page that is never going to become
+    // active.
     await astPage.evaluate((h) => { window.location.hash = '#' + h; }, `administration/patronages/user/${state.sampmemId}`);
     await astPage.waitForTimeout(2500);
 
     const after = await astPage.evaluate(() => document.querySelector('.ui-page-active').id);
-    expect(after).toBe('user-settings-profile');
     expect(after).not.toBe('administration-user-patronages-view');
 
     const bodyText = await astPage.evaluate(() => document.body.textContent);
@@ -528,38 +562,50 @@ test.describe('Task 1 - Patronage Lifecycle And Patron Status', () => {
   });
 
   test('15 Non-admin sampmem cannot create a patronage via #administration/patronages/new', async () => {
-    // NOTE: unlike its sibling admin routes (administration_patronages,
+    // Two layers now, and both are asserted.
+    //
+    // Was: unlike its sibling admin routes (administration_patronages,
     // administration_user, administration_user_patronages, ...),
-    // administration_patronage_new has no `is_ad` gate at all in
-    // mobileRouter.js - the form genuinely renders for a non-admin, with no
-    // redirect. What actually stops sampmem is the server-side Patronage
-    // class-level permission (create: role:Administrator only, seeded from
-    // database_seed/_SCHEMA.json), enforced on save - confirmed live: the
-    // form renders, and submitting surfaces "Permission denied for action
-    // create on class Patronage." with nothing persisted. That is the real
-    // protection, so that is what this test verifies, per the instruction to
-    // reason about what actually renders/protects rather than assume a
-    // redirect. The missing page-level gate is still worth fixing for
-    // consistency with its sibling routes - reported separately.
+    // administration_patronage_new had no `is_ad` gate at all - the form
+    // genuinely rendered for a non-admin, with no redirect, and the only thing
+    // stopping them was the server-side refusal on submit. This test reported
+    // the missing page-level gate separately; remediation R36 added it, so the
+    // page no longer renders.
+    //
+    // The server-side protection is unchanged and is still the one that
+    // matters: Patronage's class-level permissions restrict create to
+    // role:Administrator (database_seed/_SCHEMA.json). It is probed directly
+    // now, because the form that used to carry the probe is (correctly) out of
+    // reach for this user.
     const countBefore = await memberPage.evaluate(async (ownerId) => {
       const q = new window.Parse.Query('Patronage');
       q.equalTo('owner', window.Parse.User.createWithoutData(ownerId));
       return q.count();
     }, state.sampmemId);
 
-    await navigateToHash(memberPage, 'administration/patronages/new', '#administration-patronage-view');
-    const form = memberPage.locator(PATRONAGE_FORM);
-    await expect(form.locator('select[name="owner"]')).toBeAttached();
+    await navigateToHash(memberPage, 'administration/patronages/new');
+    await memberPage.waitForTimeout(2000);
+    const activeId = await memberPage.evaluate(() => {
+      const el = document.querySelector('.ui-page-active');
+      return el ? el.id : null;
+    });
+    expect(activeId, 'the new-patronage form does not render for a non-admin')
+      .not.toBe('administration-patronage-view');
 
-    await selectBackformOption(memberPage, `${PATRONAGE_FORM} select[name="owner"]`, 'sampmem');
-    await fillBackformInput(memberPage, `${PATRONAGE_FORM} input[name="paidOn"]`, fmt(daysFromNow(-1)));
-    await fillBackformInput(memberPage, `${PATRONAGE_FORM} input[name="expiresOn"]`, fmt(daysFromNow(3650)));
-    await clearStuckLoader(memberPage);
-    await form.locator('button[name="submit"]').click();
-
-    const error = memberPage.locator(`${PATRONAGE_FORM} .form-group.owner .help-block.error`);
-    await expect(error).toBeVisible({ timeout: 10000 });
-    await expect(error).toHaveText('Permission denied for action create on class Patronage.');
+    const probe = await memberPage.evaluate(async (ownerId) => {
+      const p = new window.Parse.Object('Patronage');
+      p.set('owner', window.Parse.User.createWithoutData(ownerId));
+      p.set('paidOn', new Date());
+      p.set('expiresOn', new Date());
+      try {
+        await p.save();
+        return { ok: true };
+      } catch (e) {
+        return { ok: false, code: e && e.code, message: e && e.message };
+      }
+    }, state.sampmemId);
+    expect(probe.ok, 'the create is refused server-side').toBe(false);
+    expect(probe.message).toBe('Permission denied for action create on class Patronage.');
 
     const countAfter = await memberPage.evaluate(async (ownerId) => {
       const q = new window.Parse.Query('Patronage');

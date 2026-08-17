@@ -49,9 +49,13 @@ define([
                 changed = true;
             }
 
-            if (changed) {
-                self.update_collection_query_and_fetch();
-            }
+            // R30: this used to refetch only `if (changed)` - that is, only
+            // when `start`, `changeBy` or the character reference differed from
+            // last time. "Read the log, act, read the log again" passes the
+            // identical parameters both times, so the second read silently
+            // returned the rows from before the action. Entering the log page
+            // is a request to see the log as it is now; always ask.
+            self.update_collection_query_and_fetch();
 
             return self;
         },
@@ -151,8 +155,11 @@ define([
         },
 
         format_entry: function(log, entry) {
-            if (log.get(entry)) {
-                return log.get(entry);
+            // See CharacterApprovalView.format_entry: a recorded 0 must not
+            // render as an empty cell.
+            if (log.has(entry)) {
+                var v = log.get(entry);
+                return _.isDate(v) ? moment(v).format('lll') : v;
             }
             var attr = log[entry];
             if (_.isDate(attr)) {

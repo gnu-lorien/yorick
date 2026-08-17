@@ -182,8 +182,15 @@ const SUM_POOL_BUDGET = 7;
  * derived consequence rather than a magic list of numbers.
  */
 function cumulativeCostTable(costPerEntry, maxValue) {
+  // Mirrors `get_cost_table` / `get_cost_on_table`. The table used to stop at
+  // nine entries while `max_trait_value` allows 20, and `_.take` past the end
+  // silently returned the whole array - so levels 10-20 all cost what level 9
+  // cost. Remediation R24 extended the table to MAX_TRAIT_LEVEL; this mirrors
+  // that, and keeps the expectation derived from the algorithm rather than
+  // being a magic list.
+  const MAX_TRAIT_LEVEL = 20;
   const table = [];
-  for (let i = 1; i <= 9; i++) table.push(i * costPerEntry);
+  for (let i = 1; i <= MAX_TRAIT_LEVEL; i++) table.push(i * costPerEntry);
   const out = [];
   for (let v = 1; v <= maxValue; v++) {
     out.push(table.slice(0, v).reduce((a, b) => a + b, 0));
@@ -846,16 +853,19 @@ test.describe('Task 8a - Vampire Creation In The UI', () => {
     expect(xpAfter).toEqual({ earned: 30, spent: MERIT_VALUE, available: 30 - MERIT_VALUE });
   });
 
-  test.fail('179 Change the picked merit\'s value from 2 to 3; the pool sum updates and XP is unchanged', async () => {
-    // DEFECT (file-level finding 1, confirmed live). Changing an existing
-    // trait's value through `#simpletrait/:category/:cid/:bid` saves via
-    // `update_trait(trait)` with no `free_value` argument, so
-    // `update_creation_rules_for_changed_trait` writes
-    // `merits_undefined_remaining` / `merits_undefined_picks` instead of
-    // `merits_0_*`. The number is right (4) and the key is wrong, so the pool a
-    // player sees never moves. `default-test.js`'s "can change the value of a
-    // picked merit" passes `0` explicitly at the model layer and correctly
-    // reaches 4, which is what pins this as a UI-layer defect.
+  test('179 Change the picked merit\'s value from 2 to 3; the pool sum updates and XP is unchanged', async () => {
+    // FIXED by remediation R19.
+    //
+    // Was: changing an existing trait's value through
+    // `#simpletrait/:category/:cid/:bid` saved via `update_trait(trait)` with
+    // no `free_value` argument, so `update_creation_rules_for_changed_trait`
+    // wrote `merits_undefined_remaining` / `merits_undefined_picks` instead of
+    // `merits_0_*`. The number was right (4) and the key was wrong, so the
+    // pool a player sees never moved. `default-test.js`'s "can change the
+    // value of a picked merit" passed `0` explicitly at the model layer and
+    // correctly reached 4, which is what pinned it to the UI layer.
+    //
+    // `SimpleTraitChangeView.save_clicked` now passes that same explicit 0.
     const newValue = MERIT_VALUE + 1;
 
     const label = await openTraitChange(page, state.wizardId, 'merits', MERIT_NAME);
@@ -878,14 +888,11 @@ test.describe('Task 8a - Vampire Creation In The UI', () => {
     expect(traits[0]).toMatchObject({ name: MERIT_NAME, value: newValue, cost: newValue });
     expect(await readSheetXp(page, state.wizardId)).toEqual({ earned: 30, spent: newValue, available: 30 - newValue });
 
-    // This is the defect: the pool the player is shown never moves.
+    // What R19 fixed: the write lands on the key the pool badge reads.
     const creation = await readCreation(page, state.wizardId);
     const junkKeys = Object.keys(creation).filter((k) => k.indexOf('undefined') !== -1);
-    expect(
-      creation.merits_0_remaining,
-      `merits_0_remaining should be ${SUM_POOL_BUDGET - newValue}; the write landed on ` +
-      `${JSON.stringify(junkKeys.map((k) => [k, creation[k]]))} instead`
-    ).toBe(SUM_POOL_BUDGET - newValue);
+    expect(junkKeys, 'no `<category>_undefined_*` keys are written any more').toEqual([]);
+    expect(creation.merits_0_remaining).toBe(SUM_POOL_BUDGET - newValue);
     expect((await readCreationState(page, state.wizardId)).pools.Merits).toBe(SUM_POOL_BUDGET - newValue);
   });
 
@@ -911,10 +918,11 @@ test.describe('Task 8a - Vampire Creation In The UI', () => {
     // XP is refunded in full: `remove_trait` posts `-cost` as a spent alteration.
     expect(await readSheetXp(page, state.wizardId)).toEqual(BASELINE_XP);
 
-    // Residue from the defect in test 179: the bogus key is never cleaned up. It
-    // is inert (nothing reads it) but it is recorded here so a future fix can be
-    // seen to remove it.
-    expect(creation.merits_undefined_remaining).toBe(SUM_POOL_BUDGET - (MERIT_VALUE + 1));
+    // This used to record the residue of test 179's defect - an inert
+    // `merits_undefined_remaining` key nothing reads - "so a future fix can be
+    // seen to remove it". Remediation R19 is that fix, so the assertion is
+    // inverted rather than deleted: no such key is written at all now.
+    expect(Object.keys(creation).filter((k) => k.indexOf('undefined') !== -1)).toEqual([]);
   });
 
   test('181 Pick a flaw; the flaw pool sum updates', async () => {
@@ -1199,8 +1207,8 @@ test.describe('Task 8a - Vampire Creation In The UI', () => {
 
     // Part two: the cost progression through level 15, read live off the change
     // page's own quote at each slider position and never saved. `expectedInClan`
-    // is derived from `get_cost_table` / `get_cost_on_table`, so the plateau from
-    // level 9 on is a consequence of the implementation rather than a magic list.
+    // is derived from `get_cost_table` / `get_cost_on_table` rather than being a
+    // magic list.
     const clan = await readInClanDisciplines(page, cid);
     const inClanUnowned = clan.inClan.find((d) => d !== 'Celerity');
     const outOfClanUnowned = 'Auspex';
@@ -1218,12 +1226,18 @@ test.describe('Task 8a - Vampire Creation In The UI', () => {
     expect(outOfClanProgression).toEqual(expectedOutOfClan);
     expect(outOfClanProgression.slice(0, 9)).toEqual([4, 12, 24, 40, 60, 84, 112, 144, 180]);
 
-    // DEFECT (file-level finding 3): levels 10-15 cost exactly what level 9
-    // costs, because `get_cost_table` only ever produces nine entries and
-    // `_.take` of more than that silently returns the whole array. Pinned here
-    // as an assertion so a fix cannot land unnoticed.
-    expect(new Set(inClanProgression.slice(8))).toEqual(new Set([135]));
-    expect(new Set(outOfClanProgression.slice(8))).toEqual(new Set([180]));
+    // FIXED by remediation R24. Levels 10-15 used to cost exactly what level 9
+    // cost, because `get_cost_table` only ever produced nine entries and
+    // `_.take` of more than that silently returns the whole array - a plateau
+    // that read as a deliberate cap. The table now covers every level a slider
+    // can reach, so the progression keeps climbing.
+    expect(inClanProgression.slice(8), 'the cost keeps rising past level 9')
+      .toEqual([135, 165, 198, 234, 273, 315, 360]);
+    expect(outOfClanProgression.slice(8))
+      .toEqual([180, 220, 264, 312, 364, 420, 480]);
+    const strictlyIncreasing = (xs) => xs.every((v, i) => i === 0 || v > xs[i - 1]);
+    expect(strictlyIncreasing(inClanProgression), 'no plateau anywhere in the range').toBe(true);
+    expect(strictlyIncreasing(outOfClanProgression)).toBe(true);
 
     // Nothing above was committed: the character still owns only what it bought.
     expect((await readTraits(page, cid, 'disciplines')).map((t) => t.name).sort())

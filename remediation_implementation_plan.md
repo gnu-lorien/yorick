@@ -10,6 +10,215 @@ named precisely enough to find.
 
 ---
 
+## 0. Implementation Status
+
+**Everything in this section is a statement about this branch, not a plan.**
+
+`npx playwright test` reports **447 passed, 0 failed, 3 skipped** (~37 minutes). Every test
+still failing is a `test.fail()` failing as declared; the list is at the end of this
+section. The three skips are pre-existing and self-documented (two `[DEFERRED]` Renown
+tests per R40, one `character-sheet` skip). `node e2e/check-syntax.js` passes.
+
+**Landed:** R1–R27, R29–R31, R34–R38, R41–R44, R46–R51.
+
+**R28/R32/R33 are one defect, diagnosed but not fixed.** They are a single navigation bug
+in jQuery Mobile's transition queue, not three memoization bugs. The root cause is nailed
+down with stack traces and a fix was attempted and reverted for causing worse regressions —
+both are written up below, because the diagnosis is the durable part.
+
+The security branch `claude/peaceful-nightingale-0e8d93` is merged in (commit `a5cfa22`),
+bringing the anonymous-write remediation: `require_a_user` guards, tightened CLPs, and an
+extended `audit_db_permissions.js`. Against a freshly seeded database
+`node audit_db_permissions.js <uri> --fix` reports **31 passed, 0 warnings, 0 errors** and
+applies no repairs — the seed satisfies every CLP, role and record-ACL invariant at rest
+rather than being corrected at audit time.
+
+**Three defects found while implementing, and fixed here rather than filed:**
+
+1. `beforeSave("Vampire")` used `tracked_texts` only as a *gate* and then wrote a
+   `core` row for every dirty key, so a save that touched a text attribute also
+   logged `change_count`, the trait arrays and everything else in flight. Latent
+   until R47a added the Changeling texts and turned it into 32 core rows on one
+   character's creation picks.
+2. An audit hook that does its own I/O *before* responding can break the
+   operation it observes. R47b's first cut did, and staled the entire XP ledger
+   on a single date edit. The record is now dispatched behind the response.
+3. `CharacterExperienceView` saved a notation that the balance propagation was
+   already saving, with pre-propagation values, racing it. Benign until (2) made
+   the ordering matter.
+
+**Deliberately not done, with the reason:**
+
+| Item | Why not |
+|---|---|
+| **R7** | Withdrawn by the plan itself. |
+| **R28, R32, R33** | One defect, diagnosed precisely, fix attempted and reverted — see below. R30 and R31, the two members of that family with genuinely contained fixes, are done. |
+| **R39, R40, R45** | Already resolved before this work: the Description catalogue was refreshed (see §4b), Renown/Rage/Banality are deferred features needing no code, and `character-print-view.html` was deleted in commit `bce2486`. |
+
+### Three items the owner has since ruled on, now implemented
+
+**R22 — a Kith's auto-granted Arts *do* consume the player's own Art picks.** That
+part was already right; what was missing was any check that picks remain. Creation
+counters are now left alone once creation is complete (they are creation-time
+bookkeeping that nothing reads afterwards, and writing to them produced meaningless
+negatives — a post-creation Kith change drove `ctdbs_arts_1_remaining` to −3). During
+creation, a Kith whose grant would outrun the remaining picks is refused and the reason
+surfaced, rather than decrementing past zero and aborting the wizard's pool spending.
+Refusing rather than clamping is deliberate: clamping would silently drop a grant the
+character is entitled to. New test `creation-changeling` **229b**.
+
+**R29 — never discard unsaved work.** The router now probes for a newer `updatedAt` on
+the way in; if the local copy has pending edits they are saved *and waited on* first
+(Parse sends only the dirty keys, so another session's changes to other fields survive
+the merge), and only then is the cache dropped so the caller re-runs its own query —
+`fetch()` would quietly lose the `include`s the sheet needs for portrait and owner. The
+user is told the view was behind rather than having it change under them. A failed probe
+never blocks the page.
+
+*The verify condition is not met.* Removing `approvals.spec.js`'s `freshApproval` reload
+was tried and item 78 then fails with "exactly one new recorded change since the last
+approval — Received 0": the storyteller's approval view still shows nothing new. So more
+than R29 is needed there, and the remaining part is **not** the character-level staleness
+R29 fixed. The reload is left in place with that measurement recorded next to it.
+
+**R51 — was two defects, not one.** The missing `emailAdapter` was the first; the ruling
+is that these tests must never send real mail, so the default is now an adapter that
+captures outbound mail in memory and sends nothing (`cloud/MemoryEmailAdapter.js`), with
+`MAIL_ADAPTER_MODULE` to send for real. The second only became visible once the first was
+fixed: the reset still failed with "you must provide an email", because
+`ResetButtonView` read the target user's `email` off its own copy and **Parse never
+returns another user's email to a client**. An administrator does not need to see the
+address to reset it, so `request_password_reset_for` looks it up under the master key and
+the address never reaches the browser.
+
+### R23 — a Kith change no longer destroys and re-grants a shared Art
+
+`_apply_kith` unpicked *every* affinity Art of the outgoing Kith and then granted every
+affinity Art of the incoming one. An Art belonging to both was therefore destroyed and
+immediately re-created, writing a `remove` row, the `experience/Removed <art>/define` row
+the removal drags along, and a fresh `define` row — for an Art that never actually moved.
+With no id column in the log and minute-granular `createdAt`, the pair renders as a
+duplicated row.
+
+It now retains the intersection. Retention is limited to Arts the character already holds
+**for free**, which keeps this a question of log noise and never of entitlement: an
+affinity the player had unpicked by hand is not held, so it is still granted; and an Art
+the player *paid* for before the Kith made it an affinity still goes through
+destroy-and-regrant, because that is what converts it to the free grant they are owed.
+
+`_unpick_previous_arts` re-derived its list instead of using its argument, which is what
+made holding anything back impossible; it now honours it. Both other callers pass exactly
+what it used to re-derive, so they are unaffected. `_check_kith_art_pool` is deliberately
+untouched — retention removes the same count from `granting` and from `releasing`, so its
+comparison is unchanged.
+
+Measured on Ghillie Dhu → Clurichaun, whose affinity sets share Oakenshield: the change
+went from 11 rows to 8, losing exactly the three Oakenshield rows. Item **369** asserts it,
+deriving the shared Arts from the rules rather than hard-coding them.
+
+### R28/R32/R33 — one root cause, in jQuery Mobile's transition queue
+
+The three "a view decides nothing changed and shows stale data" items in Phase 4 that were
+left open are not three memoization bugs. They are one navigation bug, and it is not
+memoization at all.
+
+**What actually happens.** Every route here ends with `$.mobile.changePage` at the tail of
+an async chain. If a transition is already running when that lands, jQuery Mobile neither
+runs it nor discards it — it pushes it onto a private `pageTransitionQueue`
+(`jquery.mobile-1.4.5.js:5434` and `:5485`) and drains it later from
+`_releaseTransitionLock` (`:5357`). The queue is filled with `unshift` and drained with
+`pop`, **one entry per release, oldest first**. So two things go wrong at once: a stale
+transition is replayed after the user has moved on and yanks them back, and the transition
+they actually asked for can be left sitting in the queue with nothing to drain it.
+
+**Measured, with stack traces.** Leaving `#long-text` for the character sheet ran the
+character route to completion and called `changePage("#character")` — and was then
+overridden by `changePage("#long-text")` issued from `_releaseTransitionLock`, with no
+route dispatch of its own. The hash stayed on the character sheet while `#long-text`
+stayed the active page, nothing was logged, no error was raised, and **waiting did not
+help** (measured out to two minutes, so the "~41s" timing note in `long-texts.spec.js` item
+284 was timing the fallback's own recovery, not the route). jQuery Mobile's transition lock
+was *not* stuck: probed at the moment of failure, `pagebeforechange` was still reachable.
+
+This is also what R33's "picker-to-picker navigation is swallowed" and R32's
+`CharacterHistoryView` note were describing from the outside. They share the mechanism
+rather than the memoization family they were filed under.
+
+**A fix was attempted and reverted — read this before trying again.** The attempt wrapped
+`$.mobile.changePage` in the router: stamp each call with the hash current when it was
+issued, drop it if it is replayed after the hash has moved on, and — because dropping alone
+leaves the app parked just as surely — re-check after every completed transition and
+converge on whatever the current hash last asked for.
+
+It worked where it was aimed: `long-texts.spec.js` went to **10/10 with
+`E2E_NAV_FALLBACK=none`**, up from 7 passed, 1 failed and 2 never reached. But across the
+whole suite under the same strict setting it made things *worse*, 7 failures to 8, and the
+new ones were in fundamental paths that had been passing: the creation-wizard baselines for
+all three venues, troupe creation, and the rename form. The creation wizard navigates
+rapidly and sets the hash itself between steps, so a convergence rule that re-issues "the
+last destination requested under the current hash" fights it.
+
+A narrower variant that only dropped stale replays without converging was also tried: it
+fixed item 284 and broke a later `long-texts` item instead. Both variants trade one failure
+for another, which is the signal that the rule is not yet right — not that it needs another
+patch on top.
+
+So the tree keeps the known-good behaviour: the defect stands, `navigateToHash`'s fallback
+tiers still absorb it, and the suite passes. What is genuinely banked here is the diagnosis
+and the tooling to re-run it (`E2E_NAV_FALLBACK`), not a fix. Anyone picking this up should
+start from the creation wizard, because that is what any candidate rule has to survive.
+
+### R28's own premise — the approval view — was wrong
+
+R28 claimed the approval view strands the router, and set its own verify condition:
+*remove the reload fallback in `jqm-helpers.js#navigateToHash` and `approvals.spec.js` must
+still pass.* That condition is now **met**, but not by fixing the approval view — because
+the approval view was never at fault.
+
+A passive probe (wrapping `pagecontainer.change`, the jQuery Mobile page lifecycle events
+and Backbone's `loadUrl`, and issuing no navigation of its own) showed leaving
+`#character/:cid/approval` for an unrelated route transitioning correctly every time, with
+no errors and no swallowed `changePage`. An earlier probe *did* reproduce the strand — and
+was itself the cause: its `changePage` call landed mid-transition, was queued on
+`pageTransitionQueue`, and got replayed by `_releaseTransitionLock`, re-activating the
+approval page. Worth recording as a trap, since it reproduces the reported symptom exactly.
+
+Running the suite with the fallback disabled (`E2E_NAV_FALLBACK=none`, added to
+`jqm-helpers.js` as a diagnostic switch) attributed the real failure precisely, and it was
+somewhere else entirely: `#troupe/:id/characters/all` timing out with `#troupe` still
+active. `character_join_troupe` ends by calling `changePage("#troupe")` at the tail of an
+async chain, and `joinTroupe` fired the join hash **without waiting for it**, then
+immediately began polling the roster. Both routes completed, in whichever order they
+pleased; the join's `changePage` arrived last and won, leaving the roster hash against the
+troupe page. That is a test-side race, not an application defect — the app went where it
+was told. `joinTroupe` and `leaveTroupe` now wait for their route's own destination.
+
+**`approvals.spec.js` then passes 23/23 with no navigation fallback at all.**
+
+**Two of the plan's own claims turned out to be wrong, and are recorded as such:**
+
+- `admin-rules` **22** asserts a delete control for rule rows that has never existed. The plan lists it with the other six R10 tests; no promise-chain fix can conjure a missing feature. It is the rule-editor twin of R43's missing Patronage delete, which *was* built. Still `test.fail()`.
+- `traits-lifecycle` N(7) (**248/260/272**) asserted that removing a creation-picked trait "fails with an informative error". It never did and should not — the defect was the orphaned pool slot, which R18 fixed. Re-aimed at what R18 guarantees rather than at a refusal the application never made, so it is now a normal passing test.
+
+### Every test still failing, and why
+
+All are `test.fail()` failing as declared. Nothing here is a regression.
+
+| Test | Why |
+|---|---|
+| `admin-referendums` 38, 39, 46, 52, 53 | Referendum defects outside this plan's R-numbers. Untouched. |
+| `admin-rules` 22 | The missing rule-delete feature above. |
+| `approvals` 90 | Unapproved-edit flag on the sheet. Not an R-number. |
+| `assets-rename-portrait` 106, 118 | XP-header name and print-sheet portrait bytes. Not R-numbers. |
+| `creation-changeling` 239 | Banality — a deferred feature per R40. |
+| `lifecycle-werewolf` 355b | **New, and split out of 355 deliberately.** R30 got the Next click through and the hash really does move to `/log/10/10`, but the table still does not re-render — one layer below what R30 fixed. Open with R28/R33. Splitting it let 356–360 run for the first time. |
+| `long-texts` 286 | Long texts on the Werewolf/Changeling print sheets. Not an R-number. |
+
+Two tests remain skipped, both deferred features per R40: `creation-werewolf` 212 and
+`lifecycle-werewolf` 350. `character-sheet`'s "SimpleTrait Edit View" skip predates this work.
+
+---
+
 ## 1. Start Here — Context For A Fresh Session
 
 ### What already exists
@@ -242,6 +451,7 @@ pool spending, which is why the suite picks Kith only after completing creation.
 both the old and new Kith it is destroyed and re-granted, producing two rendered-identical log rows in
 the same minute.
 *Verify:* `lifecycle-changeling.spec.js` asserts the duplicate today; invert it.
+**DONE — see §0.** Measured on Ghillie Dhu → Clurichaun (shared Art: Oakenshield); 11 rows → 8.
 
 **R24. Discipline cost tables stop growing after level 9.** `get_cost_table` builds `_.range(1, 10)`
 and `get_cost_on_table` uses `_.take`, which silently returns the whole array past its end — so levels
@@ -274,6 +484,10 @@ unrelated route updates the hash but never changes the page, with nothing logged
 handler does not clear it; only a full reload does. Probably R13.
 *Verify:* remove the reload fallback in `jqm-helpers.js#navigateToHash` and `approvals.spec.js` must
 still pass.
+**VERIFY CONDITION MET, BUT THE CLAIM IS WRONG — see §0.** The approval view hands off correctly; a
+passive probe never reproduced the strand, and the probe that *did* reproduce it caused it. The real
+failure was a race in the test's own `joinTroupe` helper against `character_join_troupe`'s trailing
+`changePage("#troupe")`. `approvals.spec.js` now passes 23/23 with `E2E_NAV_FALLBACK=none`.
 
 **R29. `Vampire.get_character` never refetches.** A storyteller session that loaded a character before
 the player's change renders stale trait values indefinitely — **meaning a storyteller can approve a
@@ -323,6 +537,37 @@ problem rather than a direct breach — but it is the front door.
 **R36. Audit every `administration/*` route for a gate.** R35 is one instance; the pattern is
 inconsistent across the router. Produce a table of route → gate present, and fix the gaps.
 *Verify:* extend `access-control.spec.js` test 390's parameterized route sweep.
+
+**R36 audit — done.** Every route was checked against `mobileRouter.js` as it stood before this
+work. The router now has one shared `enforce_admin()` (plus `admin_route_failed()` for the common
+failure tail) and every route below routes through it.
+
+| Route | Gate before | Now |
+|---|---|---|
+| `administration` | **none** | `enforce_admin` (R35) |
+| `administration/characters/all` | **none** | `enforce_admin` |
+| `administration/characters/summarize` | **none** | `enforce_admin` |
+| `administration/character/:id` | none — but `show_character_helper` refuses per-character server-side | unchanged; a storyteller reaching a character they may read is not a leak |
+| `administration/users/all` | inline `is_ad` | unchanged |
+| `administration/user/:id` | inline `is_ad` | unchanged |
+| `administration/patronages/user/:id` | inline `is_ad` | `enforce_admin` (and R44 made the page work at all) |
+| `administration/patronages` | inline `is_ad` | unchanged |
+| `administration/patronagescsv` | inline `is_ad` | unchanged |
+| `administration/patronage/:id` | **none** | `enforce_admin` |
+| `administration/patronages/new[/:userid]` | **none** | `enforce_admin` |
+| `administration/descriptions` | **none** | `enforce_admin` |
+| `administration/bnsctdbs_kith_rules` | **none** | `enforce_admin` (R37) |
+| `administration/bnsmetv1_clan_rules` | **none** | `enforce_admin` (R37) |
+| `administration/bnsmetv1_elder_discipline_rules` | **none** | `enforce_admin` (R37) |
+| `administration/bnsmetv1_technique_rules` | **none** | `enforce_admin` (R37) |
+| `administration/bnsmetv1_ritual_rules` | **none** | `enforce_admin` (R37) |
+| `administration/referendums` | **none** | `enforce_admin` |
+| `administration/referendum/:id` | **none** | `enforce_admin` — this one shows every caster's ballot |
+
+Four tests drove one of these pages *as a non-admin* to prove a server-side refusal, which is no
+longer reachable for them. Each was rewritten to assert both layers — the page does not render, and
+a direct probe is still refused — rather than dropping the server-side half: `access-control` 382,
+383, 391, `admin-rules` 36, 37, and `admin-patronage` 15.
 
 **R37. Rule editors are protected only server-side.** `bnsmetv1_ClanRule` and `bnsctdbs_KithRule` rely
 entirely on class-level permissions (Parse code 119 on save). The editor renders fully for a

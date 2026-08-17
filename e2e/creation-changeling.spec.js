@@ -53,11 +53,12 @@
  * lands on `ctdbs_merits_undefined_remaining` (carrying the right number, 4)
  * instead of `ctdbs_merits_0_remaining` (which stays stale at 5).
  *
- * **3. DEFECT - the Backgrounds pool badge is wrong throughout the wizard,
- * even though the trait picks underneath it are entirely correct (tests 217,
- * 228) - Arts, Merits, and Flaws are coincidentally unaffected.**
- * `VampireCreation.remaining_picks(category)` (models/VampireCreation.js)
- * hardcodes a `tops` map keyed on Vampire's own bare category names -
+ * **3. FIXED by remediation R20 - the Backgrounds pool badge was wrong
+ * throughout the wizard, even though the trait picks underneath it were
+ * entirely correct (tests 217, 228); Arts, Merits, and Flaws were
+ * coincidentally unaffected.**
+ * `VampireCreation.remaining_picks(category)` (models/VampireCreation.js) used
+ * to hardcode a `tops` map keyed on Vampire's own bare category names -
  * `{skills: 4, disciplines: 2, backgrounds: 3, attributes: 7, merits: 0,
  * flaws: 0}` - with no entry for any `ctdbs_*` category. For an unlisted
  * category it falls back to `start = tops[category] || 1` and sums
@@ -400,6 +401,8 @@ const XP_FRESH_ART_COST = 6;
 /** A seeded `ctdbs_backgrounds` Description, substituted for the plan's unseeded "Freehold" (finding 12). */
 const XP_BACKGROUND_NAME = 'Seeming';
 const XP_BACKGROUND_VALUE = 3;
+/** Cumulative on `get_cost_table(2)` == [2, 4, 6, ...]: 2 + 4 + 6. See R15. */
+const XP_BACKGROUND_COST = 12;
 /** `bptLookup[3]` in templates/print/glamour.html - the Glamour box total test 239 expects. */
 const XP_GLAMOUR_BOXES = 12;
 
@@ -599,13 +602,12 @@ test.describe('Task 8c - Changeling Creation In The UI', () => {
     expect(await sampleXp('217 wizard start')).toEqual(BASELINE_XP);
 
     // The pool badges the rest of this suite reads, at their documented start
-    // values - with one deliberate exception. DEFECT (file-level finding 3,
-    // confirmed live): `Backgrounds` reads 1, not the true 3, because
-    // `VampireCreation.remaining_picks()`'s hardcoded `tops` map has no entry
-    // for "ctdbs_backgrounds" and falls back to summing only the rating-1
-    // slot. The real per-rating counters underneath are correct, as test 228
-    // proves. `Arts` reads 3 - the true value - because that pool only ever
-    // has one real rating (1), so the same fallback happens to land right.
+    // values. `Backgrounds` used to read 1 rather than the true 3 - see
+    // file-level finding 3 and test 228 - until remediation R20 made
+    // `VampireCreation.remaining_picks` sum the sub-pools that actually exist
+    // on the record instead of consulting a Vampire-only table. `Arts` always
+    // read 3 correctly, because that pool only ever has one real rating (1),
+    // so the old fallback happened to land right.
     const creationState = await readCreationState(page, state.wizardId);
     expect(creationState.pools).toEqual({
       Attributes: 3,
@@ -613,7 +615,7 @@ test.describe('Task 8c - Changeling Creation In The UI', () => {
       'Social Focus': 1,
       'Mental Focus': 1,
       Skills: 10,
-      Backgrounds: 1,
+      Backgrounds: 3,
       Arts: 3,
       Merits: SUM_POOL_BUDGET,
       Flaws: SUM_POOL_BUDGET
@@ -706,11 +708,20 @@ test.describe('Task 8c - Changeling Creation In The UI', () => {
     expect(await sampleXp('219 Kith repicked, Arts reconciled')).toEqual(BASELINE_XP);
   });
 
-  test.fail('220 Unpick Kith; the value is cleared, but the auto-granted Arts and pool are left behind', async () => {
+  test('220 Unpick Kith; the value is cleared and the auto-granted Arts and pool come back with it', async () => {
+    // FIXED by remediation R21.
+    //
+    // Was: `unpick_text` was a bare passthrough on ChangelingBetaSlice - it
+    // never called `_unpick_previous_arts` the way `update_text` does on every
+    // repick. The Arts test 219 granted stayed owned at cost 0 and the pool
+    // that should have returned to 3 stayed at 0, with the Kith gone and so no
+    // route back to reclaim the slots. `unpick_text` now releases the Kith's
+    // Arts before clearing the text, reading the affinities while the Kith is
+    // still set.
     await unpickSimpleText(page, state.wizardId, 'ctdbs_kiths', 'ctdbs_kith');
 
-    // These pass: the text value itself is cleared, exactly as Vampire's Clan
-    // and Werewolf's Tribe are.
+    // The text value itself is cleared, exactly as Vampire's Clan and
+    // Werewolf's Tribe are.
     const creationState = await readCreationState(page, state.wizardId);
     expect(creationState.texts.Kith).toBeUndefined();
     expect((await readCharacterTexts(page, state.wizardId, 'Changeling')).ctdbs_kith).toBeNull();
@@ -719,35 +730,29 @@ test.describe('Task 8c - Changeling Creation In The UI', () => {
     await expect(page.locator('#ccv-simpletext a', { hasText: 'Repick Kith' })).toHaveCount(0);
     await expect(page.locator('#ccv-simpletext a', { hasText: 'Unpick Kith' })).toHaveCount(0);
 
-    // DEFECT (file-level finding 6, confirmed live): `unpick_text` is a bare
-    // passthrough on ChangelingBetaSlice - it never calls
-    // `_unpick_previous_arts` the way `update_text` does on every repick. The
-    // three Boggans Arts test 219 granted are still owned, at cost 0, and the
-    // pool that should have returned to 3 stays at 0. This is the one failing
-    // assertion in this test; cleanup happens explicitly at the top of test
-    // 221, since there is no spare numbered slot to dedicate to it.
+    // What R21 restored: the grant is reversed, not orphaned.
     const arts = await readTraits(page, state.wizardId, 'ctdbs_arts', 'Changeling');
     expect(
       arts.map((t) => t.name).sort(),
-      'unpicking Kith should have removed the Kith-granted Arts, but they remain'
+      'unpicking Kith removes the Arts it granted'
     ).toEqual([]);
+
+    const creation = await readCreation(page, state.wizardId, 'Changeling');
+    expect(creation.ctdbs_arts_1_remaining, 'and hands the pool slots back').toBe(3);
+    expect((await readCreationState(page, state.wizardId)).pools.Arts).toBe(3);
+    expect(await readSheetXp(page, state.wizardId)).toEqual(BASELINE_XP);
   });
 
   test('221 Pick Court (Fealty); the value renders', async () => {
-    // Residue from test 220's confirmed defect: restore the Arts pool before
-    // continuing, the same way Vampire's test 180 and Werewolf's test 206
-    // restore their own defect's residue in a dedicated step. Driven through
-    // the ordinary Delete affordance, which - unlike `unpick_text` - correctly
-    // recomputes the pool from what remains.
-    const residue = await readTraits(page, state.wizardId, 'ctdbs_arts', 'Changeling');
-    expect(residue.map((t) => t.name).sort()).toEqual([...WIZARD_KITH_REPICK_ARTS].sort());
-    for (const name of WIZARD_KITH_REPICK_ARTS) {
-      await unpickCreationTrait(page, state.wizardId, 'ctdbs_arts', name);
-    }
-    const restoredCreation = await readCreation(page, state.wizardId, 'Changeling');
-    expect(restoredCreation.ctdbs_arts_1_remaining, 'Arts pool restored by manual cleanup').toBe(3);
-    expect((await readCreationState(page, state.wizardId)).pools.Arts).toBe(3);
+    // No cleanup step needed any more: remediation R21 made test 220's unpick
+    // release the Kith's Arts and their pool slots itself. This used to have
+    // to remove three orphaned Arts by hand, the same way Vampire's test 180
+    // and Werewolf's test 206 clear their own residue. Asserted rather than
+    // assumed, since every later pool number in this file depends on it.
     expect(await readTraits(page, state.wizardId, 'ctdbs_arts', 'Changeling')).toHaveLength(0);
+    const restoredCreation = await readCreation(page, state.wizardId, 'Changeling');
+    expect(restoredCreation.ctdbs_arts_1_remaining, 'Arts pool already restored by the unpick').toBe(3);
+    expect((await readCreationState(page, state.wizardId)).pools.Arts).toBe(3);
     expect(await readSheetXp(page, state.wizardId)).toEqual(BASELINE_XP);
 
     // The actual ask for this item: pick Court.
@@ -984,21 +989,23 @@ test.describe('Task 8c - Changeling Creation In The UI', () => {
     expect(before.ctdbs_backgrounds_3_remaining).toBe(1);
     expect(before.ctdbs_backgrounds_2_remaining).toBe(1);
     expect(before.ctdbs_backgrounds_1_remaining).toBe(1);
-    // DEFECT (file-level finding 3, confirmed live): the badge reads 1, not
-    // the true 3 - see test 217's note.
-    expect((await readCreationState(page, state.wizardId)).pools.Backgrounds).toBe(1);
+    // FIXED by remediation R20 - see creation-werewolf.spec.js test 202 for
+    // the same fix in the other venue. The badge used to read 1 rather than
+    // the true 3 and stayed frozen through the rating-3 and rating-2 picks,
+    // because `remaining_picks` sized its loop from a hardcoded map of
+    // Vampire's bare category names. It now sums the sub-pools that actually
+    // exist on the record.
+    expect((await readCreationState(page, state.wizardId)).pools.Backgrounds).toBe(3);
 
     const picked3 = await pickCreationTrait(page, state.wizardId, 'ctdbs_backgrounds', 3, BACKGROUND_PICKS[3]);
     expect(picked3).toBe(BACKGROUND_PICKS[3]);
     expect((await readCreation(page, state.wizardId, 'Changeling')).ctdbs_backgrounds_3_remaining, 'the real counter').toBe(0);
-    // The badge does not move: it was never reading the 3-slot pool at all.
-    expect((await readCreationState(page, state.wizardId)).pools.Backgrounds, 'the badge, unmoved').toBe(1);
+    expect((await readCreationState(page, state.wizardId)).pools.Backgrounds, 'the badge follows the 3-slot pick').toBe(2);
 
     const picked2 = await pickCreationTrait(page, state.wizardId, 'ctdbs_backgrounds', 2, BACKGROUND_PICKS[2]);
     expect(picked2).toBe(BACKGROUND_PICKS[2]);
     expect((await readCreation(page, state.wizardId, 'Changeling')).ctdbs_backgrounds_2_remaining, 'the real counter').toBe(0);
-    // Still unmoved, for the same reason.
-    expect((await readCreationState(page, state.wizardId)).pools.Backgrounds, 'the badge, still unmoved').toBe(1);
+    expect((await readCreationState(page, state.wizardId)).pools.Backgrounds, 'and the 2-slot pick').toBe(1);
 
     const picked1 = await pickCreationTrait(page, state.wizardId, 'ctdbs_backgrounds', 1, BACKGROUND_PICKS[1]);
     expect(picked1).toBe(BACKGROUND_PICKS[1]);
@@ -1006,9 +1013,7 @@ test.describe('Task 8c - Changeling Creation In The UI', () => {
     expect(after.ctdbs_backgrounds_3_remaining).toBe(0);
     expect(after.ctdbs_backgrounds_2_remaining).toBe(0);
     expect(after.ctdbs_backgrounds_1_remaining).toBe(0);
-    // Only now does the badge move - because the *1*-slot pool it actually
-    // reads has itself reached 0, not because the other two are also spent.
-    expect((await readCreationState(page, state.wizardId)).pools.Backgrounds, 'the badge, now that the 1-slot itself is spent').toBe(0);
+    expect((await readCreationState(page, state.wizardId)).pools.Backgrounds, 'and reaches zero with the last one').toBe(0);
 
     const traits = await readTraits(page, state.wizardId, 'ctdbs_backgrounds', 'Changeling');
     expect(Object.fromEntries(traits.map((t) => [t.name, t.value]))).toEqual({
@@ -1060,6 +1065,41 @@ test.describe('Task 8c - Changeling Creation In The UI', () => {
     expect(await sampleXp('229 all three Arts spent')).toEqual(BASELINE_XP);
   });
 
+  test('229b Picking a Kith with the Art pool spent is refused, not overspent (R22)', async () => {
+    // Test 229 leaves the wizard with all three Art picks spent and no Kith,
+    // which is exactly the state this is about.
+    //
+    // A Kith's affinity Arts are granted free, but they do consume the
+    // character's own Art picks - that is the rule, and tests 218/219 measure
+    // it. What was missing was any check that picks remain: the grant
+    // decremented regardless, driving `ctdbs_arts_1_remaining` to -2 and
+    // making `spendAllCreationPools` abort with "creation overspent a pool".
+    // Remediation R22 refuses the pick instead, and says why. Refusing rather
+    // than clamping is deliberate - clamping would silently drop a grant the
+    // character is entitled to.
+    const cid = state.wizardId;
+    const before = await readCreation(page, cid, 'Changeling');
+    expect(before.ctdbs_arts_1_remaining, 'test 229 spent the Art pool').toBe(0);
+    const artsBefore = (await readTraits(page, cid, 'ctdbs_arts', 'Changeling')).map((t) => t.name).sort();
+
+    await navigateToHash(page, `charactercreate/simpletext/ctdbs_kiths/ctdbs_kith/${cid}/pick`, '#simpletext-new');
+    await page.locator(`#simpletext-new a.simpletext[name="${WIZARD_KITH}"]`).first().click();
+
+    const banner = page.locator('#global-error-region');
+    await expect(banner, 'the refusal is told to the player').toBeVisible({ timeout: 15000 });
+    const text = await banner.textContent();
+    expect(text).toContain(WIZARD_KITH);
+    expect(text, 'and names what is in the way').toMatch(/Art pick/i);
+
+    // Nothing moved: no Kith, no Arts granted, the pool untouched and not negative.
+    expect((await readCharacterTexts(page, cid, 'Changeling')).ctdbs_kith, 'the Kith was not set').toBeNull();
+    expect((await readTraits(page, cid, 'ctdbs_arts', 'Changeling')).map((t) => t.name).sort())
+      .toEqual(artsBefore);
+    const after = await readCreation(page, cid, 'Changeling');
+    expect(after.ctdbs_arts_1_remaining, 'the pool is untouched, and never negative').toBe(0);
+    expect(await sampleXp('229b Kith refused for want of Art picks')).toEqual(BASELINE_XP);
+  });
+
   // -------------------------------------------------------------------------
   // 230-233 - merits and flaws (the point-sum pools)
   // -------------------------------------------------------------------------
@@ -1095,17 +1135,17 @@ test.describe('Task 8c - Changeling Creation In The UI', () => {
     expect(xpAfter).toEqual({ earned: 30, spent: MERIT_VALUE, available: 30 - MERIT_VALUE });
   });
 
-  test.fail('231 Change the picked ctdbs_merit\'s value from 2 to 3; the pool sum updates', async () => {
-    // DEFECT (file-level finding 2, confirmed live). `SimpleTraitChangeView.
-    // js` is one shared file, not per-venue, so this is the identical bug
-    // Task 8a found for Vampire and Task 8b found for Werewolf:
-    // `save_clicked` persists via `character.update_trait(self.simpletrait)`
-    // - one argument, so `free_value` is `undefined` inside
-    // `update_creation_rules_for_changed_trait`
+  test('231 Change the picked ctdbs_merit\'s value from 2 to 3; the pool sum updates', async () => {
+    // FIXED by remediation R19 - one fix, three venues, because
+    // `SimpleTraitChangeView.js` is one shared file.
+    //
+    // Was: `save_clicked` persisted via `character.update_trait
+    // (self.simpletrait)` - one argument, so `free_value` was `undefined`
+    // inside `update_creation_rules_for_changed_trait`
     // (models/ChangelingBetaSlice.js), which composes its key as
-    // `category + "_" + freeValue + "_remaining"`. The write lands on
+    // `category + "_" + freeValue + "_remaining"`. The write landed on
     // `ctdbs_merits_undefined_remaining` (carrying the right number, 4)
-    // instead of `ctdbs_merits_0_remaining` (which stays stale at 5).
+    // instead of `ctdbs_merits_0_remaining` (which stayed stale at 5).
     const newValue = MERIT_VALUE + 1;
 
     const label = await openTraitChange(page, state.wizardId, 'ctdbs_merits', MERIT_NAME);
@@ -1128,14 +1168,11 @@ test.describe('Task 8c - Changeling Creation In The UI', () => {
     expect(traits[0]).toMatchObject({ name: MERIT_NAME, value: newValue, cost: newValue });
     expect(await readSheetXp(page, state.wizardId)).toEqual({ earned: 30, spent: newValue, available: 30 - newValue });
 
-    // This is the defect: the pool the player is shown never moves.
+    // What R19 fixed: the write lands on the key the pool badge reads.
     const creation = await readCreation(page, state.wizardId, 'Changeling');
     const junkKeys = Object.keys(creation).filter((k) => k.indexOf('undefined') !== -1);
-    expect(
-      creation.ctdbs_merits_0_remaining,
-      `ctdbs_merits_0_remaining should be ${SUM_POOL_BUDGET - newValue}; the write landed on ` +
-      `${JSON.stringify(junkKeys.map((k) => [k, creation[k]]))} instead`
-    ).toBe(SUM_POOL_BUDGET - newValue);
+    expect(junkKeys, 'no `<category>_undefined_*` keys are written any more').toEqual([]);
+    expect(creation.ctdbs_merits_0_remaining).toBe(SUM_POOL_BUDGET - newValue);
     expect((await readCreationState(page, state.wizardId)).pools.Merits).toBe(SUM_POOL_BUDGET - newValue);
   });
 
@@ -1161,10 +1198,11 @@ test.describe('Task 8c - Changeling Creation In The UI', () => {
     // XP is refunded in full: `remove_trait` posts `-cost` as a spent alteration.
     expect(await readSheetXp(page, state.wizardId)).toEqual(BASELINE_XP);
 
-    // Residue from the defect in test 231: the bogus key is never cleaned up.
-    // It is inert (nothing reads it) but recorded here so a future fix can be
-    // seen to remove it.
-    expect(creation.ctdbs_merits_undefined_remaining).toBe(SUM_POOL_BUDGET - (MERIT_VALUE + 1));
+    // This used to record the residue of test 231's defect - an inert
+    // `ctdbs_merits_undefined_remaining` key nothing reads - "so a future fix
+    // can be seen to remove it". Remediation R19 is that fix, so the assertion
+    // is inverted rather than deleted: no such key is written at all now.
+    expect(Object.keys(creation).filter((k) => k.indexOf('undefined') !== -1)).toEqual([]);
   });
 
   test('233 Pick a ctdbs_flaw; the flaw pool sum updates', async () => {
@@ -1298,44 +1336,51 @@ test.describe('Task 8c - Changeling Creation In The UI', () => {
     expect(traits[0]).toMatchObject({ name: XP_FRESH_ART_NAME, value: 1, free_value: 0, cost: XP_FRESH_ART_COST });
   });
 
-  test.fail('236 Post-creation background purchase (ctdbs_backgrounds at 3) renders, but does not deduct XP', async () => {
+  test('236 Post-creation background purchase (ctdbs_backgrounds at 3) renders and deducts XP', async () => {
     // The plan names "Freehold" - not a seeded ctdbs_backgrounds Description
     // under any spelling (file-level finding 12). "Seeming" is substituted:
     // real, seeded, and its value is what test 239's Glamour check reads.
     //
-    // DEFECT (file-level finding 4, confirmed live): `calculate_trait_cost`'s
-    // only background-shaped branch checks the literal string "backgrounds",
-    // which never matches this venue's real category, "ctdbs_backgrounds".
-    // Execution falls through to the function's final `return 0;`. The
-    // background is genuinely bought and genuinely renders - only "deducts
-    // XP" is false.
+    // FIXED by remediation R15 (with R16).
+    //
+    // Was: `calculate_trait_cost`'s only background-shaped branch checked the
+    // literal string "backgrounds", which never matches this venue's real
+    // category, "ctdbs_backgrounds", so execution fell through to the
+    // function's final `return 0;` and the purchase was free. The background
+    // was genuinely bought and genuinely rendered - only "deducts XP" was
+    // false.
+    //
+    // Now: the branch matches both spellings and charges the same cumulative
+    // 2-per-level table the other two venues use for Backgrounds. R16
+    // additionally replaced that `return 0` fallthrough with an explicit list
+    // of genuinely-free categories, so the next category anyone forgets to
+    // price refuses out loud instead of being silently free.
     const cid = state.xpCharacter.id;
     const before = await readSheetXp(page, cid);
 
     await openNewTraitChange(page, cid, 'ctdbs_backgrounds', XP_BACKGROUND_NAME);
     await setTraitChangeSliders(page, { value: XP_BACKGROUND_VALUE });
     const quote = await readTraitChangeView(page);
-    // The player is shown this literally, before saving anything: a clean,
-    // finite, wrong "Cost: 0" - not the "Cost: NaN" Werewolf's wta_rites gap
-    // produces, because this branch's fallthrough is an explicit `return 0`,
-    // not a missing case.
-    expect(quote.cost).toBe(0);
+    // Cumulative on get_cost_table(2) == [2, 4, 6, ...]: 2 + 4 + 6 = 12.
+    expect(quote.cost).toBe(XP_BACKGROUND_COST);
+    expect(quote.final).toBe(before.available - XP_BACKGROUND_COST);
 
     await saveTraitChange(page, cid, 'ctdbs_backgrounds');
 
-    // These pass: the background is bought and genuinely renders, both in the
-    // trait list and on the category listing page the sheet's "Backgrounds"
-    // link leads to.
+    // The background is bought and genuinely renders, both in the trait list
+    // and on the category listing page the sheet's "Backgrounds" link leads to.
     const traits = await readTraits(page, cid, 'ctdbs_backgrounds', 'Changeling');
     expect(traits.map((t) => t.name)).toContain(XP_BACKGROUND_NAME);
+    expect(traits.find((t) => t.name === XP_BACKGROUND_NAME))
+      .toMatchObject({ value: XP_BACKGROUND_VALUE, free_value: 0, cost: XP_BACKGROUND_COST });
     await navigateToHash(page, `simpletraits/ctdbs_backgrounds/${cid}/all`, '#simpletraitcategory-all');
     expect(normalize(await page.locator('#simpletraitcategory-all').textContent())).toContain(`${XP_BACKGROUND_NAME} x${XP_BACKGROUND_VALUE}`);
 
-    // This is the defect: XP never moves, even though the seeded cost table
-    // (`get_cost_table(2)`, cumulative) would charge a real amount if the
-    // category name matched.
+    // And the XP really moves.
     const after = await readSheetXp(page, cid);
-    expect(after.spent, 'Spent XP after buying a background').not.toBe(before.spent);
+    expect(after.spent - before.spent, 'Spent XP after buying a background').toBe(XP_BACKGROUND_COST);
+    expect(after.available - before.available).toBe(-XP_BACKGROUND_COST);
+    expect(after.earned).toBe(before.earned);
   });
 
   test('237 ctdbs_holdings_specializations is now seeded and offers real options', async () => {
@@ -1400,9 +1445,13 @@ test.describe('Task 8c - Changeling Creation In The UI', () => {
     const arboreal = granted.find((t) => t.name === XP_AFFINITY_UPGRADE_ART);
     expect(arboreal).toMatchObject({ value: 1, free_value: 1, cost: 0 });
 
-    // Setting Kith spent no XP - the grant is free, exactly as at creation time.
+    // Setting Kith spent no XP - the grant is free, exactly as at creation
+    // time. The running total is what tests 235 and 236 already spent: the
+    // fresh Art, plus the background that remediation R15 made cost real XP
+    // instead of nothing.
+    const spentBeforeKith = XP_FRESH_ART_COST + XP_BACKGROUND_COST;
     const afterGrant = await readSheetXp(page, cid);
-    expect(afterGrant.spent).toBe(XP_FRESH_ART_COST); // unchanged from test 235's purchase
+    expect(afterGrant.spent, 'the Kith grant itself charged nothing').toBe(spentBeforeKith);
     expect(afterGrant.earned).toBe(30);
 
     // The affinity rate, read live off the change page rather than only from

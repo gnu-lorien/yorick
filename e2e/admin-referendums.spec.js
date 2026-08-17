@@ -454,10 +454,18 @@ test.describe('Task 3 - Referendums: Creation And Voting', () => {
     expect(tally[state.options[2].option] || 0).toBe(0);
   });
 
-  test.fail('50 A non-patron user is prevented from voting and shown the patron-required message', async () => {
+  test('50 A non-patron user is prevented from voting and shown the patron-required message', async () => {
     // sampstranger is never granted a Patronage anywhere in this suite.
     //
-    // DEFECT (serious - see file-level finding 5): the *UI* correctly hides
+    // FIXED by remediation R11. `vote_for_referendum` is now a single chain in
+    // which every refusal returns a *rejected* promise, so a rejection really
+    // does terminate it, and `casterpatronagestatus` is recorded from the
+    // patronage check that actually ran rather than hardcoded `true`. The
+    // last assertion below - nothing persisted - is the one that was failing
+    // and is the whole point of the item.
+    //
+    // The original writeup, kept because it names the mechanism precisely:
+    // the *UI* correctly hid
     // the voting affordance, and a direct call to the cloud function *reports*
     // rejection - both asserted below, and both genuinely true - but neither
     // actually stops the vote from being recorded. `vote_for_referendum`'s

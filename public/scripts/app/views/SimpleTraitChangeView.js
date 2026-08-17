@@ -5,8 +5,9 @@ define([
 	"jquery",
 	"backbone",
 	"../models/SimpleTrait",
-    "../helpers/PromiseFailReport"
-], function( $, Backbone, SimpleTrait, PromiseFailReport ) {
+    "../helpers/PromiseFailReport",
+    "../helpers/ReportError"
+], function( $, Backbone, SimpleTrait, PromiseFailReport, ReportError ) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend({
@@ -29,9 +30,20 @@ define([
 
             if (simpletrait !== self.simpletrait) {
                 self.simpletrait = simpletrait;
-                self.fauxtrait = new SimpleTrait(self.simpletrait.attributes);
                 changed = true;
             }
+
+            // R31: the `fauxtrait` - the working copy every quote on this page
+            // is computed from - used to be rebuilt only when the SimpleTrait
+            // *object identity* changed. The router hands back the same cached
+            // instance for the life of the page, so after the first visit it
+            // never did, and the working copy kept the values it held when the
+            // page was first opened. Measured: after raising Physical 5->6
+            // (quoted 3, charged 3), reopening the page and sliding to 7 quoted
+            // 6 - the cost from 5 - rather than the 3-point increment. The save
+            // was correct; the player was simply shown the wrong price.
+            self.fauxtrait = new SimpleTrait(self.simpletrait.attributes);
+            changed = true;
 
             if (!_.isEqual(category, self.category)) {
                 self.category = category;
@@ -131,7 +143,19 @@ define([
                         "experience_cost_modifier": self.fauxtrait.get("experience_cost_modifier")
                     }
                     self.simpletrait.set(new_values);
-                    up = self.character.update_trait(self.simpletrait);
+                    // The fourth argument is `free_value`, and omitting it is
+                    // not harmless: `update_creation_rules_for_changed_trait`
+                    // composes its key from it, so `undefined` wrote the right
+                    // number to `<category>_undefined_remaining` - a key
+                    // nothing reads - and left the real
+                    // `<category>_0_remaining` stale, so the pool a player is
+                    // shown never moved. 0 is what the model-layer callers
+                    // pass, and what makes the sum categories (merits, flaws)
+                    // recompute `7 - sum(picks)` against the right key. Every
+                    // other category early-returns on a falsy free value and
+                    // is left alone, which is correct: editing a trait must
+                    // not consume a second creation slot.
+                    up = self.character.update_trait(self.simpletrait, undefined, undefined, 0);
                 } else {
                     up = self.character.update_trait(
                         self.fauxtrait.get("name"),
@@ -145,8 +169,15 @@ define([
                 };
                 up.then(function (newtrait) {
                     console.log("asaved", self.category, newtrait);
+                    ReportError.clear();
                     window.location.hash = "#simpletraits/" + self.category + "/" + self.character.id + "/all";
-                }, PromiseFailReport);
+                }, function (error) {
+                    // Stay on the page, drop the spinner, and say what went
+                    // wrong. Previously a refused save reported to trackJs and
+                    // nothing else: the button just stopped responding.
+                    $.mobile.loading("hide");
+                    ReportError(error, "Couldn't save this trait");
+                });
             });
             return false;
         },

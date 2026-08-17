@@ -73,6 +73,25 @@ async function startServer() {
     }
   };
 
+  // R51. Password reset needs an `emailAdapter` as well as the `appName` and
+  // `publicServerURL` above; with none configured, `requestPasswordReset`
+  // rejected deterministically and the correctly-wired button could never
+  // work. Choosing a mail provider is a deployment decision with credentials
+  // attached, and the suite must never send real mail, so the default captures
+  // outbound mail in memory and sends nothing. Set MAIL_ADAPTER_MODULE to a
+  // module exporting a factory to send for real.
+  if (process.env.MAIL_ADAPTER_MODULE) {
+    settings.emailAdapter = require(process.env.MAIL_ADAPTER_MODULE)();
+    console.log("[email] Using mail adapter from " + process.env.MAIL_ADAPTER_MODULE);
+  } else {
+    var MemoryEmailAdapter = require('./cloud/MemoryEmailAdapter');
+    settings.emailAdapter = MemoryEmailAdapter();
+    // Cloud code reads this to decide whether to expose `get_captured_emails`.
+    global.__yorickCapturedEmail = settings.emailAdapter;
+    console.log("[email] No MAIL_ADAPTER_MODULE set. Outbound email is captured " +
+      "in memory and never sent.");
+  }
+
   var api = new ParseServer(settings);
   app.use('/parse/1', api);
   app.use(serveStatic(process.env.PUBLIC_BASE || path.join(__dirname, 'public')));

@@ -249,9 +249,25 @@ test.describe('Task 2 - Game Rules Editors: Add And Verify', () => {
     expect(rows.map((r) => r.clan).sort()).toEqual(liveClanNames);
   });
 
-  test.fail('17 Add a new Clan Rule through the form; the new row appears in the rules table', async () => {
-    // DEFECT (see the file-level comment above and the full writeup in
-    // helpers/rules.js): EditRules.js's DataForm.submit handler constructs a new rule
+  test('17 Add a new Clan Rule through the form; the new row appears in the rules table', async () => {
+    // FIXED by remediation R10 and R26. Two defects had to be cleared before
+    // this could pass, and the first hid the second:
+    //
+    //   R10 - `new Parse.Object(self.ruleName, {...})` used a property the
+    //   DataForm view never has; the correct value is the module-scoped
+    //   `ruleName` the lookup query two lines earlier already uses. With
+    //   `undefined` as the class name Parse fell through to its
+    //   `(attributes, options)` signature and the save 404'd.
+    //   R26 - every CSV field was sent as a string except the literal column
+    //   "order", so `default_cost: 2` below 400'd with "expected Number but
+    //   got String". EditRules now learns each column's type from live rows
+    //   of the class and coerces before saving.
+    //
+    // R2 is what made either diagnosable: the per-row `.fail(console.log)`
+    // that swallowed both errors now reports them.
+    //
+    // The original writeup, kept because it names the mechanism precisely:
+    // EditRules.js's DataForm.submit handler constructs a new rule
     // via `new Parse.Object(self.ruleName, {...})`. `self` is the DataForm view, which
     // never has a `.ruleName` property - the correct value is the module-scoped
     // `ruleName` variable, used correctly two lines earlier for the lookup query but not
@@ -297,9 +313,10 @@ test.describe('Task 2 - Game Rules Editors: Add And Verify', () => {
     expect(rows.some((r) => r.clan === state.newClanName)).toBe(true);
   });
 
-  test.fail('18 The added Clan Rule persists across a full page reload', async () => {
-    // Cascades from test 17's defect: nothing was actually added, so there is nothing
-    // for a reload to have persisted either.
+  test('18 The added Clan Rule persists across a full page reload', async () => {
+    // FIXED with test 17 (R10 + R26). It only ever cascaded from that defect:
+    // nothing was actually added, so there was nothing for a reload to have
+    // persisted either.
     expect(state.newClanName).toBeTruthy();
     await adminPage.evaluate(() => { window.location.reload(); });
     await waitForAppReady(adminPage);
@@ -346,37 +363,59 @@ test.describe('Task 2 - Game Rules Editors: Add And Verify', () => {
   });
 
   test("21 Edit an existing Clan Rule's fields; the updated values render in the table", async () => {
-    // Real-world caveat, separate from test 17's create defect: bnsmetv1_ClanRule has
-    // neither a `name` nor a `category` field (confirmed against
-    // database_seed/_SCHEMA.json and live data - 0 of 42 seeded rows have either). The
-    // submit handler's update-vs-insert lookup is always `.equalTo("category",
-    // d.category).equalTo("name", d.name)`, which for this class always resolves to
-    // `doesNotExist("category") AND doesNotExist("name")` - identical for every row, and
-    // matched by all 42 indiscriminately. `.first()` deterministically returns whichever
-    // row Parse's own default ordering puts first (empirically and stably
-    // "Assamite: Sorcerer" against this seed) regardless of which clan the submitted CSV
-    // row is actually about - there is no way, through this UI, to choose *which* clan
-    // an edit targets. This test edits whichever row that lookup reaches, proves the new
-    // value genuinely renders, and restores the original value afterward so the seed
-    // every other suite reads is left exactly as found.
+    // Two defects used to shape this test, and remediation cleared both.
     //
-    // The edit also deliberately touches only a string-typed field (`weakness_1`): a
-    // *second*, independent defect in the same submit handler sets every CSV column
-    // verbatim as the string Papa Parse produces, special-casing only the literal column
-    // "order" for numeric conversion - any other schema-numeric field (default_cost,
-    // camarilla_cost, sabbat_cost, ...) fails server-side with a schema-mismatch 400
-    // ("expected Number but got String") the moment it is included in a submitted row.
-    // Confirmed live. Restricting this edit to a string field avoids that unrelated
-    // failure mode entirely.
-    const target = await resolveOnlyReachableClanRule(adminPage);
-    expect(target).not.toBeNull();
-    const newWeakness = uniqueTestName('EditedWeakness');
-    const originalWeakness = target.weakness_1 || '';
+    // R27: bnsmetv1_ClanRule has neither a `name` nor a `category` field (0 of 42
+    // seeded rows have either), while the submit handler's update-vs-insert lookup
+    // was always `.equalTo("category", d.category).equalTo("name", d.name)`. For this
+    // class that resolved to `doesNotExist("category") AND doesNotExist("name")` -
+    // matched by all 42 rows indiscriminately - so `.first()` returned whichever row
+    // Parse's default ordering put first, regardless of which clan the submitted row
+    // was actually about. There was no way through this UI to choose which clan an
+    // edit targeted. The lookup is now keyed on the columns that really identify a
+    // row of each class: `clan` here. This test deliberately targets a row that is
+    // *not* the one default ordering returns first, and asserts that row is
+    // untouched, which is exactly what the old lookup could not do.
+    //
+    // R26: every CSV column used to be sent verbatim as the string Papa Parse
+    // produces, special-casing only the literal column "order", so any schema-numeric
+    // field (default_cost, camarilla_cost, ...) 400'd with "expected Number but got
+    // String". Columns are now coerced to the type the class really uses, so this
+    // edit exercises a numeric field alongside the string one.
+    const { target, firstByDefaultOrder } = await adminPage.evaluate(async () => {
+      const all = await new window.Parse.Query('bnsmetv1_ClanRule').limit(1000).find();
+      const first = all[0];
+      const usable = all.filter((r) => r.id !== first.id && r.get('clan') && r.get('weakness_1'));
+      usable.sort((a, b) => a.get('clan').localeCompare(b.get('clan')));
+      const chosen = usable[0];
+      return {
+        target: chosen ? Object.assign({ id: chosen.id }, chosen.attributes) : null,
+        firstByDefaultOrder: Object.assign({ id: first.id }, first.attributes)
+      };
+    });
+    expect(target, 'a seeded clan rule other than the first one by default ordering').not.toBeNull();
+    expect(target.id).not.toBe(firstByDefaultOrder.id);
+    expect(target.weakness_1, 'the chosen row has a value to restore').toBeTruthy();
 
-    await submitRuleRow(adminPage, 'clan', { clan: target.clan, weakness_1: newWeakness });
+    const newWeakness = uniqueTestName('EditedWeakness');
+    const originalWeakness = target.weakness_1;
+    const originalDefaultCost = target.default_cost;
+    const newDefaultCost = (originalDefaultCost || 0) + 1;
+
+    await submitRuleRow(adminPage, 'clan', {
+      clan: target.clan,
+      weakness_1: newWeakness,
+      default_cost: newDefaultCost
+    });
 
     const updated = await getRuleRowById(adminPage, 'clan', target.id);
     expect(updated.weakness_1).toBe(newWeakness);
+    expect(updated.default_cost, 'a numeric field is editable too').toBe(newDefaultCost);
+
+    // The row default ordering would have hit is untouched: the edit really did
+    // target the clan the submitted row named.
+    const untouched = await getRuleRowById(adminPage, 'clan', firstByDefaultOrder.id);
+    expect(untouched.weakness_1).toBe(firstByDefaultOrder.weakness_1);
 
     await selectRuleCategory(adminPage, 'All');
     const { rows } = await readRuleTableRows(adminPage);
@@ -385,9 +424,14 @@ test.describe('Task 2 - Game Rules Editors: Add And Verify', () => {
     expect(row.weakness_1).toBe(newWeakness);
 
     // Restore, so this suite leaves the seed exactly as it found it.
-    await submitRuleRow(adminPage, 'clan', { clan: target.clan, weakness_1: originalWeakness });
+    await submitRuleRow(adminPage, 'clan', {
+      clan: target.clan,
+      weakness_1: originalWeakness,
+      default_cost: originalDefaultCost
+    });
     const restored = await getRuleRowById(adminPage, 'clan', target.id);
     expect(restored.weakness_1).toBe(originalWeakness);
+    expect(restored.default_cost).toBe(originalDefaultCost);
   });
 
   test.fail('22 Delete the added Clan Rule; it disappears from the table and from the creation picker', async () => {
@@ -396,8 +440,14 @@ test.describe('Task 2 - Game Rules Editors: Add And Verify', () => {
     // (EditRules.js), and its submit handler only ever creates/updates rows *present* in
     // the submitted CSV - it never diffs against previously-loaded rows to detect
     // removals, so there is no way to express "delete this row" through the UI at all
-    // (mirroring the missing Patronage delete UI Task 1 found). Compounding that, test
-    // 17 could never create a row to delete in the first place. This suite still cleans
+    // (mirroring the missing Patronage delete UI Task 1 found).
+    //
+    // Still pinned red after remediation R10/R26. Those fixed *adding* a rule
+    // (test 17 now passes and really does create a row), but deleting one
+    // remains an unbuilt feature, not a broken one - the same shape as R43's
+    // missing Patronage delete. The remediation plan lists 22 alongside the
+    // other six R10 tests; that is an error in the plan, since no promise-chain
+    // fix can conjure a delete control. This suite still cleans
     // up everything *it* adds - every Description created below is destroyed by real id
     // in `afterAll`, the same fixture-teardown pattern Task 1 used - which is not the
     // same thing as this numbered UI feature existing.
@@ -437,8 +487,9 @@ test.describe('Task 2 - Game Rules Editors: Add And Verify', () => {
     expect(rows.map((r) => r.name).sort()).toEqual(liveNames);
   });
 
-  test.fail('24 Add a new Kith Rule; the new row appears in the table', async () => {
-    // Same defect as test 17 (see helpers/rules.js) - reproduces identically here.
+  test('24 Add a new Kith Rule; the new row appears in the table', async () => {
+    // FIXED with test 17 (R10). This class's submitted fields are all
+    // strings, so R26 was not needed here - R10 alone was enough.
     state.newKithName = uniqueTestName('Kith');
     const before = await countRuleRows(adminPage, 'kith');
 
@@ -474,8 +525,8 @@ test.describe('Task 2 - Game Rules Editors: Add And Verify', () => {
     expect(options).toContain(state.newKithName);
   });
 
-  test.fail('26 Elder Discipline Rules: add a rule; it appears in the table', async () => {
-    // Same defect as test 17.
+  test('26 Elder Discipline Rules: add a rule; it appears in the table', async () => {
+    // FIXED with test 17 (R10, plus R26 for the numeric columns below).
     state.newElderName = uniqueTestName('Discipline: Elder Power');
     const before = await countRuleRows(adminPage, 'elderDiscipline');
 
@@ -535,8 +586,8 @@ test.describe('Task 2 - Game Rules Editors: Add And Verify', () => {
     expect(before.available - after.available).toBe(expectedCost);
   });
 
-  test.fail('28 Technique Rules: add a rule; it appears in the table', async () => {
-    // Same defect as test 17.
+  test('28 Technique Rules: add a rule; it appears in the table', async () => {
+    // FIXED with test 17 (R10, plus R26 for the numeric columns below).
     state.newTechniqueName = uniqueTestName('Technique');
     const before = await countRuleRows(adminPage, 'technique');
 
@@ -580,8 +631,8 @@ test.describe('Task 2 - Game Rules Editors: Add And Verify', () => {
     expect(before.available - after.available).toBe(expectedCost);
   });
 
-  test.fail('30 Ritual Rules: add a rule; it appears in the table', async () => {
-    // Same defect as test 17.
+  test('30 Ritual Rules: add a rule; it appears in the table', async () => {
+    // FIXED with test 17 (R10, plus R26 for `level` and `time` below).
     state.newRitualName = uniqueTestName('Ritual: E2E Working');
     const before = await countRuleRows(adminPage, 'ritual');
 
@@ -686,35 +737,44 @@ test.describe('Task 2 - Game Rules Editors: Add And Verify', () => {
   });
 
   test('36 Non-admin sampmem is blocked from #administration/bnsmetv1_clan_rules', async () => {
-    // Reality check first, per this task's explicit instruction not to assume a
-    // redirect: mobileRouter.js's administration_bnsmetv1_clan_rules handler only calls
-    // enforce_logged_in() - the same gap Task 1 found on the Patronage admin routes.
-    // sampmem's navigation is not redirected; the page genuinely renders (find/get on
-    // this class are public per its schema CLP). The actual protection is server-side:
+    // Two layers, and both are asserted - the title's "blocked" is now true at both.
+    //
+    // It used not to be. administration_bnsmetv1_clan_rules called only
+    // enforce_logged_in() - the same gap Task 1 found on the Patronage admin routes -
+    // so sampmem's navigation was not redirected and the page genuinely rendered
+    // (find/get on this class are public per its schema CLP). Remediation R37 added the
+    // route gate. The server-side protection was and remains the one that matters:
     // bnsmetv1_ClanRule's class-level permissions restrict update/create to
-    // role:Administrator (database_seed/_SCHEMA.json). Verified below: the save is
-    // rejected with a Parse permission error (surfaced only to the console - DataForm's
-    // submit handler swallows every individual save failure with console.log and shows
-    // nothing in the DOM, so a test that only checks page appearance would be fooled),
-    // and the target record is genuinely unchanged in the database afterward.
-    const capture = captureParseErrors(memberPage);
-    try {
-      await openRuleEditor(memberPage, 'clan');
-      const activeId = await memberPage.evaluate(() => document.querySelector('.ui-page-active').id);
-      expect(activeId).toBe('administration-descriptions');
+    // role:Administrator (database_seed/_SCHEMA.json), probed directly here because the
+    // editor that used to carry the probe is no longer reachable by this user.
+    await navigateToHash(memberPage, 'administration/bnsmetv1_clan_rules');
+    await memberPage.waitForTimeout(2000);
+    const activeId = await memberPage.evaluate(() => {
+      const el = document.querySelector('.ui-page-active');
+      return el ? el.id : null;
+    });
+    expect(activeId, 'the rule editor does not render for a non-admin').not.toBe('administration-descriptions');
 
-      const target = await resolveOnlyReachableClanRule(memberPage);
-      expect(target).not.toBeNull();
+    const target = await findRuleRowByField(adminPage, 'clan', 'clan', state.newClanName);
+    expect(target, 'test 17 left a clan rule to probe').not.toBeNull();
 
-      await submitRuleRow(memberPage, 'clan', { clan: target.clan, weakness_1: 'SAMPMEM SHOULD NOT PERSIST' });
+    const probe = await memberPage.evaluate(async (id) => {
+      const obj = new window.Parse.Object('bnsmetv1_ClanRule');
+      obj.id = id;
+      obj.set('weakness_1', 'SAMPMEM SHOULD NOT PERSIST');
+      try {
+        await obj.save();
+        return { ok: true };
+      } catch (e) {
+        return { ok: false, code: e && e.code, message: e && e.message };
+      }
+    }, target.id);
+    expect(probe.ok, 'the save is refused server-side').toBe(false);
+    expect(probe.code).toBe(119);
+    expect(probe.message).toMatch(/permission denied/i);
 
-      expect(capture.errors.some((e) => e.code === 119 && /permission denied/i.test(e.message))).toBe(true);
-
-      const stillOriginal = await getRuleRowById(adminPage, 'clan', target.id);
-      expect(stillOriginal.weakness_1).toBe(target.weakness_1);
-    } finally {
-      capture.stop();
-    }
+    const stillOriginal = await getRuleRowById(adminPage, 'clan', target.id);
+    expect(stillOriginal.weakness_1).toBe(target.weakness_1);
   });
 
   test('37 Non-admin sampmem attempting to save a global Description edit gets a surfaced permission error', async () => {
@@ -728,6 +788,12 @@ test.describe('Task 2 - Game Rules Editors: Add And Verify', () => {
     // ACL-based denials by hiding the object's existence rather than naming the
     // permission, which is different enough from test 36 to assert precisely rather than
     // assume it matches.
+    //
+    // Remediation R36 additionally gated `#administration/descriptions` behind
+    // `enforce_admin()`, alongside its ungated `administration/*` siblings, so the bulk
+    // editor this used to drive is - deliberately - no longer reachable by sampmem.
+    // Both layers are asserted: the page does not render, and the object ACL still
+    // refuses a direct write.
     const permDesc = await createDescriptionViaAdmin(adminPage, {
       category: 'e2e_test_perm_category',
       name: uniqueTestName('PermTarget'),
@@ -735,20 +801,30 @@ test.describe('Task 2 - Game Rules Editors: Add And Verify', () => {
     });
     state.createdDescriptionIds.push(permDesc.id);
 
-    const capture = captureParseErrors(memberPage);
-    try {
-      await updateDescriptionViaAdmin(memberPage, {
-        category: permDesc.category,
-        name: permDesc.name,
-        value: 'sampmem tampered value'
-      });
+    await navigateToHash(memberPage, 'administration/descriptions');
+    await memberPage.waitForTimeout(2000);
+    const activeId = await memberPage.evaluate(() => {
+      const el = document.querySelector('.ui-page-active');
+      return el ? el.id : null;
+    });
+    expect(activeId, 'the Descriptions admin does not render for a non-admin')
+      .not.toBe('administration-descriptions');
 
-      expect(capture.errors.some((e) => e.code === 101)).toBe(true);
+    const probe = await memberPage.evaluate(async (id) => {
+      const obj = new window.Parse.Object('Description');
+      obj.id = id;
+      obj.set('value', 'sampmem tampered value');
+      try {
+        await obj.save();
+        return { ok: true };
+      } catch (e) {
+        return { ok: false, code: e && e.code, message: e && e.message };
+      }
+    }, permDesc.id);
+    expect(probe.ok, 'the write is refused').toBe(false);
+    expect(probe.code, 'Parse hides an ACL-denied row rather than naming the permission').toBe(101);
 
-      const stillOriginal = await getDescriptionByName(adminPage, permDesc.category, permDesc.name);
-      expect(stillOriginal.value).toBe('original value');
-    } finally {
-      capture.stop();
-    }
+    const stillOriginal = await getDescriptionByName(adminPage, permDesc.category, permDesc.name);
+    expect(stillOriginal.value).toBe('original value');
   });
 });

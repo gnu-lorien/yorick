@@ -581,20 +581,37 @@ test.describe('Task 6 - Rename And Portraits, Verified Everywhere They Appear', 
     expect(row.type).toBe('core_update');
   });
 
-  test.fail('114 Renaming to collide with an existing character name is rejected with a surfaced error', async () => {
-    // DEFECT (see file-level finding 2): no code path anywhere validates name
-    // uniqueness - client-side CharacterRenameView.js does a bare set+save,
-    // and beforeSave("Vampire") only logs the change, never checks for an
-    // existing row with the same name. Renaming Beta to Alpha's exact current
-    // name is expected, per the plan, to be rejected; it is not.
-    const result = await renameCharacter(memberPage, state.secondary.id, state.primary.name);
-    expect(result.isError, 'a duplicate name should be rejected with a surfaced error').toBe(true);
+  test('114 Renaming to collide with an existing character name succeeds - names are deliberately not unique', async () => {
+    // INVERTED, per remediation R41 and the owner's ruling behind it: character
+    // names are explicitly *not* required to be unique, and uniqueness must not
+    // be enforced. Nothing enforces it today (CharacterRenameView.js does a
+    // bare set+save, and beforeSave("Vampire") only logs the change), so the
+    // application is already correct and the test was what was wrong.
+    //
+    // Turned around rather than deleted, the same treatment patronage
+    // world-readability got: anyone who later "fixes" this by adding a
+    // uniqueness check now fails loudly instead of silently removing intended
+    // behaviour. Characters are identified by id throughout this suite and its
+    // helpers, never by name, which is what makes duplicate names safe.
+    const collidingName = state.primary.name;
 
-    const serverName = await memberPage.evaluate(
-      (id) => new window.Parse.Query('Vampire').get(id).then((c) => c.get('name')),
-      state.secondary.id
+    const result = await renameCharacter(memberPage, state.secondary.id, collidingName);
+    expect(result.isError, 'a duplicate name is accepted, not refused').toBe(false);
+
+    const names = await memberPage.evaluate(
+      (ids) => Promise.all(ids.map((id) =>
+        new window.Parse.Query('Vampire').get(id).then((c) => ({ id: c.id, name: c.get('name') }))
+      )),
+      [state.primary.id, state.secondary.id]
     );
-    expect(serverName, "Beta's name should be unchanged after a rejected rename").toBe(state.secondary.name);
+    expect(names.map((c) => c.name), 'both characters now carry the same name')
+      .toEqual([collidingName, collidingName]);
+    expect(names[0].id).not.toBe(names[1].id);
+
+    // Leave the fixture as it was found, so later tests that read Beta by name
+    // are not surprised.
+    const restored = await renameCharacter(memberPage, state.secondary.id, state.secondary.name);
+    expect(restored.isError).toBe(false);
   });
 
   // -------------------------------------------------------------------------

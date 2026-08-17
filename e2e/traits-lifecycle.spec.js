@@ -582,7 +582,15 @@ test.describe('Task 9 - Trait Change Lifecycle In The UI', () => {
         const after = await readLogRows(page);
 
         expect(after.length, 'log row count unchanged after re-saving the same value').toBe(before.length);
-        expect(after[0], 'the freshest row is still the original define, not a new one').toMatchObject({
+        // Scoped to this trait's own category rather than taking the freshest
+        // row overall: since remediation R47b the log also carries `experience`
+        // rows, and the notation the original purchase wrote is saved *after*
+        // the trait itself, so it - not the define - is the newest row in the
+        // whole log. What this test is actually about is that no second row
+        // appeared for the trait.
+        const traitRows = after.filter((r) => r.category === venue.chainCategory && r.name === venue.plainTrait);
+        expect(traitRows.length, 'exactly one row for this trait, the original define').toBe(1);
+        expect(traitRows[0]).toMatchObject({
           category: venue.chainCategory, name: venue.plainTrait, type: 'define', value: 1
         });
 
@@ -682,12 +690,16 @@ test.describe('Task 9 - Trait Change Lifecycle In The UI', () => {
         ).toBe(true);
       });
 
-      test.fail(`${N(5)} Renaming a trait to collide with an existing trait name is rejected with a surfaced error`, async () => {
-        // DEFECT (finding 4). The plan's claim is a conjunction - rejected
-        // AND surfaced. The first half is real and asserted here as passing
-        // evidence (visible in the trace even though the test as a whole is
-        // pinned red by `test.fail()`); the second half is the defect, and
-        // it is the assertion this test actually fails on.
+      test(`${N(5)} Renaming a trait to collide with an existing trait name is rejected with a surfaced error`, async () => {
+        // FIXED by remediation R6 (built on R1).
+        //
+        // The plan's claim is a conjunction - rejected AND surfaced. The
+        // first half was always real: the colliding name never persisted.
+        // The second half was the defect - the only trace of the rejection
+        // was a `console.log` in `SimpleTraitSpecializationView.save_clicked`,
+        // which no player ever sees. That handler now reports through
+        // `ReportError` before redirecting, and the banner follows the
+        // redirect onto the category page the user actually lands on.
 
         // Build a second, independent trait sharing the same base name -
         // finding 6 explains the mechanism (native requires_specialization
@@ -719,8 +731,8 @@ test.describe('Task 9 - Trait Change Lifecycle In The UI', () => {
         await waitForHash(page, `#simpletraits/${venue.chainCategory}/${cid}/all`);
         await waitForJqmLoader(page);
 
-        // Passing evidence: the rename is genuinely rejected and the
-        // trait's stored name is untouched (finding 4's "data" half).
+        // The rename is genuinely rejected and the trait's stored name is
+        // untouched - the half that always worked.
         const traitsAfter = await readTraits(page, cid, venue.chainCategory, venue.name);
         const targetAfter = traitsAfter.find((t) => t.id === second.id);
         expect(targetAfter.name, 'the collided-into name must be rejected, not persisted').toBe(`${venue.specializeBase}: Second One`);
@@ -731,14 +743,12 @@ test.describe('Task 9 - Trait Change Lifecycle In The UI', () => {
         const rejectionLogged = consoleTexts.some((t) => /Couldn't specialize trait/.test(t));
         expect(rejectionLogged, 'the rejection is at least logged to the console (DevTools-only)').toBe(true);
 
-        // The actual defect - this is the assertion that fails. Measured
-        // live: no popup, no inline error text, nothing distinguishes this
-        // page from a successful save; the only trace of the rejection is
-        // the console.log above, which a real player never sees.
-        const popupCount = await page.locator('[data-role="popup"], .ui-popup-active, #popup-global-error').count();
+        // What R6 added: the refusal is now readable on the page the user
+        // was redirected to, not only in DevTools.
+        const popupCount = await page.locator('[data-role="popup"], .ui-popup-active, #popup-global-error, #global-error-region').count();
         const visibleText = normalize(await page.locator('.ui-page-active').textContent());
         const surfaced = popupCount > 0 || /match|collide|already exists|cannot|error/i.test(visibleText);
-        expect(surfaced, 'DEFECT: no popup, inline message, or error text renders anywhere for a rejected rename').toBe(true);
+        expect(surfaced, 'a rejected rename must render a message somewhere the player can read it').toBe(true);
       });
 
       test(`${N(6)} Changing the value of a specialized trait charges or refunds the correct XP difference`, async () => {
@@ -782,21 +792,29 @@ test.describe('Task 9 - Trait Change Lifecycle In The UI', () => {
       // (h) - removal of a creation-picked trait
       // ---------------------------------------------------------------
 
-      test.fail(`${N(7)} Removing a creation-picked trait fails with an informative error`, async () => {
-        // DEFECT (finding 5). Measured live: the Remove button is present
-        // and works on a creation-picked trait exactly as it does on a
-        // purchased one - there is no guard anywhere in `remove_trait` or
-        // its call sites keyed on `free_value`. The plan's literal claim is
-        // asserted below and goes red on contact with the real behaviour;
-        // the actually-measured consequence (silent success, orphaned pool
-        // slot) is documented in the comment and in the report for this
-        // task rather than encoded as a passing assertion, since a passing
-        // assertion here would look like the defect was expected/desired.
+      test(`${N(7)} Removing a creation-picked trait hands its creation pool slot back`, async () => {
+        // FIXED by remediation R18, and re-aimed at what the fix guarantees.
+        //
+        // The plan this suite was written against claimed removal should
+        // "fail with an informative error". Measured live, it never did:
+        // the Remove button is present and works on a creation-picked trait
+        // exactly as it does on a purchased one, and there is no guard in
+        // `remove_trait` or any of its call sites keyed on `free_value`.
+        // The real defect was the consequence - `remove_trait` destroyed the
+        // trait and refunded its cost but never released the creation pick,
+        // so `<category>_<i>_remaining` stayed one short forever, with no
+        // route back to reclaim the slot once creation is complete.
+        //
+        // R18 releases the slot instead of forbidding the removal, which is
+        // the behaviour the wizard's own unpick link already had. This test
+        // now asserts that, rather than a refusal the application never made.
         const before = await readTraits(page, cid, venue.chainCategory, venue.name);
         const picked = before.find((t) => t.name === venue.creationPickTrait);
-        expect(picked, `${venue.creationPickTrait} still present before the removal attempt`).toBeTruthy();
+        expect(picked, `${venue.creationPickTrait} still present before the removal`).toBeTruthy();
 
-        const poolBefore = (await readCreation(page, cid, venue.name))[`${venue.chainCategory}_1_remaining`];
+        const creationBefore = await readCreation(page, cid, venue.name);
+        const poolBefore = creationBefore[`${venue.chainCategory}_1_remaining`];
+        const picksBefore = creationBefore[`${venue.chainCategory}_1_picks`];
 
         await openTraitChange(page, cid, venue.chainCategory, venue.creationPickTrait);
         await expect(page.locator('#simpletrait-changing .remove')).toHaveCount(1);
@@ -805,15 +823,21 @@ test.describe('Task 9 - Trait Change Lifecycle In The UI', () => {
         await waitForJqmLoader(page);
 
         const after = await readTraits(page, cid, venue.chainCategory, venue.name);
-        const stillThere = after.some((t) => t.name === venue.creationPickTrait);
-        const poolAfter = (await readCreation(page, cid, venue.name))[`${venue.chainCategory}_1_remaining`];
-        console.log(
-          `[${venue.name} 248-measured] creation-picked removal: stillPresent=${stillThere}, ` +
-          `pool ${poolBefore} -> ${poolAfter} (never restored)`
-        );
+        expect(
+          after.some((t) => t.name === venue.creationPickTrait),
+          'the removal really happens - it is not, and never was, refused'
+        ).toBe(false);
 
-        // The plan's literal claim - fails, because the removal actually succeeds.
-        expect(stillThere, 'the creation-picked trait should still exist because removal should have failed').toBe(true);
+        const creationAfter = await readCreation(page, cid, venue.name);
+        expect(
+          creationAfter[`${venue.chainCategory}_1_remaining`],
+          'the creation pool slot the trait was holding is handed back'
+        ).toBe(poolBefore + 1);
+        // `readCreation` reports a picks array as its length, not its contents.
+        expect(
+          creationAfter[`${venue.chainCategory}_1_picks`],
+          'and the trait is no longer one of the recorded picks'
+        ).toBe(picksBefore - 1);
       });
 
       // ---------------------------------------------------------------

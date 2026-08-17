@@ -173,7 +173,11 @@ define([
             self.showChildView('patronage', new PatronagesView({
                 el: "#usp-patronage-list",
                 collection: self.patronages,
-                back_url_base: "#profile/"
+                // R46: this built links to "#profile/<patronageId>", and no
+                // such route exists - the router only defines
+                // "patronage/:id" (`a_patronage`), which is the page these
+                // rows are meant to open. Every row here was a dead link.
+                back_url_base: "#patronage/"
             }), options);
             
             var roles = new Backbone.Collection();

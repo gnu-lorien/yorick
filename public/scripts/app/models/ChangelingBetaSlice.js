@@ -68,6 +68,15 @@ define([
             }
             return Parse.Object.fetchAllIfNeeded([self.get("creation")]).then(function (creations) {
                 var creation = creations[0];
+                if (creation && creation.get("completed")) {
+                    // R22: these counters are creation-time bookkeeping and
+                    // nothing reads them once the wizard is finished, so
+                    // writing to them afterwards only produced meaningless
+                    // negatives - a post-creation Kith change drove
+                    // ctdbs_arts_1_remaining to -3, which then read as an
+                    // overspend that had never happened.
+                    return Parse.Promise.as(self);
+                }
                 var stepName = category + "_" + freeValue + "_remaining";
                 var listName = category + "_" + freeValue + "_picks";
                 creation.addUnique(listName, modified_trait);
@@ -255,8 +264,13 @@ define([
             if (arts_to_remove.length == 0) {
                 return self._updateTraitWrapper;
             }
+            // Iterate what the caller actually asked to remove. This used to
+            // re-derive the list as `self.get_arts_affinities()` and ignore the
+            // argument, which made it impossible for a caller to hold anything
+            // back - see R23 in `_apply_kith`. Every other caller passes exactly
+            // `self.get_arts_affinities()`, so their behaviour is unchanged.
             _
-            .chain(self.get_arts_affinities())
+            .chain(arts_to_remove)
             .each(function (aa) {
                 var thisart = _.find(self.get("ctdbs_arts"), function (arts) {
                     return arts.get("name") == aa;
@@ -271,18 +285,93 @@ define([
             return self._updateTraitWrapper;
         },
  
-        update_text: function(target, value) {
+        /**
+         * R22. A Kith's affinity Arts are granted free but they *do* consume
+         * the character's own Art creation picks - that is the intended rule,
+         * not a side effect. What was missing was any check that there are
+         * enough picks left: the grant decremented regardless, so choosing a
+         * three-Art Kith with the Art pool already spent drove
+         * `ctdbs_arts_1_remaining` to -2 and `spendAllCreationPools` then
+         * aborted with "creation overspent a pool".
+         *
+         * Refusing is the honest answer rather than clamping, which would
+         * silently drop a grant the character is entitled to. Once creation is
+         * finished the counters are inert and no check applies.
+         */
+        _check_kith_art_pool: function (kith) {
             var self = this;
-            if (target != "ctdbs_kith") {
-                return self.constructor.__super__.update_text.apply(self, [target, value]);
+            if (!self.has("creation")) {
+                return Parse.Promise.as(self);
             }
-
-            self._updateTraitWrapper = self._updateTraitWrapper || Parse.Promise.as();
-            self._updateTraitWrapper = self._updateTraitWrapper.always(function () {
-                console.log("Fetching all arts if needed");
-                return Parse.Object.fetchAllIfNeeded(self.get("ctdbs_arts") || []);
+            return Parse.Object.fetchAllIfNeeded([self.get("creation")]).then(function (creations) {
+                var creation = creations[0];
+                if (!creation || creation.get("completed")) {
+                    return Parse.Promise.as(self);
+                }
+                // The outgoing Kith's Arts are destroyed first, handing their
+                // picks back, so they count towards what is available.
+                var outgoing = self.get_arts_affinities() || [];
+                var releasing = _.filter(self.get("ctdbs_arts") || [], function (art) {
+                    return _.contains(outgoing, art.get("name")) ||
+                        _.contains(outgoing, art.get_base_name());
+                }).length;
+                var granting = (self.Costs.get_arts_affinities_for_kith(kith) || []).length;
+                var available = (creation.get("ctdbs_arts_1_remaining") || 0) + releasing;
+                if (granting > available) {
+                    return Parse.Promise.error({
+                        code: Parse.Error.VALIDATION_ERROR,
+                        message: kith + " grants " + granting + " Arts, but only " + available +
+                            " Art pick" + (1 === available ? "" : "s") + " remain. " +
+                            "Unpick an Art before choosing this Kith."
+                    });
+                }
+                return Parse.Promise.as(self);
             });
-            self._unpick_previous_arts(self.get_arts_affinities());
+        },
+
+        /**
+         * R23. An Art that is an affinity of *both* the outgoing and the
+         * incoming Kith used to be destroyed and immediately re-granted, which
+         * wrote two `define` rows for one Art within the same minute. Since the
+         * log has no id column and `createdAt` is only minute-granular, the two
+         * render identically and read as a duplicated row.
+         *
+         * Retaining the intersection leaves those Arts - and their single
+         * original log row - untouched, so only the Arts that genuinely changed
+         * hands are written. Retention is restricted to Arts the character
+         * already holds *for free*, which keeps it purely a matter of log noise
+         * and never of entitlement:
+         *
+         *   - an affinity the player had unpicked by hand is not held, so the
+         *     incoming Kith must still grant it rather than skip it;
+         *   - an Art the player *paid* for before the Kith made it an affinity
+         *     must still go through destroy-and-regrant, because that is what
+         *     converts it to the free grant they are now entitled to.
+         *
+         * Measured on the Ghillie Dhu -> Clurichaun change, whose affinity sets
+         * share Oakenshield: the change wrote `ctdbs_arts/Oakenshield/remove`
+         * and `ctdbs_arts/Oakenshield/define` within the same minute.
+         *
+         * `_check_kith_art_pool`'s arithmetic is deliberately left alone. It
+         * refuses when `granting > remaining + releasing`, and retention removes
+         * the same count from `granting` and from `releasing`, so the comparison
+         * is unchanged.
+         */
+        _apply_kith: function (target, value) {
+            var self = this;
+            var outgoing = self.get_arts_affinities() || [];
+            var incoming = self.Costs.get_arts_affinities_for_kith(value) || [];
+            var owned = self.get("ctdbs_arts") || [];
+            var retained = _.filter(_.intersection(outgoing, incoming), function (name) {
+                return _.some(owned, function (art) {
+                    if (art.get("name") != name && art.get_base_name() != name) {
+                        return false;
+                    }
+                    return 0 < (art.get("free_value") || 0);
+                });
+            });
+
+            self._unpick_previous_arts(_.difference(outgoing, retained));
             self._updateTraitWrapper = self._updateTraitWrapper.then(function () {
                 console.log("Saving the changeling.");
                 return self.save();
@@ -291,8 +380,9 @@ define([
                 console.log("Applying the original update text");
                 return self.constructor.__super__.update_text.apply(self, [target, value]);
             });
-            console.log("About to add affinities for kith " + value);
-            _.each(self.Costs.get_arts_affinities_for_kith(value), function (aa) {
+            console.log("About to add affinities for kith " + value +
+                (retained.length ? " (retaining " + retained.join(", ") + ")" : ""));
+            _.each(_.difference(incoming, retained), function (aa) {
                 console.log("Updating trait for new art affinity " + aa);
                 self.update_trait(aa, 1, "ctdbs_arts", 1);
             });
@@ -303,12 +393,76 @@ define([
             });
             return self._updateTraitWrapper;
         },
+
+        update_text: function(target, value) {
+            var self = this;
+            if (target != "ctdbs_kith") {
+                return self.constructor.__super__.update_text.apply(self, [target, value]);
+            }
+
+            self._updateTraitWrapper = self._updateTraitWrapper || Parse.Promise.as();
+
+            // The grant has to be gated *before* any of it is queued.
+            // `_unpick_previous_arts` and `update_trait` both extend the shared
+            // wrapper with `.always()`, which runs on rejection too, so a
+            // refusal raised after they were queued would not actually stop
+            // them.
+            var gate = self._updateTraitWrapper.always(function () {
+                console.log("Fetching all arts if needed");
+                return Parse.Object.fetchAllIfNeeded(self.get("ctdbs_arts") || []);
+            }).then(function () {
+                return self._check_kith_art_pool(value);
+            });
+
+            // Never leave a rejected promise in the shared wrapper: later
+            // operations chain onto it and would silently skip their own work.
+            self._updateTraitWrapper = gate.always(function () {
+                return Parse.Promise.as(self);
+            });
+
+            return gate.then(function () {
+                return self._apply_kith(target, value);
+            });
+        },
         
         unpick_text: function(target) {
             var self = this;
             self._updateTraitWrapper = self._updateTraitWrapper || Parse.Promise.as();
+
+            if ("ctdbs_kith" != target) {
+                self._updateTraitWrapper = self._updateTraitWrapper.always(function () {
+                    return self.constructor.__super__.unpick_text.apply(self, [target]);
+                });
+                return self._updateTraitWrapper;
+            }
+
+            // Picking a Kith auto-grants its affinity Arts free and consumes
+            // the Arts creation pool; `update_text` reconciles both on every
+            // repick. Unpicking used to be a bare passthrough, so it cleared
+            // the text and left the granted Arts and the spent pool slots
+            // behind - with the Kith gone there was no route back to reclaim
+            // them. The affinities have to be read *before* the text is
+            // cleared, since they are derived from the Kith.
             self._updateTraitWrapper = self._updateTraitWrapper.always(function () {
+                return Parse.Object.fetchAllIfNeeded(self.get("ctdbs_arts") || []);
+            });
+            self._unpick_previous_arts(self.get_arts_affinities());
+            self._updateTraitWrapper = self._updateTraitWrapper.then(function () {
                 return self.constructor.__super__.unpick_text.apply(self, [target]);
+            });
+            self._updateTraitWrapper = self._updateTraitWrapper.then(function () {
+                var creation = self.get("creation");
+                if (!creation) {
+                    return Parse.Promise.as(self);
+                }
+                self.progress("Saving the creation after releasing the Kith's Arts");
+                return creation.save();
+            }).then(function () {
+                // Callers - `charactercreateunpicksimpletext` among them -
+                // read `c.id` off this promise to build the redirect, so it
+                // must resolve with the character and not with whatever the
+                // last save happened to return.
+                return Parse.Promise.as(self);
             });
             return self._updateTraitWrapper;
         },

@@ -73,8 +73,8 @@
  * asserted as that exact number *and* against the price the change page
  * quoted before the save.
  *
- * **9. DEFECT found here: the trait change page quotes a stale price when the
- * same trait is re-opened within one page session.**
+ * **9. FIXED by remediation R31 - the trait change page used to quote a stale
+ * price when the same trait was re-opened within one page session.**
  * `SimpleTraitChangeView.register(character, simpletrait, category)` rebuilds
  * `self.fauxtrait` - the object `calculate_trait_to_spend` is applied to for
  * every displayed price - only when `simpletrait !== self.simpletrait`, i.e.
@@ -87,10 +87,11 @@
  * increment. The *save* is unaffected, because `save_clicked` copies the
  * slider values onto the real trait and charges
  * `calculate_trait_to_spend(realTrait)`, which sees the persisted cost: the
- * character was charged 3, correctly. So this is a display defect, in the same
- * memoization family as `CharacterLogView` and `CharacterHistoryView`. Test
- * 322 reloads between the two edits so its quote assertions measure the real
- * incremental price, and logs the stale figure as evidence.
+ * character was charged 3, correctly. So this was a display defect, in the same
+ * memoization family as `CharacterLogView` and `CharacterHistoryView`. The
+ * working copy is now rebuilt from the trait's current attributes on every
+ * visit, and test 322 asserts the no-reload quote rather than reloading past
+ * the problem and logging the stale figure as evidence.
  *
  * **8. The admin route is the ordinary character sheet.**
  * `administration_character` delegates to `show_character_helper`, i.e. it
@@ -406,16 +407,16 @@ test.describe('Task 12a - Vampire lifecycle and dual audit log', () => {
   // 321-330 - the ten long-term changes
   // =========================================================================
 
-  test.fail('321 Change 1 - award a 25 XP notation; the log records the XP transaction with the reason', async () => {
-    // DEFECT (measured, not inherited): there is no `Parse.Cloud` hook of any
-    // kind on `ExperienceNotation`, and `beforeSave("Vampire")`'s
-    // `tracked_texts` allowlist - name/clan/state/archetype/archetype_2/
-    // faction/title/sect/antecedence/wta_breed/wta_auspice/wta_tribe/wta_camp/
-    // wta_faction - contains neither `experience_earned` nor
-    // `experience_spent`, so the save that carries the new totals intersects
-    // to an empty change set and returns `response.success()` before writing
-    // anything. The award itself is real and is proven so below; only the
-    // audit trail is missing.
+  test('321 Change 1 - award a 25 XP notation; the log records the XP transaction with the reason', async () => {
+    // FIXED by remediation R47b.
+    //
+    // Was: there was no `Parse.Cloud` hook of any kind on
+    // `ExperienceNotation`, and `beforeSave("Vampire")`'s `tracked_texts`
+    // allowlist contains neither `experience_earned` nor `experience_spent`,
+    // so the save that carries the new totals intersected to an empty change
+    // set and returned `response.success()` before writing anything. The award
+    // itself was real; only the audit trail was missing - and a hand-written
+    // award is the thing a storyteller does most often.
     const cid = state.character.id;
     const reason = `${FIXTURE_PREFIX}storyteller award`;
 
@@ -434,23 +435,25 @@ test.describe('Task 12a - Vampire lifecycle and dual audit log', () => {
     expect(totals.available - xpBefore.available, 'the award moved Available by exactly 25').toBe(XP_AWARD);
 
     const after = await L.readAllLogRows(memberPage, cid);
-    expect(after.length, 'no log row was written for the award').toBe(before.length);
+    expect(after.length - before.length, 'the log records the XP transaction').toBeGreaterThan(0);
 
-    // Assertion-side read-back, to separate "no row exists" (a data fact) from
-    // "a row exists but did not render" (a rendering fact).
+    // Assertion-side read-back, to separate "the row exists" (a data fact) from
+    // "the row rendered" (a rendering fact). Both are asserted.
     const directCount = await memberPage.evaluate(async ({ id, r }) => {
       const q = new window.Parse.Query('VampireChange');
       q.equalTo('owner', window.Parse.Object.extend('Vampire').createWithoutData(id));
       q.contains('name', r);
       return q.count();
     }, { id: cid, r: reason });
-    expect(directCount, 'nothing named after the award reason exists in VampireChange').toBe(0);
+    expect(directCount, 'a VampireChange row is named after the award reason').toBeGreaterThan(0);
+
+    // The trail says what the award was for, not merely that a number moved.
+    const awardRow = L.freshestRow(after, { category: 'experience' });
+    expect(awardRow, 'an experience row exists').toBeTruthy();
+    expect(awardRow.name).toBe(reason);
+    expect(L.numCost(awardRow.value), 'and carries the earned delta').toBe(XP_AWARD);
 
     state.xpAfterAward = totals;
-    console.log(`[t12-vampire] 321 measured: award of ${XP_AWARD} XP produced 0 new log rows (${before.length} -> ${after.length})`);
-
-    // The plan's literal expectation. Fails, deliberately.
-    expect(after.length - before.length, 'the log should record the XP transaction').toBeGreaterThan(0);
   });
 
   test('322 Change 2 - raise Physical across two separate edits; the log has two rows with correct old/new values and costs', async () => {
@@ -468,26 +471,28 @@ test.describe('Task 12a - Vampire lifecycle and dual audit log', () => {
 
     const quotes = [];
     for (const target of [start.value + 1, start.value + 2]) {
-      // A full reload before each edit, and the reason is a real defect found
-      // here (see finding 9 in the header): `SimpleTraitChangeView.register`
-      // rebuilds its `fauxtrait` - the object every displayed price is
-      // computed from - only when the SimpleTrait's *object identity* changes.
-      // mobileRouter hands it the same cached SimpleTrait on every visit
-      // within one page session, so re-opening the same trait's change page
-      // after saving it quotes a price derived from the cost the trait had on
-      // the *first* visit. Measured below and logged; the save itself is
-      // correct because `save_clicked` charges against the real trait, not the
-      // faux one.
+      // FIXED by remediation R31, and asserted here rather than worked around.
+      //
+      // `SimpleTraitChangeView.register` used to rebuild its `fauxtrait` - the
+      // object every displayed price is computed from - only when the
+      // SimpleTrait's *object identity* changed. mobileRouter hands it the same
+      // cached SimpleTrait on every visit within one page session, so
+      // re-opening a trait's change page after saving it quoted a price derived
+      // from the cost the trait had on the *first* visit. The save was always
+      // correct, because `save_clicked` charges against the real trait; only
+      // the number the player was shown was wrong. This test used to reload
+      // before each edit to dodge that, and log the stale figure as evidence.
+      // The reload stays for the second half of the loop's own reasons, but the
+      // no-reload quote is now checked first and must be right.
       if (quotes.length > 0) {
         await L.parkOnSheet(memberPage, cid);
         await openTraitChange(memberPage, cid, 'attributes', 'Physical');
         await setTraitChangeSliders(memberPage, { value: target });
-        const staleQuote = await readTraitChangeView(memberPage);
-        console.log(
-          `[t12-vampire] 322 measured (defect): re-opening the same trait's change page without a ` +
-          `reload quotes ${staleQuote.cost} for ${start.value} -> ${target}; the correct incremental ` +
-          `price is ${ATTRIBUTE_PER_POINT}`
-        );
+        const requoted = await readTraitChangeView(memberPage);
+        expect(
+          requoted.cost,
+          're-opening the same trait\'s change page without a reload quotes the real incremental price'
+        ).toBe(ATTRIBUTE_PER_POINT);
       }
       await hardReload(memberPage);
 
@@ -750,8 +755,9 @@ test.describe('Task 12a - Vampire lifecycle and dual audit log', () => {
     state.changes.technique = { name: technique, cost: TECHNIQUE_PER_LEVEL };
   });
 
-  test.fail('329 Change 9 - edit all three long texts; the log records each edit', async () => {
-    // DEFECT, re-measured on this character rather than inherited:
+  test('329 Change 9 - edit all three long texts; the log deliberately records none of them', async () => {
+    // The two mechanisms that keep long texts out of the log, re-measured on
+    // this character rather than inherited:
     // `Character.update_long_text` saves only the separate `LongText` object
     // and never calls `Vampire#save()`, so `beforeSave("Vampire")` does not
     // run at all for a long-text edit - and even if it did, none of
@@ -778,8 +784,12 @@ test.describe('Task 12a - Vampire lifecycle and dual audit log', () => {
     expect(directCount, 'no VampireChange row names any long-text field').toBe(0);
     console.log('[t12-vampire] 329 measured: three long-text edits produced 0 new log rows');
 
-    // The plan's literal expectation. Fails, deliberately.
-    expect(after.length - before.length, 'the log should record each long-text edit').toBe(3);
+    // INVERTED, per remediation R47c and the owner's ruling behind it: long
+    // texts can be large enough that logging them would bloat the audit trail,
+    // so they stay out of it on purpose. Turned around rather than deleted, so
+    // that anyone who later adds long texts to `tracked_texts` fails here,
+    // loudly, instead of silently removing an intended guarantee.
+    expect(after.length - before.length, 'a long-text edit writes no log row, by design').toBe(0);
   });
 
   test('330 Change 10 - rename the character; the log records the old and new name', async () => {
@@ -1049,18 +1059,34 @@ test.describe('Task 12a - Vampire lifecycle and dual audit log', () => {
     const cid = state.character.id;
     const rows = state.parity.playerRows; // newest first
 
+    // The timeline is every change that can be *replayed* onto the character,
+    // which since remediation R47b is not quite every row in the log: XP
+    // notation rows are recorded there too, and an XP award is neither a trait
+    // nor a text attribute, so there is no character state to step to. They are
+    // excluded from `recorded_changes` for that reason - feeding them to
+    // `get_transformed` manufactured a fake trait in a category no venue has and
+    // stopped the approval view rendering at all.
+    // Substring rather than equality: jQuery Mobile's responsive table prepends
+    // a column label to each cell, so a category cell reads "experience" on some
+    // rows and "category experience" on others depending on how it reflowed.
+    const isExperience = (r) => /experience/.test(String(r.category));
+    const replayable = rows.filter((r) => !isExperience(r));
+    expect(replayable.length, 'the log carries more than the timeline does').toBeLessThan(rows.length);
+    expect(replayable.filter(isExperience), 'no XP row survives the filter').toEqual([]);
+
     await L.openHistory(memberPage, cid);
     const bounds = await L.readHistoryBounds(memberPage);
-    expect(bounds.changeCount, 'the timeline knows about every recorded change').toBe(rows.length);
-    expect(bounds.max, 'the slider spans every change').toBe(rows.length - 1);
-    expect(bounds.value, 'and starts on the newest').toBe(rows.length - 1);
+    expect(bounds.changeCount, 'the timeline knows about every replayable change').toBe(replayable.length);
+    expect(bounds.max, 'the slider spans every replayable change').toBe(replayable.length - 1);
+    expect(bounds.value, 'and starts on the newest').toBe(replayable.length - 1);
 
     // `recorded_changes` is fetched ascending, so index i corresponds to the
-    // player log's row (length - 1 - i).
+    // replayable rows' (length - 1 - i). Indexed against `replayable` rather
+    // than the raw log for the reason above.
     const steps = [];
     for (let k = 0; k < 12; k++) {
       const index = bounds.max - k;
-      const expected = rows[k];
+      const expected = replayable[k];
       const tables = await L.setHistoryIndex(memberPage, index, expected);
 
       expect(tables.applied, `index ${index} renders a "Most Recent Change Applied" row`).toBeTruthy();
@@ -1073,7 +1099,7 @@ test.describe('Task 12a - Vampire lifecycle and dual audit log', () => {
         expect(tables.tables, 'nothing is reversed at the newest index').toBe(1);
       } else {
         expect(tables.tables, 'a reversed-change table appears once the slider moves back').toBe(2);
-        expect(tables.reversed.name, `index ${index} reverses log row ${k - 1}`).toBe(rows[k - 1].name);
+        expect(tables.reversed.name, `index ${index} reverses log row ${k - 1}`).toBe(replayable[k - 1].name);
       }
 
       const sheet = await L.readHistorySheetText(memberPage);
@@ -1085,24 +1111,24 @@ test.describe('Task 12a - Vampire lifecycle and dual audit log', () => {
     // The snapshots are genuinely different characters, not the same sheet
     // re-rendered: the newest index still carries the new name, and one step
     // back - which un-applies the rename - carries the original.
-    await L.setHistoryIndex(memberPage, bounds.max, rows[0]);
+    await L.setHistoryIndex(memberPage, bounds.max, replayable[0]);
     expect(await L.readHistorySheetText(memberPage), 'the newest snapshot shows the renamed character')
       .toContain(state.renamedName);
 
-    await L.setHistoryIndex(memberPage, bounds.max - 1, rows[1]);
+    await L.setHistoryIndex(memberPage, bounds.max - 1, replayable[1]);
     const rolledBack = await L.readHistorySheetText(memberPage);
     expect(rolledBack, 'one step back restores the pre-rename name').toContain(state.originalName);
     expect(rolledBack, 'and no longer shows the new one').not.toContain(state.renamedName);
 
     // A deeper rollback restores a trait value, not just a text field: before
     // the two Physical edits the attribute reads 7, not 9.
-    const physicalFirstEditIdx = rows.map((r, i) => ({ r, i }))
+    const physicalFirstEditIdx = replayable.map((r, i) => ({ r, i }))
       .filter(({ r }) => r.category === 'attributes' && r.name === 'Physical' && r.type === 'update')
       .map(({ i }) => i)
       .sort((a, b) => b - a)[0];
     expect(physicalFirstEditIdx, 'the Physical edits are in the log').toBeGreaterThan(0);
     const beforeRaise = bounds.max - physicalFirstEditIdx - 1;
-    await L.setHistoryIndex(memberPage, beforeRaise, rows[physicalFirstEditIdx + 1]);
+    await L.setHistoryIndex(memberPage, beforeRaise, replayable[physicalFirstEditIdx + 1]);
     const preRaise = await L.readHistorySheetText(memberPage);
     expect(preRaise, 'the pre-raise snapshot shows the creation value of Physical')
       .toMatch(new RegExp(`Physical\\s*${state.physicalBase}(\\D|$)`));

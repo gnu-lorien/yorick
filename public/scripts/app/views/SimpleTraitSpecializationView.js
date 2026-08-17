@@ -7,7 +7,8 @@ define([
 	"backbone",
     "../models/Description",
     "../collections/DescriptionCollection",
-], function( $, Backbone, Description, DescriptionCollection ) {
+    "../helpers/ReportError"
+], function( $, Backbone, Description, DescriptionCollection, ReportError ) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend({
@@ -83,9 +84,15 @@ define([
             _.defer(function() {
                 self.simpletrait.set_specialization(v);
                 self.character.update_trait(self.simpletrait).then(function (trait) {
+                    ReportError.clear();
                     window.location.hash = self.redirectSave({'self': self});
                 }).fail(function (error) {
+                    // A colliding name is genuinely rejected - the name never
+                    // persists - but until now the only trace was this
+                    // console.log, which no player ever sees. Report before
+                    // redirecting; the banner follows the redirect.
                     console.log("Couldn't specialize trait because of " + JSON.stringify(error));
+                    ReportError(error, "Couldn't rename this trait");
                     window.location.hash = self.redirectRemove({'self': self});
                 })
             });

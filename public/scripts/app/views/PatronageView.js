@@ -6,8 +6,9 @@ define([
     "backform",
     "bootstrap-datepicker",
     "moment",
-    "../helpers/UserWreqr"
-], function( $, Backbone, Marionette, Backform, datepicker, moment, UserChannel ) {
+    "../helpers/UserWreqr",
+    "../helpers/ReportError"
+], function( $, Backbone, Marionette, Backform, datepicker, moment, UserChannel, ReportError ) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
@@ -102,11 +103,46 @@ define([
             });
         },
         tagName: 'form',
-        render: function() {
-            this.form.render();
-            this.$el.enhanceWithin();
 
-            return this;
+        events: {
+            "click .patronage-delete": "delete_clicked"
+        },
+
+        /**
+         * R43: there was no way to delete a Patronage anywhere in the
+         * application - no button here, no control on the list rows, no route.
+         * A record created by mistake, or one that has to be revoked, could
+         * only be removed by someone with direct database access.
+         */
+        delete_clicked: function (e) {
+            var self = this;
+            e.preventDefault();
+            if (self.isNew || !self.model.id) {
+                return false;
+            }
+            $.mobile.loading("show");
+            self.model.destroy().then(function () {
+                ReportError.clear();
+                window.location.hash = "#administration/patronages";
+            }).fail(ReportError.on("Couldn't delete this patronage")).always(function () {
+                $.mobile.loading("hide");
+            });
+            return false;
+        },
+
+        render: function() {
+            var self = this;
+            self.form.render();
+            if (!self.isNew && self.model.id) {
+                // Only an existing record can be deleted; the "new patronage"
+                // route reuses this same view with an unsaved model.
+                $('<button type="button" class="patronage-delete ui-btn ui-btn-b ui-icon-delete ui-btn-icon-left"></button>')
+                    .text("Delete Patronage")
+                    .appendTo(self.$el);
+            }
+            self.$el.enhanceWithin();
+
+            return self;
         }
     } );
 

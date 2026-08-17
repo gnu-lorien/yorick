@@ -103,15 +103,62 @@ var crop_and_thumb = function(req, res) {
     });
 };
 
+/**
+ * Refuse a write that has nobody attached to it.
+ *
+ * Characters, the rows hanging off them, and uploads all belong to somebody, so
+ * a request carrying neither a user nor the master key has no business writing
+ * one. This is not theoretical: these classes granted create to "*", and a bare
+ * REST POST carrying only the public application id - no session token, no user
+ * - was accepted. Measured on a live server, an anonymous request could write a
+ * SimpleTrait and an ExperienceNotation onto a named player's character, and
+ * that player then saw both on their own sheet.
+ *
+ * database_seed/_SCHEMA.json asks for requiresAuthentication on create as well,
+ * but that is only a second line of defence: seed_db.js imports the schema file
+ * solely when the database has no users at all, so an already-seeded deployment
+ * keeps whatever class-level permissions its live _SCHEMA collection was
+ * created with. This guard is what protects those, and it runs ahead of the
+ * class-level check either way.
+ *
+ * It also settles requests that were previously answered badly or not at all.
+ * Omitting owner used to hang beforeSave("SimpleTrait") indefinitely - it walks
+ * off the missing pointer and calls neither response.success nor
+ * response.error - and an anonymous portrait POST with no file crashed
+ * crop_and_thumb, returning HTTP 500 or resetting the connection. Guarding at
+ * the top of each hook settles the request before the body can wander.
+ *
+ * No legitimate write path is affected. The character models
+ * (public/scripts/app/models/) only ever run for a logged-in user, building
+ * each row's ACL out of the character's own owner, and every save cloud code
+ * makes on a character's behalf passes useMasterKey, which sets request.master.
+ *
+ * Answers the request itself when it refuses, so callers read as:
+ *
+ *     if (!require_a_user(request, response, "Traits")) { return; }
+ *
+ * @return {boolean} true when the request may go ahead
+ */
+var require_a_user = function(request, response, noun) {
+    if (!request.master && !request.user) {
+        response.error(noun + " can only be changed by a logged in user.");
+        return false;
+    }
+    return true;
+};
+
 Parse.Cloud.beforeSave("TroupePortrait", function(request, response) {
+    if (!require_a_user(request, response, "Troupe portraits")) { return; }
     crop_and_thumb(request, response);
 });
 
 Parse.Cloud.beforeSave("CharacterPortrait", function(request, response) {
+    if (!require_a_user(request, response, "Character portraits")) { return; }
     crop_and_thumb(request, response);
 });
 
 Parse.Cloud.beforeSave("ReferendumPortrait", function(request, response) {
+    if (!require_a_user(request, response, "Referendum portraits")) { return; }
     crop_and_thumb(request, response);
 });
 
@@ -150,6 +197,11 @@ var get_vampire_change_acl = function(vampire) {
 };
 
 Parse.Cloud.beforeSave("Vampire", function(request, response) {
+    // Werewolf and ChangelingBetaSlice are both Parse.Object.extend("Vampire",
+    // ...) over this same underlying class, so this covers all three creature
+    // types.
+    if (!require_a_user(request, response, "Characters")) { return; }
+
     var tracked_texts = [
         "name",
         "clan",
@@ -164,7 +216,20 @@ Parse.Cloud.beforeSave("Vampire", function(request, response) {
         "wta_auspice",
         "wta_tribe",
         "wta_camp",
-        "wta_faction"
+        "wta_faction",
+        // R47a. Vampire and Werewolf text attributes were tracked from the
+        // start; the Changeling ones were simply never added, so a Changeling
+        // owned no `core` log row at all until it was renamed. That is an
+        // oversight of this allowlist, not a design choice - the log's purpose
+        // is a backend record of what really happened, in every venue.
+        //
+        // Long texts stay off this list deliberately (R47c): they can be large
+        // enough that logging them would bloat the trail, and
+        // `update_long_text` never calls `Vampire#save()` either, so this hook
+        // would not fire for them anyway. Belt and braces, both intended.
+        "ctdbs_kith",
+        "ctdbs_fealty_court",
+        "ctdbs_kith_group_type"
     ];
     var v = request.object;
     var desired_changes = _.intersection(tracked_texts, v.dirtyKeys());
@@ -181,8 +246,18 @@ Parse.Cloud.beforeSave("Vampire", function(request, response) {
     
     // TODO: Update the history permissions if troupes has changed
     
+    // `desired_changes`, not `dirtyKeys()`.
+    //
+    // This used to write a `core` row for *every* dirty key once any tracked
+    // one was among them, so a single save that happened to touch a text
+    // attribute also logged `change_count`, the trait arrays, and everything
+    // else in flight - as `old_text`/`new_text` pairs holding stringified
+    // objects. `tracked_texts` is an allowlist and has to govern what gets
+    // written, not merely whether anything does. Latent until R47a added the
+    // Changeling texts, which made a Changeling's creation picks trip the gate
+    // and produced 32 core rows where the venue expects a handful.
     var new_values = {};
-    _.each(v.dirtyKeys(), function(k) {
+    _.each(desired_changes, function(k) {
         new_values[k] = v.get(k);
     })
     var vToFetch = new Vampire({id: v.id});
@@ -233,6 +308,12 @@ var isMeaningfulChange = function (vc) {
 }
 
 Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
+    // Ahead of everything else: this hook copies the trait into a
+    // VampireChange audit row, so an unguarded anonymous write did not merely
+    // land a trait on somebody's sheet, it also wrote itself into the log the
+    // approvals workflow reads.
+    if (!require_a_user(request, response, "Traits")) { return; }
+
     console.log("beforeSave SimpleTrait");
     var vc = new Parse.Object("VampireChange");
     var modified_trait = request.object;
@@ -268,12 +349,21 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
         if (!isMeaningfulChange(vc)) {
             console.log("Update does not actually encode a change for trait " + (modified_trait.id ? modified_trait.get("name") : modified_trait.id));
             response.success();
+            // `return` ends this callback only, not the chain - the
+            // remaining `.then()`s still run. Hand them `undefined` and let
+            // them short-circuit explicitly, rather than letting
+            // `vampire.id` throw into the error handler and call
+            // `response.error()` after we have already succeeded.
             return;
         }
 
         console.log("beforeSave SimpleTrait Sending query for the vampire " + vc.get("owner").id + " because " + (modified_trait.id ? modified_trait.get("name") : modified_trait.id));
         return new Parse.Query("Vampire").get(vc.get("owner").id, {useMasterKey: true});
     }).then(function(vampire) {
+        if (_.isUndefined(vampire)) {
+            // Already responded above; nothing left to record.
+            return;
+        }
         console.log("beforeSave SimpleTrait Getting acl vampire " + vampire.id);
         var acl = get_vampire_change_acl(vampire);
         vc.setACL(acl);
@@ -281,6 +371,9 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
         console.log("beforeSave SimpleTrait Sending save acl vampire " + vampire.id);
         return vc.save({}, {useMasterKey: true});
     }).then(function (vc) {
+        if (_.isUndefined(vc)) {
+            return;
+        }
         request.object.set("definition_change", vc);
         response.success();
         if (!request.object.id) {
@@ -320,6 +413,8 @@ Parse.Cloud.afterSave("SimpleTrait", function(request) {
 });
 
 Parse.Cloud.beforeDelete("SimpleTrait", function(request, response) {
+    if (!require_a_user(request, response, "Traits")) { return; }
+
     var vc = new Parse.Object("VampireChange");
     var trait = request.object;
     console.log("beforeDelete SimpleTrait Getting the server trait data " + trait.id);
@@ -356,6 +451,133 @@ Parse.Cloud.beforeDelete("SimpleTrait", function(request, response) {
         error.message = failStr;
         response.error(error);
     });
+});
+
+// R47b - the audit trail for experience.
+//
+// Nothing hooked `ExperienceNotation` and the XP fields are absent from
+// `tracked_texts`, so an add, an edit and a delete together produced zero log
+// rows - and a hand-written XP award is the thing a storyteller does most
+// often. The log is immutable by design, so an *edited* notation appends a new
+// row rather than amending the original, which is the right shape anyway: the
+// point is to show what really happened.
+//
+// Only these four fields count as an operation. `earned` and `spent` are the
+// running balances, and `Character._propagate_experience_notation_change`
+// re-saves every row above an edited one to keep them correct; logging those
+// re-saves would bury the operation that caused them under its own bookkeeping.
+var EXPERIENCE_NOTATION_TRACKED = [
+    "reason",
+    "entered",
+    "alteration_earned",
+    "alteration_spent"
+];
+
+// Only the values the operation carries. The previous values would need a
+// read-back of the stored row, and doing that inline is exactly what broke
+// propagation - see the note above the hooks. What the ruling asks for is the
+// operation, its reason and its deltas, and all three are on the object here.
+var experience_notation_change = function (notation, type, serverData, user) {
+    var vc = new Parse.Object("VampireChange");
+    vc.set({
+        "name": notation.get("reason"),
+        "category": "experience",
+        "owner": notation.get("owner"),
+        "type": type,
+        "old_value": serverData.alteration_earned,
+        "value": notation.get("alteration_earned"),
+        "old_cost": serverData.alteration_spent,
+        "cost": notation.get("alteration_spent"),
+        "old_text": serverData.reason,
+        "new_text": notation.get("reason"),
+        "instigator": user
+    });
+    return vc;
+};
+
+var save_experience_notation_change = function (notation, vc) {
+    var owner = notation.get("owner");
+    if (!owner || !owner.id) {
+        // Nothing to attach the record to, and no ACL to derive.
+        return Parse.Promise.as(null);
+    }
+    return new Parse.Query("Vampire").get(owner.id, {useMasterKey: true}).then(function (vampire) {
+        vc.set("owner", vampire);
+        vc.setACL(get_vampire_change_acl(vampire));
+        return vc.save({}, {useMasterKey: true});
+    });
+};
+
+// The audit record is written *after* the hook has already let the operation
+// through, never before it.
+//
+// The first cut of this did the recording inline - fetch the stored row, write
+// the VampireChange, then `response.success()`. That reliably broke XP
+// propagation: editing a notation's date re-saves every row above it in one
+// `Parse.Object.saveAll`, and holding each of those saves open on a
+// round-trip of its own left the running balances unwritten. The whole ledger
+// went stale on a single date edit (xp-history 60 caught it).
+//
+// An audit trail must not be able to break the thing it observes, so the
+// decision is made here - `dirtyKeys()` is only available in `beforeSave` -
+// and the write is dispatched behind the response. A failed record is logged
+// and nothing else; the operation still stands.
+var record_experience_notation = function (notation, type, user) {
+    save_experience_notation_change(
+        notation,
+        experience_notation_change(notation, type, {}, user)
+    ).fail(function (error) {
+        console.log("Failed to record an ExperienceNotation " + type + ": " +
+            ((error && error.message) ? error.message : JSON.stringify(error)));
+    });
+};
+
+// ExperienceNotation is the one with teeth among the character's child rows:
+// an anonymous write to it was measured landing 99999 earned XP on another
+// player's character, visible to that player on their own sheet. The guard runs
+// first, ahead of the audit record - refusing the write and then recording it
+// would be worse than not recording it at all.
+Parse.Cloud.beforeSave("ExperienceNotation", function(request, response) {
+    if (!require_a_user(request, response, "Experience entries")) { return; }
+
+    var notation = request.object;
+    var is_new = _.isUndefined(notation.id);
+
+    // Propagation re-saves every row above an edited one to correct its
+    // running balance; only `earned`/`spent` change there. Recording those
+    // would bury the operation that caused them under its own bookkeeping.
+    if (!is_new && 0 === _.intersection(EXPERIENCE_NOTATION_TRACKED, notation.dirtyKeys()).length) {
+        return response.success();
+    }
+
+    response.success();
+    record_experience_notation(notation, is_new ? "define" : "update", request.user);
+});
+
+Parse.Cloud.beforeDelete("ExperienceNotation", function(request, response) {
+    // A delete is a write. The incoming security work guarded the save; the
+    // same argument applies here, and this hook did not exist to guard when it
+    // was written.
+    if (!require_a_user(request, response, "Experience entries")) { return; }
+
+    response.success();
+    record_experience_notation(request.object, "remove", request.user);
+});
+
+// The remaining character child rows. Each is created client-side by the
+// character models as the logged-in owner, and touched by cloud code only with
+// the master key, so the guard is the whole of the hook - there is no existing
+// behaviour here to sit in front of, unlike SimpleTrait, Vampire and
+// ExperienceNotation.
+
+Parse.Cloud.beforeSave("LongText", function(request, response) {
+    if (!require_a_user(request, response, "Character texts")) { return; }
+    response.success();
+});
+
+Parse.Cloud.beforeSave("VampireCreation", function(request, response) {
+    if (!require_a_user(request, response, "Character creation records")) { return; }
+    response.success();
 });
 
 Parse.Cloud.afterSave("Patronage", function(request) {
@@ -696,44 +918,52 @@ Parse.Cloud.define("vote_for_referendum", function(request, response) {
     })
     */
     
-    var referendum, patronage, ballot;
-    new Parse.Query("Referendum").get(referendum_id).fail(function (error) {
-        response.error("Couldn't find referendum " + referendum_id + " because of " + JSON.stringify(error));
-    }).then(function (found) {
+    // Every refusal below returns a *rejected* promise so that it actually
+    // terminates the chain.
+    //
+    // The previous shape was a run of `.then(...).fail(...)` pairs in which a
+    // refusal did `response.error(msg); return;`. That ends only its own
+    // callback: the next `.then()` still ran, received `undefined`, read that
+    // as "no existing ballot", and saved one - with `casterpatronagestatus`
+    // hardcoded `true`. A non-patron was told their vote was refused and had
+    // it recorded anyway, as though they were a patron. The interleaved
+    // `.fail()` handlers made it worse: each returned a plain value, which
+    // resolves a Parse.Promise, so a genuine error was converted back into a
+    // success part-way down the chain.
+    var referendum, patronage, ballot, caster_is_patron = false;
+
+    new Parse.Query("Referendum").get(referendum_id).then(function (found) {
         referendum = found;
         var q = new Parse.Query("Patronage")
             .equalTo("owner", request.user)
             .descending("expiresOn");
         return q.first({useMasterKey: true});
-    }).fail(function (error) {
-        response.error("Error finding patronage " + JSON.stringify(error));
+    }, function (error) {
+        return Parse.Promise.error("Couldn't find referendum " + referendum_id + " because of " + JSON.stringify(error));
     }).then(function (found) {
-        if (_.isUndefined(found)) {
-            response.error("No patronage found");
-            return;
+        if (_.isUndefined(found) || !found) {
+            return Parse.Promise.error("No patronage found");
         }
         patronage = found;
-        
+
         var expiredSeconds = new Date(patronage.get("expiresOn")).getTime();
         var nowSeconds = new Date().getTime();
         if (expiredSeconds < nowSeconds) {
-            response.error("Latest patronage is expired");
-            return;
+            return Parse.Promise.error("Latest patronage is expired");
         }
-        
+        // Recorded from the check that just passed, rather than asserted.
+        caster_is_patron = true;
+
         var q = new Parse.Query("ReferendumBallot")
             .equalTo("owner", referendum)
             .equalTo("caster", request.user);
         return q.first({useMasterKey: true});
-    }).fail(function (error) {
-        response.error("Unknown failure trying to find existing ballots. " + JSON.stringify(error));
     }).then(function (found) {
         console.log("Hunted for referendums and now seeing what I found " + JSON.stringify(found));
-        if (!_.isUndefined(found)) {
-            response.error("Existing ballot found." + JSON.stringify(found));
-            return;
+        if (!_.isUndefined(found) && found) {
+            return Parse.Promise.error("Existing ballot found." + JSON.stringify(found));
         }
-        
+
         console.log("Creating the ballot");
         ballot = new Parse.Object("ReferendumBallot");
         var acl = new Parse.ACL;
@@ -746,19 +976,93 @@ Parse.Cloud.define("vote_for_referendum", function(request, response) {
         ballot.setACL(acl);
         ballot.set("owner", referendum);
         ballot.set("caster", request.user);
-        ballot.set("casterpatronagestatus", true);
+        ballot.set("casterpatronagestatus", caster_is_patron);
         ballot.set("choice", request.params.ballot_option);
-        
+
         console.log("Saving the ballot");
-        return ballot.save();
-    }).fail(function (error) {
-        console.log("Ballot failed to save");
-        response.error("Couldn't properly cast ballot because " + JSON.stringify(error));
+        // With the master key, because ReferendumBallot's class-level
+        // permissions now refuse create to everyone. This function is where the
+        // patronage requirement and the one-ballot-per-user check above
+        // actually live, and while the class granted create to "*" a client
+        // could skip all of it and POST a ballot directly - any choice, any
+        // caster, any ACL, as many times as it liked. Making this the only
+        // writer is the point; saving as the user again would reopen the hole.
+        //
+        // The interleaved `.fail()` that used to sit here is gone with R11: it
+        // returned a plain value, which resolves a Parse.Promise, so it turned
+        // a refusal back into a success part-way down the chain. The single
+        // terminal handler below reports every failure now.
+        return ballot.save({}, {useMasterKey: true});
     }).then(function (saved) {
         console.log("Ballot saved");
         response.success("Ballot has been cast");
-    })
+    }, function (error) {
+        console.log("Ballot was not cast: " + JSON.stringify(error));
+        response.error(_.isString(error) ? error : ((error && error.message) ? error.message : JSON.stringify(error)));
+    });
 });
+
+/** Resolve to `true` only for a master-key call or a member of an admin role. */
+var require_administrator = function (request) {
+    if (request.master) {
+        return Parse.Promise.as(true);
+    }
+    if (!request.user) {
+        return Parse.Promise.error("Unauthorized: Must be logged in.");
+    }
+    return new Parse.Query(Parse.Role)
+        .equalTo("users", request.user)
+        .find({useMasterKey: true})
+        .then(function (roles) {
+            var isAdmin = _.some(roles, function (r) {
+                return _.includes(["Administrator", "SiteAdministrator"], r.get("name"));
+            });
+            if (!isAdmin) {
+                return Parse.Promise.error("Unauthorized: Administrator access is required.");
+            }
+            return Parse.Promise.as(true);
+        });
+};
+
+// R51, second half. Parse never returns another user's `email` to a client -
+// it is private to that user - so `AdministrationUserView`'s reset button read
+// an empty address off its own copy of the record and failed with "you must
+// provide an email" even once an adapter was configured. An administrator does
+// not need to see the address to reset it, so the lookup happens here under the
+// master key and the address is never sent to the browser.
+Parse.Cloud.define("request_password_reset_for", function(request, response) {
+    var user_id = request.params.user_id;
+    require_administrator(request).then(function () {
+        if (!user_id) {
+            return Parse.Promise.error("No user was named.");
+        }
+        return new Parse.Query(Parse.User).get(user_id, {useMasterKey: true});
+    }).then(function (user) {
+        var email = user.get("email");
+        if (!email) {
+            return Parse.Promise.error("That user has no email address on file.");
+        }
+        return Parse.User.requestPasswordReset(email);
+    }).then(function () {
+        response.success(true);
+    }, function (error) {
+        response.error(_.isString(error) ? error : error.message);
+    });
+});
+
+// Only while the in-memory capture adapter is in use - see index.js and
+// cloud/MemoryEmailAdapter.js - and only for administrators even then, because
+// the captured bodies carry live password-reset links. With a real mail
+// provider configured this function does not exist at all.
+if (global.__yorickCapturedEmail) {
+    Parse.Cloud.define("get_captured_emails", function(request, response) {
+        require_administrator(request).then(function () {
+            response.success(global.__yorickCapturedEmail.captured());
+        }, function (error) {
+            response.error(_.isString(error) ? error : error.message);
+        });
+    });
+}
 
 Parse.Cloud.define("get_my_patronage_status", function(request, response) {
     if (_.isUndefined(request.user)) {
@@ -771,23 +1075,22 @@ Parse.Cloud.define("get_my_patronage_status", function(request, response) {
     var q = new Parse.Query("Patronage")
         .equalTo("owner", request.user)
         .descending("expiresOn");
-    q.first({useMasterKey: true}).fail(function (error) {
-        response.error("Error finding patronage " + JSON.stringify(error));
-    }).then(function (found) {
-        if (_.isUndefined(found)) {
-            response.success(false);
-            return;
+    // Same flaw R11 fixes in `vote_for_referendum`: an interleaved `.fail()`
+    // that returns a plain value resolves the chain, so a genuine query
+    // error used to produce `response.error(...)` *and* then
+    // `response.success(false)` from the following `.then()`.
+    q.first({useMasterKey: true}).then(function (found) {
+        if (_.isUndefined(found) || !found) {
+            return response.success(false);
         }
         patronage = found;
-        
+
         var expiredSeconds = new Date(patronage.get("expiresOn")).getTime();
         var nowSeconds = new Date().getTime();
-        if (expiredSeconds < nowSeconds) {
-            response.success(false);
-        } else {
-            response.success(true);
-        }
-    })
+        response.success(expiredSeconds >= nowSeconds);
+    }, function (error) {
+        response.error("Error finding patronage " + JSON.stringify(error));
+    });
 });
 
 function matchUserInRoles(all_roles_to_check, user_id) {
