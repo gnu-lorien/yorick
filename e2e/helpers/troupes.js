@@ -219,16 +219,32 @@ async function readStaff(page, troupeId) {
  * with no page transition to wait on, so returning as soon as the hash changes
  * races the save: the roster read that follows comes back empty and the test
  * fails somewhere unrelated to the actual cause.
+ *
+ * Waiting for the route's *own* destination - not merely for the loader - is
+ * what makes that safe. `character_join_troupe` ends by calling
+ * `changePage("#troupe")` at the tail of an async chain, so leaving while it is
+ * still in flight means the next navigation and this one both finish, in
+ * whichever order they please. Measured: the roster read that follows landed on
+ * the roster hash with `#troupe` still the active page, because the join's
+ * `changePage` arrived last and won. That looked exactly like a swallowed
+ * navigation and was papered over by `navigateToHash`'s reload fallback; it is
+ * really just this race.
  */
 async function joinTroupe(page, characterId, troupeId, { timeout = 30000 } = {}) {
-  await navigateToHash(page, `character/${characterId}/troupe/${troupeId}/join`);
+  await navigateToHash(page, `character/${characterId}/troupe/${troupeId}/join`, '#troupe');
   await waitForJqmLoader(page);
   await waitForMembership(page, characterId, troupeId, true, timeout);
 }
 
-/** Remove a character from a troupe and wait for the removal to land. */
+/**
+ * Remove a character from a troupe and wait for the removal to land.
+ *
+ * `character_leave_troupe` redirects to `#character?<cid>` from an `.always()`,
+ * so that - not the troupe page - is where a completed leave settles. Same race
+ * as `joinTroupe` above.
+ */
 async function leaveTroupe(page, characterId, troupeId, { timeout = 30000 } = {}) {
-  await navigateToHash(page, `character/${characterId}/troupe/${troupeId}/leave`);
+  await navigateToHash(page, `character/${characterId}/troupe/${troupeId}/leave`, '#character');
   await waitForJqmLoader(page);
   await waitForMembership(page, characterId, troupeId, false, timeout);
 }

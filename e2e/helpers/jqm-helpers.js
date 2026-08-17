@@ -8,7 +8,19 @@
  * sleeping for a fixed interval.
  */
 
-const DEFAULT_TIMEOUT = 20000;
+const DEFAULT_TIMEOUT = parseInt(process.env.E2E_NAV_TIMEOUT || '20000', 10);
+
+/**
+ * Diagnostic switch for R28/R33, off by default.
+ *
+ * `navigateToHash` has two fallback tiers below its first wait: re-running the
+ * route handler, then reloading the whole app. Both exist to paper over
+ * navigations the application swallows. Setting `E2E_NAV_FALLBACK` to `none`
+ * (fail on the first wait) or `rerun` (allow the re-run, refuse the reload)
+ * measures which tier is actually load-bearing and for which tests, instead of
+ * deleting them and reading a pile of failures with no attribution.
+ */
+const NAV_FALLBACK = process.env.E2E_NAV_FALLBACK || 'all';
 
 /** Wait for RequireJS, jQuery Mobile, and the Parse SDK to finish bootstrapping. */
 async function waitForAppReady(page, timeout = DEFAULT_TIMEOUT) {
@@ -121,6 +133,9 @@ async function navigateToHash(page, hash, targetSelector = null, timeout = DEFAU
   try {
     await waitForActivePage(page, asId, timeout);
   } catch (first) {
+    if (NAV_FALLBACK === 'none') {
+      throw new Error(`${first.message} (E2E_NAV_FALLBACK=none: no retry attempted)`);
+    }
     // Several routes only call `$.mobile.changePage` after a view's `register`
     // promise resolves, and some of those short-circuit when handed a model or
     // page they already hold — leaving the hash updated but the previous page
@@ -137,10 +152,22 @@ async function navigateToHash(page, hash, targetSelector = null, timeout = DEFAU
       await waitForActivePage(page, asId, timeout);
       return;
     } catch (second) {
-      // Some views strand the router outright — the approval view in particular
-      // will not hand off to an unrelated route, and re-running the handler
-      // changes nothing. Reloading the app is heavy but reliable, and the Parse
-      // session lives in localStorage so the user stays signed in.
+      if (NAV_FALLBACK === 'rerun') {
+        throw new Error(`${second.message} (E2E_NAV_FALLBACK=rerun: reload fallback refused)`);
+      }
+      // Some navigations are swallowed outright and re-running the handler
+      // changes nothing. Measured cause: jQuery Mobile queues a `changePage`
+      // issued while another transition is running and drains the queue one
+      // entry per release, oldest first, so a stale transition can replay and
+      // win while the current one is left in the queue with nothing to drain
+      // it. Confirmed by stack trace on `#long-text` -> `#character`, where the
+      // character route completed and called `changePage("#character")` and was
+      // then overridden from `_releaseTransitionLock`. Waiting does not help
+      // (measured to two minutes). Not the approval view, despite R28's claim -
+      // that hands off correctly under a passive probe.
+      //
+      // Reloading the app is heavy but reliable, and the Parse session lives in
+      // localStorage so the user stays signed in.
       await page.goto('/');
       await waitForAppReady(page, timeout);
       await page.evaluate((h) => { window.location.hash = '#' + h; }, cleanHash);
