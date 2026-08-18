@@ -64,16 +64,62 @@ cost of running old and new side by side.
 ## Constraints
 
 - **Same app.** Identical UI and behavior. Backbone/Marionette/RequireJS stay.
-- **Live players on real data.** Production runs an old MongoDB (exact version
-  unknown — Phase 0 establishes it).
+- **Live players on real data.** Production topology established from the
+  `greensboro` branch — see below.
 - **One big branch, one cutover.** User's explicit choice. Noted tension with
   live data; the database rehearsal in Phase 7 is what buys back the safety.
 - **Marionette pinned at 2.x.** v3 renamed `ItemView`/`LayoutView`/`CompositeView`,
   v4 removed them. 88 usages. Upgrading Marionette is a different project.
 - **Facebook login deleted, not migrated.** 3 `Parse.FacebookUtils` sites,
   `helpers/FacebookLogin.js`, `log_in_with_facebook.png`, and the `oauth.facebook`
-  block in `index.js`.
+  block in `index.js`. Partially done already on `greensboro`
+  (`2143924 Facebook isn't hooked up so hide the buttons`).
 - **Windows dev environment.** Dual-stack tooling must not assume POSIX.
+
+### Production topology (from `greensboro`, the live branch)
+
+| Layer | What it is | Evidence |
+|---|---|---|
+| Database | **MongoDB Atlas** (managed) | `ca1de31 Update to minimum version of Parse that works with Atlas`; `73a5146 Change the environment variable to DB_URI` |
+| API | **Heroku** — `greensboro-yorick.herokuapp.com` | `siteconfig.js: ConfigGreensboro`; `Procfile: web: npm start` |
+| Admin | `parse-dashboard@^2.0.5` on a second dyno | `ProcfileDashboard: web: npm run dashboard` |
+| Front end | **Netlify**, built by `gulp greensboro` | `gulp.task('greensboro', ...)`; commits `017048f`/`ef66548`/`3fc5e7e` fighting Netlify build stalls |
+| Runtime pin | `engines: { node: "14.x", npm: "6.x" }` | greensboro `package.json` |
+| Last touched | **July 23, 2022** | `c2340f0` |
+
+**Atlas is the single biggest de-risking fact in this document.** The plan was
+written assuming an unknown, self-hosted, possibly-3.x MongoDB requiring five or
+six sequential in-place major upgrades. Atlas is managed and force-upgrades its
+shared tiers, so the cluster is very likely already at 6.0+. Phase 7 shrinks
+from "the riskiest phase" to "check the cluster version, and use Atlas's own
+snapshot/restore for the rehearsal."
+
+### The branch divergence problem
+
+`greensboro` and `main` share a merge base from **January 2020** and have
+diverged 48 commits (greensboro) to 69 (main). This working branch is 58 commits
+past `main` and 127 past `greensboro`.
+
+The reassuring part: this is **not** a feature-reconciliation problem.
+`greensboro` is an older application-code snapshot carrying production
+environment wiring. The game-rule changes that looked greensboro-only —
+Luminary Disciplines (`704efbb`) and the Ancilla skills cost
+(`12b340b`, `generation == 1` → `generation < 3`) — are **already present on
+this branch** at `BNSMETV1_VampireCosts.js:191,215-219` and `Vampire.js:37`.
+They were reconciled by content even though the commits aren't in the ancestry.
+
+The real problem: **nobody has ever deployed this branch's application code to
+production.** The wiring that makes production work exists only on `greensboro`:
+
+- `DB_URI` env var (this branch reads `MONGODB_URI`)
+- `engines: node 14.x / npm 6.x` — **this pin blocks parse-server 9, which needs
+  Node ≥20.19.** It must move on Netlify and Heroku before anything else lands.
+- `parse-dashboard` + `ProcfileDashboard`
+- The `siteconfig-greensboro` gulp target and `ConfigGreensboro` block
+- `cloud: "/home/ubuntu/workspace/cloud/main.js"` — a dead Cloud9 path still in
+  greensboro's `index.js`
+
+That wiring gets ported onto this branch, not merged from it.
 
 ### Measured coupling surface
 
@@ -97,16 +143,23 @@ cost of running old and new side by side.
 | `parse-server` | `=2.8.4` | `9.10.0` | depends on `parse@8.6.0`; the pairing is not free — SDK 5 was *incompatible* with Server 6 |
 | `parse` (client + node) | `1.5.0` / `1.9.0` | `8.6.0` | `dist/parse.js` has an AMD wrapper and sets `globalThis.Parse` |
 | Node | 8 (Travis) | 22.13+ or 24.11+ | engines: `>=20.19 <21 \|\| >=22.13 <23 \|\| >=24.11 <25`; local is 24.11.1 |
-| MongoDB | 3.x/4.x (unconfirmed) | **8.0.4** | parse-server 9 CI covers 7.0.16, 8.0.4, 8.3.4. MongoDB 7 hits EOL August 2026 — target 8. |
+| MongoDB | **Atlas**, version TBC | **8.0.4** | parse-server 9 CI covers 7.0.16, 8.0.4, 8.3.4. MongoDB 7 hits EOL August 2026 — target 8. |
+| Netlify/Heroku runtime | `node 14.x`, `npm 6.x` (pinned) | Node 22 or 24 | greensboro `engines` block. Blocks parse-server 9. |
 
 ## Premises
 
-All seven agreed without revision.
+All seven agreed without revision. Two were **revised after the fact** when the
+`greensboro` production branch was located — noted inline.
 
 1. **The client Parse migration is a bounded shim problem, not architectural.**
    ~250 lines validated by the E2E suite, instead of ~685 hand edits.
-2. **The MongoDB 3.x/4.x → 8.0 migration is the real risk** — the only
-   irreversible step touching player data. It gets its own rehearsal.
+2. ~~**The MongoDB 3.x/4.x → 8.0 migration is the real risk.**~~ **REVISED:**
+   production is on **MongoDB Atlas**, which is managed and force-upgrades
+   shared tiers. The five-or-six-hop in-place upgrade chain probably doesn't
+   exist. The rehearsal still happens, using Atlas snapshots. **The real risk
+   moved to the branch divergence** — no one has deployed this branch's
+   application code to production, and the `node 14.x` engines pin on
+   Netlify/Heroku actively blocks parse-server 9.
 3. **Marionette stays at 2.x, pinned and vendored.**
 4. **The four runtime CDN dependencies get vendored locally regardless of scope** —
    a live availability and supply-chain risk today, not a modernization nicety.
@@ -162,10 +215,31 @@ as a database migration.
 **Phase 0 — Establish the oracle.** Run the full suite on current HEAD and record
 per-test status to `baseline-legacy.json`. The plan rests on that suite being a
 trustworthy oracle, and "444 passed, 0 failed" is currently a claim from commit
-`b85f1a7`'s message, not an observed run. In parallel, establish production
-ground truth: MongoDB version, host, backup mechanism, parse-server topology.
-*Exit:* a recorded baseline and a written answer to "what version is production
-MongoDB."
+`b85f1a7`'s message, not an observed run. *Exit:* a recorded baseline.
+
+**Phase 0.5 — Close the production gap.** *(Added after `greensboro` was located.
+This is now the true first risk, ahead of any SDK work.)*
+
+1. Read the **Atlas cluster version and tier**. If it's ≥7.0, premise 2's
+   migration chain evaporates and Phase 7 becomes a snapshot-restore rehearsal.
+   If it's still on a legacy shared tier, that's the one thing in this project
+   that could genuinely block it.
+2. Confirm the **Heroku dyno** (`greensboro-yorick`) stack and Node version, and
+   whether the `parse-dashboard` dyno is still running.
+3. Confirm the **Netlify** site, its build command (`gulp greensboro`), and its
+   Node pin.
+4. **Port the production wiring onto this branch** — `DB_URI`, the
+   `siteconfig-greensboro` target and `ConfigGreensboro` block,
+   `ProcfileDashboard`, and the dead Cloud9 `cloud:` path removed. Do NOT carry
+   over `engines: node 14.x`; that pin has to rise to 22 or 24 or parse-server 9
+   cannot run.
+5. **Deploy this branch's application code to a staging Heroku dyno + Netlify
+   preview against an Atlas snapshot, unchanged, before upgrading anything.**
+   Nobody has ever deployed this lineage to production. Prove the 58-commit gap
+   deploys *before* stacking an SDK migration on top of it.
+
+*Exit:* this branch, with no dependency changes, running in a staging clone of
+production against restored Atlas data, with the E2E suite green against it.
 
 **Phase 1 — Build the differential harness.** Parameterize `index.js` on
 `YORICK_STACK=legacy|modern`. Legacy keeps `parse-server@2.8.4` + in-memory Mongo
@@ -203,38 +277,49 @@ cannot run. Move to `karma-chrome-launcher` headless (already in devDependencies
 or delete them and let Playwright carry coverage. Decide explicitly; don't leave
 them as decoration.
 
-**Phase 7 — Database rehearsal.** `mongodump` the single application database
-(not `admin`/`config`), restore into a fresh MongoDB 8.0.4, and run the full
-suite against the restored copy. The "never skip major versions" guidance is
-about cluster metadata and system databases; Yorick's data is ordinary documents
-plus Parse's `_SCHEMA` collection, so dump/restore sidesteps the 3.x→8.0 chain.
-The suite verifies the restore before anyone touches production. *Exit:* full
-suite green against restored production data.
+**Phase 7 — Database rehearsal.** Restore an **Atlas snapshot** into a fresh
+MongoDB 8.0.4 cluster and run the full suite against it. If the production
+cluster is already ≥7.0 this is a tier/version bump, not a migration. If it's on
+a legacy shared tier, fall back to `mongodump` of the single application
+database (not `admin`/`config`) — Yorick's data is ordinary documents plus
+Parse's `_SCHEMA` collection, so dump/restore sidesteps the sequential-upgrade
+chain that applies to cluster metadata. Either way the suite verifies the restore
+before anyone touches production. *Exit:* full suite green against restored
+production data.
 
-**Phase 8 — Cutover.** Single deploy. Keep the legacy stack running as a live
-rollback target, not just a git SHA.
+**Phase 8 — Cutover.** Single deploy to the Heroku dyno and Netlify site. Keep
+the legacy stack running as a live rollback target, not just a git SHA.
 
 **Follow-on (B).** jscodeshift codemod retiring the promise shim across 456 sites,
 landed separately against a green production baseline.
 
 ## Open Questions
 
-1. **What MongoDB version is production actually on?** Everything in Phase 7
-   depends on it. Phase 0 resolves it. If it turns out to be 6.0+, the migration
-   collapses to a routine upgrade.
-2. **Where does production actually run?** `Procfile` says Heroku, `siteconfig.js`
-   names `api.undergroundtheater.org`, a dead Cloud9 host, and a
-   `young-plateau-55863.herokuapp.com`. The gulp build has separate
-   `pubstorm`/`patron`/`heroku` targets. Which of these is live is unresolved.
-3. **What is the backup/restore story today?** Phase 7 assumes a `mongodump` of
-   production is obtainable and restorable. If it isn't, that's the first thing to
-   fix, ahead of any upgrade work.
+*Questions 1-3 were answered by the `greensboro` branch; what remains is the
+narrower version of each.*
+
+1. **What MongoDB version is the Atlas cluster on, and what tier?** Answers
+   whether Phase 7 is a snapshot restore or a real migration. Everything about
+   the project's risk profile hinges on this one number. Phase 0.5 resolves it.
+2. **Does this branch's application code deploy to production at all?** 58
+   commits past `main`, 127 past `greensboro`, merge base January 2020. The
+   application code has never run on the production topology. This is now the
+   highest-uncertainty item in the plan and Phase 0.5 exists to retire it.
+3. **Is the `parse-dashboard` dyno still running, and is it in scope?**
+   `parse-dashboard@2.0.5` is as old as everything else and has its own
+   parse-server compatibility floor. It may need to move in lockstep or be
+   dropped.
 4. **Does `jimp` 0.2.28 → modern require a thumbnail rewrite?** The `getBuffer`
    /`scaleToFit` callback API in `cloud/main.js` changed. Scoped in Phase 4 but
    not yet sized.
 5. **How much diff noise will the 397 tests produce?** Some will differ for
    timing and ordering reasons. Phase 1 budgets a triage pass, but the actual
    noise floor is unknown until measured.
+6. **Are there production-only content or rules changes still unreconciled?**
+   Luminary Disciplines and the Ancilla skills cost both turned out to already be
+   on this branch, and `955557e` shows the Description catalogue was refreshed
+   from a Greensboro export. That's a good track record, but it was verified by
+   spot-check, not exhaustively.
 
 ## Success Criteria
 
@@ -253,40 +338,56 @@ landed separately against a green production baseline.
 
 ## Distribution Plan
 
-Existing deployment pipeline covers this — the app is a web service with gulp
-build targets (`pubstorm`, `patron`, `heroku`) and a Heroku `Procfile`. Two
+Existing deployment pipeline covers this: Netlify serves the `gulp greensboro`
+build, a Heroku dyno runs parse-server, and MongoDB Atlas holds the data. Three
 changes are in scope:
+
+- **Raise the Node pin.** `engines: { node: "14.x", npm: "6.x" }` on `greensboro`
+  must become Node 22 or 24 on both Netlify and Heroku. parse-server 9 will not
+  start otherwise. This is a prerequisite, not a cleanup.
 
 - Replace Travis (Node 8, dead) with GitHub Actions running the Playwright suite
   on Node 22 and 24.
-- Reconcile the gulp build targets against whichever host is actually live
-  (Open Question 2). Dead targets get deleted rather than carried forward.
+- Delete the dead gulp targets. `pubstorm`, `patron`, `heroku`, and
+  `aftertwilight` all point at hosts that are not production. Only `greensboro`
+  is live. Carrying four dead build targets is how the "where does this deploy?"
+  question got hard in the first place.
 
 ## Next Steps
 
-1. **Phase 0, first half:** run `npm run test:e2e` on current HEAD and record the
-   result. Do this before anything else — it's cheap and everything leans on it.
-2. **Phase 0, second half:** log into the production host and record the MongoDB
-   version, the parse-server deployment, and whether a restorable backup exists.
-3. **Phase 1:** build the differential harness. `YORICK_STACK` switch in
-   `index.js`, Playwright JSON reporter, `diff-runs.js`.
-4. **Phase 2:** write `parse-compat/` and swap the SDK. This is the phase the
-   whole plan was reframed around; it should feel anticlimactic.
+1. **Phase 0:** run `npm run test:e2e` on current HEAD and record the result.
+   Cheap, and everything leans on it.
+2. **Phase 0.5a:** read the Atlas cluster version and tier. One number, and it
+   determines whether Phase 7 is a snapshot restore or a real migration.
+3. **Phase 0.5b:** port the production wiring from `greensboro` onto this branch
+   — `DB_URI`, `siteconfig-greensboro`, `ProcfileDashboard` — and raise the Node
+   pin off 14.x.
+4. **Phase 0.5c:** deploy this branch, dependencies unchanged, to a staging
+   Heroku dyno and Netlify preview against restored Atlas data. Prove the
+   58-commit gap deploys before stacking an SDK migration on it.
+5. **Phase 1:** build the differential harness.
+6. **Phase 2:** write `parse-compat/` and swap the SDK. It should feel
+   anticlimactic.
 
 ## The Assignment
 
-**Run the test suite and go look at the database.** Not the shims, not the SDK
-swap — those are the fun parts and they'll still be there tomorrow.
+**Read one number: the Atlas cluster version.** Then deploy this branch, with no
+dependency changes at all, to a staging clone of production.
 
-The entire plan rests on two facts neither of us has actually observed: that the
-397 tests pass on current HEAD, and what version MongoDB production is running.
-Everything above is built on a commit message and an inference from
-`parse-server@=2.8.4`. If the suite has drifted red, the oracle is broken and
-Approach C doesn't work as designed. If production MongoDB turns out to be 6.0+,
-Phase 7 collapses from the riskiest phase to a routine upgrade and the whole
-project gets shorter.
+The `greensboro` branch changed the shape of this project. Production is on
+managed Atlas, not an unknown self-hosted MongoDB — which likely deletes the
+scariest phase in the plan. But it surfaced something worse in its place: the
+branch carrying 397 tests and the R1-R51 security remediation has **never been
+deployed to production**. Merge base January 2020. 58 commits past `main`, 127
+past `greensboro`, and the production runtime is pinned to `node 14.x`, which
+parse-server 9 cannot run on.
 
-Two commands and one SSH session. Do it before writing a line of shim.
+So the risk isn't the Parse migration, and it probably isn't the database
+either. It's that there are two Yoricks — the one that's tested and the one
+that's running — and nobody has ever proven the first can become the second.
+
+Prove that with zero dependency changes first. Then the SDK swap is just an SDK
+swap.
 
 ## What I noticed about how you think
 
