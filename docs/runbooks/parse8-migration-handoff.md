@@ -148,7 +148,46 @@ cycle (see `always()` below).
 
 ---
 
-## Start here: the creation cluster (7 of the 18)
+## Start here: `instanceof Backbone.Model` is blind to `Parse.Object`
+
+**This is the biggest single defect and it was found last, by reading the server
+error log — which nobody had looked at.** Check `logs/parse-server.err.*` early
+and often.
+
+```
+768  Invalid field name: _compatPending
+ 34  Invalid field name: _objCount
+```
+
+The compat layer's own internals are being written to real database rows.
+
+Backbone 1.1.2 decides "already a model, or a raw attribute hash?" with
+`attrs instanceof Model` (`public/scripts/lib/backbone.js:690` and `:916`). A
+parse@8 `ParseObject` fails that test, so **every object added to or reset into
+a `Parse.Collection` is silently replaced by `new this.model(theParseObject)`** —
+the Parse object used as an attribute bag. parse@8's `set` walks it with
+`for (const k in changes)`, so the clone's attributes become `className`,
+`_objCount`, `_localId`, `_compatPending`, `changed`, `_compatPrevious`,
+`__compatEventsApplied`. And `id` is copied across, so those junk SetOps land on
+the **real row** and get PUT to the server.
+
+Parse 1.5 guarded on the right type (`parse-1.5.0.js:6851`):
+
+```js
+_prepareModel: function(model, options) {
+  if (!(model instanceof Parse.Object)) { … }   // Parse.Object, not Backbone.Model
+```
+
+The fix, the blast-radius check, and the reason the existing contract tests
+missed it (the stub *is* a `Backbone.Model`) are all in
+**`docs/runbooks/parse8-remaining-queue.md`, item 1.** Estimated 8 of the 18.
+
+Items 1–3 in that queue are additive compat-layer changes that should land
+together and then be re-measured. **Re-measure before starting item 4** — the
+attribution of the 7 timeouts is not clean, and some of them are probably item 1
+in disguise.
+
+## Then: the creation cluster
 
 Fully diagnosed, not yet fixed.
 
@@ -188,17 +227,17 @@ fails it). Run it after any change here:
 E2E_WORKERS=1 npx playwright test e2e/lifecycle-vampire.spec.js --grep "341"
 ```
 
-## Then: the remaining 11
+## The work queue
 
-A parallel diagnosis pass produced an ordered queue — see
-`docs/runbooks/parse8-remaining-queue.md` if present. Otherwise the clusters are:
+**`docs/runbooks/parse8-remaining-queue.md`** covers all 18, ordered by
+tests-cleared over risk, with the fix designed for three of the four items and
+an honest "not designed yet" on the fourth. It was produced by a parallel
+diagnosis pass in which every root cause was attacked by an independent skeptic;
+none were refuted. Claims are cited to file:line — verify before trusting.
 
-- 3x deep-equality on "New character form creates a …"
-- 2x `toBeVisible` in the XP notation UI, plus 1x "a freshly completed Vampire starts at 30/0/30"
-- 2x `toHaveText` (patronage creation, long-text non-recording)
-- 1x admin Storyteller toggle
-- 1x `#troupe` page not becoming active
-- 1x "sampast now appears on staff"
+It also carries a list of open questions worth reading before you start,
+including two comments in the compat layer that will become misleading once
+item 1 lands, and one comment that is already wrong.
 
 ## After that: S10, untouched
 
