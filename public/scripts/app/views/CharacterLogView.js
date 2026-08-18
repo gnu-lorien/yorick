@@ -25,11 +25,63 @@ define([
             self.changeBy = 10;
         },
 
+        /**
+         * The page this view is *supposed* to be showing, read from the URL.
+         *
+         * `this.start` is memoised across registrations and cannot be trusted
+         * on its own. Two registrations can be in flight at once - a reload
+         * replays whatever hash the page loaded with, and an explicit
+         * navigation adds a second - and because each one kicks off an async
+         * fetch, the later-resolving one wins even when it is the stale one.
+         * Observed live: `register(start=0)` then `register(start=20)` 9ms
+         * apart while the hash read `/log/0/10`, leaving `this.start` at 20
+         * with page 0 in the URL. The Next button then computed 20 + 10 and
+         * navigated to page 3.
+         *
+         * The hash is the one thing that is unambiguously current, so paging
+         * is computed from it and falls back to the memoised value only when
+         * the current route is not a log route at all.
+         */
+        startFromUrl: function() {
+            var m = /#character\/[^\/]+\/log\/(\d+)\/(\d+)/.exec(window.location.hash || "");
+            return m ? _.parseInt(m[1]) : this.start;
+        },
+
+        /** Whether the current hash is a log route at all. */
+        isLogRoute: function() {
+            return /#character\/[^\/]+\/log\/(\d+)\/(\d+)/.test(window.location.hash || "");
+        },
+
+        changeByFromUrl: function() {
+            var m = /#character\/[^\/]+\/log\/(\d+)\/(\d+)/.exec(window.location.hash || "");
+            return m ? _.parseInt(m[2]) : this.changeBy;
+        },
+
         register: function(character, start, changeBy) {
             var self = this;
             var changed = false;
             start = _.parseInt(start);
             changeBy = _.parseInt(changeBy);
+
+            // Drop a registration the URL has already moved past.
+            //
+            // Two registrations can be in flight at once. A full reload
+            // replays whatever hash the document loaded with, and an explicit
+            // navigation immediately afterwards adds a second - so the router
+            // can call this with the *old* page after it has already called it
+            // with the new one. Observed live: start=0 then start=20, 9ms
+            // apart, with the hash reading /log/0/10 throughout. The stale
+            // call won, so the table rendered page 2 underneath a page-0 URL
+            // and the Next button paged from 20 instead of 0.
+            //
+            // The hash is authoritative. If this call disagrees with it, the
+            // route it came from is no longer the current one, so honouring it
+            // would be showing the user a page they have already navigated
+            // away from.
+            var urlStart = self.startFromUrl();
+            if (self.isLogRoute() && start !== urlStart) {
+                return self;
+            }
 
             if (start != self.start) {
                 self.start = start;
@@ -69,7 +121,8 @@ define([
 
         previous: function() {
             var self = this;
-            var incr = this.start - this.changeBy;
+            var changeBy = self.changeByFromUrl();
+            var incr = self.startFromUrl() - changeBy;
             this.start = _.max([0, incr]);
             window.location.hash = "#character/" + self.character.id + "/log/" + this.start + "/10";
             $.mobile.loading("show");
@@ -80,7 +133,7 @@ define([
 
         next: function() {
             var self = this;
-            this.start += self.changeBy;
+            this.start = self.startFromUrl() + self.changeByFromUrl();
             window.location.hash = "#character/" + self.character.id + "/log/" + this.start + "/10";
             $.mobile.loading("show");
             this.update_collection_query_and_fetch().then(function() {
