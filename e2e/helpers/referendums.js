@@ -336,15 +336,43 @@ async function castVote(page, optionField) {
  * table - so this reads the region's own text via regex rather than any DOM
  * structure.
  */
-async function readAdminBallotRows(page) {
-  const text = await page.locator(OPTIONS_REGION).textContent();
-  const rows = [];
-  const re = /"([^"]*)","([^"]*)","([^"]*)","(option_\d+)","([^"]*)"/g;
-  let m;
-  while ((m = re.exec(text || '')) !== null) {
-    rows.push({ username: m[1], realname: m[2], email: m[3], choice: m[4], updatedAt: m[5] });
+async function readAdminBallotRows(page, { timeout = 15000, interval = 200, emptyGrace = 3000 } = {}) {
+  const parse = (text) => {
+    const rows = [];
+    const re = /"([^"]*)","([^"]*)","([^"]*)","(option_\d+)","([^"]*)"/g;
+    let m;
+    while ((m = re.exec(text || '')) !== null) {
+      rows.push({ username: m[1], realname: m[2], email: m[3], choice: m[4], updatedAt: m[5] });
+    }
+    return rows;
+  };
+
+  // `openAdminReferendum` hard-reloads and then navigates, and nothing in that
+  // waits for the ballot region's own fetch to render. Reading immediately
+  // catches it mid-render and silently returns a short list, which shows up as
+  // a tally that is simply missing an option rather than as a timeout. Poll
+  // until two consecutive reads agree.
+  //
+  // Empty is a legitimate answer here - test 44 asserts a referendum with no
+  // ballots - but it is also what a mid-render read returns, so a stable empty
+  // has to sit out `emptyGrace` before it is believed. A stable non-empty list
+  // is returned as soon as it settles. On timeout this returns whatever it last
+  // saw rather than throwing, so the caller's own assertion reports the real
+  // number instead of an opaque timeout.
+  const read = async () => parse(await page.locator(OPTIONS_REGION).textContent());
+  const deadline = Date.now() + timeout;
+  const emptyDeadline = Date.now() + emptyGrace;
+  let previous = await read();
+  while (Date.now() < deadline) {
+    await page.waitForTimeout(interval);
+    const current = await read();
+    if (JSON.stringify(current) === JSON.stringify(previous)) {
+      if (current.length > 0) return current;
+      if (Date.now() >= emptyDeadline) return current;
+    }
+    previous = current;
   }
-  return rows;
+  return previous;
 }
 
 /** Reduce ballot rows into per-option counts, e.g. `{option_0: 2, option_1: 1}`. */

@@ -258,6 +258,34 @@ define([
                   "total": all.length,
                   "format_entry": this.format_entry} );
 
+            // Drop the edit popups left behind by earlier renders, before the
+            // markup below replaces this view's content.
+            //
+            // All three popups live inside this template, so every render emits
+            // fresh copies of them. jQuery Mobile moves a popup's container out
+            // to the page element when it is *opened*, so an opened copy is no
+            // longer inside `div[role='main']` and survives the `.html()` call
+            // below - leaving one more element carrying a duplicate id behind on
+            // every render. Measured: seven `#popupEditReason` elements after
+            // three edits, growing without bound for as long as the page is
+            // open.
+            //
+            // That pile is not harmless, because the handlers above reach for
+            // these popups with bare id selectors (`$("#popupEditReason")`),
+            // which take whichever copy happens to come first in the document
+            // rather than the one actually on screen.
+            //
+            // A popup that is currently open is deliberately left alone:
+            // removing it would take the dialog away from whoever is typing in
+            // it, which is a worse bug than the leak.
+            var stale_popups = "#popupEditEntered, #popupEditReason, #alterationpopupEdit";
+            $(".ui-popup-container").not(".ui-popup-active").each(function () {
+                var container = $(this);
+                if (container.find(stale_popups).length) {
+                    container.remove();
+                }
+            });
+
             // Renders the view's template inside of the current listview element
             this.$el.find("div[role='main']").html(this.template);
 

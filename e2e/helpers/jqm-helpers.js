@@ -10,18 +10,6 @@
 
 const DEFAULT_TIMEOUT = parseInt(process.env.E2E_NAV_TIMEOUT || '20000', 10);
 
-/**
- * Diagnostic switch for R28/R33, off by default.
- *
- * `navigateToHash` has two fallback tiers below its first wait: re-running the
- * route handler, then reloading the whole app. Both exist to paper over
- * navigations the application swallows. Setting `E2E_NAV_FALLBACK` to `none`
- * (fail on the first wait) or `rerun` (allow the re-run, refuse the reload)
- * measures which tier is actually load-bearing and for which tests, instead of
- * deleting them and reading a pile of failures with no attribution.
- */
-const NAV_FALLBACK = process.env.E2E_NAV_FALLBACK || 'all';
-
 /** Wait for RequireJS, jQuery Mobile, and the Parse SDK to finish bootstrapping. */
 async function waitForAppReady(page, timeout = DEFAULT_TIMEOUT) {
   await page.waitForFunction(() => {
@@ -130,58 +118,16 @@ async function navigateToHash(page, hash, targetSelector = null, timeout = DEFAU
     return;
   }
 
-  try {
-    await waitForActivePage(page, asId, timeout);
-  } catch (first) {
-    if (NAV_FALLBACK === 'none') {
-      throw new Error(`${first.message} (E2E_NAV_FALLBACK=none: no retry attempted)`);
-    }
-    // Several routes only call `$.mobile.changePage` after a view's `register`
-    // promise resolves, and some of those short-circuit when handed a model or
-    // page they already hold — leaving the hash updated but the previous page
-    // still active, with nothing logged. Re-running the route handler clears it.
-    await page.evaluate((h) => new Promise((resolve) => {
-      window.require(['backbone'], function (Backbone) {
-        Backbone.history.loadUrl(h);
-        resolve(null);
-      });
-    }), cleanHash);
-    await waitForJqmLoader(page, timeout);
-
-    try {
-      await waitForActivePage(page, asId, timeout);
-      return;
-    } catch (second) {
-      if (NAV_FALLBACK === 'rerun') {
-        throw new Error(`${second.message} (E2E_NAV_FALLBACK=rerun: reload fallback refused)`);
-      }
-      // Some navigations are swallowed outright and re-running the handler
-      // changes nothing. Measured cause: jQuery Mobile queues a `changePage`
-      // issued while another transition is running and drains the queue one
-      // entry per release, oldest first, so a stale transition can replay and
-      // win while the current one is left in the queue with nothing to drain
-      // it. Confirmed by stack trace on `#long-text` -> `#character`, where the
-      // character route completed and called `changePage("#character")` and was
-      // then overridden from `_releaseTransitionLock`. Waiting does not help
-      // (measured to two minutes). Not the approval view, despite R28's claim -
-      // that hands off correctly under a passive probe.
-      //
-      // Reloading the app is heavy but reliable, and the Parse session lives in
-      // localStorage so the user stays signed in.
-      await page.goto('/');
-      await waitForAppReady(page, timeout);
-      await page.evaluate((h) => { window.location.hash = '#' + h; }, cleanHash);
-      await waitForJqmLoader(page, timeout);
-
-      try {
-        await waitForActivePage(page, asId, timeout);
-      } catch (third) {
-        throw new Error(
-          `${third.message} (retried by re-running the route handler, then by reloading the app)`
-        );
-      }
-    }
-  }
+  // No retry, no reload: if the page does not become active, that is a real
+  // failure and it is reported as one. This used to have two fallback tiers
+  // (re-run the route handler, then reload the whole app) which existed solely
+  // to absorb the jQuery Mobile transition-queue leak — see the YORICK PATCH in
+  // `public/scripts/lib/jquery.mobile-1.4.5.js`. With that fixed the tiers stop
+  // firing entirely, and keeping them would mean the suite could no longer
+  // detect a regression of the very defect they were papering over. Absorbing
+  // it silently is what produced two wrong diagnoses of this bug in the first
+  // place, so honest failure is worth more here than automatic recovery.
+  await waitForActivePage(page, asId, timeout);
 }
 
 /**
@@ -234,16 +180,60 @@ async function submitJqmForm(page, formSelector) {
  */
 const ACTIVE_POPUP = '.ui-popup-container.ui-popup-active:visible';
 
-/** True when at least one copy of the named popup is open. */
+/**
+ * True when at least one copy of the named popup is open.
+ *
+ * On timeout this reports the popup state rather than only "waited 15000ms".
+ * `xp-history` 75 fails here roughly one run in three and has moved between
+ * three different waits as its surroundings changed, so a bare timeout costs a
+ * whole run to learn nothing. Three explanations have already been disproved by
+ * measurement - a late re-render closing the popup, `popup("close")` targeting
+ * the wrong copy, and duplicate copies confusing the locator - and what is left
+ * needs the state at the moment it fails. See test_timing_report.md.
+ */
 async function waitForJqmPopup(page, popupSelector, timeout = 15000) {
-  await page.waitForFunction((sel) => {
-    return Array.from(document.querySelectorAll(sel)).some((popup) => {
-      const container = popup.closest('.ui-popup-container');
-      return !!container &&
-             container.classList.contains('ui-popup-active') &&
-             container.offsetParent !== null;
-    });
-  }, popupSelector, { timeout });
+  try {
+    await page.waitForFunction((sel) => {
+      return Array.from(document.querySelectorAll(sel)).some((popup) => {
+        const container = popup.closest('.ui-popup-container');
+        return !!container &&
+               container.classList.contains('ui-popup-active') &&
+               container.offsetParent !== null;
+      });
+    }, popupSelector, { timeout });
+  } catch (e) {
+    const state = await page.evaluate((sel) => {
+      const copies = Array.from(document.querySelectorAll(sel));
+      const jqm = window.jQuery && window.jQuery.mobile;
+      return {
+        copies: copies.length,
+        inAnyContainer: copies.filter((p) => !!p.closest('.ui-popup-container')).length,
+        inActiveContainer: copies.filter((p) => {
+          const c = p.closest('.ui-popup-container');
+          return !!c && c.classList.contains('ui-popup-active');
+        }).length,
+        withLayoutBox: copies.filter((p) => {
+          const c = p.closest('.ui-popup-container');
+          return !!c && c.offsetParent !== null;
+        }).length,
+        activeContainersOnPage: document.querySelectorAll('.ui-popup-container.ui-popup-active').length,
+        // Is jQuery Mobile already holding a popup open, or mid page change?
+        jqmPopupActive: !!(jqm && jqm.popup && jqm.popup.active) ? 'yes' : 'no',
+        activePageId: (document.querySelector('.ui-page-active') || {}).id || null,
+        loaderVisible: (() => {
+          const l = document.querySelector('.ui-loader');
+          return !!(l && l.offsetParent !== null);
+        })()
+      };
+    }, popupSelector).catch(() => null);
+
+    throw new Error(
+      `${e.message}\n` +
+      `  popup state for "${popupSelector}" at timeout: ${state ? JSON.stringify(state) : '(could not read)'}\n` +
+      `  copies>1 means the render leak is back; inActiveContainer=0 with jqmPopupActive=yes\n` +
+      `  means jQuery Mobile thinks another popup owns the screen.`
+    );
+  }
 }
 
 /** True when no copy of the named popup is open. */
@@ -269,7 +259,21 @@ async function waitForJqmPopupClosed(page, popupSelector, timeout = 15000) {
  */
 function activePopup(page, popupSelector) {
   if (!popupSelector) return page.locator(ACTIVE_POPUP).last();
-  return page.locator(`${popupSelector}:visible`).last();
+  // Scope to the copy sitting inside the container jQuery Mobile actually
+  // opened, not merely to a copy that is `:visible`.
+  //
+  // These two used to disagree. `waitForJqmPopup` asks whether *any* copy's
+  // container carries `ui-popup-active`; this asked only for a `:visible` copy
+  // and took the last one. Duplicate popups are real here - 4 to 7 copies of
+  // `#popupEditReason` can be live at once - so the wait could be satisfied by
+  // the copy jQuery Mobile opened while the locator latched onto a different
+  // one, whose input never becomes visible because nothing is going to open it.
+  //
+  // Fixing that did NOT stop `xp-history` 75 being flaky, so it is not the
+  // whole story - see test_timing_report.md §5a. It is kept because a locator
+  // that can select a copy other than the opened one is a latent defect either
+  // way.
+  return page.locator(`${ACTIVE_POPUP} ${popupSelector}`).last();
 }
 
 /** Fill a field inside the named popup's visible copy. */

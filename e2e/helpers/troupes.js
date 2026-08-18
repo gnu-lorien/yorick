@@ -227,8 +227,8 @@ async function readStaff(page, troupeId) {
  * whichever order they please. Measured: the roster read that follows landed on
  * the roster hash with `#troupe` still the active page, because the join's
  * `changePage` arrived last and won. That looked exactly like a swallowed
- * navigation and was papered over by `navigateToHash`'s reload fallback; it is
- * really just this race.
+ * navigation and used to be papered over by `navigateToHash`'s reload fallback,
+ * since removed; it is really just this race, and waiting here is what fixes it.
  */
 async function joinTroupe(page, characterId, troupeId, { timeout = 30000 } = {}) {
   await navigateToHash(page, `character/${characterId}/troupe/${troupeId}/join`, '#troupe');
