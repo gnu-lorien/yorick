@@ -117,6 +117,47 @@ async function assertCategorySeeded(page, category) {
 }
 
 /**
+ * Read the active picker's options once the list has stopped changing.
+ *
+ * `#simpletrait-new` is one page element shared by every category, so
+ * `waitForActivePage` can be satisfied the instant the page is active - which
+ * is before Marionette has finished re-rendering the region for *this*
+ * category. Reading straight after the navigation therefore catches it either
+ * mid-render (empty) or still showing the previous category.
+ *
+ * So poll until two consecutive reads agree, the same settle-then-read shape
+ * `lifecycle.js#readLogPage` uses for the log table. A stable non-empty list is
+ * returned as soon as it settles; a stable *empty* one has to sit out
+ * `emptyGrace` first, because empty is also what a mid-render read returns. On
+ * timeout this returns whatever it last saw rather than throwing, so a picker
+ * that really is empty fails the caller's own assertion with the real number
+ * instead of an opaque timeout.
+ */
+async function readSettledPickerOptions(page, { timeout = 15000, interval = 200, emptyGrace = 3000 } = {}) {
+  const read = () => page.evaluate(() => {
+    const pg = document.querySelector('.ui-page-active');
+    if (!pg) return [];
+    return Array.from(pg.querySelectorAll('a.simpletrait, ul li a'))
+      .map((a) => (a.getAttribute('name') || a.textContent).replace(/\s+/g, ' ').trim())
+      .filter(Boolean);
+  });
+
+  const deadline = Date.now() + timeout;
+  const emptyDeadline = Date.now() + emptyGrace;
+  let previous = await read();
+  while (Date.now() < deadline) {
+    await page.waitForTimeout(interval);
+    const current = await read();
+    if (current.join(String.fromCharCode(31)) === previous.join(String.fromCharCode(31))) {
+      if (current.length > 0) return current;
+      if (Date.now() >= emptyDeadline) return current;
+    }
+    previous = current;
+  }
+  return previous;
+}
+
+/**
  * Options offered by a trait category's "new" picker.
  *
  * HELPER FIX: this previously called `navigateToHash` without a target
@@ -124,18 +165,12 @@ async function assertCategorySeeded(page, category) {
  * active, populated page before reading it - a race that could return the
  * *previous* page's links (or none) depending on how fast SimpleTraitNewView's
  * own Description fetch happened to resolve. Passing the target selector
- * fixes that: `navigateToHash` (jqm-helpers.js) polls until that specific
- * page id is active and non-empty.
+ * narrowed that but did not close it, because the shared page element makes
+ * "active and non-empty" true too early; see `readSettledPickerOptions`.
  */
 async function listTraitPickerOptions(page, characterId, category) {
   await navigateToHash(page, `simpletraits/${category}/${characterId}/new`, '#simpletrait-new');
-  return page.evaluate(() => {
-    const pg = document.querySelector('.ui-page-active');
-    if (!pg) return [];
-    return Array.from(pg.querySelectorAll('a.simpletrait, ul li a'))
-      .map((a) => (a.getAttribute('name') || a.textContent).replace(/\s+/g, ' ').trim())
-      .filter(Boolean);
-  });
+  return readSettledPickerOptions(page);
 }
 
 /**
@@ -151,6 +186,9 @@ async function listTraitPickerOptions(page, characterId, category) {
  */
 async function traitPickerOptionText(page, characterId, category, name) {
   await navigateToHash(page, `simpletraits/${category}/${characterId}/new`, '#simpletrait-new');
+  // Settle for the same reason as `listTraitPickerOptions`: without this, a
+  // mid-render read reports "no such option" rather than the option's text.
+  await readSettledPickerOptions(page);
   const link = page.locator(`#simpletrait-new a.simpletrait[name="${name.replace(/"/g, '\\"')}"]`).first();
   if (await link.count() === 0) return null;
   const text = await link.textContent();

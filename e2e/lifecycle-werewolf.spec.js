@@ -797,27 +797,30 @@ test.describe('Task 12b - Werewolf lifecycle and dual audit log', () => {
 
     // Pagination itself is proven above, by URL: three disjoint pages compared
     // as an ordered multiset against one full read. Driving the log's own Next
-    // *button* is split into 355b, which is pinned red - see the note there.
+    // *button* is split into 355b, which was pinned red and now passes - see
+    // the note there.
     state.logPages = pages;
   });
 
-  test.fail('355b The log\'s own Next button advances the rendered page', async () => {
-    // OPEN, and deliberately isolated from 355 so the URL-based proof above
-    // still runs and 356-360 still get a chance to.
+  test('355b The log\'s own Next button advances the rendered page', async () => {
+    // FIXED, and kept isolated from 355 as it was when it was pinned red, so
+    // the URL-based proof above stays independent of the button.
     //
-    // This is remediation R28/R30/R33's swallowed-`changePage` family, not a
-    // pagination defect: after `readLogPage` the app ends up with the log hash
-    // set but `#character` still the active jQuery Mobile page, so the Next
-    // button is present and enabled but not on screen. Routing through
-    // `openLog` (the hard-reload path) gets the button on screen and the click
-    // through - the hash really does move to /log/10/10 - but the table does
-    // not re-render, which is the same short-circuit one layer down. R30 made
-    // `CharacterLogView.register` refetch on every entry, and that was not
-    // enough on its own.
+    // This was filed as remediation R28/R30/R33's swallowed-`changePage`
+    // family, and that filing was right: it clears with the transition-queue
+    // fix in `jquery.mobile-1.4.5.js` (see the YORICK PATCH there) and nothing
+    // else. Previously the app ended up with the log hash set but `#character`
+    // still the active page, so the Next button was present and enabled but not
+    // on screen; routing through `openLog` got the click through but the table
+    // never re-rendered. Both halves were the same stranded transition.
     //
-    // Deliberately not "fixed" by forcing the click: a forced click on an
-    // invisible control would assert that a user can press a button they
-    // cannot see.
+    // Un-pinned only after it passed on its own and under a full-suite run.
+    // Note that it was still failing under the diagnostic `E2E_NAV_FALLBACK`
+    // switch before those fallback tiers were deleted outright - so if this
+    // ever regresses, suspect the navigation helper's wait, not the log view.
+    //
+    // Still not "fixed" by forcing the click: a forced click on an invisible
+    // control would assert that a user can press a button they cannot see.
     const cid = state.character.id;
     const pages = state.logPages;
     expect(pages, 'test 355 recorded the pages to compare against').toBeTruthy();

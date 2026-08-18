@@ -206,11 +206,12 @@ test.describe('Task 5 - Approvals', () => {
    * `#simpletrait-new` is one page element shared by every category, so a
    * `navigateToHash(..., '#simpletrait-new')` issued while that page is already
    * active satisfies `waitForActivePage` instantly against the *previous*
-   * category's list, and the `$.mobile.changePage` that should follow the click
-   * is swallowed while the earlier transition is still in flight. Measured: the
-   * click updated the hash to `#simpletrait/spacer/attributes/.../new` and the
-   * app stayed on `#simpletrait-new` with nothing logged. Hopping through the
-   * character sheet first makes each picker navigation a real transition.
+   * category's list. The `$.mobile.changePage` that should follow the click
+   * used to be swallowed too — the transition-queue leak this branch fixed in
+   * `jquery.mobile-1.4.5.js` — and that half no longer happens. What remains is
+   * only the instant-satisfaction problem above, so hopping through the
+   * character sheet still buys a genuinely observable transition. Kept for that
+   * reason, not because the app swallows anything.
    */
   async function parkOnSheet(page, cid) {
     await navigateToHash(page, `character?${cid}`, '#character');

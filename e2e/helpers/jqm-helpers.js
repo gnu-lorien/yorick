@@ -10,18 +10,6 @@
 
 const DEFAULT_TIMEOUT = parseInt(process.env.E2E_NAV_TIMEOUT || '20000', 10);
 
-/**
- * Diagnostic switch for R28/R33, off by default.
- *
- * `navigateToHash` has two fallback tiers below its first wait: re-running the
- * route handler, then reloading the whole app. Both exist to paper over
- * navigations the application swallows. Setting `E2E_NAV_FALLBACK` to `none`
- * (fail on the first wait) or `rerun` (allow the re-run, refuse the reload)
- * measures which tier is actually load-bearing and for which tests, instead of
- * deleting them and reading a pile of failures with no attribution.
- */
-const NAV_FALLBACK = process.env.E2E_NAV_FALLBACK || 'all';
-
 /** Wait for RequireJS, jQuery Mobile, and the Parse SDK to finish bootstrapping. */
 async function waitForAppReady(page, timeout = DEFAULT_TIMEOUT) {
   await page.waitForFunction(() => {
@@ -130,58 +118,16 @@ async function navigateToHash(page, hash, targetSelector = null, timeout = DEFAU
     return;
   }
 
-  try {
-    await waitForActivePage(page, asId, timeout);
-  } catch (first) {
-    if (NAV_FALLBACK === 'none') {
-      throw new Error(`${first.message} (E2E_NAV_FALLBACK=none: no retry attempted)`);
-    }
-    // Several routes only call `$.mobile.changePage` after a view's `register`
-    // promise resolves, and some of those short-circuit when handed a model or
-    // page they already hold — leaving the hash updated but the previous page
-    // still active, with nothing logged. Re-running the route handler clears it.
-    await page.evaluate((h) => new Promise((resolve) => {
-      window.require(['backbone'], function (Backbone) {
-        Backbone.history.loadUrl(h);
-        resolve(null);
-      });
-    }), cleanHash);
-    await waitForJqmLoader(page, timeout);
-
-    try {
-      await waitForActivePage(page, asId, timeout);
-      return;
-    } catch (second) {
-      if (NAV_FALLBACK === 'rerun') {
-        throw new Error(`${second.message} (E2E_NAV_FALLBACK=rerun: reload fallback refused)`);
-      }
-      // Some navigations are swallowed outright and re-running the handler
-      // changes nothing. Measured cause: jQuery Mobile queues a `changePage`
-      // issued while another transition is running and drains the queue one
-      // entry per release, oldest first, so a stale transition can replay and
-      // win while the current one is left in the queue with nothing to drain
-      // it. Confirmed by stack trace on `#long-text` -> `#character`, where the
-      // character route completed and called `changePage("#character")` and was
-      // then overridden from `_releaseTransitionLock`. Waiting does not help
-      // (measured to two minutes). Not the approval view, despite R28's claim -
-      // that hands off correctly under a passive probe.
-      //
-      // Reloading the app is heavy but reliable, and the Parse session lives in
-      // localStorage so the user stays signed in.
-      await page.goto('/');
-      await waitForAppReady(page, timeout);
-      await page.evaluate((h) => { window.location.hash = '#' + h; }, cleanHash);
-      await waitForJqmLoader(page, timeout);
-
-      try {
-        await waitForActivePage(page, asId, timeout);
-      } catch (third) {
-        throw new Error(
-          `${third.message} (retried by re-running the route handler, then by reloading the app)`
-        );
-      }
-    }
-  }
+  // No retry, no reload: if the page does not become active, that is a real
+  // failure and it is reported as one. This used to have two fallback tiers
+  // (re-run the route handler, then reload the whole app) which existed solely
+  // to absorb the jQuery Mobile transition-queue leak — see the YORICK PATCH in
+  // `public/scripts/lib/jquery.mobile-1.4.5.js`. With that fixed the tiers stop
+  // firing entirely, and keeping them would mean the suite could no longer
+  // detect a regression of the very defect they were papering over. Absorbing
+  // it silently is what produced two wrong diagnoses of this bug in the first
+  // place, so honest failure is worth more here than automatic recovery.
+  await waitForActivePage(page, asId, timeout);
 }
 
 /**

@@ -66,7 +66,20 @@ function numCost(v) {
   return v === null || v === undefined || v === '' ? 0 : Number(v);
 }
 
-/** Park on the character sheet between picker visits (`#simpletrait-new` is shared). */
+/**
+ * Park on the character sheet between picker visits.
+ *
+ * `#simpletrait-new` and `#simpletraitcategory-all` are each one page element
+ * shared across every category, so navigating picker-to-picker satisfies
+ * `waitForActivePage` instantly against the *previous* category's list. Hopping
+ * through the sheet makes each visit a real, observable transition.
+ *
+ * This used to compensate for a second problem as well - the follow-up
+ * `changePage` being swallowed - which was the transition-queue leak fixed in
+ * `jquery.mobile-1.4.5.js`. That half is gone, and the two parks this helper
+ * did internally are removed with it. The remaining callers in the spec files
+ * keep it for the observability reason above only.
+ */
 async function parkOnSheet(page, cid) {
   await navigateToHash(page, `character?${cid}`, '#character');
 }
@@ -213,7 +226,6 @@ function logDifferences(a, b, labelA = 'A', labelB = 'B') {
  * experience notation; `beforeDelete("SimpleTrait")` writes the "remove" row).
  */
 async function removeTraitViaChangePage(page, cid, category, traitName, openTraitChange) {
-  await parkOnSheet(page, cid);
   await openTraitChange(page, cid, category, traitName);
   const remove = page.locator('#simpletrait-changing .remove');
   await expect(remove, `Remove button on the ${traitName} change page`).toHaveCount(1);
@@ -249,7 +261,6 @@ async function specializeRename(page, cid, category, traitId, suffix) {
  * which its own render/fetch race occasionally does.
  */
 async function addSpecializingBase(page, cid, category, baseName, venueName, { value = 1 } = {}) {
-  await parkOnSheet(page, cid);
   await navigateToHash(page, `simpletraits/${category}/${cid}/new`, '#simpletrait-new');
   const link = page.locator(`#simpletrait-new a.simpletrait[name="${baseName.replace(/"/g, '\\"')}"]`).first();
   await expect(link, `"${baseName}" offered by the ${category} picker`).toHaveCount(1);

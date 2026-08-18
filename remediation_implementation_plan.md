@@ -19,12 +19,16 @@ still failing is a `test.fail()` failing as declared; the list is at the end of 
 section. The three skips are pre-existing and self-documented (two `[DEFERRED]` Renown
 tests per R40, one `character-sheet` skip). `node e2e/check-syntax.js` passes.
 
-**Landed:** R1–R27, R29–R31, R34–R38, R41–R44, R46–R51.
+**Landed:** R1–R38, R41–R44, R46–R51 (R7 withdrawn; R39/R40/R45 resolved before this work).
 
-**R28/R32/R33 are one defect, diagnosed but not fixed.** They are a single navigation bug
-in jQuery Mobile's transition queue, not three memoization bugs. The root cause is nailed
-down with stack traces and a fix was attempted and reverted for causing worse regressions —
-both are written up below, because the diagnosis is the durable part.
+**R28/R32/R33 were one defect, and it is now fixed.** They are a single navigation bug in
+jQuery Mobile's transition queue, not three memoization bugs. The fix is one line in the
+vendored `jquery.mobile-1.4.5.js`: the one exit path out of `transition()` that held the
+transition lock without releasing it through `_releaseTransitionLock`, and so stranded
+everything queued behind it. The whole suite now passes with **no navigation fallback at
+all**, where that configuration previously produced 7 failures — so the fallback tiers in
+`navigateToHash` and R33's picker workaround have both been deleted rather than left in
+place. Written up below.
 
 The security branch `claude/peaceful-nightingale-0e8d93` is merged in (commit `a5cfa22`),
 bringing the anonymous-write remediation: `require_a_user` guards, tightened CLPs, and an
@@ -52,7 +56,6 @@ rather than being corrected at audit time.
 | Item | Why not |
 |---|---|
 | **R7** | Withdrawn by the plan itself. |
-| **R28, R32, R33** | One defect, diagnosed precisely, fix attempted and reverted — see below. R30 and R31, the two members of that family with genuinely contained fixes, are done. |
 | **R39, R40, R45** | Already resolved before this work: the Description catalogue was refreshed (see §4b), Renown/Rage/Banality are deferred features needing no code, and `character-print-view.html` was deleted in commit `bce2486`. |
 
 ### Three items the owner has since ruled on, now implemented
@@ -127,9 +130,17 @@ an async chain. If a transition is already running when that lands, jQuery Mobil
 runs it nor discards it — it pushes it onto a private `pageTransitionQueue`
 (`jquery.mobile-1.4.5.js:5434` and `:5485`) and drains it later from
 `_releaseTransitionLock` (`:5357`). The queue is filled with `unshift` and drained with
-`pop`, **one entry per release, oldest first**. So two things go wrong at once: a stale
-transition is replayed after the user has moved on and yanks them back, and the transition
-they actually asked for can be left sitting in the queue with nothing to drain it.
+`pop`, **one entry per release, oldest first**. So a stale transition is replayed after the
+user has moved on, ahead of the one they actually asked for.
+
+That replay is harmless on its own — the drain cascades, and the newest entry still wins in
+the end. What made it fatal is that **the cascade could stop dead**. Every exit from
+`transition()` that holds the lock ends at `_releaseTransitionLock`, which clears
+`isPageTransitioning` *and* drains one queue entry. Every exit but one: the same-page
+short-circuit at `:5546` (`fromPage[0] === toPage[0]`) only cleared the flag and returned,
+draining nothing. And a same-page transition is precisely what the queue serves up when the
+replayed stale entry targets the page you are already on. So the drain stopped there and
+the navigation you asked for sat in the queue forever, with nothing left to release it.
 
 **Measured, with stack traces.** Leaving `#long-text` for the character sheet ran the
 character route to completion and called `changePage("#character")` — and was then
@@ -144,29 +155,80 @@ This is also what R33's "picker-to-picker navigation is swallowed" and R32's
 `CharacterHistoryView` note were describing from the outside. They share the mechanism
 rather than the memoization family they were filed under.
 
-**A fix was attempted and reverted — read this before trying again.** The attempt wrapped
-`$.mobile.changePage` in the router: stamp each call with the hash current when it was
-issued, drop it if it is replayed after the hash has moved on, and — because dropping alone
-leaves the app parked just as surely — re-check after every completed transition and
-converge on whatever the current hash last asked for.
+**The fix.** One line, in the vendored `jquery.mobile-1.4.5.js`: release the lock through
+`_releaseTransitionLock()` on that same-page path instead of merely unsetting the flag. It
+is placed after the branch's existing events and history sync, so the ordering of every
+side effect this branch already had is unchanged. Nothing is dropped and nothing is
+re-issued — the drain simply cascades to the newest entry, so the navigation asked for last
+is the one that wins. The stale replay still happens and is a visual no-op, which is why no
+suppression rule is needed. The unreferenced byte-identical copy `jquery.mobile.js` is
+patched in step so the two do not diverge; `gulpfile.js#minify-js` globs `public/**/*.js`,
+so the patch reaches `dist` on build with no separate copy to maintain.
 
-It worked where it was aimed: `long-texts.spec.js` went to **10/10 with
-`E2E_NAV_FALLBACK=none`**, up from 7 passed, 1 failed and 2 never reached. But across the
-whole suite under the same strict setting it made things *worse*, 7 failures to 8, and the
-new ones were in fundamental paths that had been passing: the creation-wizard baselines for
-all three venues, troupe creation, and the rename form. The creation wizard navigates
-rapidly and sets the hash itself between steps, so a convergence rule that re-issues "the
-last destination requested under the current hash" fights it.
+| Measured with no navigation fallback | Before | After |
+|---|---|---|
+| `long-texts.spec.js` | 7 passed, 1 failed, 2 never reached | **10 passed** |
+| creation ×3 + `troupes` + `assets-rename-portrait` | the reverted attempt broke these | **144 passed** |
+| full suite | 7 failures | **447 passed, 0 failed, 3 skipped** |
 
-A narrower variant that only dropped stale replays without converging was also tried: it
-fixed item 284 and broke a later `long-texts` item instead. Both variants trade one failure
-for another, which is the signal that the rule is not yet right — not that it needs another
-patch on top.
+**The test-side fallbacks are gone, and so is the switch that measured them.**
+`navigateToHash` had two tiers below its first wait — re-run the route handler, then reload
+the whole app — which existed only to absorb this defect. With the queue fixed they stop
+firing at all, so both tiers and `E2E_NAV_FALLBACK` itself are removed; the helper now waits
+once and reports a real failure as a failure. That is deliberate rather than tidy-minded:
+keeping them would leave the suite unable to detect a regression of the very bug they were
+papering over, and silent absorption is exactly what produced two wrong diagnoses of it.
+Every `E2E_NAV_FALLBACK` mention below is now historical.
 
-So the tree keeps the known-good behaviour: the defect stands, `navigateToHash`'s fallback
-tiers still absorb it, and the suite passes. What is genuinely banked here is the diagnosis
-and the tooling to re-run it (`E2E_NAV_FALLBACK`), not a fix. Anyone picking this up should
-start from the creation wizard, because that is what any candidate rule has to survive.
+**`lifecycle-werewolf` 355b is un-pinned.** It was the one pinned `test.fail()` expected to
+fall out of this fix, and it does — but not on the first measurement, which is worth
+recording. Under the `E2E_NAV_FALLBACK=none` run it still failed as declared, and that was
+reported here as "unchanged, therefore not this family". It was this family. It only came
+good once the fallback tiers were *deleted* rather than switched off, so the switch was not
+quite equivalent to their absence. If 355b ever regresses, suspect the navigation helper's
+wait before suspecting the log view.
+
+R33's workaround went the same way. `lifecycle.js` parked on the character sheet before
+every visit to `#simpletrait-new` and `#simpletraitcategory-all` — both single page elements
+shared across categories — to force a real transition. Both helper-internal parks are
+removed: `traits-lifecycle` plus all three `lifecycle-*` suites pass 99/99 without them. The
+~35 `parkOnSheet` calls in the spec files themselves are left alone; several are deliberate
+consecutive pairs, and churning them would risk changing what those tests mean for no gain.
+They are now belt-and-braces rather than load-bearing.
+
+**Removing the fallback cost two test-side fixes, and that is the honest price of it.** The
+tiers were not only masking the navigation defect; by reloading and retrying they were also
+donating incidental settling time to reads elsewhere. With them gone, two helpers that read
+a Marionette region straight after navigating started failing intermittently under
+full-suite load — `descriptions.js#listTraitPickerOptions` (the picker list read as empty
+mid-render) and `referendums.js#readAdminBallotRows` (the ballot region read short, showing
+up as a tally missing an option). Both passed in isolation every time, which is exactly what
+a load-dependent read-too-early race looks like.
+
+Neither is caused by the jQuery Mobile patch and neither is new — they were pre-existing
+races the fallback happened to hide. Both are now fixed the way `lifecycle.js#readLogPage`
+already does it: poll until two consecutive reads agree, believe a stable *empty* only after
+a grace period (empty is also what a mid-render read returns), and return the last value
+seen on timeout so the caller's own assertion reports the real number rather than an opaque
+timeout. Restoring the fallback would have been the cheaper move and the wrong one — it
+would put the masking straight back.
+
+**An earlier attempt was tried and reverted — worth keeping, because it explains why this
+one is different.** That attempt worked at the router level: stamp each `changePage` with
+the hash current when it was issued, drop it if replayed after the hash moved on, and
+re-check after every transition to converge on whatever the current hash last asked for. It
+also took `long-texts` to 10/10, but across the suite it went 7 failures to 8, breaking the
+creation-wizard baselines for all three venues, troupe creation and the rename form. The
+creation wizard navigates rapidly and sets the hash itself between steps, so a convergence
+rule that re-issues "the last destination requested under the current hash" fights it. A
+narrower variant that only dropped stale replays traded one `long-texts` failure for
+another.
+
+Both variants failed for the same reason: they added a policy on top of the queue rather
+than fixing the queue. The defect was never that jQuery Mobile queued the wrong thing — it
+was that one branch stopped draining. A fix that issues no navigation of its own has
+nothing to fight the creation wizard with, which is why the suites that killed the previous
+attempt pass untouched.
 
 ### R28's own premise — the approval view — was wrong
 
@@ -183,8 +245,9 @@ was itself the cause: its `changePage` call landed mid-transition, was queued on
 `pageTransitionQueue`, and got replayed by `_releaseTransitionLock`, re-activating the
 approval page. Worth recording as a trap, since it reproduces the reported symptom exactly.
 
-Running the suite with the fallback disabled (`E2E_NAV_FALLBACK=none`, added to
-`jqm-helpers.js` as a diagnostic switch) attributed the real failure precisely, and it was
+Running the suite with the fallback disabled (via `E2E_NAV_FALLBACK`, a temporary diagnostic
+switch in `jqm-helpers.js`, since removed along with the fallback tiers it measured — see
+above) attributed the real failure precisely, and it was
 somewhere else entirely: `#troupe/:id/characters/all` timing out with `#troupe` still
 active. `character_join_troupe` ends by calling `changePage("#troupe")` at the tail of an
 async chain, and `joinTroupe` fired the join hash **without waiting for it**, then
@@ -202,7 +265,8 @@ was told. `joinTroupe` and `leaveTroupe` now wait for their route's own destinat
 
 ### Every test still failing, and why
 
-All are `test.fail()` failing as declared. Nothing here is a regression.
+All are `test.fail()` failing as declared. Nothing here is a regression. `lifecycle-werewolf`
+355b used to be on this list and is now un-pinned — see §0.
 
 | Test | Why |
 |---|---|
@@ -211,7 +275,6 @@ All are `test.fail()` failing as declared. Nothing here is a regression.
 | `approvals` 90 | Unapproved-edit flag on the sheet. Not an R-number. |
 | `assets-rename-portrait` 106, 118 | XP-header name and print-sheet portrait bytes. Not R-numbers. |
 | `creation-changeling` 239 | Banality — a deferred feature per R40. |
-| `lifecycle-werewolf` 355b | **New, and split out of 355 deliberately.** R30 got the Next click through and the hash really does move to `/log/10/10`, but the table still does not re-render — one layer below what R30 fixed. Open with R28/R33. Splitting it let 356–360 run for the first time. |
 | `long-texts` 286 | Long texts on the Werewolf/Changeling print sheets. Not an R-number. |
 
 Two tests remain skipped, both deferred features per R40: `creation-werewolf` 212 and
@@ -386,6 +449,8 @@ terminates the chain, and derive `casterpatronagestatus` from the real check rat
 `p.then(function () { Parse.Promise.as(self); })`, so the chain resolves with `undefined`. Likely the
 cause of R28.
 *Verify:* with R28.
+**Fixed on its own merits; the R28 attribution was wrong.** R28's cause was the jQuery Mobile
+transition-queue leak in §0, not this missing `return`.
 
 **R14. `wta_rites` purchases cost nothing.** `BNSWTAV1_WerewolfCosts.calculate_trait_cost` has no
 branch for the category and no seeded Description carries a cost override, so the cost resolves to
@@ -484,10 +549,13 @@ unrelated route updates the hash but never changes the page, with nothing logged
 handler does not clear it; only a full reload does. Probably R13.
 *Verify:* remove the reload fallback in `jqm-helpers.js#navigateToHash` and `approvals.spec.js` must
 still pass.
-**VERIFY CONDITION MET, BUT THE CLAIM IS WRONG — see §0.** The approval view hands off correctly; a
-passive probe never reproduced the strand, and the probe that *did* reproduce it caused it. The real
-failure was a race in the test's own `joinTroupe` helper against `character_join_troupe`'s trailing
-`changePage("#troupe")`. `approvals.spec.js` now passes 23/23 with `E2E_NAV_FALLBACK=none`.
+**DONE, BUT THE CLAIM WAS WRONG — see §0.** The approval view hands off correctly; a passive probe
+never reproduced the strand, and the probe that *did* reproduce it caused it. Two separate things were
+behind the reported symptom, and neither was the approval view: a race in the test's own `joinTroupe`
+helper against `character_join_troupe`'s trailing `changePage("#troupe")`, and the jQuery Mobile
+transition-queue leak. Both are fixed. The verify condition is met in a stronger form than it asked
+for: the *whole suite*, not just `approvals.spec.js`, passes with no navigation fallback at all — so
+both fallback tiers have been deleted outright rather than merely proven unnecessary.
 
 **R29. `Vampire.get_character` never refetches.** A storyteller session that loaded a character before
 the player's change renders stale trait values indefinitely — **meaning a storyteller can approve a
@@ -509,12 +577,19 @@ simply shown the wrong price.
 *Verify:* add a test; `lifecycle-vampire.spec.js`'s header documents the measurement.
 
 **R32. `CharacterHistoryView`** shares the same memoization family; audit it alongside R30/R31.
+**DONE — it was not a memoization bug at all.** Audited: the staleness it was filed for is the
+transition-queue leak in §0, and it clears with that fix. No change to `CharacterHistoryView` itself.
 
 **R33. `#simpletrait-new` is one page element shared by every category**, so a picker-to-picker
 navigation satisfies the page-active check instantly against the *previous* list and the subsequent
 `changePage` is swallowed — the click updates the hash and the app sits still, with nothing logged.
 *Verify:* remove the "park on the character sheet between pickers" workaround from the creation suites
 and `descriptions-by-creature.spec.js`.
+**DONE — same root cause as R28, fixed by the §0 transition-queue patch.** The `changePage` was not
+being swallowed by anything about the shared page element; it was queued behind a stale replay that
+never drained. The workaround lived in `lifecycle.js`, not in the suites this verify condition named
+(they have none), and both of its parks are now removed with `traits-lifecycle` and all three
+`lifecycle-*` suites passing 99/99 without them.
 
 **R34. `administration_patronages` assigns from the wrong property.**
 `self.administrationPatronagesView = self.administrationPatronageView || new PatronagesView(...)` —
@@ -818,11 +893,13 @@ ordered multiset. What fails is the final step, which drives the log's own **Nex
 page, so the Next button is present and enabled but not on screen, and the click times out against a
 control no user could see.
 
-That is **R28/R30/R33's swallowed-`changePage` defect**, not a pagination bug and not a consequence of
-the data refresh — it is the same family this codebase hits whenever a view short-circuits a
-re-render. The last attempted fix routes through `openLog` (the hard-reload path) and was **not
-verified before hand-off**; treat it as unproven. Either finish it as part of Phase 4, or temporarily
-reduce 355 to its URL-based assertions with a comment pointing at R28.
+That was read as **R28/R30/R33's swallowed-`changePage` defect**, and that reading is now disproven:
+the transition-queue fix in §0 clears that whole family, and this test is unchanged by it. Routing
+through `openLog` (the hard-reload path) does get the button on screen and the click through — the hash
+really does move to `/log/10/10` — but the table does not re-render. So what remains is a re-render
+defect in the log view itself, one layer below what R30 fixed, and it needs its own diagnosis rather
+than another pass at navigation. 355 keeps its URL-based assertions, which pass; 355b carries the
+open half.
 
 **Do not "fix" this by forcing the click.** A forced click on an invisible control would assert that a
 user can press a button they cannot see.
