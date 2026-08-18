@@ -78,8 +78,25 @@ define([
             // route it came from is no longer the current one, so honouring it
             // would be showing the user a page they have already navigated
             // away from.
-            var urlStart = self.startFromUrl();
-            if (self.isLogRoute() && start !== urlStart) {
+            // Two ways this call can be superseded, and both must be caught.
+            //
+            // The first `isLogRoute()`-gated version of this guard only caught
+            // the case where the URL is still a log route but names a different
+            // page. It did nothing when the user had navigated somewhere else
+            // entirely, which is the more damaging case: a stale log
+            // registration arriving while the hash reads
+            // `#character/<id>/rename` still ran, still fetched, and still
+            // re-rendered - and `render()` calls `enhanceWithin()`, which
+            // touches jQuery Mobile in the middle of the rename transition.
+            // That is how a navigation ends up with its hash updated and the
+            // log still on screen.
+            if (!self.isLogRoute()) {
+                // The current route is not the log at all, so this handler's
+                // route has already been navigated away from.
+                return self;
+            }
+            if (start !== self.startFromUrl()) {
+                // Still the log, but a page the URL has moved past.
                 return self;
             }
 

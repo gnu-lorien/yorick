@@ -5352,10 +5352,59 @@ $.widget( "mobile.page", {
 
 		_releaseTransitionLock: function() {
 			//release transition lock so navigation is free again
+			if ( transitionWatchdog ) {
+				clearTimeout( transitionWatchdog );
+				transitionWatchdog = null;
+			}
 			isPageTransitioning = false;
 			if ( pageTransitionQueue.length > 0 ) {
 				$.mobile.changePage.apply( null, pageTransitionQueue.pop() );
 			}
+		},
+
+		// YORICK PATCH: make the transition lock self-healing.
+		//
+		// `transition()` takes the lock and only gives it back from the
+		// `.done()` of the transition promise, which resolves off jQuery
+		// Mobile's CSS animation callbacks. Those callbacks do not fire if the
+		// element being animated is replaced while the animation is in flight —
+		// and in this app that happens whenever a Backbone or Marionette view
+		// re-renders into a page mid-transition. The promise then never
+		// settles, `_releaseTransitionLock` is never reached, and
+		// `isPageTransitioning` stays true for the life of the page. Every
+		// later `changePage` is pushed onto `pageTransitionQueue` and nothing
+		// is ever left to drain it.
+		//
+		// That single stuck flag is what three different test failures were:
+		// a navigation whose hash updates while the active page never changes
+		// (`#character-costs` requested, `#character-history` still on screen),
+		// and a `popup("open")` silently dropped because jQuery Mobile believes
+		// a page change is still in progress.
+		//
+		// Fixing every view that can re-render mid-transition removes the
+		// triggers one at a time; this removes the consequence. If the lock is
+		// still held long after any real transition could still be running,
+		// give it back and drain the queue. The bound is deliberately far above
+		// a real transition (~350ms, and under a second even on a slow device
+		// or a loaded CI box) so this cannot fire on a merely slow animation,
+		// and far below the 20s waits in the E2E suite so a strand shows up as
+		// a hiccup rather than a hang.
+		_armTransitionWatchdog: function() {
+			var self = this;
+			if ( transitionWatchdog ) {
+				clearTimeout( transitionWatchdog );
+			}
+			transitionWatchdog = setTimeout( function() {
+				transitionWatchdog = null;
+				if ( isPageTransitioning ) {
+					if ( $.mobile.debug ) {
+						console.warn( "jqm: transition lock held for " +
+							TRANSITION_WATCHDOG_MS + "ms with " + pageTransitionQueue.length +
+							" queued; releasing so navigation is not stranded" );
+					}
+					self._releaseTransitionLock();
+				}
+			}, TRANSITION_WATCHDOG_MS );
 		},
 
 		_removeActiveLinkClass: function( force ) {
@@ -5505,6 +5554,8 @@ $.widget( "mobile.page", {
 			// entering this method while we are in the midst of loading a page
 			// or transitioning.
 			isPageTransitioning = true;
+			// YORICK PATCH: see _armTransitionWatchdog.
+			this._armTransitionWatchdog();
 
 			// If we are going to the first-page of the application, we need to make
 			// sure settings.dataUrl is set to the application document url. This allows
@@ -5744,7 +5795,10 @@ $.widget( "mobile.page", {
 
 	//these variables make all page containers use the same queue and only navigate one at a time
 	// queue to hold simultanious page transitions
-	var pageTransitionQueue = [],
+	// YORICK PATCH: see _armTransitionWatchdog.
+	var TRANSITION_WATCHDOG_MS = 8000,
+		transitionWatchdog = null,
+		pageTransitionQueue = [],
 
 		// indicates whether or not page is in process of transitioning
 		isPageTransitioning = false;
