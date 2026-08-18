@@ -105,3 +105,10 @@ gitflow/
 playwright-report/
 test-results/
 .playwright/
+# Production data and credentials — never commit.
+# toimport/ holds mongodump archives of the live player database and the
+# Greensboro Parse master key, which bypasses every ACL and CLP.
+toimport/
+*.archive
+*master_key*
+*.un~
