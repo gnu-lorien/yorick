@@ -1,111 +1,106 @@
-# The harness works. The suite has a 2-test noise floor.
+# The noise floor is zero. Here is what it actually was.
 
-**Measured 2026-08-17 on `claude/office-hours-upgrade-plan-092d60`**, at commit
-`cd5443e` (the merge of `topic/massive-upgrades`) plus the S1 isolation fix.
+**Measured 2026-08-18 on `claude/office-hours-upgrade-plan-092d60`.**
 
-This is the S4 gate from the unattended execution order, and it did not pass.
-The gate exists so that this is discovered in 90 minutes rather than after six
-hours of work built on an oracle that cannot be trusted.
+Two consecutive double-runs of the full suite, each diffed against its own pair
+with `diff-runs.js`, both reporting **0 NEW-FAIL / 447 same-pass**. One of the
+four runs was completely clean: 447 passed, zero flaky.
 
-## The measurement
-
-Two full-suite runs, **same commit, same machine, nothing changed between them**,
-compared with `diff-runs.js`:
-
-```
-  2  NEW-FAIL   regressions
-  0  new-pass
-421  same-pass
-  1  same-fail  already broken
- 26  skipped
-  1  flaky
-```
-
-A run diffed against an unchanged copy of itself should be all `same-*`. The two
-`NEW-FAIL` entries are false regressions — the noise floor:
-
-| Test | File | Passes in isolation? |
+| | before | after |
 |---|---|---|
-| `49 A third user votes for the same option as the first; that tally reaches 2` | `admin-referendums.spec.js` | **yes** |
-| `355b The log's own Next button advances the rendered page` | `lifecycle-werewolf.spec.js` | known-flaky, being diagnosed in `1d2b0cd` |
+| Passed | 421-431 | **447** |
+| `same-fail` (114) | 1 | **0** |
+| Noise floor (`NEW-FAIL` on an unchanged diff) | 2 | **0** |
+| Suite wall clock | 6.5m | **4.2m** |
 
-## Why this blocks the migration, specifically
+## Why it took three sessions
 
-Every phase exit in the modernization plan is "diff run clean". With a noise
-floor of 2, a run showing three new failures after the `parse@8.6.0` swap is
-ambiguous: it could be one real regression plus the usual two, or three
-unrelated flakes. There is no way to tell without re-running, and re-running
-changes which tests flake. The oracle stops being an oracle.
+Two reasons, both worth remembering.
 
-Fixing the noise floor is worth more than any single phase of the migration,
-because every phase depends on it.
+**The diagnostics were on the wrong lines.** 355b's elaborate table-state
+diagnostic wraps the *re-render* wait. The test dies on the *hash* wait above
+it, so in every failing run captured, that diagnostic never once executed. The
+same was true of 75: `waitForJqmPopup` grew a detailed failure report, and the
+failure had already moved to the submit click below it. Instrumentation was
+added three times without first checking which line the error came from.
 
-## Separately: test 114 is a real, reproducible failure
+**The trigger kept being fixed instead of the consequence.** `hardReload()` in
+`openLog`, `emptyGrace` polling, the transition-queue drain in `a6c978e` — each
+removed one way to *reach* the bug. None of them made the bug survivable.
 
-Not noise. `114 Renaming to collide with an existing character name succeeds`
-in `assets-rename-portrait.spec.js` fails **solo, at one worker**, and fails
-identically on the pre-S1 code — so it is pre-existing in the merged
-`topic/massive-upgrades` work and not caused by the isolation fix.
+## What the bug was
+
+`transition()` in jQuery Mobile takes `isPageTransitioning` and only gives it
+back from the `.done()` of the transition promise, which resolves off CSS
+animation callbacks. Those callbacks do not fire when the animating element is
+replaced mid-flight — which is exactly what a Backbone or Marionette view does
+when it re-renders into a page during a transition. The promise never settles,
+`_releaseTransitionLock` is never reached, and the flag stays true for the life
+of the page. From then on every `changePage` is pushed onto
+`pageTransitionQueue` and nothing is left to drain it.
+
+One stuck boolean produced three unrelated-looking failures:
+
+| Test | Symptom | Same cause |
+|---|---|---|
+| 114, 360 | hash updates, active page never changes | queued `changePage`, never drained |
+| 75 | `popup("open")` silently dropped | jQM still believes a page change is in progress |
+| 355b | Next button navigates to page 3 instead of page 1 | see below — related but distinct |
+
+355b had its own defect on top. Traced live:
 
 ```
-Error: expected jQuery Mobile page "#character-rename" to become active within
-20000ms; active page is "#character-log", hash is "#character/BfJhPSLHlU/rename"
-    at waitForActivePage (e2e/helpers/jqm-helpers.js:68)
-    at navigateToHash   (e2e/helpers/jqm-helpers.js:130)
-    at renameCharacter  (e2e/assets-rename-portrait.spec.js:200)
+register:enter  hash=/log/0/10  argStart=0   selfStart=0
+render          start=0   rows=10
+register:enter  hash=/log/0/10  argStart=20  selfStart=0   <- stale, 9ms later
+render          start=20  rows=10                          <- page 2 under a page-0 URL
+domClick        hash=/log/0/10
+next:enter      start=20                                   <- reads the poisoned value
+next:hashSet    start=30  hash=/log/30/10
 ```
 
-The hash changes but jQuery Mobile never completes the transition off
-`#character-log`. That is the same-page transition-queue problem `a6c978e`
-("drain the jQuery Mobile transition queue on the same-page path") addresses,
-so it is squarely in work already in flight rather than something new.
+A reload replays whatever hash the document loaded with, and the explicit
+navigation after it adds a second registration. Both start async fetches, so
+the later-resolving one wins even when it is stale. `next()` then paged from a
+phantom position.
 
-Because the specs in a file build shared `state` across tests, this one failure
-strands the remaining 14 tests in that file as "did not run".
+Both halves are user-visible, not test-only: the table renders a page the URL
+does not name, and Next pages from it.
 
-## Run-to-run variance observed
+## The fixes
 
-Five full runs of effectively identical code:
+- `42d8edc` — `CharacterLogView.next()`/`previous()` compute from the hash, not
+  from memoised state, and `register()` drops a call the URL has moved past.
+- `c5f8d5e` — the jQuery Mobile transition lock self-heals after 8s, and the
+  stale-route guard also fires when the log is no longer the current route at
+  all (the first version was gated on `isLogRoute()` and so did nothing in the
+  rename case, which is the one that mattered).
 
-| Run | Workers | passed | failed | flaky | did not run |
-|---|---|---|---|---|---|
-| 1 | 8 | 446 | 0 | 1 | 0 |
-| 2 | 8 | 444 | 0 | 3 | 0 |
-| 3 | 8 | 421 | 3 | — | 23 |
-| 4 | 8 | 431 | 1 | 1 | 14 |
-| 5 | **4** | 426 | 2 | 1 | 18 |
+## Still open
 
-Halving the worker count did not help, so this is not purely CPU contention.
-Runs 1 and 2 were not "better code" — their flakes happened to recover on the
-single retry.
+**Test 75 recovers but is not root-caused.** It still fails its first attempt in
+roughly half of full-suite runs and passes on retry, so it no longer registers
+as a regression — but "passes on the second try" is not fixed. The watchdog
+bounds the damage; it does not explain why the popup is dropped in the first
+place. The prior session disproved three explanations by measurement
+(`test_timing_report.md` §5a); the transition-lock hypothesis it ended on is now
+confirmed as *a* mechanism, and whether it is the only one is unproven.
 
-## What would clear the gate
+**The general rule nobody has applied yet.** `Parse.history.start()` re-dispatches
+the loaded hash on every reload (`parse-1.5.0.js:9329`, no `silent`), and route
+handlers in `mobileRouter.js` commit their async results — view state, view
+data, page transitions — into memoised singleton views without checking whether
+their route is still current. `CharacterLogView` now checks. Nothing else does.
+Test 49's ballot-rendering flake is the same shape in `referendumView`, and is
+currently green by luck rather than by repair.
 
-In rough order of value:
+## Re-running the gate
 
-1. **Fix 114.** It is reproducible solo, which makes it the easiest to work on
-   and the one blocking 14 other tests. Same root cause family as `a6c978e`.
-2. **Fix 49 and 355b's waits.** Both pass in isolation and fail under load,
-   which means the wait is racing an animation rather than asserting on a
-   settled state. `retries: 1` currently hides them as "flaky" when they
-   recover — that is honest reporting, but it is also why the noise floor was
-   not obvious before it was measured.
-3. **Re-run this gate.** `E2E_RUN_NAME=a npx playwright test`, then
-   `E2E_RUN_NAME=b npx playwright test`, then
-   `npm run test:diff -- runs/a.json runs/b.json`. It must report **0 NEW-FAIL**.
-   That is the definition of the harness being quiet against itself.
+```bash
+E2E_RUN_NAME=a npx playwright test
+E2E_RUN_NAME=b npx playwright test
+npm run test:diff -- runs/a.json runs/b.json
+```
 
-Until then the differential harness is built, tested and ready, but it cannot
-distinguish a migration regression from the suite's own jitter.
-
-## What is safe to build in the meantime
-
-Work whose correctness does not depend on the E2E oracle:
-
-- Karma on headless Chrome, so the 120 stranded Jasmine tests run again.
-- `parse-compat/` and its unit tests — the shims are plain modules and their
-  contract is provable without a browser round trip.
-
-Work that must wait for a clean gate: the `parse@8.6.0` client swap, the cloud
-adapter, and the parse-server bump. All three are verified by "diff run clean"
-and nothing else.
+Must report **0 NEW-FAIL**. That is the harness being quiet against itself, and
+it is the precondition for trusting any migration diff.
