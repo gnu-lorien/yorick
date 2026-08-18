@@ -683,14 +683,19 @@ catches it.
 | `mongorestore` into 8.0 | Partial restore; missing collections | yes (suite + audit) | exit code | ✅ loud |
 | Seeder on a prod-connected boot | Known-password admin planted; a real `devuser` overwritten | **no** | none | ❌ silent |
 
-**Critical gaps** — no test AND no error handling AND silent:
+**Critical gaps — both closed during the review:**
 
-1. **`diff-runs.js` misclassification.** The harness is the oracle for everything
-   else and has no oracle of its own. Mitigation is the legacy-vs-legacy
-   zero-diff gate in Phase 1; treat that as the tool's test, and add a fixture
-   pair with a known-planted regression so a false-negative is detectable.
-2. **Seeder on a production-connected boot.** Phase 0.5 step 5 gates it. Until
-   that lands, this is the single most dangerous command in the project.
+1. ~~**`diff-runs.js` misclassification.**~~ **CLOSED (`b8efdc8`).** The tool now
+   ships with a fixture pair carrying a deliberately planted regression,
+   covering all seven classifications, plus `npm run test:node`. Mutation-checked:
+   disabling regression detection fails 2 of 8 tests; collapsing the test key so
+   describes alias onto each other fails 4. The legacy-vs-legacy zero-diff gate
+   in Phase 1 remains as the second line.
+2. ~~**Seeder on a production-connected boot.**~~ **CLOSED (`152f031`).** Seeding
+   is opt-in via `YORICK_ALLOW_SEED=1` or `{ force: true }`, with a narrow
+   exemption for an in-memory instance the process created itself. Verified to
+   refuse without opening a connection, and to redact URI credentials from the
+   skip message.
 
 ## Worktree parallelization strategy
 
@@ -863,10 +868,14 @@ finding above. Run with Claude Code or Codex; checkbox as you ship.
   - Surfaced by: Test review T1 — shims have zero direct tests; `when` varargs and cloud `response.error`-after-return both fail silently
   - Files: `public/karma.conf.js`, `public/scripts/app/tests/parse-compat-*.js`
   - Verify: `npm test` green; a deliberately naive `when = Promise.all` fails a test
-- [ ] **T10 (P2, human: ~2h / CC: ~15min)** — harness — Subset diffing in `diff-runs.js`
+- [x] **T10 (P2, human: ~2h / CC: ~15min)** — harness — Subset diffing in `diff-runs.js` — **DONE (`b8efdc8`)**
   - Surfaced by: Performance P1 — `workers: 1` × 397 tests × 2 stacks = 40-66 min per diff
-  - Files: `diff-runs.js`, `package.json`
-  - Verify: `npm run test:diff -- xp-history` completes in ~2 min
+  - Files: `diff-runs.js`, `test/diff-runs.test.js`, `test/fixtures/diff-runs/`, `package.json`
+  - Verified: `--filter` subsets without changing classification (asserted in the test suite); `npm run test:diff -- <a> <b> --filter <spec>` works
+- [x] **T14 (P1, human: ~4h / CC: ~40min)** — harness — Give `diff-runs.js` an oracle of its own — **DONE (`b8efdc8`)**
+  - Surfaced by: Failure modes — critical gap #1, the harness is the oracle for everything else and had no test
+  - Files: `test/diff-runs.test.js`, `test/fixtures/diff-runs/{baseline,candidate}.json`
+  - Verified: fixture pair covers all seven classifications; **mutation-checked** — disabling regression detection fails 2 of 8 tests, collapsing the test key so describes alias fails 4. Fixtures are real Playwright output with machine paths normalised out.
 - [ ] **T11 (P2, human: ~4h / CC: ~30min)** — assets — Vendor all seven CDN dependencies, early
   - Surfaced by: Outside voice #7 — the count is 7, not 4; the compat layer loads Backbone from cdnjs
   - Files: `public/scripts/lib/`, `public/index.html`, `public/scripts/app.js`
@@ -909,19 +918,11 @@ rows) have no `_wperm` on any row and are anonymously writable today. Separately
 the production Parse master key and a 436MB player-data dump sat unignored in the
 repo tree — `.gitignore` rules were added and committed.
 
-**VERDICT:** ENG REVIEW COMPLETE — 13 findings folded into the plan, 13
-implementation tasks emitted. Not CLEARED to implement: T1 (production
-anonymous-write remediation) and T2 (gate the seeder) are prerequisites, and two
-critical failure modes remain unmitigated in the plan as written.
+**VERDICT:** ENG REVIEW COMPLETE — 13 findings folded into the plan. **Both
+critical failure modes are closed in code** (`152f031`, `b8efdc8`), and T2 and
+T10 shipped during the review. The one remaining prerequisite is **T1**, the
+production anonymous-write remediation, which is ops work independent of this
+plan and is documented in `docs/runbooks/production-clp-remediation.md`.
+CLEARED to implement once T1 is applied.
 
-**UNRESOLVED DECISIONS:**
-- `diff-runs.js` has no oracle of its own — a misclassified regression is
-  silent, and the harness is the oracle for everything else. Proposed mitigation
-  (a fixture pair carrying a known-planted regression, so a false negative is
-  detectable) is not yet accepted or scheduled.
-- Local `node index.js` now requires `YORICK_ALLOW_SEED=1` to populate the
-  in-memory database. Auto-allowing for a `MongoMemoryServer` instance this
-  process created itself would restore the old quickstart ergonomics without
-  weakening the guard, since such an instance is provably ephemeral rather than
-  merely local-looking. Not implemented — it widens the choice that was made,
-  so it needs an explicit decision.
+NO UNRESOLVED DECISIONS
