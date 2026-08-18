@@ -184,11 +184,15 @@ character-owned class derives `_wperm` from the owning character. The correct
 fix is a one-time migration setting each row's `_wperm`/`_rperm` from its owning
 `Vampire`, after which the CLPs can drop back to matching the other classes.
 
-**Gate the seeder.** `index.js:57` runs `seed_db.seedDatabase()` unconditionally
-at boot with no `NODE_ENV` guard, and `seedTestUsers` upserts `devuser` with a
-known password and `admininterface: true`, matching on `username` alone. Any
-deploy of this branch against production data plants an admin account. Gate it
-before deploying anything.
+**Gate the seeder — DONE (`152f031`).** `index.js:57` used to run
+`seed_db.seedDatabase()` unconditionally at boot, and `seedTestUsers` upserts
+`devuser` with a known password and `admininterface: true`, matching on
+`username` alone — so any deploy of this branch against production data would
+have planted an admin account. Seeding is now opt-in via `YORICK_ALLOW_SEED=1`
+(or `seedDatabase(uri, { force: true })` for `npm run seed`).
+
+**Do not set `YORICK_ALLOW_SEED` on the Heroku dyno.** That is the one config
+change that would re-open this.
 
 **Two payment classes.** Production has both `PaymentPaypal` and
 `Payment_PayPal`. One is probably dead. Worth finding out which.

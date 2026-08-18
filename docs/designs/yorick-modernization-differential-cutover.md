@@ -831,10 +831,10 @@ finding above. Run with Claude Code or Codex; checkbox as you ship.
   - Surfaced by: Outside voice #2, verified against `toimport/20260703.archive` — 23 publicly writable classes, `VampireCreation` (2,856) and `VampireApproval` (544) with no `_wperm` on any row
   - Files: `docs/runbooks/production-clp-remediation.md` (ops, no code change)
   - Verify: `node audit_db_permissions.js "$PROD_URI"` exits 0
-- [ ] **T2 (P1, human: ~2h / CC: ~20min)** — `index.js` — Gate the seeder behind an explicit opt-in env var
+- [x] **T2 (P1, human: ~2h / CC: ~20min)** — `index.js` — Gate the seeder behind an explicit opt-in env var — **DONE (`152f031`)**
   - Surfaced by: Outside voice #1 — `index.js:57` runs `seedDatabase()` unconditionally; `seed_db.js:57-81` upserts `devuser` with a known password and `admininterface: true`, matching on `username` alone
-  - Files: `index.js`, `seed_db.js`, `playwright.config.js`
-  - Verify: booting with the var unset performs no writes to `_User`
+  - Files: `index.js`, `seed_db.js`, `package.json`, `playwright.config.js`
+  - Verified: denied with the var unset **without opening a connection**; allowed under `YORICK_ALLOW_SEED=1`, producing 30 `_SCHEMA` entries, 5 users, 1,587 Description rows, 11 KithRules against an in-memory instance. Skip message redacts URI credentials.
 - [ ] **T3 (P1, human: ~2h / CC: ~20min)** — harness — Run the two stacks from separate git worktrees
   - Surfaced by: Architecture A1 — `package.json:21-22` resolves one `parse`/`parse-server`; `cloud/main.js:1` is `/* global Parse */` with zero `require('parse')`
   - Files: `diff-runs.js`, `playwright.config.js`, worktree setup docs
@@ -915,9 +915,13 @@ anonymous-write remediation) and T2 (gate the seeder) are prerequisites, and two
 critical failure modes remain unmitigated in the plan as written.
 
 **UNRESOLVED DECISIONS:**
-- `diff-runs.js` has no oracle of its own — a misclassified regression is silent.
-  Mitigation proposed (a fixture pair with a known-planted regression) but not
-  yet accepted or scheduled.
-- The seeder gate (T2) has no owner or target phase beyond "before any deploy
-  touches player data"; until it lands, `npm start` against a production URI
-  plants a known-password admin account.
+- `diff-runs.js` has no oracle of its own — a misclassified regression is
+  silent, and the harness is the oracle for everything else. Proposed mitigation
+  (a fixture pair carrying a known-planted regression, so a false negative is
+  detectable) is not yet accepted or scheduled.
+- Local `node index.js` now requires `YORICK_ALLOW_SEED=1` to populate the
+  in-memory database. Auto-allowing for a `MongoMemoryServer` instance this
+  process created itself would restore the old quickstart ergonomics without
+  weakening the guard, since such an instance is provably ephemeral rather than
+  merely local-looking. Not implemented — it widens the choice that was made,
+  so it needs an explicit decision.
