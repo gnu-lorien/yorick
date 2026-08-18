@@ -56,6 +56,20 @@ module.exports = function(config) {
     // available reporters: https://npmjs.org/browse/keyword/karma-reporter
     reporters: ['progress'],
 
+    // Headless Chrome, with a no-sandbox variant for CI containers.
+    //
+    // `ChromeHeadless` resolves a real Chrome via karma-chrome-launcher, which
+    // looks at CHROME_BIN first and then the standard install paths.
+    // test_runner.js points CHROME_BIN at Playwright's bundled Chromium when no
+    // system Chrome is installed, so a machine set up only for the E2E suite can
+    // run these too without a second browser download.
+    customLaunchers: {
+      ChromeHeadlessNoSandbox: {
+        base: 'ChromeHeadless',
+        flags: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage']
+      }
+    },
+
 
     // web server port
     port: 8082,
@@ -67,21 +81,29 @@ module.exports = function(config) {
 
     // level of logging
     // possible values: config.LOG_DISABLE || config.LOG_ERROR || config.LOG_WARN || config.LOG_INFO || config.LOG_DEBUG
-    logLevel: config.LOG_DEBUG,
+    //
+    // LOG_DEBUG buried the actual failures under a wall of per-file 404/200
+    // request logging. LOG_WARN still shows browser errors and the failure
+    // summary, which is what anyone reading this output is looking for.
+    logLevel: config.LOG_WARN,
 
 
     // enable / disable watching file and executing tests whenever any file changes
-    autoWatch: true,
+    autoWatch: false,
 
 
     // start these browsers
     // available browser launchers: https://npmjs.org/browse/keyword/karma-launcher
-    browsers: ['PhantomJS'],
+    //
+    // Was PhantomJS, which has been abandoned since 2018 and could no longer
+    // run at all — leaving these 120 Jasmine specs as decoration. Headless
+    // Chrome is what karma-chrome-launcher (already a devDependency) drives.
+    browsers: [process.env.CI ? 'ChromeHeadlessNoSandbox' : 'ChromeHeadless'],
 
 
     // Continuous Integration mode
     // if true, Karma captures browsers, runs the tests and exits
-    singleRun: false,
+    singleRun: true,
 
     // Concurrency level
     // how many browser should be started simultanous
