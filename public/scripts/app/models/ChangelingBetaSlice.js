@@ -378,7 +378,7 @@ define([
             });
             self._updateTraitWrapper = self._updateTraitWrapper.then(function () {
                 console.log("Applying the original update text");
-                return self.constructor.__super__.update_text.apply(self, [target, value]);
+                return Character.baseMethods.update_text.apply(self, [target, value]);
             });
             console.log("About to add affinities for kith " + value +
                 (retained.length ? " (retaining " + retained.join(", ") + ")" : ""));
@@ -397,7 +397,7 @@ define([
         update_text: function(target, value) {
             var self = this;
             if (target != "ctdbs_kith") {
-                return self.constructor.__super__.update_text.apply(self, [target, value]);
+                return Character.baseMethods.update_text.apply(self, [target, value]);
             }
 
             self._updateTraitWrapper = self._updateTraitWrapper || Parse.Promise.as();
@@ -431,7 +431,7 @@ define([
 
             if ("ctdbs_kith" != target) {
                 self._updateTraitWrapper = self._updateTraitWrapper.always(function () {
-                    return self.constructor.__super__.unpick_text.apply(self, [target]);
+                    return Character.baseMethods.unpick_text.apply(self, [target]);
                 });
                 return self._updateTraitWrapper;
             }
@@ -448,7 +448,7 @@ define([
             });
             self._unpick_previous_arts(self.get_arts_affinities());
             self._updateTraitWrapper = self._updateTraitWrapper.then(function () {
-                return self.constructor.__super__.unpick_text.apply(self, [target]);
+                return Character.baseMethods.unpick_text.apply(self, [target]);
             });
             self._updateTraitWrapper = self._updateTraitWrapper.then(function () {
                 var creation = self.get("creation");
@@ -469,7 +469,20 @@ define([
 
     }, ExpirationMixin );
     
+    // Inherit Character's behaviour explicitly.
+    //
+    // The line below copies Character's STATICS (get_character, create, ...);
+    // it copies no instance methods, because those live on the prototype. This
+    // module used to receive them only as a side effect of Parse 1.5 chaining
+    // repeated registrations of the className "Vampire" -- see the note at the
+    // bottom of Character.js. parse@8 has one class per className, so that
+    // chain no longer exists.
+    //
+    // `defaults` rather than `extend`: this module's own definitions win, and
+    // the base fills in the rest. That is the inheritance the chain used to
+    // provide, now stated outright and independent of load order.
     _.extend(instance_methods, Character);
+    _.defaults(instance_methods, Character.baseMethods);
 
     var Model = Parse.Object.extend("Vampire", instance_methods);
 

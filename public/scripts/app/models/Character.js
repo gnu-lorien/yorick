@@ -1201,6 +1201,34 @@ define([
 
     var Model = Parse.Object.extend("Vampire", instance_methods);
 
+    // The base character behaviour, exposed so venue models can inherit it.
+    //
+    // Character is a base, not a peer: Vampire, Werewolf and Changeling are
+    // venues that all persist to the same "Vampire" table and all need these
+    // methods. But `_.extend(instance_methods, Character)` in those modules
+    // copies the CONSTRUCTOR's own enumerable properties -- extend,
+    // createWithoutData, className, get_character, create, ... -- and no
+    // instance methods at all. Measured: `Character.update_text` is undefined
+    // as a static; it only exists on the prototype.
+    //
+    // So the venues never actually inherited anything. They got these methods
+    // because Parse 1.5 turned a repeated className into inheritance
+    // (parse-1.5.0.js:6127 -> `OldClassObject._extend(...)`, with `_extend`
+    // setting `child.__super__ = parent.prototype` at :1327), which quietly
+    // chained the four registrations of "Vampire" together.
+    //
+    // parse@8 cannot do that, and it is not a shimmable difference: `extend`
+    // short-circuits on `if (classMap[adjustedClassName])` BEFORE choosing a
+    // parent prototype, so every registration after the first reuses the one
+    // class and merges into its prototype. There is exactly one class per
+    // className by construction.
+    //
+    // Depending on that was always fragile -- it made base behaviour a
+    // function of RequireJS load order. Exporting the mixin makes the
+    // inheritance explicit, so each venue's method set is complete on its own
+    // and an override can still reach the implementation it replaced.
+    Model.baseMethods = instance_methods;
+
     // Returns the Model class
     return Model;
 
