@@ -80,19 +80,44 @@ cost of running old and new side by side.
 
 | Layer | What it is | Evidence |
 |---|---|---|
-| Database | **MongoDB Atlas** (managed) | `ca1de31 Update to minimum version of Parse that works with Atlas`; `73a5146 Change the environment variable to DB_URI` |
+| Database | **MongoDB 5.0.32 Community, self-hosted on a DigitalOcean droplet** | owner-stated, 2026-08-17. Supersedes the Atlas inference from `ca1de31`, which is out of date. |
 | API | **Heroku** — `greensboro-yorick.herokuapp.com` | `siteconfig.js: ConfigGreensboro`; `Procfile: web: npm start` |
 | Admin | `parse-dashboard@^2.0.5` on a second dyno | `ProcfileDashboard: web: npm run dashboard` |
 | Front end | **Netlify**, built by `gulp greensboro` | `gulp.task('greensboro', ...)`; commits `017048f`/`ef66548`/`3fc5e7e` fighting Netlify build stalls |
 | Runtime pin | `engines: { node: "14.x", npm: "6.x" }` | greensboro `package.json` |
 | Last touched | **July 23, 2022** | `c2340f0` |
 
-**Atlas is the single biggest de-risking fact in this document.** The plan was
-written assuming an unknown, self-hosted, possibly-3.x MongoDB requiring five or
-six sequential in-place major upgrades. Atlas is managed and force-upgrades its
-shared tiers, so the cluster is very likely already at 6.0+. Phase 7 shrinks
-from "the riskiest phase" to "check the cluster version, and use Atlas's own
-snapshot/restore for the rehearsal."
+**The database is the critical path, and it is a hard prerequisite — not a
+parallel workstream.** MongoDB 5.0 reached end of life on **2024-10-31**, and no
+supported parse-server release accepts it:
+
+| parse-server | Ships `parse` | MongoDB floor |
+|---|---|---|
+| 9.10.0 (current) | 8.6.0 | 7.0.16 / 8.0.4 / 8.3.4 (CI-covered) |
+| 8.6.87 | 7.1.2 | 6.0.19 |
+| ≤ 6.x (itself EOL) | — | last line that accepted MongoDB 5 |
+
+So **the MongoDB move is unavoidable at any target**. Even the cheapest modern
+parse-server needs at least one major hop. There is no version of this project
+where the database stays put.
+
+An in-place upgrade to the 8.0 target is **three sequential major hops** —
+5.0 → 6.0 → 7.0 → 8.0 — each requiring `setFeatureCompatibilityVersion` against
+`admin` before the next (with `confirm: true` from 7.0 onward), and MongoDB
+supports no skipping. That is the expensive path.
+
+**Self-hosting makes the cheap path available.** Because the droplet is yours,
+you can stand up a *second* droplet running 8.0, `mongodump` the single
+application database out of 5.0, `mongorestore` it in, and cut the connection
+string over. No FCV chain, and the rollback is perfect by construction: the 5.0
+droplet is never touched. The "never skip major versions" guidance governs
+in-place binary upgrades and cluster metadata; Yorick's data is ordinary BSON
+documents plus Parse's `_SCHEMA` collection. Use current Database Tools (100.x)
+for both ends.
+
+What self-hosting takes away is the managed snapshot. There is no Atlas restore
+button here, so the backup story is entirely yours and it is now a blocking
+prerequisite rather than a footnote.
 
 ### The branch divergence problem
 
@@ -143,23 +168,26 @@ That wiring gets ported onto this branch, not merged from it.
 | `parse-server` | `=2.8.4` | `9.10.0` | depends on `parse@8.6.0`; the pairing is not free — SDK 5 was *incompatible* with Server 6 |
 | `parse` (client + node) | `1.5.0` / `1.9.0` | `8.6.0` | `dist/parse.js` has an AMD wrapper and sets `globalThis.Parse` |
 | Node | 8 (Travis) | 22.13+ or 24.11+ | engines: `>=20.19 <21 \|\| >=22.13 <23 \|\| >=24.11 <25`; local is 24.11.1 |
-| MongoDB | **Atlas**, version TBC | **8.0.4** | parse-server 9 CI covers 7.0.16, 8.0.4, 8.3.4. MongoDB 7 hits EOL August 2026 — target 8. |
+| MongoDB | **5.0.32 Community, self-hosted** (EOL 2024-10-31) | **8.0.4** | parse-server 9 CI covers 7.0.16, 8.0.4, 8.3.4. MongoDB 7 hits EOL August 2026 — target 8. |
 | Netlify/Heroku runtime | `node 14.x`, `npm 6.x` (pinned) | Node 22 or 24 | greensboro `engines` block. Blocks parse-server 9. |
 
 ## Premises
 
-All seven agreed without revision. Two were **revised after the fact** when the
-`greensboro` production branch was located — noted inline.
+All seven agreed without revision. Premise 2 was **revised twice** as production
+ground truth arrived — the final version is the operative one.
 
 1. **The client Parse migration is a bounded shim problem, not architectural.**
    ~250 lines validated by the E2E suite, instead of ~685 hand edits.
-2. ~~**The MongoDB 3.x/4.x → 8.0 migration is the real risk.**~~ **REVISED:**
-   production is on **MongoDB Atlas**, which is managed and force-upgrades
-   shared tiers. The five-or-six-hop in-place upgrade chain probably doesn't
-   exist. The rehearsal still happens, using Atlas snapshots. **The real risk
-   moved to the branch divergence** — no one has deployed this branch's
-   application code to production, and the `node 14.x` engines pin on
-   Netlify/Heroku actively blocks parse-server 9.
+2. **The MongoDB migration is the real risk — reinstated and strengthened.**
+   *(First written as a guess at 3.x/4.x; briefly revised down on an out-of-date
+   Atlas inference from `ca1de31`; corrected by the owner to **MongoDB 5.0.32
+   Community, self-hosted on DigitalOcean**.)* It is not merely the riskiest
+   step — it is a **hard prerequisite that gates every other phase**, because no
+   supported parse-server accepts MongoDB 5. It is also the only irreversible
+   step touching player data, and self-hosting means there is no managed
+   snapshot to fall back on. **Two additional risks share the top tier:** the
+   branch divergence (this lineage has never been deployed to production) and
+   the `node 14.x` engines pin, which blocks parse-server 9 outright.
 3. **Marionette stays at 2.x, pinned and vendored.**
 4. **The four runtime CDN dependencies get vendored locally regardless of scope** —
    a live availability and supply-chain risk today, not a modernization nicety.
@@ -220,10 +248,10 @@ trustworthy oracle, and "444 passed, 0 failed" is currently a claim from commit
 **Phase 0.5 — Close the production gap.** *(Added after `greensboro` was located.
 This is now the true first risk, ahead of any SDK work.)*
 
-1. Read the **Atlas cluster version and tier**. If it's ≥7.0, premise 2's
-   migration chain evaporates and Phase 7 becomes a snapshot-restore rehearsal.
-   If it's still on a legacy shared tier, that's the one thing in this project
-   that could genuinely block it.
+1. **Establish a verified backup of the 5.0 droplet.** Self-hosted means no
+   managed restore button. Take a `mongodump`, restore it somewhere else, and
+   run the suite against the restore. A backup you have not restored is not a
+   backup. Nothing else in this project should start until this is done.
 2. Confirm the **Heroku dyno** (`greensboro-yorick`) stack and Node version, and
    whether the `parse-dashboard` dyno is still running.
 3. Confirm the **Netlify** site, its build command (`gulp greensboro`), and its
@@ -277,15 +305,33 @@ cannot run. Move to `karma-chrome-launcher` headless (already in devDependencies
 or delete them and let Playwright carry coverage. Decide explicitly; don't leave
 them as decoration.
 
-**Phase 7 — Database rehearsal.** Restore an **Atlas snapshot** into a fresh
-MongoDB 8.0.4 cluster and run the full suite against it. If the production
-cluster is already ≥7.0 this is a tier/version bump, not a migration. If it's on
-a legacy shared tier, fall back to `mongodump` of the single application
-database (not `admin`/`config`) — Yorick's data is ordinary documents plus
-Parse's `_SCHEMA` collection, so dump/restore sidesteps the sequential-upgrade
-chain that applies to cluster metadata. Either way the suite verifies the restore
-before anyone touches production. *Exit:* full suite green against restored
-production data.
+**Phase 7 — Database migration (side-by-side droplet).** Stand up a **second
+DigitalOcean droplet running MongoDB 8.0.4**. `mongodump` the single application
+database out of the live 5.0.32 droplet (not `admin`/`config`), `mongorestore`
+into 8.0, and run the full suite against it. Use current Database Tools (100.x)
+at both ends.
+
+This deliberately avoids the in-place path (5.0 → 6.0 → 7.0 → 8.0, three
+sequential `setFeatureCompatibilityVersion` hops with no skipping allowed), which
+buys nothing here and mutates the only copy of the data. Side-by-side gives a
+perfect rollback by construction: the 5.0 droplet is never written to.
+
+```
+  live                                  new
+  ┌────────────────────┐                ┌────────────────────┐
+  │ droplet A          │  mongodump     │ droplet B          │
+  │ MongoDB 5.0.32     │ ─────────────► │ MongoDB 8.0.4      │
+  │ (never mutated)    │  mongorestore  │                    │
+  └─────────┬──────────┘                └─────────┬──────────┘
+            │                                     │
+   parse-server 2.8.4                     parse-server 9.10.0
+            │                                     │
+            └──────── 397 E2E tests ──────────────┘
+                    run against BOTH, diff
+```
+
+*Exit:* full suite green against restored production data on 8.0, with the
+result diffed against the same suite run on the 5.0 droplet.
 
 **Phase 8 — Cutover.** Single deploy to the Heroku dyno and Netlify site. Keep
 the legacy stack running as a live rollback target, not just a git SHA.
@@ -295,12 +341,14 @@ landed separately against a green production baseline.
 
 ## Open Questions
 
-*Questions 1-3 were answered by the `greensboro` branch; what remains is the
-narrower version of each.*
+*Questions 1-3 were answered by the `greensboro` branch and the owner; what
+remains is the narrower version of each.*
 
-1. **What MongoDB version is the Atlas cluster on, and what tier?** Answers
-   whether Phase 7 is a snapshot restore or a real migration. Everything about
-   the project's risk profile hinges on this one number. Phase 0.5 resolves it.
+1. **Is there a verified, restorable backup of the 5.0.32 droplet?** Self-hosted
+   means no managed restore. This is the single blocking prerequisite: it gates
+   Phase 7, and Phase 7 gates everything else because no supported parse-server
+   accepts MongoDB 5. "A backup exists" is not the bar; "a backup was restored
+   and the suite ran green against it" is.
 2. **Does this branch's application code deploy to production at all?** 58
    commits past `main`, 127 past `greensboro`, merge base January 2020. The
    application code has never run on the production topology. This is now the
@@ -339,8 +387,12 @@ narrower version of each.*
 ## Distribution Plan
 
 Existing deployment pipeline covers this: Netlify serves the `gulp greensboro`
-build, a Heroku dyno runs parse-server, and MongoDB Atlas holds the data. Three
-changes are in scope:
+build, a Heroku dyno runs parse-server, and a self-managed DigitalOcean droplet
+holds the data. Four changes are in scope:
+
+- **Stand up the second droplet.** MongoDB 8.0.4 alongside the live 5.0.32 box.
+  This is infrastructure the project does not have today and it is on the
+  critical path.
 
 - **Raise the Node pin.** `engines: { node: "14.x", npm: "6.x" }` on `greensboro`
   must become Node 22 or 24 on both Netlify and Heroku. parse-server 9 will not
@@ -357,13 +409,14 @@ changes are in scope:
 
 1. **Phase 0:** run `npm run test:e2e` on current HEAD and record the result.
    Cheap, and everything leans on it.
-2. **Phase 0.5a:** read the Atlas cluster version and tier. One number, and it
-   determines whether Phase 7 is a snapshot restore or a real migration.
+2. **Phase 0.5a:** `mongodump` the 5.0.32 droplet, restore it onto a scratch
+   box, and run the suite against the restore. Prove the backup is real before
+   anything else.
 3. **Phase 0.5b:** port the production wiring from `greensboro` onto this branch
    — `DB_URI`, `siteconfig-greensboro`, `ProcfileDashboard` — and raise the Node
    pin off 14.x.
 4. **Phase 0.5c:** deploy this branch, dependencies unchanged, to a staging
-   Heroku dyno and Netlify preview against restored Atlas data. Prove the
+   Heroku dyno and Netlify preview against the restored data. Prove the
    58-commit gap deploys before stacking an SDK migration on it.
 5. **Phase 1:** build the differential harness.
 6. **Phase 2:** write `parse-compat/` and swap the SDK. It should feel
@@ -371,23 +424,27 @@ changes are in scope:
 
 ## The Assignment
 
-**Read one number: the Atlas cluster version.** Then deploy this branch, with no
-dependency changes at all, to a staging clone of production.
+**Prove your backup restores.** `mongodump` the 5.0.32 droplet, `mongorestore` it
+onto a scratch box, and run the 397 tests against the restore.
 
-The `greensboro` branch changed the shape of this project. Production is on
-managed Atlas, not an unknown self-hosted MongoDB — which likely deletes the
-scariest phase in the plan. But it surfaced something worse in its place: the
-branch carrying 397 tests and the R1-R51 security remediation has **never been
-deployed to production**. Merge base January 2020. 58 commits past `main`, 127
-past `greensboro`, and the production runtime is pinned to `node 14.x`, which
+Everything in this plan routes through the database, and not by choice: MongoDB
+5.0 went end-of-life on 2024-10-31 and **no supported parse-server release
+accepts it**. There is no version of this project where the database stays where
+it is. It is self-hosted, so there is no managed restore button, and it holds the
+only copy of your players' characters.
+
+The second thing the `greensboro` branch surfaced is nearly as bad: the branch
+carrying 397 tests and the R1-R51 security remediation has **never been deployed
+to production**. Merge base January 2020. 58 commits past `main`, 127 past
+`greensboro`, and the production runtime is pinned to `node 14.x`, which
 parse-server 9 cannot run on.
 
-So the risk isn't the Parse migration, and it probably isn't the database
-either. It's that there are two Yoricks — the one that's tested and the one
-that's running — and nobody has ever proven the first can become the second.
+So the risk was never the Parse migration. It's that there are two Yoricks — the
+one that's tested and the one that's running — sitting on top of a database that
+has to move regardless, with a backup nobody has restored.
 
-Prove that with zero dependency changes first. Then the SDK swap is just an SDK
-swap.
+Restore the backup. Then deploy the tested branch with zero dependency changes.
+Then the SDK swap is just an SDK swap.
 
 ## What I noticed about how you think
 
