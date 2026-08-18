@@ -271,12 +271,100 @@ This is now the true first risk, ahead of any SDK work.)*
 *Exit:* this branch, with no dependency changes, running in a staging clone of
 production against restored player data, with the E2E suite green against it.
 
-**Phase 1 — Build the differential harness.** Parameterize `index.js` on
-`YORICK_STACK=legacy|modern`. Legacy keeps `parse-server@2.8.4` + in-memory Mongo
-4.4.18 (already working). Modern gets `parse-server@9.10.0` + MongoDB 8.0.4. Add a
-Playwright JSON reporter and a `diff-runs.js` that classifies every test as
-same-pass / same-fail / new-fail / new-pass. *Exit:* `npm run test:diff` emits a
-regression list; noise triaged to near-zero on two legacy-vs-legacy runs.
+**Phase 1 — Build the differential harness.**
+
+*Shape (eng review A1).* Do **not** parameterize `index.js` on a
+`YORICK_STACK` env var. That cannot work: `package.json:21-22` resolves exactly
+one `parse` and one `parse-server` at install time, and `cloud/main.js:1` is
+`/* global Parse */` with zero `require('parse')` — it binds to whatever global
+`Parse` the loading server injects, and 2.8.4's `(request, response)` hooks
+cannot coexist in-process with 9.10.0's `async (request)` ones.
+
+Run each stack from **its own git worktree**, with its own `package.json`,
+`node_modules`, and port. The repo already works this way (`.claude/worktrees/`),
+so this adds no infrastructure. `playwright.config.js`'s `baseURL` is a one-line
+override per run.
+
+```
+  worktree: legacy/                      worktree: modern/
+  ┌──────────────────────────┐           ┌──────────────────────────┐
+  │ parse-server 2.8.4       │           │ parse-server 9.10.0      │
+  │ parse 1.9.0 / 1.5.0      │           │ parse 8.6.0              │
+  │ node_modules (own)       │           │ node_modules (own)       │
+  │ :1337                    │           │ :1338                    │
+  └────────────┬─────────────┘           └────────────┬─────────────┘
+               │                                      │
+        results-legacy.json                    results-modern.json
+               └──────────────┬───────────────────────┘
+                       diff-runs.js
+                same-pass / same-fail / new-fail / new-pass
+```
+
+*Reporter.* Use Playwright's **built-in** `json` reporter — do not write one:
+`reporter: [['list'], ['json', { outputFile: 'results-${stack}.json' }]]`. Only
+the cross-run comparison (`diff-runs.js`) is genuinely custom; Playwright has no
+built-in diff.
+
+*Identical starting state (eng review C1).* Do not run `seedDatabase()`
+separately per stack. `seed_db.js` hardcodes `_id`s (`:161,171`) but stamps
+`_created_at`/`_updated_at` with `new Date()` (`:71,77,168,191,230`), so two
+independent seed runs produce different timestamps — and `collections/Approvals.js:14-22`,
+`xp-history.spec.js`, and `character-history.spec.js` all assert on ordering.
+Seed **once**, `mongodump` the result to a committed fixture, and `mongorestore`
+it into both stacks before each run. Byte-identical starting state means every
+diff is a real behavior difference, and runs stay repeatable across days.
+
+*Fast inner loop (eng review P1).* `diff-runs.js` accepts a spec glob or
+`--project`, so a promise-shim change can be diffed against `xp-history.spec.js`
+in about two minutes. `playwright.config.js` runs `workers: 1` over 397 tests
+with a 120s timeout; a full two-stack diff is 40-66 minutes, which is fine at a
+phase exit and unusable as a feedback loop. Design the subset argument in now —
+it is painful to retrofit into the comparison logic later.
+
+*Exit:* `npm run test:diff` emits a regression list, and two **legacy-vs-legacy**
+runs diff to zero. That second condition is the real gate — until the harness is
+quiet against itself, it cannot tell you anything about the modern stack.
+
+**Phase 1.5 — Restore the unit-test runner (eng review T1; absorbs old Phase 6).**
+
+Moved ahead of the shims, because the shims are where it earns its keep. Point
+Karma at `karma-chrome-launcher` (already in `devDependencies`) and retire the
+PhantomJS launcher, so the 120 existing Jasmine tests run again and there is
+somewhere to put shim unit tests.
+
+The shims are ~250 lines of pure logic with 14 identifiable branches and the
+397 E2E tests cover them only indirectly. Two of those branches fail *silently
+with a wrong value* rather than throwing, which is precisely what E2E is worst
+at catching:
+
+- **`Parse.Promise.when` varargs.** Both call forms are live —
+  `when(promises)` (array) and `when(get_troupe, get_user)` (varargs) — and
+  `when` resolved with **spread arguments**, while `Promise.all` resolves with
+  **an array**. Four confirmed multi-arg consumers: `function(role, title)`,
+  `function (troupe, user)`, `function (character, i)`,
+  `function (count, key, rolesagain)`. A naive `when = Promise.all` hands the
+  first parameter the whole array and the rest `undefined`. No exception.
+- **Cloud `response.error` after an early return.** `cloud/main.js:142-148`:
+  ```js
+  var require_a_user = function(request, response, noun) {
+      if (!request.master && !request.user) {
+          response.error(noun + " can only be changed by a logged in user.");
+          return false;
+      } ...
+  };
+  // caller:  if (!require_a_user(request, response, "Traits")) { return; }
+  ```
+  Under the modern signature a handler that returns without throwing
+  **succeeds**. The adapter must turn a recorded `response.error()` into a
+  thrown rejection, or every permission refusal in `cloud/main.js` silently
+  becomes an allow — re-opening exactly what `26d07f2` and `f080012` closed.
+
+Two things that are safe and need no special handling: all 76 `.always(` sites
+are zero-arg (`.always(function ()`), so `→ .finally` loses nothing, and
+`.done → .then` is a straight rename.
+
+*Exit:* Karma green on headless Chrome, with unit tests covering all 14 shim
+branches — written alongside Phase 2, not after it.
 
 **Phase 2 — The four client shims.** New `public/scripts/lib/parse-compat/`:
 `promise.js`, `collection.js`, `events.js`, `index.js`. Swap the RequireJS path
@@ -289,23 +377,31 @@ zero new-fail.
 **Phase 3 — Cloud code adapter.** A `Parse.Cloud.define`/hook wrapper synthesizing
 `response.success`/`response.error` over the modern promise-returning signature,
 applied across 13 functions and 14 hooks. This is the front with no test coverage
-gap tolerance — cloud hooks fire on nearly every write. *Exit:* diff run clean;
-the `beforeSave` thumbnail path exercised explicitly (it fetches portraits back
-over HTTP from `publicServerURL`).
+gap tolerance — cloud hooks fire on nearly every write. *Exit:* diff run clean.
+The `beforeSave` thumbnail path needs no special handling: `cloud/main.js:84`
+(`Image.read(portrait.get("original").url())`) round-trips the file over
+`publicServerURL`, and `assets-rename-portrait.spec.js:651` (test 117) decodes
+the served image and asserts it is the 128×128 JPEG `crop_and_thumb` produced
+with the fixture's dominant color. That test cannot pass unless the whole round
+trip works, so the oracle already covers it.
 
 **Phase 4 — Server and dependencies.** `parse-server` 2.8.4 → 9.10.0, `parse`
 1.9.0 → 8.6.0 on the node side, replace deprecated `request`, bump `jimp` from
-0.2.28 (its API changed substantially — the thumbnail code needs review, not just
-a version bump). Retire Travis/Node 8 for GitHub Actions on Node 22/24.
+0.2.28 (its `getBuffer`/`scaleToFit` callback API changed substantially — the
+thumbnail code needs review, not just a version bump; the 28 tests in
+`assets-rename-portrait.spec.js` are the safety net). Retire Travis/Node 8 for
+GitHub Actions on Node 22/24. *Exit (eng review A4):* `npm run audit-permissions`
+passes. parse-server 9 normalizes `_SCHEMA` on first boot against a schema
+2.8.4 created, and `audit_db_permissions.js:125-146` is the only check that
+covers all 38 seeded classes — `access-control.spec.js` covers 15.
 
 **Phase 5 — Vendor the CDN dependencies.** jQuery, lodash, Backbone, and
 bootstrap-datepicker move from four third-party CDNs to local files, pinned by
 version. Removes a live availability risk.
 
-**Phase 6 — Resolve the Karma suite.** 120 tests on a PhantomJS launcher that
-cannot run. Move to `karma-chrome-launcher` headless (already in devDependencies)
-or delete them and let Playwright carry coverage. Decide explicitly; don't leave
-them as decoration.
+**Phase 6 — *(absorbed into Phase 1.5)*.** The Karma/PhantomJS work moved ahead
+of the shims, because the shim unit tests need a working unit-test runner. See
+Phase 1.5.
 
 **Phase 7 — Database migration (side-by-side droplet).** Stand up a **second
 DigitalOcean droplet running MongoDB 8.0.4**. `mongodump` the single application
@@ -332,11 +428,40 @@ perfect rollback by construction: the 5.0 droplet is never written to.
                     run against BOTH, diff
 ```
 
-*Exit:* full suite green against restored production data on 8.0, with the
-result diffed against the same suite run on the 5.0 droplet.
+*Exit:* full suite green against restored production data on 8.0, diffed against
+the same suite run on the 5.0 droplet, **and `npm run audit-permissions` clean
+against the restored database** — a dump/restore carries `_SCHEMA` and the
+`_metadata.class_permissions` that the R1-R51 work hardened, and this is where
+that could silently regress.
 
-**Phase 8 — Cutover.** Single deploy to the Heroku dyno and Netlify site. Keep
-the legacy stack running as a live rollback target, not just a git SHA.
+**Phase 8 — Cutover, behind a maintenance window (eng review A2).**
+
+The plan originally called the legacy stack "a live rollback target." It is not
+one: once writes land on droplet B, droplet A is frozen at dump time, so
+"rolling back" means discarding every character edit, XP spend, and approval
+made since. For a character database that is player data loss wearing a safety
+net's clothes.
+
+Cut over with **zero divergence** instead:
+
+```
+  1. site read-only (maintenance mode)     ── players see a notice
+  2. FINAL mongodump from droplet A        ── A and B now identical
+  3. mongorestore into droplet B
+  4. deploy: Heroku dyno + Netlify build   ── new connection string
+  5. npm run audit-permissions             ── CLP gate
+  6. smoke: log in, open a sheet, spend XP, upload a portrait
+  7. reopen
+```
+
+Between steps 1 and 7 the two droplets never diverge, so rollback is genuinely
+lossless: revert the connection string and the Heroku slug, and droplet A is
+still exactly right. After step 7 it is not, and that is the **point of no
+return** — name it out loud rather than discovering it during an incident. Keep
+droplet A warm and untouched for an agreed soak period.
+
+For a LARP database the window is well under an hour and players can be told in
+advance.
 
 **Follow-on (B).** jscodeshift codemod retiring the promise shim across 456 sites,
 landed separately against a green production baseline.
@@ -380,10 +505,17 @@ remains is the narrower version of each.*
 - `npm audit` clean of high-severity findings from `request`, `jimp@0.2`, and the
   transitive tree under `parse-server@2.8.4`.
 - Node 22/24 in CI, Travis and PhantomJS gone.
-- The Karma suite either runs headless or is deleted — no unrunnable tests left
-  in the tree.
+- Karma runs on headless Chrome, all 120 existing Jasmine tests green, plus unit
+  tests covering all 14 `parse-compat` branches — including `when` varargs and
+  cloud `response.error` after an early return.
 - Production restored onto MongoDB 8.0.4 with the suite green against real data
   *before* cutover.
+- `npm run audit-permissions` clean at three gates: after the parse-server bump
+  (Phase 4), after the restore (Phase 7), and after cutover (Phase 8).
+- Two legacy-vs-legacy harness runs diff to zero before any modern-stack result
+  is trusted.
+- Cutover completed inside a maintenance window with no divergence between the
+  5.0 and 8.0 droplets.
 - No player-visible behavior change, Facebook login excepted.
 
 ## Distribution Plan
