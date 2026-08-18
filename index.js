@@ -11,9 +11,19 @@ var express = require('express'),
 var app = express();
 var port = process.env.PORT || 1337;
 
+/**
+ * Resolve the database to run against.
+ *
+ * Returns `{ uri, ephemeral }`. `ephemeral` is true only when THIS process
+ * started an in-memory MongoDB a moment ago -- an instance that holds no data,
+ * is unreachable from anywhere else, and disappears when the process exits.
+ * That is a stronger guarantee than "the URI looks like localhost", and it is
+ * what lets seeding auto-enable for local development without weakening the
+ * guard against seeding a real database. See `seedingAllowed` in seed_db.js.
+ */
 async function getDatabaseURI() {
   if (process.env.MONGODB_URI) {
-    return process.env.MONGODB_URI;
+    return { uri: process.env.MONGODB_URI, ephemeral: false };
   }
   // Check if local MongoDB is reachable on 27017
   const isMongoRunning = await new Promise(function(resolve) {
@@ -36,7 +46,9 @@ async function getDatabaseURI() {
   });
 
   if (isMongoRunning) {
-    return "mongodb://localhost:27017/anotherstore";
+    // A mongod someone else is running. It may well be a scratch database, but
+    // this process cannot know that, so it does not get the ephemeral pass.
+    return { uri: "mongodb://localhost:27017/anotherstore", ephemeral: false };
   }
 
   console.log("No local MongoDB instance detected on port 27017. Starting in-memory MongoDB server...");
@@ -48,21 +60,27 @@ async function getDatabaseURI() {
   });
   var uri = mongod.getUri() + "anotherstore";
   console.log("In-memory MongoDB started at " + uri);
-  return uri;
+  return { uri: uri, ephemeral: true };
 }
 
 async function startServer() {
-  var databaseURI = await getDatabaseURI();
+  var database = await getDatabaseURI();
+  var databaseURI = database.uri;
 
-  // Seeding is opt-in via YORICK_ALLOW_SEED=1 (see seedingAllowed in
-  // seed_db.js). `seedTestUsers` runs on every boot rather than only on a cold
-  // database, so an ungated call here would upsert `devuser` -- a public
-  // password, `admininterface: true` -- into whatever DATABASE this process was
-  // pointed at, and overwrite any real player holding that username. A refusal
-  // is not fatal; the server still starts, it just starts without writing test
-  // accounts.
+  // Seeding is opt-in (see `seedingAllowed` in seed_db.js). `seedTestUsers`
+  // runs on every boot rather than only on a cold database, so an ungated call
+  // here would upsert `devuser` -- a password published in this repo,
+  // `admininterface: true` -- into whatever database this process was pointed
+  // at, and overwrite any real player holding that username.
+  //
+  // The in-memory instance is exempt because this process created it seconds
+  // ago: it is empty, unreachable from outside, and gone at exit. Everything
+  // else requires YORICK_ALLOW_SEED=1. A refusal is not fatal; the server still
+  // starts, it just starts without writing test accounts.
   var seed_db = require('./seed_db');
-  var seedResult = await seed_db.seedDatabase(databaseURI);
+  var seedResult = await seed_db.seedDatabase(databaseURI, {
+    ephemeral: database.ephemeral
+  });
   if (seedResult && seedResult.seeded === false) {
     console.log('[seed] Continuing without seeding.');
   }

@@ -130,16 +130,25 @@ function redactUri(uri) {
  *
  * Nothing in the connection string reliably distinguishes "a test database
  * that was seeded last week" from "production", so the decision is made
- * explicitly by the operator instead of inferred:
+ * explicitly instead of inferred:
  *
- *   YORICK_ALLOW_SEED=1        environments that want seeding (CI, local dev)
- *   seedDatabase(uri, {force}) the explicit `npm run seed` command
+ *   YORICK_ALLOW_SEED=1            environments that want seeding (CI)
+ *   seedDatabase(uri, {force})     the explicit `npm run seed` command
+ *   seedDatabase(uri, {ephemeral}) an in-memory instance the caller just made
+ *
+ * The `ephemeral` pass is deliberately narrow. It is NOT "the URI looks like
+ * localhost" -- a localhost URI can name a real database someone cares about.
+ * It means the calling process created a MongoMemoryServer moments ago: empty,
+ * bound to a random port, unreachable from another machine, and discarded at
+ * exit. There is no database there to damage, so requiring a flag would be
+ * ceremony that only trains people to set the flag everywhere.
  *
  * Refusing is not an error. `index.js` still starts; it just starts without
  * writing test accounts into a database that never asked for them.
  */
 function seedingAllowed(options) {
   if (options && options.force === true) return true;
+  if (options && options.ephemeral === true) return true;
   return process.env.YORICK_ALLOW_SEED === '1';
 }
 
