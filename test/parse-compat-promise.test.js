@@ -10,7 +10,8 @@
  *   - `when` resolves with separate arguments, not an array
  *   - `when` waits for every input to settle, then rejects with an array of
  *     errors, where `Promise.all` rejects on the first one with a single error
- *   - `.always` must not swallow a rejection
+ *   - `.always` IS `then(callback, callback)`, so it both propagates the
+ *     callback's return value and converts a rejection into a fulfilment
  *
  * Run: npm run test:node
  */
@@ -158,41 +159,65 @@ test('when passes non-promise values straight through, in position', async () =>
 });
 
 // --------------------------------------------------------------------------
-// always — must not swallow
+// always — then(callback, callback), verified against parse-1.5.0.js:4169
 // --------------------------------------------------------------------------
 
-test('always() runs on success and preserves the values', async () => {
+test('always() runs on success, and its return value REPLACES the value', async () => {
+  // Because always is then(cb, cb), the downstream value is whatever the
+  // callback returned -- not the original. Callbacks that return nothing
+  // therefore hand `undefined` onward, which is fine for the
+  // $.mobile.loading("hide") ones and load-bearing for the few that return.
   const calls = [];
-  let downstream = null;
-  P.as('v').always(() => calls.push('always')).then(function (v) { downstream = v; });
+  let downstream = 'NOT SET';
+  P.as('v').always(() => { calls.push('always'); return 'replaced'; })
+    .then(function (v) { downstream = v; });
   await tick();
   assert.deepStrictEqual(calls, ['always']);
-  assert.strictEqual(downstream, 'v');
+  assert.strictEqual(downstream, 'replaced');
 });
 
-test('always() runs on failure and does NOT swallow the rejection', async () => {
-  // This is why .always is not implemented as .then(cb, cb): in this codebase
-  // .always is nearly always $.mobile.loading("hide"), and swallowing here
-  // would turn a failed navigation into a silent success.
+test('always() SWALLOWS the rejection, as then(cb, cb) does', () => {
+  // Verified against parse-1.5.0.js:4169 -- `always: function(callback) {
+  // return this.then(callback, callback); }`. An earlier version of the shim
+  // re-emitted the original outcome because swallowing looked wrong; that was
+  // reasoning about what ought to happen instead of reading what did, and it
+  // broke character creation.
   const calls = [];
-  let stillFailed = null;
-  P.error(new Error('boom'))
+  let reachedFail = false;
+  return P.error(new Error('boom'))
     .always(() => calls.push('always'))
-    .fail((e) => { stillFailed = e; });
-  await tick();
-  assert.deepStrictEqual(calls, ['always']);
-  assert.ok(stillFailed, 'the rejection continues past .always');
-  assert.strictEqual(stillFailed.message, 'boom');
+    .fail(() => { reachedFail = true; })
+    .then(() => {
+      assert.deepStrictEqual(calls, ['always']);
+      assert.strictEqual(reachedFail, false,
+        'the rejection is converted to fulfilment, so .fail after .always is dead code -- ' +
+        'true of this app today and preserved deliberately');
+    });
 });
 
-test('the real chain shape from mobileRouter survives: done -> always -> fail', async () => {
+test('always() propagates its callback return value', () => {
+  // Character.add_experience_notation does
+  //   .always(function () { return self.get_experience_notations(); })
+  //   .then(function (ens) { ens.add(...) })
+  // and fails with "Cannot read properties of undefined (reading 'add')" if
+  // the returned value is dropped.
+  let received = 'NOT SET';
+  return P.as('ignored')
+    .always(() => 'passed-through')
+    .then((v) => { received = v; })
+    .then(() => assert.strictEqual(received, 'passed-through'));
+});
+
+test('the real chain shape from mobileRouter: done -> always -> fail', () => {
   const order = [];
-  P.error(new Error('nope'))
+  return P.error(new Error('nope'))
     .done(() => order.push('done'))
     .always(() => order.push('always'))
-    .fail(() => order.push('fail'));
-  await tick();
-  assert.deepStrictEqual(order, ['always', 'fail'], 'done is skipped, always runs, fail still fires');
+    .fail(() => order.push('fail'))
+    .then(() => {
+      assert.deepStrictEqual(order, ['always'],
+        'done is skipped; always runs and absorbs the rejection, so fail never fires');
+    });
 });
 
 // --------------------------------------------------------------------------

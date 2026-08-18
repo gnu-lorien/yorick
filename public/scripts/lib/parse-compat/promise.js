@@ -159,32 +159,33 @@
   };
 
   /**
-   * Run on either outcome, and do NOT alter it.
+   * Run on either outcome.
    *
-   * `.always()` in this codebase is overwhelmingly `$.mobile.loading("hide")`.
-   * Swallowing the rejection here would turn a failed navigation into a silent
-   * success, so the original outcome is deliberately re-emitted.
+   * This is `then(callback, callback)`, exactly as `parse-1.5.0.js:4169` had
+   * it, and the consequences are load-bearing rather than incidental:
+   *
+   *   - the callback's RETURN VALUE propagates. `Character.add_experience_notation`
+   *     does `.always(function () { return self.get_experience_notations(); })
+   *     .then(function (ens) { ens.add(...) })` and breaks with
+   *     "Cannot read properties of undefined (reading 'add')" without it.
+   *   - a rejection is CONVERTED TO FULFILLMENT. Which means the
+   *     `.always(...).fail(...)` chains all over mobileRouter never reach
+   *     their `.fail` -- those handlers have always been dead code in this
+   *     app.
+   *
+   * The second one looks like a bug worth fixing and is deliberately left
+   * alone. A compatibility layer's job is to preserve behaviour, and making
+   * those handlers live would start surfacing error toasts on paths that have
+   * never shown one, which is a behaviour change dressed up as a fix. If they
+   * should fire, that is a separate change with its own test.
+   *
+   * An earlier version of this file re-emitted the original outcome instead,
+   * on the reasoning that swallowing looked wrong. It was reasoning about what
+   * ought to happen rather than reading what did, and it broke character
+   * creation.
    */
   CompatPromise.prototype.always = function (callback) {
-    var next = new CompatPromise();
-    this._whenSettled(function (settled) {
-      try {
-        if (typeof callback === 'function') {
-          settled._state === FULFILLED
-            ? callback.apply(undefined, settled._values)
-            : callback(settled._error);
-        }
-      } catch (err) {
-        next.reject(err);
-        return;
-      }
-      if (settled._state === FULFILLED) {
-        next._settle(FULFILLED, settled._values);
-      } else {
-        next.reject(settled._error);
-      }
-    });
-    return next;
+    return this.then(callback, callback);
   };
 
   CompatPromise.prototype['finally'] = function (callback) {
