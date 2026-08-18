@@ -1,0 +1,235 @@
+/**
+ * Contract tests for the "decoy clone" defect, against the REAL vendored SDK.
+ *
+ * Backbone 1.1.2 asks `attrs instanceof Model` to decide whether it has been
+ * handed a model or a raw attribute hash (`backbone.js:690` and `:916`). Parse
+ * 1.5's objects were Backbone models, so both tests passed. A parse@8
+ * `ParseObject` fails them, so `_prepareModel` replaced every object added to
+ * or reset into a `Parse.Collection` with `new this.model(theParseObject)` --
+ * the Parse object used as an attribute bag. Its `id` was copied across, so the
+ * decoy's junk SetOps landed on the real row: 768 `Invalid field name:
+ * _compatPending.` in one run of the server log.
+ *
+ * These tests deliberately do NOT use the stand-in from
+ * `parse-compat-collection.test.js`. That stub does
+ * `PObject.prototype = Object.create(Backbone.Model.prototype)`, i.e. the stub
+ * IS a Backbone.Model, so it passes `instanceof` and can never reproduce this.
+ * That is exactly why 74 green contract tests missed an eight-test defect.
+ *
+ * Run: npm run test:node
+ */
+
+'use strict';
+
+const test = require('node:test');
+const assert = require('node:assert');
+
+global._ = require('../public/scripts/lib/lodash.js');
+const Backbone = require('../public/scripts/lib/backbone.js');
+global.Backbone = Backbone;
+
+// The real SDK. Its UMD tail does `globalThis.Parse = Parse`, so requiring it
+// for effect and reading the global is how you get the namespace.
+require('../public/scripts/lib/parse-8.6.0.js');
+const Parse = global.Parse;
+
+const install = require('../public/scripts/lib/parse-compat/index');
+
+Parse.initialize('test-app-id', 'test-js-key');
+Parse.serverURL = 'http://127.0.0.1:1/parse';
+install(Parse);
+
+const Thing = Parse.Object.extend('CompatDecoyThing');
+
+/** A saved object: has an objectId and clean server data, like a query result. */
+function savedThing(id, attrs) {
+  const o = new Thing();
+  o._finishFetch(Object.assign({ objectId: id }, attrs || {}));
+  return o;
+}
+
+// --- item 1: the objects a collection holds are the objects you gave it ---
+
+test('add() keeps the Parse.Object itself, not a clone of its innards', () => {
+  const c = new Parse.Collection([], { model: Thing });
+  const obj = savedThing('abc123', { name: 'Brujah' });
+
+  c.add(obj);
+
+  assert.strictEqual(c.models[0], obj,
+    'Backbone built a decoy with `new this.model(obj)` instead of storing obj');
+  assert.strictEqual(c.length, 1);
+  assert.strictEqual(c.models[0].get('name'), 'Brujah');
+});
+
+test('add() keeps an UNSAVED Parse.Object too', () => {
+  const c = new Parse.Collection([], { model: Thing });
+  const obj = new Thing();
+  obj.set('name', 'unsaved');
+
+  c.add(obj);
+
+  assert.strictEqual(c.models[0], obj);
+  assert.strictEqual(c.models[0].get('name'), 'unsaved');
+});
+
+test('reset() keeps the Parse.Objects, which is the path fetch() takes', () => {
+  const c = new Parse.Collection([], { model: Thing });
+  const a = savedThing('id-a', { name: 'a' });
+  const b = savedThing('id-b', { name: 'b' });
+
+  c.reset([a, b]);
+
+  assert.strictEqual(c.length, 2);
+  assert.strictEqual(c.models[0], a);
+  assert.strictEqual(c.models[1], b);
+});
+
+test('reset() leaves nothing dirty, so no junk field is PUT to the server', () => {
+  const c = new Parse.Collection([], { model: Thing });
+  const obj = savedThing('abc123', { name: 'Brujah' });
+
+  c.reset([obj]);
+
+  // _getSaveJSON is what the SDK sends. Anything in here after a plain reset
+  // is a field the row never asked for.
+  const save = obj._getSaveJSON();
+  assert.deepStrictEqual(Object.keys(save), [],
+    'reset() dirtied the object: ' + JSON.stringify(save));
+
+  for (const junk of ['className', '_objCount', '_localId', '_compatPending',
+    'changed', '_compatPrevious', '__compatEventsApplied']) {
+    assert.ok(!(junk in save), 'compat/SDK internal leaked as an attribute: ' + junk);
+  }
+});
+
+test('the id is not smeared onto a second object', () => {
+  const c = new Parse.Collection([], { model: Thing });
+  const obj = savedThing('sharedid', { name: 'x' });
+  c.add(obj);
+  assert.strictEqual(c.models[0].id, 'sharedid');
+  assert.strictEqual(c.get('sharedid'), obj);
+});
+
+// --- the arithmetic those decoys silently broke ---
+
+test('XP propagation over a one-member collection totals, rather than NaN', () => {
+  // `Character._propagate_experience_notation_change`, Character.js:521-524,
+  // reduced right over `experience_notations.models`. With decoys in the
+  // collection `en.get("alteration_earned")` is undefined and the running total
+  // goes NaN -- a wrong number, not an exception.
+  const EN = Parse.Object.extend('CompatDecoyEN');
+  const en = new EN();
+  en._finishFetch({
+    objectId: 'en1', alteration_earned: 30, alteration_spent: 0,
+    earned: 0, spent: 0
+  });
+
+  const ens = new Parse.Collection([], { model: EN });
+  ens.reset([en]);
+
+  const zero = new EN();
+  zero.set('earned', 0);
+  zero.set('spent', 0);
+
+  const final_en = global._.reduceRight(
+    global._.slice(ens.models, 0, 1),
+    function (previous_en, e) {
+      e.set('earned', e.get('alteration_earned') + previous_en.get('earned'), { silent: true });
+      e.set('spent', e.get('alteration_spent') + previous_en.get('spent'), { silent: true });
+      return e;
+    },
+    zero
+  );
+
+  assert.strictEqual(final_en.get('earned'), 30);
+  assert.strictEqual(final_en.get('spent'), 0);
+});
+
+// --- the patch itself ---
+
+test('instanceof Backbone.Model accepts a Parse.Object and still rejects junk', () => {
+  assert.ok(savedThing('x') instanceof Backbone.Model);
+  assert.ok(new Backbone.Model() instanceof Backbone.Model);
+  assert.ok(!({} instanceof Backbone.Model));
+  assert.ok(!(null instanceof Backbone.Model));
+  assert.ok(!(undefined instanceof Backbone.Model));
+  assert.ok(!('a string' instanceof Backbone.Model));
+  assert.ok(!(7 instanceof Backbone.Model));
+});
+
+test('instanceof on a Backbone.Model SUBCLASS is untouched', () => {
+  // Backbone's `extend` copies statics with `_.extend`, which takes own STRING
+  // keys, so the Symbol.hasInstance descriptor is not inherited. A Parse.Object
+  // must not start passing for someone's Backbone subclass.
+  const Sub = Backbone.Model.extend({});
+  assert.ok(new Sub() instanceof Sub);
+  assert.ok(new Sub() instanceof Backbone.Model);
+  assert.ok(!(savedThing('y') instanceof Sub));
+  assert.ok(!(new Backbone.Model() instanceof Sub));
+});
+
+test('set(aParseObject) takes its attributes, not its internals', () => {
+  const source = savedThing('src', { name: 'source', rank: 3 });
+  const target = new Thing();
+
+  target.set(source);
+
+  assert.strictEqual(target.get('name'), 'source');
+  assert.strictEqual(target.get('rank'), 3);
+  assert.strictEqual(target.get('className'), undefined);
+  assert.strictEqual(target.get('_objCount'), undefined);
+  assert.strictEqual(target.get('__compatEventsApplied'), undefined);
+});
+
+// --- item 2: getByCid ---
+
+test('getByCid returns the member, by cid and by object', () => {
+  const c = new Parse.Collection([], { model: Thing });
+  const obj = savedThing('gbc', { name: 'n' });
+  c.add(obj);
+
+  assert.strictEqual(c.getByCid(obj.cid), obj);
+  assert.strictEqual(c.getByCid({ cid: obj.cid }), obj);
+  assert.strictEqual(c.getByCid('c-nope'), undefined);
+  assert.strictEqual(c.getByCid(undefined), undefined);
+});
+
+// --- item 3: _serverData / _previousAttributes ---
+
+test('_serverData is the live server bag, and deleting a key purges it', () => {
+  // `Character.update_troupe_acls`, Character.js:920-921.
+  const obj = savedThing('sd1', { troupes: [1, 2], name: 'keep' });
+
+  assert.strictEqual(typeof obj._serverData, 'object');
+  assert.deepStrictEqual(obj.get('troupes'), [1, 2]);
+
+  delete obj._serverData.troupes;
+
+  assert.strictEqual(obj.get('troupes'), undefined,
+    'the delete has to reach the bag estimateAttributes reads');
+  assert.strictEqual(obj.get('name'), 'keep');
+});
+
+test('_previousAttributes exists and is deletable', () => {
+  const obj = savedThing('pa1', { troupes: 'x' });
+  obj.set('troupes', 'y');
+
+  assert.strictEqual(typeof obj._previousAttributes, 'object');
+  assert.notStrictEqual(obj._previousAttributes, null);
+  assert.doesNotThrow(function () { delete obj._previousAttributes.troupes; });
+});
+
+test('_previousAttributes tracks the last non-silent set', () => {
+  const obj = savedThing('pa2', { rank: 1 });
+  obj.set('rank', 2);
+  assert.strictEqual(obj._previousAttributes.rank, 1);
+  assert.strictEqual(obj.previous('rank'), 1);
+});
+
+test('neither getter shows up as an attribute', () => {
+  const obj = savedThing('enum1', { name: 'n' });
+  void obj._serverData;
+  void obj._previousAttributes;
+  assert.deepStrictEqual(Object.keys(obj._getSaveJSON()), []);
+});

@@ -95,6 +95,13 @@
     // Parse.Object.extend subclass inherits from that prototype.
     applyEvents(Parse.Object);
 
+    // Then teach Backbone that a parse@8 Parse.Object IS a model.
+    //
+    // Deliberately here and not behind the `if (!Parse.Collection)` guard
+    // below: the patch is about Backbone's own `instanceof` tests, which run
+    // whether or not this layer supplied Parse.Collection. See collection.js.
+    makeParseCollection.patchBackboneInstanceof(Parse);
+
     if (!Parse.Promise) {
       Parse.Promise = CompatPromise;
     }
@@ -124,6 +131,7 @@
   install.install = install;
   install.Promise = CompatPromise;
   install.makeCollection = makeParseCollection;
+  install.patchBackboneInstanceof = makeParseCollection.patchBackboneInstanceof;
   install.applyEvents = applyEvents;
   install.applyRouter = applyRouter;
   install.applyStorage = applyStorage;

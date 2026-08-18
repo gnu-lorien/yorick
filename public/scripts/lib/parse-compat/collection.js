@@ -80,6 +80,27 @@
           }
           return collection;
         });
+      },
+
+      /**
+       * `getByCid`, verbatim from `parse-1.5.0.js:6663-6665`.
+       *
+       * Backbone 1.1.2 folded cid lookup into `_byId` and dropped the name --
+       * zero occurrences in `public/scripts/lib/backbone.js`. Six call sites in
+       * `public/scripts/app/views/CharacterExperienceView.js` (lines 102, 127,
+       * 139, 152, 185, 187) still use it, all keyed off the
+       * `notation-id="<%= log.cid %>"` attribute emitted at
+       * `public/index.html:574, 589`.
+       *
+       * Until the decoy-clone fix above landed those rows never rendered, so the
+       * missing method was masked; with the rows back, the first Edit or Delete
+       * click would throw `self.collection.getByCid is not a function`.
+       *
+       * A plain method, so unlike `_byCid` it survives `extend`'s `_.extend`
+       * copy and belongs in the literal.
+       */
+      getByCid: function (cid) {
+        return cid && this._byCid[cid.cid || cid];
       }
     });
 
@@ -120,6 +141,61 @@
     return Collection;
   }
 
+  /**
+   * Teach `instanceof Backbone.Model` to accept a parse@8 `Parse.Object`.
+   *
+   * Backbone 1.1.2 decides "is this already a model, or a raw attribute hash?"
+   * with `attrs instanceof Model` -- `backbone.js:690` (`set`) and `:916`
+   * (`_prepareModel`). Parse 1.5's objects WERE Backbone models, so both tests
+   * passed. parse@8's are not, so `_prepareModel` took the "raw hash" branch and
+   * replaced every object added to or reset into a `Parse.Collection` with
+   * `new this.model(theParseObject)` -- the Parse object used as an attribute
+   * bag.
+   *
+   * That is not merely a wrong identity. parse@8's `set` walks the bag with
+   * `for (const k in changes)`, so the decoy's attributes became `className`,
+   * `_objCount`, `_localId`, `_compatPending`, `changed`, `_compatPrevious`,
+   * `__compatEventsApplied` -- and `id` was copied across, so those junk SetOps
+   * landed on the REAL row and were PUT to the server. The server log carried
+   * 768 `Invalid field name: _compatPending.` and 34 `Invalid field name:
+   * _objCount.` before this landed.
+   *
+   * Parse 1.5 guarded on the right type (`parse-1.5.0.js:6851`):
+   *
+   *     _prepareModel: function (model, options) {
+   *       if (!(model instanceof Parse.Object)) { ... }
+   *
+   * Restoring that guard in Backbone itself, via `Symbol.hasInstance`, is the
+   * one global mutation in this layer. Blast radius: `instanceof Backbone.Model`
+   * appears five times in `public/scripts/{lib,app}` outside `parse-1.5.0.js` --
+   * `backbone.js:690`, `backbone.js:916`, and `backform.js:198/214/258` (all
+   * three guarding `this.model.errorModel`, never a Parse.Object). Marionette
+   * has none. `instanceof SomeSubclass` is untouched: Backbone's `extend` copies
+   * statics with `_.extend`, which takes own string keys only, so a symbol-keyed
+   * descriptor is not inherited by subclasses.
+   *
+   * The `Parse && Parse.Object &&` guard is not optional. This file is
+   * deliberately loadable with a falsy Parse (see `model:` above), and a bare
+   * `instanceof undefined` would make EVERY `instanceof Backbone.Model` in the
+   * process throw.
+   */
+  function patchBackboneInstanceof(Parse) {
+    if (!Backbone || !Backbone.Model) return Backbone;
+    if (Object.getOwnPropertyDescriptor(Backbone.Model, Symbol.hasInstance)) {
+      return Backbone;
+    }
+    Object.defineProperty(Backbone.Model, Symbol.hasInstance, {
+      configurable: true,
+      value: function (inst) {
+        if (inst === null || typeof inst !== 'object') return false;
+        if (Parse && Parse.Object && inst instanceof Parse.Object) return true;
+        return Backbone.Model.prototype.isPrototypeOf(inst);
+      }
+    });
+    return Backbone;
+  }
+
   makeParseCollection.make = makeParseCollection;
+  makeParseCollection.patchBackboneInstanceof = patchBackboneInstanceof;
   return makeParseCollection;
 }));

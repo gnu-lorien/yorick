@@ -174,6 +174,25 @@
     proto.set = function (key, value, options) {
       var self = this;
       var opts;
+
+      // A Parse.Object handed to set() means its attributes, not its innards.
+      //
+      // From `parse-1.5.0.js:5269-5271`. Belt and braces alongside the
+      // `Symbol.hasInstance` patch in collection.js: that one closes
+      // `backbone.js:916` (`_prepareModel`), this one closes `backbone.js:703`'s
+      // merge branch and any app code that hands a Parse object straight to
+      // `set`. Without it parse@8 walks the object with `for (const k in ...)`
+      // and adopts `className`, `_objCount`, `_localId` and this layer's own
+      // `_compat*` fields as attributes, which the server then rejects as
+      // `Invalid field name`.
+      //
+      // This is NOT a substitute for the hasInstance patch. On its own,
+      // `_prepareModel` would build `new Sub(source.attributes)`, which carries
+      // no `objectId`, and the collection would fill with id-less duplicates.
+      if (key instanceof ParseObject) {
+        key = key.attributes;
+      }
+
       // set({...}, options) or set(key, value, options)
       if (key !== null && typeof key === 'object') {
         opts = value;
@@ -197,6 +216,59 @@
     proto.previousAttributes = function () {
       return this._compatPrevious || {};
     };
+
+    // `_serverData` and `_previousAttributes`, which 1.5 had as plain own
+    // properties and parse@8 does not have at all (zero grep hits in
+    // `parse-8.6.0.js`; 18 in `parse-1.5.0.js`).
+    //
+    // `Character.update_troupe_acls` deletes keys off both --
+    // `public/scripts/app/models/Character.js:920-921` -- which was the
+    // documented way to purge a cached key in 1.5 (`parse-1.5.0.js:5169-5173`,
+    // `:5198`). Against parse@8 line 920 threw `TypeError: Cannot convert
+    // undefined or null to object`. The throw became a rejection inside a
+    // CompatPromise `.then`, `join_troupe` rejected, and `character_join_troupe`
+    // rewrote the hash back to `#character?<cid>`
+    // (`routers/mobileRouter.js:1875-1877`) -- silently, because the `.fail`
+    // sits behind an `.always`, which is `then(cb, cb)`. A whole spec file
+    // stood behind that in a `beforeAll`.
+    //
+    // Both map onto live parse@8 state rather than copies, so the deletes still
+    // take effect:
+    //
+    //   `_getServerData()` (`parse-8.6.0.js:43191`) returns the same mutable
+    //   bag `estimateAttributes` reads, so deleting a key really does drop the
+    //   cached server value.
+    //
+    //   `_compatPrevious` is reassigned by `withChangeEvents` on every
+    //   non-silent set, so it stays current.
+    //
+    // Non-enumerable, so neither shows up in attribute iteration or toJSON.
+    if (!Object.prototype.hasOwnProperty.call(proto, '_serverData')) {
+      Object.defineProperty(proto, '_serverData', {
+        configurable: true,
+        enumerable: false,
+        get: function () {
+          return (typeof this._getServerData === 'function')
+            ? this._getServerData()
+            : {};
+        }
+      });
+    }
+
+    if (!Object.prototype.hasOwnProperty.call(proto, '_previousAttributes')) {
+      Object.defineProperty(proto, '_previousAttributes', {
+        configurable: true,
+        enumerable: false,
+        get: function () {
+          if (!this._compatPrevious) {
+            Object.defineProperty(this, '_compatPrevious', {
+              configurable: true, enumerable: false, writable: true, value: {}
+            });
+          }
+          return this._compatPrevious;
+        }
+      });
+    }
 
     proto.previous = function (attr) {
       return (this._compatPrevious || {})[attr];
