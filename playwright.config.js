@@ -94,7 +94,13 @@ module.exports = defineConfig({
       // portrait back over HTTP from publicServerURL. The default points at a
       // long-dead Cloud9 host, so every portrait upload fails with an opaque
       // "[object Object]" error until this is pointed at the local server.
-      PUBLIC_SERVER_URL: 'http://127.0.0.1:1337/parse/1'
+      PUBLIC_SERVER_URL: 'http://127.0.0.1:1337/parse/1',
+
+      // Seeding is opt-in (see seedingAllowed in seed_db.js). The suite needs
+      // the test accounts and the Description/KithRule backfills, and its
+      // database is local and disposable, so it opts in explicitly. Deployed
+      // environments must never set this.
+      YORICK_ALLOW_SEED: '1'
     }
   }
 });

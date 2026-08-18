@@ -53,8 +53,19 @@ async function getDatabaseURI() {
 
 async function startServer() {
   var databaseURI = await getDatabaseURI();
+
+  // Seeding is opt-in via YORICK_ALLOW_SEED=1 (see seedingAllowed in
+  // seed_db.js). `seedTestUsers` runs on every boot rather than only on a cold
+  // database, so an ungated call here would upsert `devuser` -- a public
+  // password, `admininterface: true` -- into whatever DATABASE this process was
+  // pointed at, and overwrite any real player holding that username. A refusal
+  // is not fatal; the server still starts, it just starts without writing test
+  // accounts.
   var seed_db = require('./seed_db');
-  await seed_db.seedDatabase(databaseURI);
+  var seedResult = await seed_db.seedDatabase(databaseURI);
+  if (seedResult && seedResult.seeded === false) {
+    console.log('[seed] Continuing without seeding.');
+  }
 
   var settings = {
     "appId": process.env.APPLICATION_ID || "APPLICATION_ID",

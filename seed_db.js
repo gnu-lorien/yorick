@@ -106,7 +106,55 @@ async function verifyTestUsers(databaseURI) {
   return TEST_USERS.map(function (u) { return u.username; });
 }
 
-async function seedDatabase(databaseURI) {
+/**
+ * Strip credentials from a Mongo URI so the skip message can name the target
+ * without printing a password into a log or a CI transcript.
+ */
+function redactUri(uri) {
+  if (typeof uri !== 'string') return String(uri);
+  return uri.replace(/\/\/[^@/]*@/, '//<credentials>@');
+}
+
+/**
+ * Whether this process is allowed to write seed data.
+ *
+ * Seeding is opt-in because `seedTestUsers` runs on EVERY boot, not only on a
+ * cold database (see the comment above its call site). That is deliberate — it
+ * is how a newly added test account reaches a database seeded before it
+ * existed — but it means `seedDatabase` will happily upsert `devuser`, whose
+ * password is in this public repository and whose `admininterface` is true,
+ * into whatever `databaseURI` names. Against the production URI that plants a
+ * known-password administrator, and because the upsert matches on `username`
+ * alone it would overwrite the password hash and ACL of any real player who
+ * happens to hold that name.
+ *
+ * Nothing in the connection string reliably distinguishes "a test database
+ * that was seeded last week" from "production", so the decision is made
+ * explicitly by the operator instead of inferred:
+ *
+ *   YORICK_ALLOW_SEED=1        environments that want seeding (CI, local dev)
+ *   seedDatabase(uri, {force}) the explicit `npm run seed` command
+ *
+ * Refusing is not an error. `index.js` still starts; it just starts without
+ * writing test accounts into a database that never asked for them.
+ */
+function seedingAllowed(options) {
+  if (options && options.force === true) return true;
+  return process.env.YORICK_ALLOW_SEED === '1';
+}
+
+async function seedDatabase(databaseURI, options) {
+  if (!seedingAllowed(options)) {
+    console.log(
+      '[seed] Skipped. Seeding writes test accounts (including an admin whose\n' +
+      '[seed] password is public in this repo) and would target:\n' +
+      '[seed]   ' + redactUri(databaseURI) + '\n' +
+      '[seed] Set YORICK_ALLOW_SEED=1 to allow it, or run `npm run seed`\n' +
+      '[seed] to seed explicitly. Never enable this against production.'
+    );
+    return { seeded: false, reason: 'not-allowed' };
+  }
+
   var client = await MongoClient.connect(databaseURI, { useNewUrlParser: true });
   var db = client.db();
 
@@ -272,11 +320,14 @@ async function seedDatabase(databaseURI) {
   } finally {
     await client.close();
   }
+
+  return { seeded: true };
 }
 
 module.exports = {
   seedDatabase: seedDatabase,
   seedTestUsers: seedTestUsers,
   verifyTestUsers: verifyTestUsers,
+  seedingAllowed: seedingAllowed,
   TEST_USERS: TEST_USERS
 };
