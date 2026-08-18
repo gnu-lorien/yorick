@@ -1171,4 +1171,120 @@ test.describe('Task 12a - Vampire lifecycle and dual audit log', () => {
     expect(costs.some((c) => c.name === NEW_PATH), 'paths are outside the costs view by design').toBe(false);
     expect(costsTotal, 'the reconciled total is a real, non-trivial number').toBeGreaterThan(0);
   });
+
+  test('341 Change 11 - buy a merit with XP, change its value, then remove it; the refund is the changed cost, not the original', async () => {
+    // The two open items in `TODO`:
+    //
+    //   - Finish tests for merit adds
+    //   - Make test to catch add merit, update cost, then remove merit
+    //
+    // The first is already covered during *creation* - 178/179/180 pick,
+    // revalue and unpick a merit against the creation pool, and 204-206 and
+    // 230-232 do the same for wta_ and ctdbs_ merits. What has never been
+    // exercised is the same round trip on the *XP* path after creation, which
+    // is a different code path: the creation pool checks slots, this charges
+    // `Vampire.spent`.
+    //
+    // The middle step is the whole point. `BNSMETV1_VampireCosts` prices a
+    // merit as a bare `return mod_value` - value 2 costs 2, value 4 costs 4 -
+    // so a removal that refunds the cost the merit was *bought* at rather than
+    // the cost it currently *holds* leaks 2 XP and produces no error, no
+    // failed save and no log anomaly. Only the ledger is wrong, and only by
+    // the difference. Buying and removing at the same value cannot see it;
+    // changing the value in between is what makes it observable.
+    //
+    // This is exactly the shape a promise-shim bug corrupts silently during the
+    // Parse SDK migration, which is why it is worth having before that starts.
+    const cid = state.character.id;
+
+    const owned = (await readTraits(memberPage, cid, 'merits', 'Vampire')).map((t) => t.name);
+    // Picked at runtime like 325's background: any seeded merit this character
+    // does not already hold and that carries no requirement, so the test never
+    // depends on a pick order that could drift.
+    const candidates = await memberPage.evaluate(async () => {
+      const q = new window.Parse.Query('Description');
+      q.equalTo('category', 'merits');
+      q.limit(1000);
+      const rows = await q.find();
+      return rows.map((r) => ({ name: r.get('name'), requirement: r.get('requirement') || null }));
+    });
+    const target = candidates.find((c) => !c.requirement && owned.indexOf(c.name) === -1);
+    expect(target, 'an unowned merit with no requirement is available to buy').toBeTruthy();
+
+    const BUY_AT = 2;
+    const RAISE_TO = 4;
+
+    // ---- buy ----------------------------------------------------------
+    const xpBefore = await readSheetXp(memberPage, cid);
+    await L.parkOnSheet(memberPage, cid);
+    await openNewTraitChange(memberPage, cid, 'merits', target.name);
+    await setTraitChangeSliders(memberPage, { value: BUY_AT });
+    const buyQuote = await readTraitChangeView(memberPage);
+    await saveTraitChange(memberPage, cid, 'merits');
+
+    const bought = (await readTraits(memberPage, cid, 'merits', 'Vampire')).find((t) => t.name === target.name);
+    expect(bought, `${target.name} after purchase`).toMatchObject({ value: BUY_AT, free_value: 0 });
+    expect(bought.cost, 'a merit costs its value, one for one').toBe(BUY_AT);
+    expect(buyQuote.cost, 'and the quote the player was shown agrees').toBe(BUY_AT);
+
+    const xpAfterBuy = await readSheetXp(memberPage, cid);
+    expect(xpAfterBuy.spent - xpBefore.spent, 'Spent rises by the merit cost').toBe(BUY_AT);
+
+    // ---- change the value ---------------------------------------------
+    await L.parkOnSheet(memberPage, cid);
+    await openTraitChange(memberPage, cid, 'merits', target.name);
+    await setTraitChangeSliders(memberPage, { value: RAISE_TO });
+    const raiseQuote = await readTraitChangeView(memberPage);
+    expect(raiseQuote.cost, 'raising 2 -> 4 is quoted as the incremental 2, not the full 4')
+      .toBe(RAISE_TO - BUY_AT);
+    await saveTraitChange(memberPage, cid, 'merits');
+
+    const raised = (await readTraits(memberPage, cid, 'merits', 'Vampire')).find((t) => t.name === target.name);
+    expect(raised, `${target.name} after the change`).toMatchObject({ value: RAISE_TO, free_value: 0 });
+    expect(raised.cost, 'the merit now costs its new value').toBe(RAISE_TO);
+
+    const xpAfterRaise = await readSheetXp(memberPage, cid);
+    expect(xpAfterRaise.spent - xpAfterBuy.spent, 'Spent rises by the increment only').toBe(RAISE_TO - BUY_AT);
+    expect(xpAfterRaise.spent - xpBefore.spent, 'and by the full new cost against the pre-purchase ledger')
+      .toBe(RAISE_TO);
+
+    // ---- remove --------------------------------------------------------
+    await L.removeTraitViaChangePage(memberPage, cid, 'merits', target.name, openTraitChange);
+
+    const gone = (await readTraits(memberPage, cid, 'merits', 'Vampire')).some((t) => t.name === target.name);
+    expect(gone, 'the removed merit is gone from the character').toBe(false);
+
+    const xpAfterRemove = await readSheetXp(memberPage, cid);
+    // The assertion this test exists for.
+    expect(
+      xpAfterRemove.spent - xpAfterRaise.spent,
+      'the refund is the cost the merit currently holds (4), not the cost it was bought at (2)'
+    ).toBe(-RAISE_TO);
+    expect(
+      xpAfterRemove.spent,
+      'so the whole buy -> change -> remove round trip nets to zero against the pre-purchase ledger'
+    ).toBe(xpBefore.spent);
+    expect(xpAfterRemove.available, 'and Available is restored in step').toBe(xpBefore.available);
+
+    // ---- the log tells the same story ----------------------------------
+    const rows = await L.readAllLogRows(memberPage, cid);
+
+    const defineRow = L.freshestRow(rows, { category: 'merits', name: target.name, type: 'define' });
+    expect(defineRow, 'the purchase is logged').toBeTruthy();
+    expect(L.numCost(defineRow.cost), 'the purchase row carries the buy cost').toBe(BUY_AT);
+
+    const updateRow = L.freshestRow(rows, { category: 'merits', name: target.name, type: 'update' });
+    expect(updateRow, 'the value change is logged').toBeTruthy();
+    expect(updateRow).toMatchObject({ old_value: BUY_AT, value: RAISE_TO });
+    expect(L.numCost(updateRow.old_cost), 'the change row records the cost before').toBe(BUY_AT);
+    expect(L.numCost(updateRow.cost), 'and the cost after').toBe(RAISE_TO);
+
+    const removeRow = L.freshestRow(rows, { category: 'merits', name: target.name, type: 'remove' });
+    expect(removeRow, 'the removal is logged').toBeTruthy();
+    expect(removeRow).toMatchObject({ old_value: RAISE_TO });
+    expect(
+      L.numCost(removeRow.old_cost),
+      'and the removal row carries the refunded amount, which is the changed cost'
+    ).toBe(RAISE_TO);
+  });
 });
