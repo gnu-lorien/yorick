@@ -175,14 +175,89 @@ there is nothing to match, and the wait runs out its budget.
 That is a different failure from the one in §4, and it is not a timing budget problem
 either: a popup that has closed will not reopen no matter how long we wait.
 
-**This is not yet root-caused.** Candidate directions, in the order worth trying:
+## 5b. Three explanations, measured and disproved
 
-1. Why the popup closes — a stray outside-click, a second `open()` on a duplicate, or a
-   Marionette re-render tearing out the copy jQuery Mobile had open.
-2. Why so many duplicate copies accumulate. That is the precondition for all of this, and
-   removing it would likely remove the whole class of failure.
-3. Whether `waitForJqmPopup` should assert the popup *stays* open, rather than that it was
-   open once — the current check can be satisfied by a popup already on its way out.
+Each of these was plausible from reading the code. Each was tested and is wrong. Recorded so
+nobody spends the time again.
+
+| Hypothesis | How it was tested | Result |
+|---|---|---|
+| A late re-render closes the open popup | Delayed the save response by 3s to force the propagation render to land while the popup was open. Watched it land at exactly 3.0s. | **Disproved** — popup survived, input stayed visible for 6s |
+| `popup("close")` closes the wrong copy | Submitted after a render had inserted a new copy, then counted active containers | **Disproved** — active went cleanly to 0; the next open was clean |
+| Duplicate copies confuse the locator | Fixed the leak (below); copies now bounded at 1–2 | **Disproved** — flake persists with duplicates gone |
+
+The reason a re-render does not destroy the open popup is worth knowing: jQuery Mobile moves
+an opened popup's container out to the page element for positioning, so it is no longer
+inside the region `render()` replaces.
+
+## 5c. A real defect found on the way: the popups leak
+
+Not the flake, but real and now fixed.
+
+All three edit popups live inside `CharacterExperienceView`'s template, so every `render()`
+emits fresh copies. Because jQuery Mobile has moved any *opened* copy out to the page, that
+copy survives the replacement and a new one is added beside it — **one more element carrying
+a duplicate id on every render**, growing without bound for as long as the page is open.
+Measured: **seven** `#popupEditReason` elements after three edits.
+
+That matters beyond the tests, because the view's own handlers reach for these popups with
+bare `$("#popupEditReason")` selectors, which take whichever copy comes first in the
+document rather than the one on screen.
+
+`render()` now drops stale popup containers before replacing its markup, leaving any
+currently *open* popup alone — destroying that would take the dialog away from whoever is
+typing in it. Copies are bounded at 1–2 and no longer grow.
+
+**It did not cure the flake.** Stated plainly because the temptation is to assume it did.
+
+## 5d. Where this stands, and what the next occurrence will tell us
+
+The failure has now appeared at three different waits — `waitForJqmPopup` (15s),
+`fillInActivePopup` (10s), and the submit click (20s) — moving as its surroundings changed.
+The most recent run puts it back at `waitForJqmPopup`: **the popup simply does not open**,
+with duplicates ruled out.
+
+Rather than guess a fourth time, `waitForJqmPopup` now reports the DOM state on timeout:
+copy count, how many sit in an active container, whether jQuery Mobile already thinks a
+popup owns the screen (`$.mobile.popup.active`), the active page id, and whether the loader
+is up. At roughly one failure in three runs, a bare timeout costs a whole run to learn
+nothing; this makes the next occurrence self-explaining.
+
+The hypothesis it was built to test: jQuery Mobile refuses or defers a `popup("open")` issued
+while it considers another popup active or a page change in flight — which would have made
+this the same *shape* as the transition-queue defect fixed in this branch.
+
+**It fired on the very next run, and it disproves that hypothesis:**
+
+```
+copies:1  inAnyContainer:1  inActiveContainer:0  withLayoutBox:1
+activeContainersOnPage:0  jqmPopupActive:"no"
+activePageId:"experience-notations-all"  loaderVisible:false
+```
+
+Read that line by line:
+
+- `copies:1` — the leak fix is holding; duplicates are not involved.
+- `inAnyContainer:1`, `withLayoutBox:1` — the popup exists and is properly enhanced.
+- `inActiveContainer:0`, `activeContainersOnPage:0` — it is simply not open.
+- `jqmPopupActive:"no"` — jQuery Mobile is **not** holding another popup. Nothing was
+  refused or deferred.
+- `loaderVisible:false`, correct `activePageId` — no page change in flight, right screen.
+
+So nothing was dropped and nothing is stuck in jQuery Mobile. **The open was never
+requested.** `edit_experience_notation` did not run, which means the click did not reach it.
+
+That points somewhere new, and squarely at this view's habit of re-rendering: `render()`
+replaces the whole of `div[role='main']`, including the row controls, and it runs often —
+measured at 4, 8 and 18 renders across a handful of edits. If a render lands between
+Playwright resolving the edit control and dispatching the click, the click hits an element
+that has just been detached, and nothing happens. Playwright's actionability checks cover
+"visible, enabled, stable", but not "about to be replaced by a re-render".
+
+**Next step for whoever picks this up:** confirm by logging renders alongside the click — if
+a render timestamp falls between resolve and dispatch on a failing run, that is the answer.
+The fix would then be about the view re-rendering less indiscriminately, rather than
+anything in the helpers.
 
 ## 6. Still open: `lifecycle-werewolf` 355b
 
@@ -199,9 +274,26 @@ Its history is worth stating plainly, because it has been misread twice:
   not settled.
 
 It stays un-pinned — re-pinning as `test.fail()` would now fail on every good run — but it
-should be treated as a watch item, not a pass. Given the evidence above, the right next step
-is to determine whether its re-render is *stuck* or *slow*, using the same 90s method rather
-than assuming.
+should be treated as a watch item, not a pass.
+
+**Not investigated further, deliberately.** Reading it turned up something suggestive:
+`next()` increments `start`, sets the hash — which dispatches the route, and R30 made that
+route fetch unconditionally — and *then* fetches again itself. Two concurrent
+`fetch({reset: true})` calls, both bound to `render`. That is a plausible story and it is
+exactly the kind of plausible story that was wrong three times over on the popup (§5b), so
+it is recorded as a lead rather than acted on.
+
+Its wait now reports the table state on timeout, the same way `waitForJqmPopup` does: hash,
+active page id, rendered row count, first cell, loader. That is what distinguishes the two
+possibilities without spending a run to learn nothing:
+
+- Row count right, text lagging → **slow**.
+- Table still holding page 0 while the hash reads `/log/10/10` → the re-render never
+  happened → **stuck**.
+
+The 90s slow-vs-stuck experiment from §3 is still the right first move for anyone picking
+this up; a single run was not worth it here because 355b only fails about one run in three,
+so a pass would have proved nothing.
 
 ## 7. There is no single "20-second boundary"
 
@@ -240,6 +332,24 @@ Worth knowing, because the failures hit three different knobs:
 7. **Do not accept a single-file pass as proof of a fix.** It was not, twice today: once for
    355b and once for the popup scoping fix above. Only a full-suite run under load counts.
 
+## 8a. Where this was left
+
+Two tests remain flaky, both named rather than left as anonymous noise, and both leaning on
+`retries: 1`:
+
+| Test | State |
+|---|---|
+| `xp-history` 75 | Four explanations disproved (§5b, §5d). One real defect found and fixed on the way (§5c), which did not cure it. The diagnostic has since narrowed it to "the click never reached the handler" — a concrete, evidence-backed lead rather than a hypothesis. |
+| `lifecycle-werewolf` 355b | Fixed in substance by the transition-queue patch — it went from never passing to passing in isolation — but timing-marginal under load. Not investigated further; lead and diagnostic recorded. |
+
+The suite is green at **4.3 minutes** when neither fires, ~6.2 minutes when they do and the
+retries run. Neither is a regression, and neither blocks.
+
+The honest summary of the popup work is that it narrowed the problem considerably — ruling
+out three mechanisms and removing a genuine leak — without closing it. What is left for the
+next person is a specific hypothesis (§5d) and a diagnostic that will confirm or kill it on
+the next natural occurrence, rather than a blank timeout.
+
 ## 9. Verification status, stated exactly
 
 | Claim | Evidence | Status |
@@ -248,5 +358,10 @@ Worth knowing, because the failures hit three different knobs:
 | Timeouts are give-up thresholds, not durations | 15s→90s experiment; no wait exceeded 2s | **Established** |
 | The two helpers disagreed on "the open popup" | Read of `waitForJqmPopup` vs `activePopup` | **Established, fixed** |
 | That disagreement was the cause of the flake | Full-suite run after the fix: still flaky | **Disproven** |
-| The popup opens then closes again | Trace snapshots, incremental so read with care | **Likely, not proven** |
-| 355b is fixed | Passed in isolation; failed twice under load | **Disproven — on watch** |
+| The popup opens then closes again | Forced the late render deterministically; popup survived | **Disproven (§5b)** |
+| Duplicate popups confuse the locator | Leak fixed, copies bounded 1–2; flake persists | **Disproven (§5b)** |
+| `CharacterExperienceView` leaks popups | 7 copies after 3 edits; now bounded at 1–2 | **Established, fixed (§5c)** |
+| The leak fix cures the flake | Full run after it: still failing | **Disproven** |
+| 355b is fixed | Passed in isolation; failed three times under load | **Disproven — on watch** |
+| The popup open is dropped by jQuery Mobile | Diagnostic fired: `jqmPopupActive:no`, nothing in flight | **Disproved (§5d)** |
+| The click never reaches the handler, eaten by a re-render | Follows from the above; not yet confirmed directly | **Open lead (§5d)** |

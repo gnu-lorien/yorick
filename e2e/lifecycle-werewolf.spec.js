@@ -836,11 +836,46 @@ test.describe('Task 12b - Werewolf lifecycle and dual audit log', () => {
       `#character/${cid}/log/10/10`,
       { timeout: 20000 }
     );
-    await memberPage.waitForFunction((first) => {
-      const root = document.querySelector('#character-log');
-      const cell = root && root.querySelector('table tbody tr td:nth-child(3)');
-      return !!cell && cell.textContent.replace(/\s+/g, ' ').replace(/^name/, '').trim() !== first;
-    }, normalize(pages[0][0].name), { timeout: 20000 });
+    // Report the table state on timeout rather than only "waited 20000ms".
+    //
+    // This is the wait that fails when 355b flakes under load, roughly one run
+    // in three, and a bare timeout costs a whole run to learn nothing. The
+    // question it is here to answer is whether the re-render is *slow* or
+    // *stuck* - identical from the outside, and this project has already been
+    // wrong about that once (see test_timing_report.md §3). If the row count is
+    // right and only the text lags, it is slow; if the table still holds page 0
+    // with the hash on page 1, the re-render never happened.
+    try {
+      await memberPage.waitForFunction((first) => {
+        const root = document.querySelector('#character-log');
+        const cell = root && root.querySelector('table tbody tr td:nth-child(3)');
+        return !!cell && cell.textContent.replace(/\s+/g, ' ').replace(/^name/, '').trim() !== first;
+      }, normalize(pages[0][0].name), { timeout: 20000 });
+    } catch (e) {
+      const diag = await memberPage.evaluate(() => {
+        const root = document.querySelector('#character-log');
+        const rows = root ? Array.from(root.querySelectorAll('table tbody tr')) : [];
+        return {
+          hash: window.location.hash,
+          activePageId: (document.querySelector('.ui-page-active') || {}).id || null,
+          renderedRows: rows.length,
+          firstCell: rows.length
+            ? (rows[0].querySelector('td:nth-child(3)') || {}).textContent || null
+            : null,
+          loaderVisible: (() => {
+            const l = document.querySelector('.ui-loader');
+            return !!(l && l.offsetParent !== null);
+          })()
+        };
+      }).catch(() => null);
+      throw new Error(
+        `${e.message}\n` +
+        `  log table state at timeout: ${diag ? JSON.stringify(diag) : '(could not read)'}\n` +
+        `  expected the first cell to stop being "${normalize(pages[0][0].name)}" (page 0's first row).\n` +
+        `  Same first cell with the hash already on /log/10/10 means the fetch\n` +
+        `  landed but the view never re-rendered - stuck, not slow.`
+      );
+    }
     expect((await readLogRows(memberPage)).map(L.fingerprint), 'the Next button renders page 1')
       .toEqual(pages[1].map(L.fingerprint));
   });
