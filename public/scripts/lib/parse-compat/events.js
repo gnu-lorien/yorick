@@ -173,6 +173,44 @@
       return owns(this.changed || {}, attr);
     };
 
+    // Restore protoProps.initialize, which parse@8's extend swallows.
+    //
+    // Parse 1.5 used Backbone's extend, which copies protoProps wholesale onto
+    // the subclass prototype -- so `Parse.Object.extend("X", { initialize:
+    // function () {...} })` shadowed the base no-op and ran on construction.
+    // parse@8 has its own extend that consumes `initialize` and never attaches
+    // it. Measured directly: a subclass declaring both `customMethod` and
+    // `initialize` gets the first and not the second.
+    //
+    // The failure is silent and remote. `BNSCTDBS_ChangelingCosts` declares
+    // `initialize` returning a promise; with it dropped, the SDK's no-op runs
+    // instead, `get_costs()` returns undefined, and character creation dies
+    // three files away at `ChangelingBetaSlice.js:247` on
+    // "Cannot read properties of undefined (reading 'then')".
+    if (typeof ParseObject.extend === 'function' && !ParseObject.extend.__compatWrapped) {
+      var originalExtend = ParseObject.extend;
+      var wrappedExtend = function (className, protoProps, classProps) {
+        var Sub = originalExtend.apply(this, arguments);
+        // extend also accepts (protoProps, classProps) with no className.
+        var props = (className !== null && typeof className === 'object')
+          ? className
+          : protoProps;
+        if (Sub && Sub.prototype && props && typeof props.initialize === 'function' &&
+            Sub.prototype.initialize !== props.initialize) {
+          Sub.prototype.initialize = props.initialize;
+        }
+        return Sub;
+      };
+      wrappedExtend.__compatWrapped = true;
+      try {
+        ParseObject.extend = wrappedExtend;
+      } catch (err) {
+        Object.defineProperty(ParseObject, 'extend', {
+          configurable: true, writable: true, value: wrappedExtend
+        });
+      }
+    }
+
     proto.__compatEventsApplied = true;
     return ParseObject;
   }

@@ -222,3 +222,36 @@ test('a real, installed Parse SDK gains working change events', (t) => {
   assert.deepStrictEqual(seen, [['attr', 'hello'], ['change']]);
   assert.strictEqual(t1.get('title'), 'hello', 'and the SDK still stored the value');
 });
+
+test('extend keeps a protoProps initialize, which parse@8 drops', () => {
+  // parse@8's Parse.Object.extend consumes `initialize` and never attaches the
+  // caller's. Measured: a subclass declaring customMethod AND initialize gets
+  // the first only. BNSCTDBS_ChangelingCosts relies on its initialize
+  // returning a promise; without it, character creation dies three files away
+  // with "Cannot read properties of undefined (reading 'then')".
+  function Base(attrs) { this.attributes = Object.assign({}, attrs || {}); }
+  Base.prototype.get = function (k) { return this.attributes[k]; };
+  Base.prototype.set = function (k, v) { this.attributes[k] = v; return this; };
+  Base.prototype.initialize = function () { return 'SDK NO-OP'; };
+  // An extend that drops initialize, exactly like the real one.
+  Base.extend = function (className, protoProps) {
+    function Sub() { Base.apply(this, arguments); }
+    Sub.prototype = Object.create(Base.prototype);
+    Sub.prototype.constructor = Sub;
+    Object.keys(protoProps || {}).forEach(function (k) {
+      if (k === 'initialize') return;
+      Sub.prototype[k] = protoProps[k];
+    });
+    return Sub;
+  };
+
+  applyEvents(Base);
+
+  const Sub = Base.extend('Probe', {
+    initialize: function () { return 'FROM PROTO PROPS'; },
+    other: function () { return 'other'; }
+  });
+  const s = new Sub();
+  assert.strictEqual(s.initialize(), 'FROM PROTO PROPS', 'the declared initialize survives extend');
+  assert.strictEqual(s.other(), 'other', 'and normal members still work');
+});

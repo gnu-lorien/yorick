@@ -48,7 +48,7 @@
    * run under `node --test` against a stub query.
    */
   function makeParseCollection(Parse) {
-    return Backbone.Collection.extend({
+    var Collection = Backbone.Collection.extend({
 
       model: Parse && Parse.Object,
 
@@ -82,6 +82,42 @@
         });
       }
     });
+
+    /**
+     * `_byCid`, which Parse.Collection had and Backbone.Collection does not.
+     *
+     * Parse 1.5 kept a cid-keyed index of its members (five references in
+     * parse-1.5.0.js). Backbone 1.1.2 folded that into `_byId`, keyed by both
+     * id and cid, and dropped the name -- zero occurrences.
+     *
+     * One place in the app reaches for it: `Character.js:548`,
+     * `if (ens._byCid[model.cid])` inside `add_experience_notation`. Without it
+     * that reads a property of `undefined` and every character creation dies
+     * with "Cannot read properties of undefined (reading 'undefined')".
+     *
+     * Defined here rather than in the `extend` literal above, because Backbone's
+     * `extend` copies properties with `_.extend`, which INVOKES a getter and
+     * stores its one-time result instead of carrying the descriptor across. It
+     * has to be a live getter so it cannot drift out of sync with `models`.
+     *
+     * Reading a private internal from application code is not good practice,
+     * but rewriting that call site is a behaviour change, and this layer exists
+     * to keep behaviour identical. The follow-up codemod is where it belongs.
+     */
+    Object.defineProperty(Collection.prototype, '_byCid', {
+      configurable: true,
+      enumerable: false,
+      get: function () {
+        var index = {};
+        var models = this.models || [];
+        for (var i = 0; i < models.length; i++) {
+          if (models[i] && models[i].cid) index[models[i].cid] = models[i];
+        }
+        return index;
+      }
+    });
+
+    return Collection;
   }
 
   makeParseCollection.make = makeParseCollection;

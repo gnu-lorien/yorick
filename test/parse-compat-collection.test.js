@@ -154,3 +154,28 @@ test('fetch returns a Parse.Promise-compatible thenable, not a bare native one',
   assert.strictEqual(CompatPromise.is(p), true);
   await tick();
 });
+
+test('_byCid indexes members by cid, as Parse.Collection did', () => {
+  // Backbone 1.1.2 has no _byCid at all -- it folded that into _byId, keyed by
+  // both id and cid. Character.js:548 reads `ens._byCid[model.cid]` inside
+  // add_experience_notation, and without this every character creation dies
+  // with "Cannot read properties of undefined (reading 'undefined')".
+  const { Parse } = stubParse([]);
+  const C = makeParseCollection(Parse);
+  const c = new C([{ n: 1 }, { n: 2 }]);
+  const index = c._byCid;
+  assert.strictEqual(Object.keys(index).length, 2);
+  c.models.forEach((m) => {
+    assert.strictEqual(index[m.cid], m, 'each member is reachable by its cid');
+  });
+});
+
+test('_byCid tracks the collection rather than caching a stale copy', () => {
+  const { Parse } = stubParse([]);
+  const C = makeParseCollection(Parse);
+  const c = new C([{ n: 1 }]);
+  const first = c.models[0];
+  assert.ok(c._byCid[first.cid]);
+  c.remove(first);
+  assert.strictEqual(c._byCid[first.cid], undefined, 'a removed model leaves the index');
+});
