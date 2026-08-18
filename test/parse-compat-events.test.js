@@ -255,3 +255,24 @@ test('extend keeps a protoProps initialize, which parse@8 drops', () => {
   assert.strictEqual(s.initialize(), 'FROM PROTO PROPS', 'the declared initialize survives extend');
   assert.strictEqual(s.other(), 'other', 'and normal members still work');
 });
+
+test('objects get a stable, unique cid, or Backbone collections collapse', () => {
+  // Backbone's _addReference does this._byId[model.cid] = model, and get()
+  // checks this._byId[obj.cid]. With every cid undefined they all collide and
+  // each add after the first is merged as a duplicate. Measured against the
+  // real app: 49 clans iterated, collection length 1.
+  const P = applyEvents(makeBareParseObject());
+  const a = new P({ n: 1 });
+  const b = new P({ n: 2 });
+  assert.ok(a.cid, 'has a cid');
+  assert.strictEqual(a.cid, a.cid, 'stable across reads');
+  assert.notStrictEqual(a.cid, b.cid, 'unique per object');
+});
+
+test('cid is non-enumerable, so it stays out of attribute iteration', () => {
+  const P = applyEvents(makeBareParseObject());
+  const m = new P({ n: 1 });
+  void m.cid;
+  assert.strictEqual(Object.keys(m).indexOf('cid'), -1);
+  assert.strictEqual(Object.keys(m).indexOf('__compatCid'), -1);
+});

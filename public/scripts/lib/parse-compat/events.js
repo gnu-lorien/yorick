@@ -56,6 +56,40 @@
       }
     }
 
+    // Every object needs a `cid`, or Backbone collections collapse.
+    //
+    // Parse 1.5's objects were Backbone-derived and carried one. parse@8's do
+    // not. Backbone.Collection's `_addReference` does
+    // `this._byId[model.cid] = model`, and `get()` looks up
+    // `this._byId[obj.id] || this._byId[obj.cid]` -- so with every cid
+    // undefined, all members collide on `_byId[undefined]`, and every add
+    // after the first is treated as a duplicate of it and merged.
+    //
+    // Measured: a Description query returning 49 clans, iterated 49 times by
+    // `q.each`, produced a collection of length 1. That surfaced far away as
+    // '"Brujah" not offered by "clans". Available: Malkavian: Knights of the
+    // Moon' -- a picker with one option, and no error anywhere.
+    //
+    // Lazy, so nothing is spent on objects that never enter a collection, and
+    // non-enumerable so it stays out of attribute iteration and toJSON.
+    if (!Object.prototype.hasOwnProperty.call(proto, 'cid')) {
+      var cidCounter = 0;
+      Object.defineProperty(proto, 'cid', {
+        configurable: true,
+        enumerable: false,
+        get: function () {
+          if (!this.__compatCid) {
+            cidCounter += 1;
+            Object.defineProperty(this, '__compatCid', {
+              configurable: true, enumerable: false, writable: true,
+              value: 'c' + cidCounter
+            });
+          }
+          return this.__compatCid;
+        }
+      });
+    }
+
     var originalSet = proto.set;
     var originalUnset = proto.unset;
 
