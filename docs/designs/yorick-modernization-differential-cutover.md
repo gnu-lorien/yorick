@@ -262,12 +262,14 @@ This is now the true first risk, ahead of any SDK work.)*
    over `engines: node 14.x`; that pin has to rise to 22 or 24 or parse-server 9
    cannot run.
 5. **Deploy this branch's application code to a staging Heroku dyno + Netlify
-   preview against an Atlas snapshot, unchanged, before upgrading anything.**
-   Nobody has ever deployed this lineage to production. Prove the 58-commit gap
-   deploys *before* stacking an SDK migration on top of it.
+   preview against the restored dump from step 1, unchanged, before upgrading
+   anything.** Nobody has ever deployed this lineage to production. Prove the
+   58-commit gap deploys *before* stacking an SDK migration on top of it. Note
+   this staging run still points at MongoDB 5.0, which `parse-server@2.8.4`
+   accepts — that is the point. One variable at a time.
 
 *Exit:* this branch, with no dependency changes, running in a staging clone of
-production against restored Atlas data, with the E2E suite green against it.
+production against restored player data, with the E2E suite green against it.
 
 **Phase 1 — Build the differential harness.** Parameterize `index.js` on
 `YORICK_STACK=legacy|modern`. Legacy keeps `parse-server@2.8.4` + in-memory Mongo
