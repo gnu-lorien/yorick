@@ -98,6 +98,67 @@ define([
     var CategoryRouter = Parse.Router.extend({
 
         // The Router constructor
+        /**
+         * Which navigation is current.
+         *
+         * `Parse.history.start()` re-dispatches whatever hash the document
+         * loaded with, and any navigation after that adds a second dispatch.
+         * Route handlers are multi-round-trip async chains that commit their
+         * result - view state, view data, a page transition - at the tail,
+         * into views memoised on this router. Nothing checked whether the
+         * route that started the chain was still the current one, so whichever
+         * chain resolved last won, even when it was the stale one.
+         *
+         * Observed: a log registration for page 2 landing after the one for
+         * page 0 and leaving the Next button paging from a phantom position;
+         * and a `changePage("#character-log")` from an abandoned route firing
+         * during a rename transition, which strands jQuery Mobile with the
+         * hash updated and the old page still on screen.
+         *
+         * `route()` below bumps this on every dispatch. A handler captures it
+         * at entry with `ifCurrent()` and its tail becomes a no-op once
+         * superseded.
+         */
+        _routeGeneration: 0,
+
+        /**
+         * Wrap an async tail so it does nothing if its route has been
+         * superseded.
+         *
+         * Deliberately wraps only the success tail. `.always()` and `.fail()`
+         * must still run - `.always()` is what hides the loading spinner, and
+         * skipping it would leave the spinner up forever.
+         */
+        ifCurrent: function (fn) {
+            var self = this;
+            var generation = self._routeGeneration;
+            return function () {
+                if (generation !== self._routeGeneration) {
+                    return;
+                }
+                return fn.apply(this, arguments);
+            };
+        },
+
+        /**
+         * Bump the generation on every route dispatch.
+         *
+         * `Parse.Router.route` invokes the handler through `callback.apply`
+         * with no hook of its own (Backbone's `execute` does not exist here),
+         * so the counter is bumped by wrapping the callback on the way in.
+         */
+        route: function (route, name, callback) {
+            var self = this;
+            if (!callback) {
+                callback = this[name];
+            }
+            var counted = callback && function () {
+                self._routeGeneration++;
+                return callback.apply(this, arguments);
+            };
+            return Parse.Router.prototype.route.call(this, route, name, counted);
+        },
+
         initialize: function () {
 
             this._character = null;
@@ -353,11 +414,11 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
-            self.get_character(cid, ["skills", "disciplines", "backgrounds"]).done(function (character) {
+            self.get_character(cid, ["skills", "disciplines", "backgrounds"]).done(self.ifCurrent(function (character) {
                 self.characterCostsView.model = character;
                 self.characterCostsView.render();
                 $.mobile.changePage("#character-costs", { reverse: false, changeHash: false });
-            });
+            }));
         },
 
         // Both of these used to have no failure handler at all, so a denied
@@ -368,10 +429,10 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
-            self.get_character(cid, "all").done(function (character) {
+            self.get_character(cid, "all").done(self.ifCurrent(function (character) {
                 self.characterLogView.register(character, start, changeBy);
                 $.mobile.changePage("#character-log", { reverse: false, changeHash: false });
-            }).always(function () {
+            })).always(function () {
                 $.mobile.loading("hide");
             }).fail(ReportError.on("Couldn't open the character log")).fail(function () {
                 window.location.hash = "#characters?all";
@@ -382,10 +443,10 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
-            self.get_character(cid, "all").done(function (character) {
+            self.get_character(cid, "all").done(self.ifCurrent(function (character) {
                 self.characterExperienceView.register(character, start, changeBy);
                 $.mobile.changePage("#experience-notations-all", { reverse: false, changeHash: false });
-            }).always(function () {
+            })).always(function () {
                 $.mobile.loading("hide");
             }).fail(ReportError.on("Couldn't open the experience history")).fail(function () {
                 window.location.hash = "#characters?all";
@@ -619,9 +680,9 @@ define([
             }).then(function (character) {
                 self.characterCreateView.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
                 return character.unpick_from_creation(category, stid, i);
-            }).done(function (c) {
+            }).done(self.ifCurrent(function (c) {
                 window.location.hash = "#charactercreate/" + c.id;
-            }).fail(function (error) {
+            })).fail(function (error) {
                 console.log(error.message);
             });
         },
@@ -656,9 +717,9 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#charactercreate/" + cid);
-            self.get_character(cid).done(function (c) {
+            self.get_character(cid).done(self.ifCurrent(function (c) {
                 return c.complete_character_creation();
-            }).then(function () {
+            })).then(function () {
                 window.location.hash = "#character?" + cid;
             }).fail(function (error) {
                 alert(error.message);
@@ -670,9 +731,9 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
-            self.get_character(cid).done(function (c) {
+            self.get_character(cid).done(self.ifCurrent(function (c) {
                 return self.characterPortraitView.register(c);
-            }).always(function () {
+            })).always(function () {
                 $.mobile.changePage("#character-portrait", { reverse: false, changeHash: false });
             });
         },
@@ -751,12 +812,12 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.set_back_button(back_url);
-            self.get_character(id).done(function (m) {
+            self.get_character(id).done(self.ifCurrent(function (m) {
                 self.characterMainPage.model = m;
                 self.characterMainPage.render();
                 self.characterMainPage.scroll_back_after_page_change();
                 $.mobile.changePage("#character", { reverse: false, changeHash: false });
-            }).then(function () {
+            })).then(function () {
                 $.mobile.loading("hide");
             }).fail(PromiseFailReport).fail(function () {
                 window.location.hash = back_url;
@@ -1118,12 +1179,12 @@ define([
             var self = this;
             $.mobile.loading("show");
             this.set_back_button("#character?" + cid);
-            self.get_character(cid).done(function (c) {
+            self.get_character(cid).done(self.ifCurrent(function (c) {
                 self.characterDeleteView.register(c, "#characters?all", function () {
                     return self.characters.collection.fetch({ reset: true });
                 });
                 $.mobile.changePage("#character-delete", { reverse: false, changeHash: false });
-            })
+            }))
         },
 
         get_user_characters: function () {
@@ -1543,9 +1604,9 @@ define([
             $.mobile.loading("show");
             self.set_back_button("#simpletraits/" + category + "/" + cid + "/all");
             self.withSimpleTraitChangeView(function () {
-                self.get_character(cid, [category]).done(function (character) {
+                self.get_character(cid, [category]).done(self.ifCurrent(function (character) {
                     return character.get_trait(category, bid);
-                }).then(function (trait, character) {
+                })).then(function (trait, character) {
                     self.simpleTraitChangeView.register(character, trait, category);
                     $.mobile.changePage("#simpletrait-change", { reverse: false, changeHash: false });
                 }).fail(function (error) {
@@ -1557,10 +1618,10 @@ define([
         simpletraitspecialize: function (category, cid, bid) {
             var self = this;
             self.set_back_button("#simpletraits/" + category + "/" + cid + "/all");
-            self.get_character(cid, [category]).done(function (c) {
+            self.get_character(cid, [category]).done(self.ifCurrent(function (c) {
                 character = c;
                 return character.get_trait(category, bid);
-            }).then(function (trait, character) {
+            })).then(function (trait, character) {
                 return self.simpleTraitSpecializationView.register(
                     character,
                     trait,
@@ -1647,11 +1708,11 @@ define([
                 $.mobile.loading("show");
                 self.set_back_button("#character?" + cid);
                 require(["../views/SimpleTraitCategoryView"], function (SimpleTraitCategoryView) {
-                    self.get_character(cid, [category]).done(function (c) {
+                    self.get_character(cid, [category]).done(self.ifCurrent(function (c) {
                         self.simpleTraitCategoryView = self.simpleTraitCategoryView || new SimpleTraitCategoryView({ el: "#simpletraitcategory-all" });
                         self.simpleTraitCategoryView.register(c, category);
                         $.mobile.changePage("#simpletraitcategory-all", { reverse: false, changeHash: false });
-                    }).fail(function (error) {
+                    })).fail(function (error) {
                         console.log(error.message);
                     });
                 });
@@ -1662,9 +1723,9 @@ define([
                 self.set_back_button("#simpletraits/" + category + "/" + cid + "/all");
                 require(["../views/SimpleTraitNewView"], function (SimpleTraitNewView) {
                     self.simpleTraitNewView = self.simpleTraitNewView || new SimpleTraitNewView({ el: "#simpletrait-new > div[role='main']" });
-                    self.get_character(cid, [category]).done(function (c) {
+                    self.get_character(cid, [category]).done(self.ifCurrent(function (c) {
                         return self.simpleTraitNewView.register(c, category);
-                    }).then(function () {
+                    })).then(function () {
                         $.mobile.changePage("#simpletrait-new", { reverse: false, changeHash: false });
                     }).fail(function (error) {
                         console.log(error.message);
