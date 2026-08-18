@@ -175,14 +175,58 @@ there is nothing to match, and the wait runs out its budget.
 That is a different failure from the one in §4, and it is not a timing budget problem
 either: a popup that has closed will not reopen no matter how long we wait.
 
-**This is not yet root-caused.** Candidate directions, in the order worth trying:
+## 5b. Three explanations, measured and disproved
 
-1. Why the popup closes — a stray outside-click, a second `open()` on a duplicate, or a
-   Marionette re-render tearing out the copy jQuery Mobile had open.
-2. Why so many duplicate copies accumulate. That is the precondition for all of this, and
-   removing it would likely remove the whole class of failure.
-3. Whether `waitForJqmPopup` should assert the popup *stays* open, rather than that it was
-   open once — the current check can be satisfied by a popup already on its way out.
+Each of these was plausible from reading the code. Each was tested and is wrong. Recorded so
+nobody spends the time again.
+
+| Hypothesis | How it was tested | Result |
+|---|---|---|
+| A late re-render closes the open popup | Delayed the save response by 3s to force the propagation render to land while the popup was open. Watched it land at exactly 3.0s. | **Disproved** — popup survived, input stayed visible for 6s |
+| `popup("close")` closes the wrong copy | Submitted after a render had inserted a new copy, then counted active containers | **Disproved** — active went cleanly to 0; the next open was clean |
+| Duplicate copies confuse the locator | Fixed the leak (below); copies now bounded at 1–2 | **Disproved** — flake persists with duplicates gone |
+
+The reason a re-render does not destroy the open popup is worth knowing: jQuery Mobile moves
+an opened popup's container out to the page element for positioning, so it is no longer
+inside the region `render()` replaces.
+
+## 5c. A real defect found on the way: the popups leak
+
+Not the flake, but real and now fixed.
+
+All three edit popups live inside `CharacterExperienceView`'s template, so every `render()`
+emits fresh copies. Because jQuery Mobile has moved any *opened* copy out to the page, that
+copy survives the replacement and a new one is added beside it — **one more element carrying
+a duplicate id on every render**, growing without bound for as long as the page is open.
+Measured: **seven** `#popupEditReason` elements after three edits.
+
+That matters beyond the tests, because the view's own handlers reach for these popups with
+bare `$("#popupEditReason")` selectors, which take whichever copy comes first in the
+document rather than the one on screen.
+
+`render()` now drops stale popup containers before replacing its markup, leaving any
+currently *open* popup alone — destroying that would take the dialog away from whoever is
+typing in it. Copies are bounded at 1–2 and no longer grow.
+
+**It did not cure the flake.** Stated plainly because the temptation is to assume it did.
+
+## 5d. Where this stands, and what the next occurrence will tell us
+
+The failure has now appeared at three different waits — `waitForJqmPopup` (15s),
+`fillInActivePopup` (10s), and the submit click (20s) — moving as its surroundings changed.
+The most recent run puts it back at `waitForJqmPopup`: **the popup simply does not open**,
+with duplicates ruled out.
+
+Rather than guess a fourth time, `waitForJqmPopup` now reports the DOM state on timeout:
+copy count, how many sit in an active container, whether jQuery Mobile already thinks a
+popup owns the screen (`$.mobile.popup.active`), the active page id, and whether the loader
+is up. At roughly one failure in three runs, a bare timeout costs a whole run to learn
+nothing; this makes the next occurrence self-explaining.
+
+The live hypothesis it is designed to test: jQuery Mobile refuses or defers a `popup("open")`
+issued while it considers another popup active or a page change in flight — which would make
+this the same *shape* as the transition-queue defect fixed in this branch, a jQuery Mobile
+event dropped rather than delayed. That is a hypothesis, not a finding.
 
 ## 6. Still open: `lifecycle-werewolf` 355b
 
@@ -248,5 +292,9 @@ Worth knowing, because the failures hit three different knobs:
 | Timeouts are give-up thresholds, not durations | 15s→90s experiment; no wait exceeded 2s | **Established** |
 | The two helpers disagreed on "the open popup" | Read of `waitForJqmPopup` vs `activePopup` | **Established, fixed** |
 | That disagreement was the cause of the flake | Full-suite run after the fix: still flaky | **Disproven** |
-| The popup opens then closes again | Trace snapshots, incremental so read with care | **Likely, not proven** |
-| 355b is fixed | Passed in isolation; failed twice under load | **Disproven — on watch** |
+| The popup opens then closes again | Forced the late render deterministically; popup survived | **Disproven (§5b)** |
+| Duplicate popups confuse the locator | Leak fixed, copies bounded 1–2; flake persists | **Disproven (§5b)** |
+| `CharacterExperienceView` leaks popups | 7 copies after 3 edits; now bounded at 1–2 | **Established, fixed (§5c)** |
+| The leak fix cures the flake | Full run after it: still failing | **Disproven** |
+| 355b is fixed | Passed in isolation; failed three times under load | **Disproven — on watch** |
+| The popup open is dropped by jQuery Mobile | Not yet tested — diagnostic added to find out | **Open hypothesis (§5d)** |

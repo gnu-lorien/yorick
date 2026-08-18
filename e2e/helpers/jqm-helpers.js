@@ -180,16 +180,60 @@ async function submitJqmForm(page, formSelector) {
  */
 const ACTIVE_POPUP = '.ui-popup-container.ui-popup-active:visible';
 
-/** True when at least one copy of the named popup is open. */
+/**
+ * True when at least one copy of the named popup is open.
+ *
+ * On timeout this reports the popup state rather than only "waited 15000ms".
+ * `xp-history` 75 fails here roughly one run in three and has moved between
+ * three different waits as its surroundings changed, so a bare timeout costs a
+ * whole run to learn nothing. Three explanations have already been disproved by
+ * measurement - a late re-render closing the popup, `popup("close")` targeting
+ * the wrong copy, and duplicate copies confusing the locator - and what is left
+ * needs the state at the moment it fails. See test_timing_report.md.
+ */
 async function waitForJqmPopup(page, popupSelector, timeout = 15000) {
-  await page.waitForFunction((sel) => {
-    return Array.from(document.querySelectorAll(sel)).some((popup) => {
-      const container = popup.closest('.ui-popup-container');
-      return !!container &&
-             container.classList.contains('ui-popup-active') &&
-             container.offsetParent !== null;
-    });
-  }, popupSelector, { timeout });
+  try {
+    await page.waitForFunction((sel) => {
+      return Array.from(document.querySelectorAll(sel)).some((popup) => {
+        const container = popup.closest('.ui-popup-container');
+        return !!container &&
+               container.classList.contains('ui-popup-active') &&
+               container.offsetParent !== null;
+      });
+    }, popupSelector, { timeout });
+  } catch (e) {
+    const state = await page.evaluate((sel) => {
+      const copies = Array.from(document.querySelectorAll(sel));
+      const jqm = window.jQuery && window.jQuery.mobile;
+      return {
+        copies: copies.length,
+        inAnyContainer: copies.filter((p) => !!p.closest('.ui-popup-container')).length,
+        inActiveContainer: copies.filter((p) => {
+          const c = p.closest('.ui-popup-container');
+          return !!c && c.classList.contains('ui-popup-active');
+        }).length,
+        withLayoutBox: copies.filter((p) => {
+          const c = p.closest('.ui-popup-container');
+          return !!c && c.offsetParent !== null;
+        }).length,
+        activeContainersOnPage: document.querySelectorAll('.ui-popup-container.ui-popup-active').length,
+        // Is jQuery Mobile already holding a popup open, or mid page change?
+        jqmPopupActive: !!(jqm && jqm.popup && jqm.popup.active) ? 'yes' : 'no',
+        activePageId: (document.querySelector('.ui-page-active') || {}).id || null,
+        loaderVisible: (() => {
+          const l = document.querySelector('.ui-loader');
+          return !!(l && l.offsetParent !== null);
+        })()
+      };
+    }, popupSelector).catch(() => null);
+
+    throw new Error(
+      `${e.message}\n` +
+      `  popup state for "${popupSelector}" at timeout: ${state ? JSON.stringify(state) : '(could not read)'}\n` +
+      `  copies>1 means the render leak is back; inActiveContainer=0 with jqmPopupActive=yes\n` +
+      `  means jQuery Mobile thinks another popup owns the screen.`
+    );
+  }
 }
 
 /** True when no copy of the named popup is open. */
