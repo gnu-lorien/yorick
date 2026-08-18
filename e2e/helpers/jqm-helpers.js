@@ -215,7 +215,21 @@ async function waitForJqmPopupClosed(page, popupSelector, timeout = 15000) {
  */
 function activePopup(page, popupSelector) {
   if (!popupSelector) return page.locator(ACTIVE_POPUP).last();
-  return page.locator(`${popupSelector}:visible`).last();
+  // Scope to the copy sitting inside the container jQuery Mobile actually
+  // opened, not merely to a copy that is `:visible`.
+  //
+  // These two used to disagree. `waitForJqmPopup` asks whether *any* copy's
+  // container carries `ui-popup-active`; this asked only for a `:visible` copy
+  // and took the last one. Duplicate popups are real here - 4 to 7 copies of
+  // `#popupEditReason` can be live at once - so the wait could be satisfied by
+  // the copy jQuery Mobile opened while the locator latched onto a different
+  // one, whose input never becomes visible because nothing is going to open it.
+  //
+  // Fixing that did NOT stop `xp-history` 75 being flaky, so it is not the
+  // whole story - see test_timing_report.md §5a. It is kept because a locator
+  // that can select a copy other than the opened one is a latent defect either
+  // way.
+  return page.locator(`${ACTIVE_POPUP} ${popupSelector}`).last();
 }
 
 /** Fill a field inside the named popup's visible copy. */
