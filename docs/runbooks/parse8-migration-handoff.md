@@ -30,6 +30,47 @@ These ARE reasons to stop:
 
 **Report at the end, not throughout.**
 
+### You have both ends of the codebase. Use that.
+
+**Do not spend hours emulating a Parse 1.5 behaviour in the shim when the
+application code can be changed to something both SDKs support.** The old SDK,
+the new SDK and the app are all in this tree. A compatible change to the app is
+very often cheaper, smaller and more durable than a faithful emulation — and it
+leaves behind less to carry.
+
+The rule of thumb: **if you are on your second attempt at emulating an SDK
+behaviour, stop and look at the application side instead.**
+
+This is not "never shim". It is a cost comparison, made honestly:
+
+| Situation | Shim | Change the app |
+|---|---|---|
+| `Parse.Promise`, 456 call sites | ✅ ~200 lines | ✗ 456 hand edits |
+| `Parse.Collection`, 12 subclasses feeding Marionette | ✅ ~80 lines | ✗ rewrite the data layer |
+| `__super__` / repeated-className inheritance | ✗ **cost 32 tests** | ✅ **5 lines** |
+| `{success, error}` callbacks, 4 sites | ✗ pointless | ✅ 4 small edits |
+
+The third row is the cautionary one. Parse 1.5 turned a repeated className into
+inheritance, and the previous session spent two full attempts reproducing that
+inside `extend` — a hand-rolled subclass constructor (regressed the suite from
+68 to 36 passing) and then a pre-merge prototype snapshot (recursed infinitely).
+parse@8 cannot support it at all: `extend` short-circuits on
+`if (classMap[adjustedClassName])` before it ever chooses a parent prototype.
+
+The actual fix was on the application side and took five lines: expose
+`Character.baseMethods` and have each venue do
+`_.defaults(instance_methods, Character.baseMethods)`. That is compatible with
+BOTH SDKs — it would have worked identically under 1.5 — so it is a real
+improvement to the app rather than scaffolding that has to be maintained until
+the codemod lands.
+
+That is the shape to look for: **a change that is correct under both SDKs.**
+Those are not migration debt. They are the migration paying for itself.
+
+When you do reach for the app side, keep the change faithful. Preserving
+behaviour is still the goal — the point is that you have two ways to preserve
+it, not that behaviour is now negotiable.
+
 ### The loop that works
 
 1. Read the failure out of the captured JSON (never guess at a cause)
