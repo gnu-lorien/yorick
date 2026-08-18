@@ -37,7 +37,8 @@
       './collection',
       './events',
       './router',
-      './storage'
+      './storage',
+      './thenable'
     ], factory);
   } else if (typeof module === 'object' && module.exports) {
     module.exports = factory(
@@ -46,7 +47,8 @@
       require('./collection'),
       require('./events'),
       require('./router'),
-      require('./storage')
+      require('./storage'),
+      require('./thenable')
     );
   } else {
     root.ParseCompat = factory(
@@ -55,7 +57,8 @@
       root.ParseCompatCollection,
       root.ParseCompatEvents,
       root.ParseCompatRouter,
-      root.ParseCompatStorage
+      root.ParseCompatStorage,
+      root.ParseCompatThenable
     );
   }
 }(typeof self !== 'undefined' ? self : this, function (
@@ -64,7 +67,8 @@
   makeParseCollection,
   applyEvents,
   applyRouter,
-  applyStorage
+  applyStorage,
+  applyThenable
 ) {
   'use strict';
 
@@ -100,6 +104,13 @@
 
     applyRouter(Parse);
 
+    // Last: make the SDK's own promise-returning methods hand back
+    // Parse.Promise-compatible thenables. Without this the shims above are
+    // unreachable from the code that needs them -- almost every one of the 456
+    // call sites chains off something the SDK returned, not off a promise it
+    // constructed, and a native promise has no .fail/.always/.done.
+    applyThenable(Parse);
+
     // Parse.Events was Backbone.Events under a different name, and a few
     // views mix it into themselves directly.
     if (!Parse.Events) {
@@ -116,6 +127,7 @@
   install.applyEvents = applyEvents;
   install.applyRouter = applyRouter;
   install.applyStorage = applyStorage;
+  install.applyThenable = applyThenable;
 
   return install;
 }));
