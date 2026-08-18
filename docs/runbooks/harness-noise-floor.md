@@ -1,4 +1,15 @@
-# The noise floor is zero. Here is what it actually was.
+# The noise floor: what it was, and where it actually sits now.
+
+> **Correction, same day.** The first version of this file said the noise floor
+> is zero, on the strength of three consecutive double-runs. A fourth
+> double-run, on a change that turned out to be innocent, then produced
+> 2 NEW-FAIL (tests 49 and 114) followed immediately by a clean run of the
+> identical code. So the honest figure is **low but not zero: roughly one bad
+> run in seven**, concentrated in the same two tests. Everything below about
+> root causes still holds; the claim of a hard zero did not survive contact
+> with a seventh run. Treat a single clean diff as encouraging, not as proof,
+> and re-run before believing a small NEW-FAIL count.
+
 
 **Measured 2026-08-18 on `claude/office-hours-upgrade-plan-092d60`.**
 
