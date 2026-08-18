@@ -310,23 +310,22 @@ test.describe('Task 10 - Long Texts In The UI', () => {
     // (mobileRouter.js) calls fetch_long_text with its default
     // {update:false}, which serves the cache once populated.
     //
-    // NOTE ON TIMING: this specific transition (#long-text -> #character) was
-    // measured taking ~41-42s here (vs. low-single-digit-seconds for every
-    // other navigation in this file), consistently across repeated full-suite
-    // runs, though it does not reproduce when this test is run in isolation
-    // (under 1s) or in several smaller manual repros. Narrowed to the
-    // #character sheet route specifically - mobileRouter.js's
-    // show_character_helper re-renders one router-lifetime-memoized
-    // CharacterView (`self.characterMainPage`, created once in the router's
-    // own `initialize`) - rather than to character fetching itself
-    // (Vampire.get_character and initialize_troupe_membership were timed
-    // directly and are fast, ~15-30ms). Not pinned to an exact line with full
-    // confidence despite a real attempt; recorded here rather than silently
-    // ignored. It does not corrupt any result: navigateToHash's existing
-    // three-tier fallback (direct wait, re-run the route handler, full
-    // reload) already absorbs it, and every assertion below still reads a
-    // genuinely fresh, correct value, which is why this is a timing note and
-    // not a test.fail().
+    // RESOLVED - this transition (#long-text -> #character) used to be recorded
+    // here as taking ~41-42s, reproducing only under a full-suite run and never
+    // in isolation, and was tentatively blamed on show_character_helper
+    // re-rendering its router-lifetime-memoized CharacterView. That was a
+    // mismeasurement: the ~41s was navigateToHash's own fallback recovering,
+    // not the route. The route never completed at all (measured out to two
+    // minutes). The real cause was the jQuery Mobile transition-queue leak -
+    // see the YORICK PATCH in `jquery.mobile-1.4.5.js` - which stranded the
+    // #character transition behind a stale same-page replay of #long-text.
+    //
+    // With that fixed the navigation completes normally, and the fallback tiers
+    // that were absorbing it have been removed, so this file now passes 10/10
+    // with no navigation fallback at all. Kept as a note because "a slow
+    // transition" and "a transition that never finishes, behind a timed
+    // workaround" look identical from the outside, and that is what cost two
+    // wrong diagnoses.
     await navigateToHash(page, `character?${vampireId}`, '#character');
     await navigateToHash(page, `character/${vampireId}/backgroundlt`, '#long-text');
     await expect(page.locator('#long-text textarea[name="text"]')).toHaveValue(primed);
