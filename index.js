@@ -12,6 +12,28 @@ var app = express();
 var port = process.env.PORT || 1337;
 
 /**
+ * The database name this backend should use.
+ *
+ * Defaults to `anotherstore`, which is what a plain `node index.js` has always
+ * used and what any existing local data lives in.
+ *
+ * The E2E suite overrides it per worker. Each worker gets its own backend on
+ * its own port (see e2e/ports.js), and when nothing is listening on 27017 each
+ * of those starts its own in-memory mongod, so they are isolated by having
+ * separate *servers*. But if a developer happens to be running a mongod on
+ * 27017, every backend connects to that one instead — and with a fixed database
+ * name they would all share `anotherstore`, silently putting the admin suites
+ * back in contention and reproducing exactly the cross-suite flakiness that
+ * per-worker backends were introduced to remove. It would present as "flaky on
+ * my machine, fine on yours", which is the worst kind of test failure to chase.
+ *
+ * Naming the database per worker makes the isolation hold either way.
+ */
+function databaseName() {
+  return process.env.MONGODB_DB || 'anotherstore';
+}
+
+/**
  * Resolve the database to run against.
  *
  * Returns `{ uri, ephemeral }`. `ephemeral` is true only when THIS process
@@ -48,17 +70,20 @@ async function getDatabaseURI() {
   if (isMongoRunning) {
     // A mongod someone else is running. It may well be a scratch database, but
     // this process cannot know that, so it does not get the ephemeral pass.
-    return { uri: "mongodb://localhost:27017/anotherstore", ephemeral: false };
+    return {
+      uri: "mongodb://localhost:27017/" + databaseName(),
+      ephemeral: false
+    };
   }
 
   console.log("No local MongoDB instance detected on port 27017. Starting in-memory MongoDB server...");
   var MongoMemoryServer = require('mongodb-memory-server').MongoMemoryServer;
   var mongod = await MongoMemoryServer.create({
     binary: {
-      version: '4.4.18'
+      version: process.env.MONGODB_BINARY_VERSION || '4.4.18'
     }
   });
-  var uri = mongod.getUri() + "anotherstore";
+  var uri = mongod.getUri() + databaseName();
   console.log("In-memory MongoDB started at " + uri);
   return { uri: uri, ephemeral: true };
 }

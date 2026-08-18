@@ -112,3 +112,6 @@ toimport/
 *.archive
 *master_key*
 *.un~
+
+# Captured Playwright JSON runs, compared by diff-runs.js. Local artefacts.
+runs/

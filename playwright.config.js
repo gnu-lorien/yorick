@@ -75,9 +75,18 @@ module.exports = defineConfig({
   // is started.
   workers: WORKERS,
 
+  // The JSON reporter is what `diff-runs.js` consumes. It is always on, because
+  // a run you did not record cannot be compared against later, and by the time
+  // you want the comparison the run is gone. E2E_RUN_NAME picks the file so two
+  // stacks can be captured without overwriting each other:
+  //
+  //   E2E_RUN_NAME=legacy  npx playwright test   -> runs/legacy.json
+  //   E2E_RUN_NAME=modern  npx playwright test   -> runs/modern.json
+  //   npm run test:diff -- runs/legacy.json runs/modern.json
   reporter: [
     ['list'],
-    ['html', { open: 'never', outputFolder: 'playwright-report' }]
+    ['html', { open: 'never', outputFolder: 'playwright-report' }],
+    ['json', { outputFile: `runs/${process.env.E2E_RUN_NAME || 'latest'}.json` }]
   ],
 
   use: {
@@ -123,6 +132,17 @@ module.exports = defineConfig({
     stderr: 'pipe',
     env: {
       PORT: String(port),
+
+      // Each worker gets its own database name, not just its own port.
+      //
+      // When nothing is listening on 27017 every backend starts its own
+      // in-memory mongod and is isolated by having a separate server. But
+      // `index.js` prefers a live local mongod over starting one, so on a
+      // machine that happens to be running mongod every backend would connect
+      // to that single instance — and with a fixed database name they would all
+      // share `anotherstore`, putting the admin suites back in contention.
+      // Naming the database per worker makes the isolation hold either way.
+      MONGODB_DB: `anotherstore_w${index}`,
       // The thumbnail beforeSave hook in cloud/main.js fetches each uploaded
       // portrait back over HTTP from publicServerURL. The default points at a
       // long-dead Cloud9 host, so every portrait upload fails with an opaque
