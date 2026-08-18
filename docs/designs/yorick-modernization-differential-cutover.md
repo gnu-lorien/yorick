@@ -249,7 +249,7 @@ as a database migration.
 
 ### Phase plan
 
-**Phase 0 — Establish the oracle.** Run the full suite on current HEAD and record
+**Phase 0 — Establish the oracle. DONE (2026-08-17).** Run the full suite on current HEAD and record
 per-test status to `baseline-legacy.json`. The plan rests on that suite being a
 trustworthy oracle, and "444 passed, 0 failed" is currently a claim from commit
 `b85f1a7`'s message, not an observed run. *Exit:* a recorded baseline.
@@ -396,21 +396,44 @@ override per run.
 the cross-run comparison (`diff-runs.js`) is genuinely custom; Playwright has no
 built-in diff.
 
-*Identical starting state (eng review C1).* Do not run `seedDatabase()`
-separately per stack. `seed_db.js` hardcodes `_id`s (`:161,171`) but stamps
-`_created_at`/`_updated_at` with `new Date()` (`:71,77,168,191,230`), so two
-independent seed runs produce different timestamps — and `collections/Approvals.js:14-22`,
-`xp-history.spec.js`, and `character-history.spec.js` all assert on ordering.
-Seed **once**, `mongodump` the result to a committed fixture, and `mongorestore`
-it into both stacks before each run. Byte-identical starting state means every
-diff is a real behavior difference, and runs stay repeatable across days.
+*Identical starting state (eng review C1 — **narrowed** after merging
+`topic/massive-upgrades`).* The original worry was that independent seed runs
+produce different `_created_at`/`_updated_at` stamps (`seed_db.js:71,77,168,191,230`)
+while `collections/Approvals.js:14-22`, `xp-history.spec.js` and
+`character-history.spec.js` assert on ordering.
 
-*Fast inner loop (eng review P1).* `diff-runs.js` accepts a spec glob or
-`--project`, so a promise-shim change can be diffed against `xp-history.spec.js`
-in about two minutes. `playwright.config.js` runs `workers: 1` over 397 tests
-with a 120s timeout; a full two-stack diff is 40-66 minutes, which is fine at a
-phase exit and unusable as a feedback loop. Design the subset argument in now —
-it is painful to retrofit into the comparison logic later.
+That worry is now largely answered by evidence: `18f1a4a` already seeds a
+**separate database per worker**, so a single run performs 8 independent seeds,
+and the suite is green at 446 passed. Within-run timestamp variance is
+demonstrably tolerable. `_id`s are hardcoded (`:161,171`), which is what
+actually matters.
+
+What remains is **across-run drift**: a baseline captured on Monday and a
+candidate captured on Friday seed at different wall-clock times, and any test
+that is sensitive to relative ordering could flip for that reason alone. So the
+recommendation stands but the reason is narrower — seed once, `mongodump` the
+result to a committed fixture, and `mongorestore` it into every worker on both
+stacks, so a stored baseline stays comparable indefinitely. Treat it as an
+improvement to make when the harness first produces unexplained diffs, not as a
+prerequisite.
+
+*Fast inner loop (eng review P1 — **substantially revised** after merging
+`topic/massive-upgrades`).* The original finding assumed `workers: 1` over 397
+serial tests, putting a two-stack diff at 40-66 minutes. That is no longer true.
+`18f1a4a` gives every worker its own backend and its own in-memory MongoDB, and
+a measured full run on a 32-core box is now **6.5 minutes across 8 workers**
+(446 passed, 1 flaky, 3 skipped). A two-stack diff is therefore **~13 minutes**,
+which is tolerable as a feedback loop rather than unusable.
+
+`--filter` still ships and is still worth having — a single-spec diff is well
+under a minute — but it is a convenience now, not the thing that makes the
+harness viable.
+
+*The port allocator is a gift to this plan.* `e2e/ports.js` reads
+`E2E_BASE_PORT`, so running two whole stacks side by side needs no new
+machinery at all: the legacy worktree runs on base 1337 and the modern one on
+base 1437, each with its own worker pool and its own per-worker databases.
+That is most of Phase 1, already built for a different reason.
 
 *Exit:* `npm run test:diff` emits a regression list, and two **legacy-vs-legacy**
 runs diff to zero. That second condition is the real gate — until the harness is
@@ -681,7 +704,8 @@ catches it.
 | Cloud adapter `response.error` after early return | **Permission refusal becomes an allow** | **yes** (Phase 1.5 unit) | inverted | ❌ silent |
 | `diff-runs.js` | Misclassifies a regression as noise | no | no | ❌ silent |
 | `mongorestore` into 8.0 | Partial restore; missing collections | yes (suite + audit) | exit code | ✅ loud |
-| Seeder on a prod-connected boot | Known-password admin planted; a real `devuser` overwritten | **no** | none | ❌ silent |
+| Seeder on a prod-connected boot | Known-password admin planted; a real `devuser` overwritten | **yes** (closed) | refuses + logs | ✅ loud |
+| A local `mongod` on 27017 during a suite run | All 8 workers share one database; per-worker isolation silently gone | no | none | ❌ silent |
 
 **Critical gaps — both closed during the review:**
 
@@ -696,6 +720,25 @@ catches it.
    exemption for an in-memory instance the process created itself. Verified to
    refuse without opening a connection, and to redact URI credentials from the
    skip message.
+
+**New gap, found while merging `topic/massive-upgrades`:**
+
+3. **A local `mongod` on 27017 silently collapses per-worker isolation.**
+   `18f1a4a` gives each worker its own backend on `BASE_PORT + N`, and each
+   backend gets a private database *because* `index.js` starts an in-memory
+   MongoDB when nothing is listening on 27017. But `getDatabaseURI()` prefers a
+   live local mongod over starting one, and it has no per-worker database name —
+   every worker would return `mongodb://localhost:27017/anotherstore`. On a
+   developer's machine that happens to run mongod, all 8 workers share one
+   database and the admin suites contend exactly as they did before, reproducing
+   the intermittent cross-suite failures `18f1a4a` was written to eliminate.
+   It would present as "flaky on my machine, fine on yours."
+
+   Cheap fixes, in increasing order of thoroughness: append the worker index to
+   the database name (`anotherstore_w0`); or have `playwright.config.js` pass an
+   explicit per-worker `MONGODB_URI`; or refuse to start when `TEST_PARALLEL_INDEX`
+   is set and the resolved URI is shared. Not urgent — 27017 is closed on the
+   box this was measured on — but it is a latent trap in otherwise good work.
 
 ## Worktree parallelization strategy
 
