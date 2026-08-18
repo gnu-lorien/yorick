@@ -59,19 +59,30 @@
     var originalSet = proto.set;
     var originalUnset = proto.unset;
 
+    // Never call attrs.hasOwnProperty directly.
+    //
+    // parse@8 builds an object's attribute bag with a null prototype, so it
+    // has no hasOwnProperty of its own and the call throws
+    // "attrs.hasOwnProperty is not a function" -- from inside setACL, several
+    // frames away from anything that looks related. The contract tests missed
+    // this because their stand-in used a plain {}, which inherits one.
+    var owns = function (obj, key) {
+      return Object.prototype.hasOwnProperty.call(obj, key);
+    };
+
     /** Snapshot the attributes this object currently holds. */
     function snapshot(model) {
       var out = {};
       var attrs = model.attributes || {};
       for (var k in attrs) {
-        if (attrs.hasOwnProperty(k)) out[k] = model.get(k);
+        if (owns(attrs, k)) out[k] = model.get(k);
       }
       return out;
     }
 
     function keysOf(obj) {
       var out = [];
-      for (var k in obj) if (obj.hasOwnProperty(k)) out.push(k);
+      for (var k in obj) if (owns(obj, k)) out.push(k);
       return out;
     }
 
@@ -92,7 +103,7 @@
       var names = keysOf(before).concat(keysOf(after));
       for (var i = 0; i < names.length; i++) {
         var attr = names[i];
-        if (changed.hasOwnProperty(attr)) continue;
+        if (owns(changed, attr)) continue;
         if (before[attr] !== after[attr]) changed[attr] = true;
       }
 
@@ -159,7 +170,7 @@
 
     proto.hasChanged = function (attr) {
       if (attr === undefined) return keysOf(this.changed || {}).length > 0;
-      return !!(this.changed || {}).hasOwnProperty(attr);
+      return owns(this.changed || {}, attr);
     };
 
     proto.__compatEventsApplied = true;

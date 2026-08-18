@@ -40,9 +40,22 @@ define([
         SAMPLE_TROUPE_ID: "mXhRByDNxX"
     };
     
+    // The "/1" is not decoration.
+    //
+    // Parse JS SDK 1.5 hard-coded the API version segment onto whatever
+    // serverURL it was given -- `url += "1/" + route` in parse-1.5.0.js -- so
+    // a serverURL of ".../parse" reached the server as ".../parse/1/classes/X",
+    // which is where index.js mounts (mountPath "/parse/1"). Modern SDKs do no
+    // such thing and request ".../parse/classes/X", which 404s.
+    //
+    // Every serverURL above is missing the same segment for the same reason.
+    // They are left alone here because changing them changes where a deployed
+    // build points, which is a deploy decision rather than a code one -- see
+    // Phase 0.5 in docs/designs/yorick-modernization-differential-cutover.md.
+    // Only the localhost value, which the E2E suite uses, is corrected.
     if (typeof window !== 'undefined' && window.location) {
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            ConfigLocalhost.serverURL = window.location.origin + "/parse";
+            ConfigLocalhost.serverURL = window.location.origin + "/parse/1";
             return ConfigLocalhost;
         }
     }

@@ -5,7 +5,9 @@ define([
     var target = (typeof window !== 'undefined' && window.__karma__ && window.__karma__.config && window.__karma__.config.args && window.__karma__.config.args[0]) || "localhost";
 
     var ConfigLocalhost = {
-        serverURL: "http://localhost:1337/parse",
+        // "/1": see the note in siteconfig.js -- SDK 1.5 appended the API
+        // version segment implicitly, modern SDKs do not.
+        serverURL: "http://localhost:1337/parse/1",
         facebookAppId: "1607159299598020",
         redirect_uri: "http://localhost:1337/index.html",
         SAMPLE_TROUPE_ID: "WOad4CBTsG"

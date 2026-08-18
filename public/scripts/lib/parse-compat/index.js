@@ -36,7 +36,8 @@
       './promise',
       './collection',
       './events',
-      './router'
+      './router',
+      './storage'
     ], factory);
   } else if (typeof module === 'object' && module.exports) {
     module.exports = factory(
@@ -44,7 +45,8 @@
       require('./promise'),
       require('./collection'),
       require('./events'),
-      require('./router')
+      require('./router'),
+      require('./storage')
     );
   } else {
     root.ParseCompat = factory(
@@ -52,7 +54,8 @@
       root.ParseCompatPromise,
       root.ParseCompatCollection,
       root.ParseCompatEvents,
-      root.ParseCompatRouter
+      root.ParseCompatRouter,
+      root.ParseCompatStorage
     );
   }
 }(typeof self !== 'undefined' ? self : this, function (
@@ -60,7 +63,8 @@
   CompatPromise,
   makeParseCollection,
   applyEvents,
-  applyRouter
+  applyRouter,
+  applyStorage
 ) {
   'use strict';
 
@@ -77,7 +81,13 @@
       return Parse;
     }
 
-    // Events first: this wraps Parse.Object.prototype.set, and every
+    // Controllers first: parse@8.6.0's dist bundle registers only its
+    // RESTController, so storage and installation are missing and the first
+    // Parse.User.logIn fails with "Cannot read properties of undefined
+    // (reading 'currentInstallationId')". See storage.js.
+    applyStorage(Parse.CoreManager);
+
+    // Then events: this wraps Parse.Object.prototype.set, and every
     // Parse.Object.extend subclass inherits from that prototype.
     applyEvents(Parse.Object);
 
@@ -105,6 +115,7 @@
   install.makeCollection = makeParseCollection;
   install.applyEvents = applyEvents;
   install.applyRouter = applyRouter;
+  install.applyStorage = applyStorage;
 
   return install;
 }));

@@ -29,8 +29,19 @@ requirejs.config( {
 		// with the suite run against it.
 		underscore: "lodash",
 		backbone: "backbone",
-		//parse: "//www.parsecdn.com/js/parse-1.5.0.min",
-		parse: "parse-1.5.0",
+		// The Parse SDK, at 8.6.0, behind the 1.5 compatibility layer.
+		//
+		// "parse" resolves to the wrapper rather than the bundle, because the
+		// bundle is AMD-aware but its factory returns nothing (it assigns
+		// globalThis.Parse). Depending on it directly yields undefined. The
+		// wrapper loads it, picks the namespace off the global, and installs
+		// the shims for Parse.Promise, Parse.Collection, Parse.Object change
+		// events and Parse.Router before handing it to any app module.
+		//
+		// parse-1.5.0.js is kept in the tree, unreferenced, as the reference
+		// implementation the shims were written against.
+		parse: "parse-compat/parse",
+		"parse-sdk": "parse-8.6.0",
 		pretty: "prettyprint",
 		moment: "moment",
 		vis: "vis",
@@ -57,11 +68,6 @@ requirejs.config( {
 			"deps": [ "backbone" ],
 			"exports": "Backform",
 		},
-
-        "parse": {
-            "deps": [ "underscore", "jquery" ],
-            "exports": "Parse"
-        },
 
 	}
 

@@ -161,6 +161,32 @@ test('applying twice does not double-fire', () => {
   assert.strictEqual(fired, 1);
 });
 
+test('a null-prototype attributes bag does not break the shim', () => {
+  // parse@8 builds its attribute bag with Object.create(null), so it has no
+  // hasOwnProperty of its own. Calling attrs.hasOwnProperty(k) threw
+  // "attrs.hasOwnProperty is not a function" from inside setACL, several frames
+  // from anything that looked related. The original stand-in used a plain {},
+  // which inherits one, so the whole suite passed while the app was broken.
+  function NullProtoObject(attrs) {
+    this.attributes = Object.assign(Object.create(null), attrs || {});
+  }
+  NullProtoObject.prototype.get = function (k) { return this.attributes[k]; };
+  NullProtoObject.prototype.set = function (key, value) {
+    if (key !== null && typeof key === 'object') Object.assign(this.attributes, key);
+    else this.attributes[key] = value;
+    return this;
+  };
+  NullProtoObject.prototype.unset = function (k) { delete this.attributes[k]; return this; };
+
+  applyEvents(NullProtoObject);
+  const m = new NullProtoObject({ n: 1 });
+  const seen = [];
+  m.on('change:n', (model, v) => seen.push(v));
+  m.set('n', 2);
+  assert.deepStrictEqual(seen, [2]);
+  assert.strictEqual(m.hasChanged('n'), true);
+});
+
 test('a real, installed Parse SDK gains working change events', (t) => {
   let Parse;
   let version;
