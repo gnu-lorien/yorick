@@ -276,3 +276,32 @@ test('cid is non-enumerable, so it stays out of attribute iteration', () => {
   assert.strictEqual(Object.keys(m).indexOf('cid'), -1);
   assert.strictEqual(Object.keys(m).indexOf('__compatCid'), -1);
 });
+
+test('extend sets __super__ to the parent prototype, Backbone-style', () => {
+  // parse@8 reads __super__ (to pick the parent prototype) but never sets it.
+  // ChangelingBetaSlice calls self.constructor.__super__.update_text.apply(...)
+  // in four places, and a second-level subclass silently reparents to
+  // ParseObject without it.
+  function Base(attrs) { this.attributes = Object.assign({}, attrs || {}); }
+  Base.prototype.get = function (k) { return this.attributes[k]; };
+  Base.prototype.set = function (k, v) { this.attributes[k] = v; return this; };
+  Base.extend = function (className, protoProps) {
+    function Sub() { Base.apply(this, arguments); }
+    Sub.prototype = Object.create(this.prototype);
+    Sub.prototype.constructor = Sub;
+    Object.keys(protoProps || {}).forEach(function (k) { Sub.prototype[k] = protoProps[k]; });
+    Sub.extend = Base.extend;
+    return Sub;
+  };
+
+  applyEvents(Base);
+
+  const Parent = Base.extend('Parent', { greet: function () { return 'parent'; } });
+  assert.strictEqual(Parent.__super__, Base.prototype, 'first level points at the base prototype');
+
+  const Child = Parent.extend('Child', {
+    greet: function () { return this.constructor.__super__.greet.apply(this) + '+child'; }
+  });
+  assert.strictEqual(Child.__super__, Parent.prototype, 'second level points at its immediate parent');
+  assert.strictEqual(new Child().greet(), 'parent+child', 'the super call actually reaches the parent');
+});

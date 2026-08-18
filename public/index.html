@@ -33,7 +33,15 @@
     <script type="text/javascript">
         window._trackJs = {
             token: '8c029fff54d841498640d86379af7316',
-            enabled: !(window.location.host.indexOf('localhost') >= 0)
+            // Off for local and loopback hosts.
+            //
+            // This used to test only for "localhost", but the E2E suite serves
+            // from 127.0.0.1, so TrackJS was live for every test run: errors
+            // were shipped to a third party, and -- worse for anyone debugging
+            // -- its wrapper re-threw them with its own stack, so a page error
+            // read as "at wrapError (tracker.js)" with every application frame
+            // gone. That cost real time during the Parse SDK migration.
+            enabled: !/^(localhost|127\.0\.0\.1|\[::1\])(:|$)/.test(window.location.host)
         };
         // Add a script element as a child of the body
         function downloadJSAtOnload() {

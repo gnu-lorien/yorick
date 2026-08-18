@@ -233,6 +233,24 @@
             Sub.prototype.initialize !== props.initialize) {
           Sub.prototype.initialize = props.initialize;
         }
+
+        // parse@8 READS __super__ and never sets it:
+        //
+        //     let parentProto = ParseObject.prototype;
+        //     if (Object.hasOwn(this, "__super__") && this.__super__)
+        //         parentProto = this.prototype;
+        //
+        // so besides the four call sites above, a second-level subclass would
+        // silently reparent to ParseObject. Setting it fixes both.
+        if (Sub) {
+          try {
+            Object.defineProperty(Sub, '__super__', {
+              configurable: true, enumerable: false, writable: true,
+              value: (this && this.prototype) ? this.prototype : ParseObject.prototype
+            });
+          } catch (err) { /* leave it unset rather than abort extend */ }
+        }
+
         return Sub;
       };
       wrappedExtend.__compatWrapped = true;
