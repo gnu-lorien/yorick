@@ -45,11 +45,20 @@ over Backbone, which is still sitting in the bundle:
 | `Parse.Promise` | jQuery-Deferred sugar over a promise | ~40 lines |
 | `Parse.Collection` | `Backbone.Collection` whose `fetch` runs a `Parse.Query` | ~80 lines |
 | Model change events | `Backbone.Events` on the prototype, `set` wrapped to `trigger` | ~60 lines |
+| `Parse.Router` / `Parse.history` | `Backbone.Router` / `Backbone.history` | ~30 lines |
 | Cloud `(request, response)` | An adapter synthesizing `success`/`error` off a promise | ~30 lines |
 
-So the client migration is **~250 lines of compatibility layer, not ~685 hand
+So the client migration is **~280 lines of compatibility layer, not ~685 hand
 edits across 43 files** — and there are 397 Playwright tests to prove the layer
 is faithful.
+
+*(Eng review correction: the router row was originally missed. The first pass
+grepped `Parse.History` — the class — and scored it zero, but the live symbol is
+`Parse.history`, the lowercase instance: `mobileRouter.js:98` `Parse.Router.extend({`,
+`mobileRouter.js:135` `Parse.history.start()`, `LoginView.js:35`
+`Parse.history.loadUrl()`. Neither exists in SDK 8, and `mobileRouter.js` is the
+largest file in the app at 2210 lines. Build the coupling inventory from SDK 8's
+actual exports, not from a symbol list — greps miss instance casing.)*
 
 That inverts the risk model. The Parse work is the most voluminous but the most
 verifiable and the most reversible: it's all application code, covered by tests,
@@ -156,8 +165,8 @@ That wiring gets ported onto this branch, not merged from it.
 | Consumed by `Marionette.CollectionView` / `CompositeView` | 10 | — |
 | `listenTo(model, "change…")` + `modelEvents` blocks | ~60 + 6 | — |
 | `{success:, error:}` callback objects | 4 | 2 |
-| `Parse.View` / `Parse.History` | 0 | — |
-| `Parse.Router` | 1 | 1 |
+| `Parse.View` | 0 | — |
+| **`Parse.Router` + `Parse.history`** | **3** | **2** |
 | Cloud `(request, response)` fns + hooks | 13 + 14 | 1 |
 | `response.success(` / `response.error(` | 30 / 30 | 1 |
 
@@ -261,15 +270,97 @@ This is now the true first risk, ahead of any SDK work.)*
    `ProcfileDashboard`, and the dead Cloud9 `cloud:` path removed. Do NOT carry
    over `engines: node 14.x`; that pin has to rise to 22 or 24 or parse-server 9
    cannot run.
-5. **Deploy this branch's application code to a staging Heroku dyno + Netlify
+5. **Gate the seeder before any deploy touches player data (eng review O3/#1).**
+   `index.js:57` calls `await seed_db.seedDatabase(databaseURI)` unconditionally
+   on every boot, and there is no `NODE_ENV` / `SKIP_SEED` guard anywhere in
+   `seed_db.js`. `seedTestUsers` (`seed_db.js:57-81`) then runs:
+   ```js
+   updateOne({ username: u.username },
+     { $set: { _hashed_password: hashed, admininterface: u.admin, _acl: {...} } },
+     { upsert: true })
+   ```
+   Booting this branch against restored player data plants a known-password
+   account with `admininterface: true`, and the upsert matches on `username`
+   alone — so a real player named `devuser` gets their password hash and ACL
+   overwritten. **This is a prerequisite of step 6, not a cleanup.** Gate the
+   whole seed path behind an explicit opt-in env var that CI and local dev set
+   and no deployed environment ever does.
+6. **Deploy this branch's application code to a staging Heroku dyno + Netlify
    preview against the restored dump from step 1, unchanged, before upgrading
    anything.** Nobody has ever deployed this lineage to production. Prove the
    58-commit gap deploys *before* stacking an SDK migration on top of it. Note
    this staging run still points at MongoDB 5.0, which `parse-server@2.8.4`
    accepts — that is the point. One variable at a time.
 
-*Exit:* this branch, with no dependency changes, running in a staging clone of
-production against restored player data, with the E2E suite green against it.
+*Exit:* this branch, with no dependency changes and seeding gated off, running in
+a staging clone of production against restored player data, with the E2E suite
+green against it.
+
+**Phase 0.6 — Apply the R1-R51 hardening to production (eng review O1).**
+
+*This is a live security gap, not migration work, and it was found during review
+rather than planned for.*
+
+`seed_db.js:114` gates the bulk import on `if (userCount === 0)`. The hardened
+class-level permissions live in `database_seed/_SCHEMA.json` — 30 classes, all 30
+carrying `class_permissions`, with only `_Session` and `_User` allowing public
+create (matching `audit_db_permissions.js`'s `PUBLIC_CREATE_ALLOWED`). Its git
+history is exactly the remediation series: `f080012` (R19-R21, R24-R27, R30-R38,
+R41-R50), `26d07f2` ("close the last four anonymously writable classes"),
+`4ac06b3`.
+
+Production has users. **Production has therefore never received any of it.** The
+entire R1-R51 access-control remediation exists only in the seed file and in
+freshly-seeded test databases. Production is still running its 2018 CLPs, and the
+397 tests cannot see this because they always run against a seeded database.
+
+1. Run `node audit_db_permissions.js <uri>` read-only against a **restore** of
+   production to measure the real gap.
+2. Review whether R1-R51 also assumed per-row `_rperm`/`_wperm` backfills that a
+   fresh-seed database would never surface.
+3. Apply `node audit_db_permissions.js <uri> --fix` to production
+   (`audit_db_permissions.js:316`; exits 1 on remaining errors).
+
+*Exit:* `npm run audit-permissions` clean against live production, before the
+database moves anywhere.
+
+**Phase 0.7 — Vendor the CDN dependencies (was Phase 5; eng review O3/#7).**
+
+Moved to the front because the compatibility layer depends on Backbone loading
+from cdnjs, so a CDN outage stalls Phase 2. The count is **seven**, not four:
+
+| Host | What | Where |
+|---|---|---|
+| ajax.googleapis.com | jQuery 1.11.2 | `app.js:12` |
+| cdn.jsdelivr.net | lodash 3.10.0 (legacy path) | `app.js:15` |
+| cdnjs.cloudflare.com | Backbone 1.1.2 | `app.js:16` |
+| cdnjs.cloudflare.com | bootstrap-datepicker JS | `app.js:27` |
+| cdnjs.cloudflare.com | bootstrap-datepicker CSS | `index.html:14` |
+| maxcdn.bootstrapcdn.com | font-awesome 4.4.0 | `index.html:16` |
+| d2zah9y47r7bi2.cloudfront.net | TrackJS tracker | `index.html:53` |
+
+Note `public/scripts/lib/jquery.js` already exists locally — check version drift
+against the CDN's 1.11.2 before switching. TrackJS is a third-party error
+reporter; vendoring it is a different decision from vendoring a library, so
+decide explicitly whether it stays.
+
+**Phase 0.8 — Strengthen the oracle where it is known-weak (eng review TD1).**
+
+The `TODO` file already names the gap:
+
+```
+- Finish tests for merit adds
+- Make test to catch add merit, update cost, then remove merit
+```
+
+Merit arithmetic in `BNSMETV1_VampireCosts.js` is exactly the kind of thing a
+promise-shim bug corrupts *silently* — a wrong number, not an exception. The
+differential harness only catches regressions in paths the 397 tests already
+exercise, so an untested path is invisible to it in both stacks. Close these
+before trusting the oracle with the migration.
+
+Write the add-merit case and the add → update-cost → remove round trip. Bank the
+results into the Phase 0 baseline so the harness carries them from the start.
 
 **Phase 1 — Build the differential harness.**
 
@@ -359,25 +450,50 @@ at catching:
   thrown rejection, or every permission refusal in `cloud/main.js` silently
   becomes an allow — re-opening exactly what `26d07f2` and `f080012` closed.
 
-Two things that are safe and need no special handling: all 76 `.always(` sites
-are zero-arg (`.always(function ()`), so `→ .finally` loses nothing, and
-`.done → .then` is a straight rename.
+Two things that are safe and need no special handling: **all 77** `.always(`
+sites under `public/scripts/app` are zero-arg — a scoped grep for
+`.always(function *([a-z]` returns **zero** matches — so `→ .finally` loses
+nothing, and `.done → .then` is a straight rename.
 
-*Exit:* Karma green on headless Chrome, with unit tests covering all 14 shim
-branches — written alongside Phase 2, not after it.
+*Exit:* Karma green on headless Chrome, with unit tests covering all 16 shim
+branches (14 plus the two router aliases) — written alongside Phase 2, not
+after it.
 
-**Phase 2 — The four client shims.** New `public/scripts/lib/parse-compat/`:
-`promise.js`, `collection.js`, `events.js`, `index.js`. Swap the RequireJS path
+**Phase 2 — The five client shims.** New `public/scripts/lib/parse-compat/`:
+`promise.js`, `collection.js`, `events.js`, **`router.js`**, `index.js`.
+`router.js` aliases `Parse.Router` → `Backbone.Router` and `Parse.history` →
+`Backbone.history` (~30 lines); Backbone 1.1.2 is already loaded, and these were
+always the same objects. Swap the RequireJS path
 `parse: "parse-1.5.0"` → the vendored `parse@8.6.0` `dist/parse.js`, routed
 through `parse-compat`. The existing shim entry already declares
 `exports: "Parse"`, which is exactly what the AMD wrapper needs; the `underscore`
-and `jquery` deps can be dropped since SDK 8 has neither. *Exit:* diff run shows
-zero new-fail.
+and `jquery` deps can be dropped since SDK 8 has neither.
 
-**Phase 3 — Cloud code adapter.** A `Parse.Cloud.define`/hook wrapper synthesizing
-`response.success`/`response.error` over the modern promise-returning signature,
-applied across 13 functions and 14 hooks. This is the front with no test coverage
-gap tolerance — cloud hooks fire on nearly every write. *Exit:* diff run clean.
+*Which server does Phase 2 run against?* Both pairings are wrong on paper —
+SDK 8.6.0 against server 2.8.4 is the mismatch this doc elsewhere warns about.
+Run Phase 2's diff against **2.8.4 anyway**, treat any protocol-level failure as
+expected noise, and rely on Phase 1.5's unit tests for the shim contract. The
+authoritative Phase 2 verdict comes after the merged Phase 3+4 below.
+
+*Exit:* unit tests green on all 16 shim branches; diff run reviewed but not
+gating.
+
+**Phase 3+4 — Cloud adapter and the server bump, as one atomic step
+(eng review O3/#3).**
+
+These were separate phases and cannot be. The cloud adapter converts 13 functions
+and 14 hooks to the modern promise-returning signature, but `parse-server@2.8.4`
+only ever dispatches `(request, response)` — so a standalone Phase 3 has no way
+to exercise the adapter and its "diff run clean" exit criterion is unreachable.
+parse-server 9 is what makes the adapter runnable. Land them together.
+
+Contents: the `Parse.Cloud.define`/hook wrapper; `parse-server` 2.8.4 → 9.10.0;
+`parse` 1.9.0 → 8.6.0 on the node side; replace deprecated `request`; bump `jimp`
+from 0.2.28 (its `getBuffer`/`scaleToFit` callback API changed substantially —
+the 28 tests in `assets-rename-portrait.spec.js` are the safety net); retire
+Travis/Node 8 for GitHub Actions on Node 22/24. This is the widest single step in
+the plan and the one that most needs the differential harness working well.
+*Exit:* diff run clean.
 The `beforeSave` thumbnail path needs no special handling: `cloud/main.js:84`
 (`Image.read(portrait.get("original").url())`) round-trips the file over
 `publicServerURL`, and `assets-rename-portrait.spec.js:651` (test 117) decodes
@@ -385,23 +501,16 @@ the served image and asserts it is the 128×128 JPEG `crop_and_thumb` produced
 with the fixture's dominant color. That test cannot pass unless the whole round
 trip works, so the oracle already covers it.
 
-**Phase 4 — Server and dependencies.** `parse-server` 2.8.4 → 9.10.0, `parse`
-1.9.0 → 8.6.0 on the node side, replace deprecated `request`, bump `jimp` from
-0.2.28 (its `getBuffer`/`scaleToFit` callback API changed substantially — the
-thumbnail code needs review, not just a version bump; the 28 tests in
-`assets-rename-portrait.spec.js` are the safety net). Retire Travis/Node 8 for
-GitHub Actions on Node 22/24. *Exit (eng review A4):* `npm run audit-permissions`
-passes. parse-server 9 normalizes `_SCHEMA` on first boot against a schema
-2.8.4 created, and `audit_db_permissions.js:125-146` is the only check that
-covers all 38 seeded classes — `access-control.spec.js` covers 15.
+*Exit gate (eng review A4):* `npm run audit-permissions` passes. parse-server 9
+normalizes `_SCHEMA` on first boot against a schema 2.8.4 created, and
+`audit_db_permissions.js:125-146` is the only check covering all 30 seeded
+classes — `access-control.spec.js` covers 15.
 
-**Phase 5 — Vendor the CDN dependencies.** jQuery, lodash, Backbone, and
-bootstrap-datepicker move from four third-party CDNs to local files, pinned by
-version. Removes a live availability risk.
+**Phase 5 — *(moved to Phase 0.7)*.** CDN vendoring moved to the front: the
+compat layer loads Backbone from cdnjs, so a CDN outage would stall Phase 2.
 
 **Phase 6 — *(absorbed into Phase 1.5)*.** The Karma/PhantomJS work moved ahead
-of the shims, because the shim unit tests need a working unit-test runner. See
-Phase 1.5.
+of the shims, because the shim unit tests need a working unit-test runner.
 
 **Phase 7 — Database migration (side-by-side droplet).** Stand up a **second
 DigitalOcean droplet running MongoDB 8.0.4**. `mongodump` the single application
@@ -506,8 +615,11 @@ remains is the narrower version of each.*
   transitive tree under `parse-server@2.8.4`.
 - Node 22/24 in CI, Travis and PhantomJS gone.
 - Karma runs on headless Chrome, all 120 existing Jasmine tests green, plus unit
-  tests covering all 14 `parse-compat` branches — including `when` varargs and
+  tests covering all 16 `parse-compat` branches — including `when` varargs and
   cloud `response.error` after an early return.
+- The two `TODO` merit-cost cases are written and in the Phase 0 baseline.
+- `npm run audit-permissions` clean against **live production** (Phase 0.6),
+  independent of the migration.
 - Production restored onto MongoDB 8.0.4 with the suite green against real data
   *before* cutover.
 - `npm run audit-permissions` clean at three gates: after the parse-server bump
@@ -517,6 +629,103 @@ remains is the narrower version of each.*
 - Cutover completed inside a maintenance window with no divergence between the
   5.0 and 8.0 droplets.
 - No player-visible behavior change, Facebook login excepted.
+
+## What already exists
+
+The plan reuses most of what's here, which is why it stays small.
+
+| Sub-problem | Already in the repo | Reused? |
+|---|---|---|
+| Legacy stack baseline | `index.js:42-51` — in-memory MongoDB 4.4.18 via `mongodb-memory-server` | yes, explicitly |
+| Deterministic fixtures | `seed_db.js` (282 lines), `seed_extra.js`, `e2e/global-setup.js`, `e2e/fixtures/` | yes — now seeded once and restored (C1) |
+| Suite partitioning | `playwright.config.js:69-83` — admin vs chromium projects | yes |
+| RequireJS Parse binding | `public/scripts/app.js:44-47` — shim already declares `exports: "Parse"` | yes, needs no change |
+| Permission auditing | `audit_db_permissions.js`, `npm run audit-permissions`, `--fix` mode | **now central** — Phases 0.6, 4, 7, 8 |
+| Hardened CLP intent | `database_seed/_SCHEMA.json` — 30 classes | yes, as the reconciliation target |
+| JSON test output | Playwright's **built-in** `json` reporter | yes — do not write one |
+| Worktree workflow | `.claude/worktrees/` already in use | yes — this is the dual-stack mechanism |
+| Headless unit runner | `karma-chrome-launcher` already in `devDependencies` | yes, Phase 1.5 |
+| Local jQuery copy | `public/scripts/lib/jquery.js` | check drift, then use (Phase 0.7) |
+
+Rebuilt rather than reused: nothing. The two genuinely new artifacts are
+`parse-compat/` (~280 lines) and `diff-runs.js`.
+
+## NOT in scope
+
+Considered and explicitly deferred:
+
+| Item | Why deferred |
+|---|---|
+| **Approach B codemod** (456 promise sites) | Planned as an explicit follow-on. Landing 456 mechanical edits in the same branch as a database migration makes the cutover diff unreviewable. Runs against a green production baseline instead. |
+| **Marionette 2 → 3/4** | v3 renamed `ItemView`/`LayoutView`/`CompositeView`, v4 removed them. 88 usages. A different project with no dependency on this one. |
+| **jQuery / jQuery Mobile version bumps** | Phase 0.7 vendors them *at their current versions*. jQuery Mobile 1.4.5 is EOL and replacing it is a UI project, not a dependency upgrade. |
+| **`_wperm` backfill on `VampireCreation` / `VampireApproval`** | 3,400 rows with no row-level ACL. The runbook's CLP fix stops anonymous writes; the backfill closes authenticated-user writes. Real work, separate change, tracked in `docs/runbooks/production-clp-remediation.md`. |
+| **Front-end re-platform** | Ruled out during office hours. Backbone/Marionette/RequireJS stay. |
+| **Facebook login migration** | Deleted, not migrated. Owner's call. |
+| **TrackJS** | Whether the third-party error reporter stays is a product decision, not a modernization one. Phase 0.7 surfaces it; it does not decide it. |
+| **`PaymentPaypal` vs `Payment_PayPal`** | Production carries both. One is likely dead. Identifying which is archaeology, not upgrade work. |
+| **Sharding / replica sets / HA** | Single droplet today, single droplet after. Not a goal. |
+
+## Failure modes
+
+For each new codepath, one realistic production failure and whether the plan
+catches it.
+
+| Codepath | Failure | Test? | Error handling? | Visible? |
+|---|---|---|---|---|
+| `promise.js` `when` varargs | Resolves with an array; second param is `undefined`; a troupe page renders with no user | **yes** (Phase 1.5 unit) | no — silent wrong value | ❌ silent |
+| `promise.js` `.fail` → `.catch` | Rejection handler never fires; a failed save reports success | yes (E2E) | partial | partial |
+| `collection.js` `fetch` | Query returns nothing; roster renders empty rather than erroring | yes (E2E) | no | ❌ silent |
+| `events.js` `set` → `change:attr` | View never re-renders; edits appear lost until reload | yes (E2E) | no | ❌ silent |
+| `router.js` `Parse.history.start()` | App boots to a blank screen — every URL breaks | yes (any E2E) | no | ✅ loud |
+| Cloud adapter `response.error` after early return | **Permission refusal becomes an allow** | **yes** (Phase 1.5 unit) | inverted | ❌ silent |
+| `diff-runs.js` | Misclassifies a regression as noise | no | no | ❌ silent |
+| `mongorestore` into 8.0 | Partial restore; missing collections | yes (suite + audit) | exit code | ✅ loud |
+| Seeder on a prod-connected boot | Known-password admin planted; a real `devuser` overwritten | **no** | none | ❌ silent |
+
+**Critical gaps** — no test AND no error handling AND silent:
+
+1. **`diff-runs.js` misclassification.** The harness is the oracle for everything
+   else and has no oracle of its own. Mitigation is the legacy-vs-legacy
+   zero-diff gate in Phase 1; treat that as the tool's test, and add a fixture
+   pair with a known-planted regression so a false-negative is detectable.
+2. **Seeder on a production-connected boot.** Phase 0.5 step 5 gates it. Until
+   that lands, this is the single most dangerous command in the project.
+
+## Worktree parallelization strategy
+
+| Step | Modules touched | Depends on |
+|---|---|---|
+| 0 baseline run | — (read-only) | — |
+| 0.5 prod wiring + seed gate | `index.js`, `package.json`, `Procfile*`, `gulpfile.js`, `siteconfig.js` | 0 |
+| 0.6 production CLP fix | none (ops only) | — |
+| 0.7 vendor CDNs | `public/scripts/lib/`, `public/index.html`, `public/scripts/app.js` | — |
+| 0.8 merit tests | `e2e/`, `public/scripts/app/tests/` | — |
+| 1 harness | `diff-runs.js`, `playwright.config.js` | 0 |
+| 1.5 karma + shim units | `public/karma.conf.js`, `public/scripts/app/tests/` | — |
+| 2 client shims | `public/scripts/lib/parse-compat/`, `public/scripts/app.js` | 1, 1.5, 0.7 |
+| 3+4 cloud + server | `cloud/`, `index.js`, `package.json` | 1, 2 |
+| 7 database | none (ops only) | 0.5, 0.6 |
+| 8 cutover | none (ops only) | all |
+
+**Lanes:**
+
+```
+Lane A (ops, no code):     0.6 ──────────────────────────────► 7 ──► 8
+Lane B (build/infra):      0.5 ──► 1 ──────────────┐
+Lane C (vendoring):        0.7 ───────────────┐    │
+Lane D (test infra):       0.8 ─┬─ 1.5 ───────┼────┼──► 2 ──► 3+4
+                                 └────────────┴────┘
+```
+
+- **Launch A, B, C, D in parallel.** Phase 0.6 (production security) is pure ops
+  and blocks nothing — start it immediately and independently.
+- **Conflict flag:** Lanes B and D both touch `public/scripts/app/tests/` (0.8
+  and 1.5). Same directory, different files, but coordinate or sequence them.
+- **Conflict flag:** Lane C (0.7) and Lane D's Phase 2 both touch
+  `public/scripts/app.js` — 0.7 changes CDN paths, Phase 2 changes the `parse`
+  path. Merge C before starting 2.
+- Phases 2 and 3+4 are strictly sequential and single-lane.
 
 ## Distribution Plan
 
@@ -606,3 +815,109 @@ Then the SDK swap is just an SDK swap.
   approach options you took "C now, B later" — the one that pays for that choice
   with a differential harness and defers the 456-site codemod out of the cutover
   diff. That's not risk-tolerance; that's picking where to spend the risk budget.
+
+- When I claimed the portrait path was an untested blind spot, you didn't accept
+  it — you said "you've confused me" and made me show my work. I was wrong, and
+  test 117 turned out to be one of the most rigorous assertions in the suite.
+  Pushing back on a confident-sounding review finding is the behavior that keeps
+  a review honest.
+
+## Implementation Tasks
+
+Synthesized from this review's findings. Each task derives from a specific
+finding above. Run with Claude Code or Codex; checkbox as you ship.
+
+- [ ] **T1 (P0, human: ~4h / CC: ~45min)** — production — Close the anonymous-write holes in production
+  - Surfaced by: Outside voice #2, verified against `toimport/20260703.archive` — 23 publicly writable classes, `VampireCreation` (2,856) and `VampireApproval` (544) with no `_wperm` on any row
+  - Files: `docs/runbooks/production-clp-remediation.md` (ops, no code change)
+  - Verify: `node audit_db_permissions.js "$PROD_URI"` exits 0
+- [ ] **T2 (P1, human: ~2h / CC: ~20min)** — `index.js` — Gate the seeder behind an explicit opt-in env var
+  - Surfaced by: Outside voice #1 — `index.js:57` runs `seedDatabase()` unconditionally; `seed_db.js:57-81` upserts `devuser` with a known password and `admininterface: true`, matching on `username` alone
+  - Files: `index.js`, `seed_db.js`, `playwright.config.js`
+  - Verify: booting with the var unset performs no writes to `_User`
+- [ ] **T3 (P1, human: ~2h / CC: ~20min)** — harness — Run the two stacks from separate git worktrees
+  - Surfaced by: Architecture A1 — `package.json:21-22` resolves one `parse`/`parse-server`; `cloud/main.js:1` is `/* global Parse */` with zero `require('parse')`
+  - Files: `diff-runs.js`, `playwright.config.js`, worktree setup docs
+  - Verify: both stacks serve simultaneously on distinct ports
+- [ ] **T4 (P1, human: ~3h / CC: ~20min)** — `parse-compat` — Add `router.js` as the fifth shim
+  - Surfaced by: Outside voice #4 — `mobileRouter.js:98` `Parse.Router.extend({`, `:135` `Parse.history.start()`, `LoginView.js:35` `Parse.history.loadUrl()`; neither exists in SDK 8
+  - Files: `public/scripts/lib/parse-compat/router.js`
+  - Verify: every route in `mobileRouter.js` resolves; full E2E green
+- [ ] **T5 (P1, human: ~0 / CC: ~0)** — plan — Merge Phases 3 and 4 into one atomic step
+  - Surfaced by: Outside voice #3 — `parse-server@2.8.4` only dispatches `(request, response)`, so a standalone Phase 3 cannot reach its exit criterion
+  - Files: this document (done)
+  - Verify: n/a — planning change, already applied
+- [ ] **T6 (P1, human: ~3h / CC: ~30min)** — cutover — Maintenance-window cutover with a named point of no return
+  - Surfaced by: Architecture A2 — droplet A freezes at dump time, so the "live rollback target" would discard post-dump player writes
+  - Files: `docs/runbooks/` (cutover runbook, not yet written)
+  - Verify: dry-run the sequence against staging
+- [ ] **T7 (P2, human: ~1h / CC: ~10min)** — CI — Make `audit-permissions` an exit gate on Phases 4, 7, 8
+  - Surfaced by: Architecture A4 — parse-server 9 normalizes `_SCHEMA` on first boot against a 2.8.4-created schema
+  - Files: `package.json`, CI workflow
+  - Verify: gate fails the build on a deliberately loosened CLP
+- [ ] **T8 (P2, human: ~2h / CC: ~20min)** — harness — Seed once, `mongorestore` into both stacks
+  - Surfaced by: Code quality C1 — `seed_db.js:71,77,168,191,230` stamp `new Date()`; ordering-sensitive suites would diff for non-Parse reasons
+  - Files: `seed_db.js`, fixture archive, harness setup
+  - Verify: two legacy-vs-legacy runs diff to zero
+- [ ] **T9 (P2, human: ~1.5d / CC: ~1h)** — tests — Karma on headless Chrome, then 16 shim unit tests
+  - Surfaced by: Test review T1 — shims have zero direct tests; `when` varargs and cloud `response.error`-after-return both fail silently
+  - Files: `public/karma.conf.js`, `public/scripts/app/tests/parse-compat-*.js`
+  - Verify: `npm test` green; a deliberately naive `when = Promise.all` fails a test
+- [ ] **T10 (P2, human: ~2h / CC: ~15min)** — harness — Subset diffing in `diff-runs.js`
+  - Surfaced by: Performance P1 — `workers: 1` × 397 tests × 2 stacks = 40-66 min per diff
+  - Files: `diff-runs.js`, `package.json`
+  - Verify: `npm run test:diff -- xp-history` completes in ~2 min
+- [ ] **T11 (P2, human: ~4h / CC: ~30min)** — assets — Vendor all seven CDN dependencies, early
+  - Surfaced by: Outside voice #7 — the count is 7, not 4; the compat layer loads Backbone from cdnjs
+  - Files: `public/scripts/lib/`, `public/index.html`, `public/scripts/app.js`
+  - Verify: app loads with the network blocked to third-party hosts
+- [ ] **T12 (P2, human: ~1d / CC: ~45min)** — tests — Write the two `TODO` merit-cost cases
+  - Surfaced by: TD1 — merit arithmetic is a known oracle blind spot and exactly what a promise-shim bug corrupts silently
+  - Files: `e2e/`, `public/scripts/app/tests/`
+  - Verify: both cases in the Phase 0 baseline before Phase 2 begins
+- [ ] **T13 (P3, human: ~1d / CC: ~1h)** — production — Backfill `_wperm` on `VampireCreation` and `VampireApproval`
+  - Surfaced by: ACL coverage check — 3,400 rows carry no row-level ACL; the CLP fix stops anonymous writes but not authenticated ones
+  - Files: migration script, `docs/runbooks/production-clp-remediation.md`
+  - Verify: zero rows with absent `_wperm` in either collection
+
+## GSTACK REVIEW REPORT
+
+| Review | Trigger | Why | Runs | Status | Findings |
+|--------|---------|-----|------|--------|----------|
+| CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | — | — |
+| Codex Review | `/codex review` | Independent 2nd opinion | 0 | — | — |
+| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | ISSUES_OPEN | 13 issues, 2 critical gaps |
+| Design Review | `/plan-design-review` | UI/UX gaps | 0 | — | — |
+| DX Review | `/plan-devex-review` | Developer experience gaps | 0 | — | — |
+| Outside Voice | Claude subagent | Cold-read plan challenge | 1 | ISSUES_FOUND | 8 raised, 6 confirmed, 1 partial, 1 refuted |
+
+**CROSS-MODEL:** The outside voice was run as a fresh-context Claude subagent
+(Codex is not installed on this machine). Of its 8 findings, 6 were confirmed by
+direct code inspection, 1 was partially accepted (Approach C redundancy — not
+acted on, since the approach was already the owner's explicit choice), and 1 was
+refuted (the `.always` audit was already correctly scoped to
+`public/scripts/app`; 77 sites, zero taking an argument). It caught two things
+this review missed outright: the unconditional seeder on boot, and
+`Parse.Router`/`Parse.history` as a fifth SDK removal. It also motivated the
+archive inspection that turned a suspected CLP drift into a measured production
+vulnerability.
+
+**SECURITY:** Two findings landed outside the plan's scope and are tracked in
+`docs/runbooks/production-clp-remediation.md`. Production carries 23 publicly
+writable classes; `VampireCreation` (2,856 rows) and `VampireApproval` (544
+rows) have no `_wperm` on any row and are anonymously writable today. Separately,
+the production Parse master key and a 436MB player-data dump sat unignored in the
+repo tree — `.gitignore` rules were added and committed.
+
+**VERDICT:** ENG REVIEW COMPLETE — 13 findings folded into the plan, 13
+implementation tasks emitted. Not CLEARED to implement: T1 (production
+anonymous-write remediation) and T2 (gate the seeder) are prerequisites, and two
+critical failure modes remain unmitigated in the plan as written.
+
+**UNRESOLVED DECISIONS:**
+- `diff-runs.js` has no oracle of its own — a misclassified regression is silent.
+  Mitigation proposed (a fixture pair with a known-planted regression) but not
+  yet accepted or scheduled.
+- The seeder gate (T2) has no owner or target phase beyond "before any deploy
+  touches player data"; until it lands, `npm start` against a production URI
+  plants a known-password admin account.
