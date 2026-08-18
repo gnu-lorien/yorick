@@ -86,13 +86,28 @@ place. The prior session disproved three explanations by measurement
 (`test_timing_report.md` §5a); the transition-lock hypothesis it ended on is now
 confirmed as *a* mechanism, and whether it is the only one is unproven.
 
-**The general rule nobody has applied yet.** `Parse.history.start()` re-dispatches
+**The general rule, now partly applied.** `Parse.history.start()` re-dispatches
 the loaded hash on every reload (`parse-1.5.0.js:9329`, no `silent`), and route
 handlers in `mobileRouter.js` commit their async results — view state, view
 data, page transitions — into memoised singleton views without checking whether
-their route is still current. `CharacterLogView` now checks. Nothing else does.
-Test 49's ballot-rendering flake is the same shape in `referendumView`, and is
-currently green by luck rather than by repair.
+their route is still current.
+
+`1119dfc` adds `_routeGeneration` (bumped per dispatch via a `route()` override)
+and `ifCurrent()`, and applies it to **12 of the ~35 `get_character` handlers**.
+
+What is still unguarded, and why:
+
+- **The 20 `.then()` chains**, including `characterhistory`, `characterapproval`
+  and `characterrename`. A guard there returns `undefined` and breaks the chain
+  for everything downstream; `.done()` discards its return value, which is why
+  those were safe. Doing these properly means moving the check to each chain's
+  final commit.
+- **`.always()` and `.fail()` are deliberately never guarded.** `.always()` hides
+  the loading spinner; skipping it strands the spinner on screen. This also
+  rules out the tidier-looking approach of gating the promise `get_character`
+  returns.
+- **Test 49's `referendumView`** is the same shape and is not covered. It is
+  currently green, but by luck rather than by repair.
 
 ## Re-running the gate
 
