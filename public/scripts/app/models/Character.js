@@ -234,11 +234,7 @@ define([
                     // `update_creation_rules_for_changed_trait` does
                     // `creation.addUnique(<pool>_picks, modified_trait)` (e.g.
                     // Vampire.js:333), so an id-less trait sits two levels below
-                    // the character: character -> creation -> trait. Single
-                    // instance state makes it worse still -- the trait's own
-                    // `owner` pointer is built as `new TempVampire({id: self.id})`
-                    // (line 199), which parse@8 backs with the SAME state as
-                    // `self`, so the child references the dirty parent.
+                    // the character: character -> creation -> trait.
                     //
                     // Parse 1.5's `save` walked all of that: `_deepSaveAsync`
                     // (via `Parse.Object._findUnsavedChildren`,
@@ -264,11 +260,43 @@ define([
                     // reports and then resolves -- so the wizard's hash never
                     // moved and seven specs died on `waitForHashToLeave`.
                     //
-                    // Saving the child on its own first was tried and is worse:
-                    // the trait's `owner` shares state with the dirty character,
-                    // so the child save hits the identical throw.
+                    // Saving the child on its own INSTEAD was tried and does not
+                    // work: it leaves the character's own AddUnique unsaved, and
+                    // while single-instance state was still on it also hit the
+                    // identical throw, because `new TempVampire({id: self.id})`
+                    // (line 199) shared state with the dirty character. That
+                    // second hazard is gone now the compat layer runs with unique
+                    // instances, but the first one stands.
                     var minimumPromise = self.update_creation_rules_for_changed_trait(category, modified_trait, free_value).then(function() {
-                        return Parse.Object.saveAll([self]);
+                        // The trait is named explicitly, not left to the parent's
+                        // cascade.
+                        //
+                        // parse@8's `unsavedChildren` indexes what it has walked by
+                        // `className + ":" + id` and skips anything already seen --
+                        // `if (!encountered.objects[identifier])`
+                        // (parse-8.6.0.js:43065). The character's `creation` is
+                        // walked before its trait arrays, and the creation record's
+                        // `<pool>_picks` hold their OWN instances of the same
+                        // SimpleTrait rows -- clean ones -- so by the time the walk
+                        // reaches the dirty trait its identifier is already recorded
+                        // as seen-and-not-dirty, and the save drops it.
+                        //
+                        // Parse 1.5 could not hit that: `_findUnsavedChildren` went
+                        // through `Parse._traverse`, which de-duplicates by object
+                        // IDENTITY (parse-1.5.0.js:6171), so every distinct instance
+                        // was judged on its own merits.
+                        //
+                        // Measured: raising Physical 5 -> 6 produced a batch holding
+                        // only the character's own PUT. The trait's new value never
+                        // reached the server, and the edit reported success.
+                        //
+                        // Naming it in the array is enough, because the array path
+                        // seeds `pending` from `target` itself. Ordering stays the
+                        // SDK's job: a brand-new trait has no id, so
+                        // `canBeSerialized(self)` is false on the first round and the
+                        // character is deferred to the next -- the same
+                        // children-then-parent order 1.5's `_deepSaveAsync` produced.
+                        return Parse.Object.saveAll([modified_trait, self]);
                     }).then(function() {
                         if (0 != spend) {
                             return self.add_experience_notation({
