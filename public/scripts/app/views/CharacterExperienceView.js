@@ -245,6 +245,41 @@ define([
 
         // Renders all of the Category models on the UI
         render: function() {
+            var self = this;
+            var stale_popups = "#popupEditEntered, #popupEditReason, #alterationpopupEdit";
+
+            // Never rebuild the table out from under an open dialog.
+            //
+            // Editing a notation is what causes the re-renders in the first
+            // place -- `change:reason` on the collection, and
+            // `finish_experience_notation_propagation` on the character once
+            // the running balances have been saved. Those land while the player
+            // is still in the NEXT dialog, and this render tears down the
+            // markup the dialog was opened from, re-enhances a fresh copy of
+            // every popup, and leaves the handlers' bare `$("#popupEditReason")`
+            // lookups pointing at whichever duplicate now comes first.
+            //
+            // Measured at eight workers: the reason dialog opened, took its
+            // text, and was gone before the Update button could be clicked --
+            // the failure snapshot shows the notations table with no popup on
+            // the page at all. At four workers the same test passes, which is
+            // the tell that this is a race rather than a wrong answer.
+            //
+            // Deferring is the whole fix: the view is redrawn on
+            // `popupafterclose` instead, which is the first moment the rebuild
+            // is safe and still well before anyone can read the table.
+            var open_dialogs = $(".ui-popup-container").not(".ui-popup-hidden").find(stale_popups);
+            if (open_dialogs.length) {
+                if (!self._renderQueuedBehindPopup) {
+                    self._renderQueuedBehindPopup = true;
+                    open_dialogs.first().one("popupafterclose", function () {
+                        self._renderQueuedBehindPopup = false;
+                        self.render();
+                    });
+                }
+                return this;
+            }
+
             // Sets the view's template property
             var all = (this.collection && this.collection.models) || [];
             this.template = _.template(
@@ -294,7 +329,6 @@ define([
             // Closing works the same way round (`ui-popup-active` removed at
             // :11079 before `ui-popup-hidden` is added at :11056), so hidden is
             // the only class that means "not on screen" at both ends.
-            var stale_popups = "#popupEditEntered, #popupEditReason, #alterationpopupEdit";
             $(".ui-popup-container.ui-popup-hidden").each(function () {
                 var container = $(this);
                 if (container.find(stale_popups).length) {
