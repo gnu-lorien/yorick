@@ -1853,7 +1853,8 @@ define([
                 }).then(function (t) {
                     troupe = t;
                     self.troupeView = self.troupeView || new TroupeView({ el: "#troupe" });
-                    self.troupeView.register(troupe);
+                    return self.troupeView.register(troupe);
+                }).then(function () {
                     $.mobile.changePage("#troupe", { reverse: false, changeHash: false });
                 }).fail(function () {
                     window.location.hash = "#character?" + cid;
@@ -2099,7 +2100,12 @@ define([
                     self.troupeView = self.troupeView || new TroupeView({ el: "#troupe" });
                     var is_st = Parse.User.current().get("storytellerinterface");
                     var is_ad = Parse.User.current().get("admininterface");
-                    self.troupeView.register(troupe, (is_st || is_ad));
+                    // Waited on: `register` re-renders, which recreates
+                    // `#troupe-staff` empty and fills it a round trip later.
+                    // Transitioning before that lands puts the page on screen
+                    // with no staff list. See TroupeView.render.
+                    return self.troupeView.register(troupe, (is_st || is_ad));
+                }).then(function () {
                     $.mobile.changePage("#troupe", { reverse: false, changeHash: false });
                 }).always(function () {
                     $.mobile.loading("hide");
