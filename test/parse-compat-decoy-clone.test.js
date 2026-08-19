@@ -364,3 +364,43 @@ test('change:<attr> gets the same options object as change', () => {
   assert.strictEqual(fromAttr, fromChange);
   assert.deepStrictEqual(fromAttr.changes, { a: true });
 });
+
+// --- a save response must not unfetch what was already fetched ---
+
+test('a save that echoes bare pointers keeps the fetched objects', () => {
+  // parse-1.5.0.js:5100: "Look for any objects that might have become
+  // unfetched and fix them by replacing their values with the previously
+  // observed values." parse@8 leans on single-instance state for this, and
+  // this layer turns single-instance off because 1.5 did not have it.
+  const Trait = Parse.Object.extend('CompatReattachTrait');
+  const child = new Trait();
+  child._finishFetch({ objectId: 't1', name: 'Physical', value: 5 });
+
+  const parent = savedThing('p1', {});
+  parent.set('traits', [child]);
+  assert.strictEqual(parent.get('traits')[0].get('name'), 'Physical');
+
+  // What the server echoes after a save: a pointer, with no data.
+  parent._handleSaveResponse({
+    objectId: 'p1',
+    traits: [{ __type: 'Pointer', className: 'CompatReattachTrait', objectId: 't1' }]
+  }, 200);
+
+  const after = parent.get('traits')[0];
+  assert.strictEqual(after.get('name'), 'Physical',
+    'the trait was replaced by a dataless pointer');
+  assert.strictEqual(after.get('value'), 5);
+  assert.strictEqual(after, child, 'and it is the same object the view is holding');
+});
+
+test('a pointer to something never fetched is left alone', () => {
+  const parent = savedThing('p2', {});
+  parent._handleSaveResponse({
+    objectId: 'p2',
+    other: { __type: 'Pointer', className: 'CompatReattachTrait', objectId: 'never' }
+  }, 200);
+
+  const ptr = parent.get('other');
+  assert.strictEqual(ptr.id, 'never');
+  assert.strictEqual(ptr.get('name'), undefined);
+});

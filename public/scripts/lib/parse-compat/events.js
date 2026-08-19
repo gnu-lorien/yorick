@@ -295,37 +295,106 @@
       };
     }
 
-    // The `saved` event, from `parse-1.5.0.js:5112`.
+    /** True when a Parse object carries no fetched data of its own. */
+    function isBarePointer(value) {
+      return value && typeof value === 'object' &&
+        typeof value._getServerData === 'function' &&
+        typeof value.className === 'string' &&
+        keysOf(value._getServerData()).length === 0;
+    }
+
+    /**
+     * Index every fetched Parse object reachable from `value`, by className:id.
+     *
+     * 1.5's equivalent walked `this.attributes` with `Parse._traverse` and kept
+     * the ones where `object.id && object._hasData` (parse-1.5.0.js:5085-5089).
+     */
+    function indexFetched(value, out, depth) {
+      if (!value || typeof value !== 'object' || depth > 4) return out;
+      if (typeof value._getServerData === 'function' && typeof value.className === 'string') {
+        if (value.id && !isBarePointer(value)) out[value.className + ':' + value.id] = value;
+        return out;
+      }
+      if (Array.isArray(value)) {
+        for (var i = 0; i < value.length; i++) indexFetched(value[i], out, depth + 1);
+        return out;
+      }
+      return out;
+    }
+
+    /**
+     * Put the fetched objects back where the save response left bare pointers.
+     *
+     * Replaces in place, because `_getServerData()` hands back the live bag the
+     * SDK reads from.
+     */
+    function reattachFetched(bag, fetched, depth) {
+      if (!bag || typeof bag !== 'object' || depth > 4) return;
+      var names = keysOf(bag);
+      for (var i = 0; i < names.length; i++) {
+        var value = bag[names[i]];
+        if (isBarePointer(value)) {
+          var replacement = fetched[value.className + ':' + value.id];
+          if (replacement && replacement !== value) bag[names[i]] = replacement;
+          continue;
+        }
+        if (Array.isArray(value)) {
+          for (var j = 0; j < value.length; j++) {
+            if (isBarePointer(value[j])) {
+              var alt = fetched[value[j].className + ':' + value[j].id];
+              if (alt && alt !== value[j]) value[j] = alt;
+            }
+          }
+        }
+      }
+    }
+
+    // The `saved` event, and 1.5's re-attachment of objects a save unfetched.
     //
-    // 1.5's `_finishSave` ended with `self.trigger('saved', self)` once the
-    // server response had been merged. parse@8 removed object events entirely,
-    // and this layer restored only `change` -- but eleven live listeners in five
-    // files are bound to `saved`, and they are not cosmetic:
+    // Two things happen here, both from `_finishSave` (parse-1.5.0.js:5080-5113).
     //
-    //   CharacterCreateViewNew.js:230, 257, 284, 322, 361
-    //       `listenTo(self.model.get("creation"), "saved", self.render)` --
-    //       the creation wizard's pool counters. Without it the badges never
-    //       move: measured, a Vampire whose `disciplines_2_remaining` had gone
-    //       1 -> 0 on the server still rendered "Disciplines 3", so the next
-    //       pick was refused by the route with "No creation picks left for
-    //       disciplines at rating 2" and six specs died in
-    //       `spendAllCreationPools`. A hard reload showed the correct 2, which
-    //       is what pinned it on the render rather than the arithmetic.
+    // 1. `self.trigger('saved', self)` at :5112. Eleven live listeners across
+    //    five files are bound to it, and they are not cosmetic --
+    //    `CharacterCreateViewNew.js:230, 257, 284, 322, 361` re-render the
+    //    creation wizard's pool counters on it, `Character.js:634` refreshes
+    //    the recorded-changes log.
     //
-    //   Character.js:634  `self.on("saved", self.update_recorded_changes)`
-    //   CharacterApprovalView.js:132, 189 and CharactersPrintView.js:124, 181
+    // 2. The re-attachment. A save response echoes array-valued pointer fields
+    //    as bare `{__type:"Pointer"}` entries, and decoding those produces
+    //    objects with no data. 1.5 indexed everything already fetched before
+    //    the merge and put it back afterwards, in a block whose own comment
+    //    reads "Look for any objects that might have become unfetched and fix
+    //    them by replacing their values with the previously observed values"
+    //    (:5100). parse@8 does not, because single-instance state made it
+    //    unnecessary -- and this layer turns single-instance off, because 1.5
+    //    did not have it (see index.js).
+    //
+    //    Measured without this: saving one attribute change on a completed
+    //    Vampire left `character.get("attributes")` holding three dataless
+    //    SimpleTraits, so the category listing rendered three rows of " x"
+    //    with no name or value, the next `update_trait` could not find the
+    //    trait it was handed, and the edit silently did nothing.
     //
     // `_handleSaveResponse` is parse@8's `_finishSave`: it merges the response
-    // and it is called per object on BOTH save paths, the single request
+    // and is called per object on BOTH save paths, the single request
     // (`parse-8.6.0.js:44863`) and the batch (`:44814`), so children saved as
-    // part of a deep save get their event too -- as they did in 1.5.
+    // part of a deep save are covered too, as they were in 1.5.
     //
     // 1.5 also fired `sync`, `error` and `destroy`; nothing in this app listens
     // for those, so they are left out rather than guessed at.
     var originalHandleSaveResponse = proto._handleSaveResponse;
     if (typeof originalHandleSaveResponse === 'function') {
       proto._handleSaveResponse = function () {
+        var fetched = {};
+        var attrs = this.attributes || {};
+        var names = keysOf(attrs);
+        for (var i = 0; i < names.length; i++) indexFetched(attrs[names[i]], fetched, 0);
+
         var result = originalHandleSaveResponse.apply(this, arguments);
+
+        if (typeof this._getServerData === 'function') {
+          reattachFetched(this._getServerData(), fetched, 0);
+        }
         this.trigger('saved', this);
         return result;
       };
