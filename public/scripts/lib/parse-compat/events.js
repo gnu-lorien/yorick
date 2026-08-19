@@ -92,6 +92,26 @@
 
     var originalSet = proto.set;
     var originalUnset = proto.unset;
+    var originalAddUnique = proto.addUnique;
+
+    /**
+     * Options in flight from a wrapper that cannot pass them to `set` directly.
+     *
+     * Parse 1.5's `addUnique` took a third argument and handed it on:
+     *
+     *     addUnique: function (attr, item, options) {          // :5409
+     *       return this.set(attr, new Parse.Op.AddUnique([item]), options);
+     *     }
+     *
+     * parse@8's takes two and drops it (`parse-8.6.0.js:43642`). Silent is a
+     * concept this layer owns, not the SDK's, so the options have to reach the
+     * wrapped `set` some other way. Reconstructing the AddUnique op here would
+     * mean reaching for the SDK's internal `AddUniqueOp` constructor, which is
+     * not exported; a module-scoped hand-off is smaller and does not depend on
+     * internals. It is safe because the SDK's `addUnique` calls `set` exactly
+     * once, synchronously, and `set` clears this before it can re-enter.
+     */
+    var pendingSetOptions = null;
 
     // Never call attrs.hasOwnProperty directly.
     //
@@ -175,6 +195,11 @@
       var self = this;
       var opts;
 
+      // Claimed immediately, so an event handler that calls `set` on another
+      // object mid-flight cannot pick these up.
+      var inherited = pendingSetOptions;
+      pendingSetOptions = null;
+
       // A Parse.Object handed to set() means its attributes, not its innards.
       //
       // From `parse-1.5.0.js:5269-5271`. Belt and braces alongside the
@@ -199,10 +224,42 @@
       } else {
         opts = options;
       }
+      if (opts === undefined || opts === null) {
+        opts = inherited;
+      }
       return withChangeEvents(self, opts, function () {
         return originalSet.call(self, key, value, options);
       });
     };
+
+    // `addUnique(attr, item, options)`, as `parse-1.5.0.js:5409` had it.
+    //
+    // The one live call site is `Character.update_trait`
+    // (`app/models/Character.js:229`), and it is not decorative:
+    //
+    //     self.addUnique(category, modified_trait, {silent: true});
+    //
+    // adds an UNSAVED SimpleTrait to the character. With the silent flag
+    // dropped, that fires `change`, a Marionette region re-renders, and
+    // `serializeModel` calls `toJSON()` on a character that now points at an
+    // object with no objectId -- which parse@8's encode refuses:
+    // "Cannot create a pointer to an unsaved ParseObject"
+    // (`parse-8.6.0.js:43428`). The rejection surfaced as eight specs hanging
+    // on `waitForHashToLeave`, because the view's `.fail` only console.logs.
+    //
+    // 1.5's `add` and `remove` genuinely take no options, so they are left
+    // alone -- `addUnique` was the odd one out there too.
+    if (typeof originalAddUnique === 'function') {
+      proto.addUnique = function (attr, item, options) {
+        var previous = pendingSetOptions;
+        pendingSetOptions = options;
+        try {
+          return originalAddUnique.call(this, attr, item);
+        } finally {
+          pendingSetOptions = previous;
+        }
+      };
+    }
 
     if (typeof originalUnset === 'function') {
       proto.unset = function (attr, options) {

@@ -233,3 +233,47 @@ test('neither getter shows up as an attribute', () => {
   void obj._previousAttributes;
   assert.deepStrictEqual(Object.keys(obj._getSaveJSON()), []);
 });
+
+// --- addUnique's third argument, which parse@8 dropped ---
+
+test('addUnique({silent: true}) suppresses the change event, as 1.5 did', () => {
+  // `parse-1.5.0.js:5409` forwarded options; `parse-8.6.0.js:43642` takes two
+  // arguments and drops them. The live call site is
+  // `Character.update_trait` (app/models/Character.js:229), which adds an
+  // UNSAVED trait to the character -- so a change event there re-renders a
+  // Marionette region, `serializeModel` calls toJSON(), and parse@8 refuses to
+  // encode a pointer to an object with no objectId.
+  const obj = savedThing('au1', { list: [] });
+  const fired = [];
+  obj.on('change', () => fired.push('change'));
+  obj.on('change:list', () => fired.push('change:list'));
+
+  obj.addUnique('list', 'a', { silent: true });
+
+  assert.deepStrictEqual(fired, []);
+  assert.deepStrictEqual(obj.get('list'), ['a']);
+});
+
+test('addUnique without options still fires change', () => {
+  const obj = savedThing('au2', { list: [] });
+  const fired = [];
+  obj.on('change', () => fired.push('change'));
+
+  obj.addUnique('list', 'a');
+
+  assert.deepStrictEqual(fired, ['change']);
+});
+
+test('a silent addUnique does not leak its options into the next set', () => {
+  const obj = savedThing('au3', { list: [], other: 1 });
+  obj.addUnique('list', 'a', { silent: true });
+
+  const fired = [];
+  obj.on('change', () => fired.push('change'));
+  obj.set('other', 2);
+
+  // The held-back `list` change is reported alongside `other`, which is what
+  // 1.5's _silent/_pending pair did.
+  assert.deepStrictEqual(fired, ['change']);
+  assert.strictEqual(obj.get('other'), 2);
+});
