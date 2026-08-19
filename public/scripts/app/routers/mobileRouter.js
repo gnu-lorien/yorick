@@ -641,15 +641,19 @@ define([
                     "#charactercreate/simpletraits/<%= self.category %>/<%= self.character.id %>/specialize/<%= b.linkId() %>/" + i);
             }).then(function () {
                 $.mobile.changePage("#character-create-simpletrait-new", { reverse: false, changeHash: false });
+            }).fail(ReportError.on("Couldn't open that pick")).fail(function () {
+                window.location.hash = "#charactercreate/" + cid;
             }).always(function () {
                 // Same as the simpletext pickers above: re-opening the picker
                 // you are already on is a same-page changePage, which hides
                 // nothing, and the centred spinner then eats clicks on the
-                // options. The failure path below already hid it; the success
-                // path did not.
+                // options. The failure path already hid it; the success path
+                // did not.
+                //
+                // Last, so it cannot replace the rejection reason ReportError
+                // is about to show -- "No creation picks left for ..." became
+                // "An unknown error occurred." when this sat above it.
                 $.mobile.loading("hide");
-            }).fail(ReportError.on("Couldn't open that pick")).fail(function () {
-                window.location.hash = "#charactercreate/" + cid;
             });
         },
 
@@ -704,7 +708,7 @@ define([
                 return self.simpleTextNewView.register(c, category, target, "#charactercreate/" + c.id);
             }).then(function () {
                 $.mobile.changePage("#simpletext-new", { reverse: false, changeHash: false });
-            }).always(function () {
+            }).fail(PromiseFailReport).always(function () {
                 // Every other route in this file hides the spinner it showed.
                 // These two did not, and got away with it only because
                 // `changePage` to a DIFFERENT page hides it as a side effect
@@ -718,8 +722,13 @@ define([
                 // It is not merely cosmetic: a fixed-position overlay swallows
                 // clicks on whatever is under it, so the option a player aims
                 // at can simply not respond.
+                //
+                // Last in the chain on purpose. `always` is `then(cb, cb)`, so
+                // on a rejection it replaces the reason with whatever the
+                // callback returns (parse-1.5.0.js:4126) -- put it earlier and
+                // every handler after it reports "An unknown error occurred."
                 $.mobile.loading("hide");
-            }).fail(PromiseFailReport);
+            });
         },
 
         charactercreateunpicksimpletext: function (category, target, cid) {
@@ -738,11 +747,23 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#charactercreate/" + cid);
+            // The redirect belongs INSIDE the guard.
+            //
+            // `ifCurrent` skips the tail if another route dispatched while
+            // `get_character` was in flight, but the `.then` below used to run
+            // regardless -- so a superseded invocation still navigated to the
+            // sheet as though creation had been completed, and in doing so
+            // dispatched another route, superseding whichever invocation was
+            // actually going to do the work. Two overlapping completions
+            // cancelled each other and the creation record was never marked.
+            //
+            // With the navigation inside the guard, a superseded invocation
+            // does nothing at all, and the live one finishes.
             self.get_character(cid).done(self.ifCurrent(function (c) {
-                return c.complete_character_creation();
-            })).then(function () {
-                window.location.hash = "#character?" + cid;
-            }).fail(function (error) {
+                return c.complete_character_creation().then(function () {
+                    window.location.hash = "#character?" + cid;
+                });
+            })).fail(function (error) {
                 alert(error.message);
                 window.location.hash = "#charactercreate/" + cid;
             }).fail(PromiseFailReport);
@@ -1716,11 +1737,12 @@ define([
                 return self.simpleTextNewView.register(c, category, target, "#character?" + c.id);
             }).then(function () {
                 $.mobile.changePage("#simpletext-new", { reverse: false, changeHash: false });
-            }).always(function () {
+            }).fail(PromiseFailReport).always(function () {
                 // See charactercreatepicksimpletext: a same-page changePage
-                // hides nothing, so this has to.
+                // hides nothing, so this has to, and it goes last so it cannot
+                // overwrite the rejection reason.
                 $.mobile.loading("hide");
-            }).fail(PromiseFailReport);
+            });
         },
 
         simpletextunpick: function (category, target, cid) {
