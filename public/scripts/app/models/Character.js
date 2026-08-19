@@ -229,8 +229,46 @@ define([
                     self.addUnique(category, modified_trait, {silent: true});
                     self.progress("Updating trait " + modified_trait.get("name"));
     
+                    // saveAll, not save: this graph is two levels deep.
+                    //
+                    // `update_creation_rules_for_changed_trait` does
+                    // `creation.addUnique(<pool>_picks, modified_trait)` (e.g.
+                    // Vampire.js:333), so an id-less trait sits two levels below
+                    // the character: character -> creation -> trait. Single
+                    // instance state makes it worse still -- the trait's own
+                    // `owner` pointer is built as `new TempVampire({id: self.id})`
+                    // (line 199), which parse@8 backs with the SAME state as
+                    // `self`, so the child references the dirty parent.
+                    //
+                    // Parse 1.5's `save` walked all of that: `_deepSaveAsync`
+                    // (via `Parse.Object._findUnsavedChildren`,
+                    // parse-1.5.0.js:6171) collected every dirty descendant and
+                    // batched them in dependency order, re-testing each round
+                    // with `_canBeSerializedAsValue`.
+                    //
+                    // parse@8 kept that algorithm -- but only on the ARRAY path.
+                    // `save()` on a single object cascades exactly one level,
+                    // `unsavedChildren(this)` with allowDeepUnsaved=false
+                    // (parse-8.6.0.js:43931), and its `traverse` THROWS
+                    // "Cannot create a pointer to an unsaved Object." as soon as
+                    // it recurses into a dirty child and finds an id-less
+                    // grandchild. `saveAll` passes allowDeepUnsaved=true (:44772)
+                    // and then does the same batch-until-serializable loop 1.5
+                    // did.
+                    //
+                    // Measured: with a creation pool pick (free_value >= 1) the
+                    // save rejected with exactly that message; with free_value 0,
+                    // where every venue's update_creation_rules_for_changed_trait
+                    // short-circuits before touching `creation`, the same call
+                    // succeeded. Nothing surfaced, because the `.fail` below
+                    // reports and then resolves -- so the wizard's hash never
+                    // moved and seven specs died on `waitForHashToLeave`.
+                    //
+                    // Saving the child on its own first was tried and is worse:
+                    // the trait's `owner` shares state with the dirty character,
+                    // so the child save hits the identical throw.
                     var minimumPromise = self.update_creation_rules_for_changed_trait(category, modified_trait, free_value).then(function() {
-                        return self.save();
+                        return Parse.Object.saveAll([self]);
                     }).then(function() {
                         if (0 != spend) {
                             return self.add_experience_notation({

@@ -36,6 +36,7 @@
       './promise',
       './collection',
       './events',
+      './query',
       './router',
       './storage',
       './thenable'
@@ -46,6 +47,7 @@
       require('./promise'),
       require('./collection'),
       require('./events'),
+      require('./query'),
       require('./router'),
       require('./storage'),
       require('./thenable')
@@ -56,6 +58,7 @@
       root.ParseCompatPromise,
       root.ParseCompatCollection,
       root.ParseCompatEvents,
+      root.ParseCompatQuery,
       root.ParseCompatRouter,
       root.ParseCompatStorage,
       root.ParseCompatThenable
@@ -66,6 +69,7 @@
   CompatPromise,
   makeParseCollection,
   applyEvents,
+  applyQuery,
   applyRouter,
   applyStorage,
   applyThenable
@@ -109,6 +113,12 @@
       Parse.Collection = makeParseCollection(Parse);
     }
 
+    // Before thenable, so the wrapped find/first/each are what gets converted.
+    // See query.js: this restores 1.5's `this.objectClass`, which is what told
+    // a query on Werewolf apart from a query on Vampire when both classes
+    // register the className "Vampire".
+    applyQuery(Parse);
+
     applyRouter(Parse);
 
     // Last: make the SDK's own promise-returning methods hand back
@@ -133,6 +143,7 @@
   install.makeCollection = makeParseCollection;
   install.patchBackboneInstanceof = makeParseCollection.patchBackboneInstanceof;
   install.applyEvents = applyEvents;
+  install.applyQuery = applyQuery;
   install.applyRouter = applyRouter;
   install.applyStorage = applyStorage;
   install.applyThenable = applyThenable;

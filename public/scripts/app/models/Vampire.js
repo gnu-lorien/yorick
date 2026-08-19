@@ -16,8 +16,9 @@ define([
     "../helpers/PromiseFailReport",
     "../helpers/ExpirationMixin",
     "../helpers/UserWreqr",
-    "../models/Character"
-], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSMETV1_VampireCosts, PromiseFailReport, ExpirationMixin, UserChannel, Character ) {
+    "../models/Character",
+    "../helpers/VenueClass"
+], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSMETV1_VampireCosts, PromiseFailReport, ExpirationMixin, UserChannel, Character, VenueClass ) {
 
     var ALL_SIMPLETRAIT_CATEGORIES = [
         ["attributes", "Attributes", "Attributes"],
@@ -304,7 +305,11 @@ define([
     _.extend(instance_methods, Character);
     _.defaults(instance_methods, Character.baseMethods);
 
-    var Model = Parse.Object.extend("Vampire", instance_methods);
+    // One Parse class for the shared "Vampire" table, but a per-module
+    // identity to hang this venue's six statics on. parse@8 returns the SAME
+    // constructor for a repeated className, so writing `Model.create` here and
+    // in the other two venues is three writes to one slot. See VenueClass.js.
+    var Model = VenueClass(Parse.Object.extend("Vampire", instance_methods), instance_methods);
 
     Model.get_character = function(id, categories, character_cache) {
         if (_.isUndefined(character_cache)) {
