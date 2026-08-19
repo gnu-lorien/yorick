@@ -95,6 +95,35 @@
     // (reading 'currentInstallationId')". See storage.js.
     applyStorage(Parse.CoreManager);
 
+    // Unique instances, which is what Parse 1.5 had.
+    //
+    // 1.5 kept no registry of live objects: every query built its results with
+    // `obj = new self.objectClass()` (parse-1.5.0.js:8277, :8364), so two reads
+    // of the same row produced two objects. parse@8 defaults to single-instance
+    // in a browser -- same objectId, same object, shared state.
+    //
+    // Half this app's views decide whether to re-render by comparing identity:
+    //
+    //     if (troupe !== self.troupe || writable != self.writable) { ... }   TroupeView.js:26
+    //     if (character !== self.character) { ... }                          SimpleTextNewView.js:39
+    //
+    // Under 1.5 those were always true on a re-visit, so the view re-rendered.
+    // Under single-instance they are always false, and the view silently keeps
+    // whatever it drew the first time. Measured: a troupe's staff list showed
+    // "AST: sampmem" on one visit to #troupe/:id and an empty region on the
+    // next, because the region was never redrawn.
+    //
+    // It also removes a sharp edge in `Character.update_trait`, where
+    // `new TempVampire({id: self.id})` (Character.js:199) is meant to be a bare
+    // pointer but under single-instance shares state with the live, dirty
+    // character -- so encoding the pointer dragged the whole unsaved graph in.
+    //
+    // First, before any subclass is registered or any object built, so no
+    // object is created under the other state controller.
+    if (typeof Parse.Object.disableSingleInstance === 'function') {
+      Parse.Object.disableSingleInstance();
+    }
+
     // Then events: this wraps Parse.Object.prototype.set, and every
     // Parse.Object.extend subclass inherits from that prototype.
     applyEvents(Parse.Object);
