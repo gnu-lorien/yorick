@@ -5,6 +5,10 @@
 Branch `claude/office-hours-upgrade-plan-092d60`, worktree at
 `C:/prj/yorick/.claude/worktrees/office-hours-upgrade-plan-092d60`.
 
+The browser-side migration continued on
+`worktree-bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV`, seventeen commits on top of
+`b10cb2d`, and is **done**: the suite matches the legacy baseline exactly.
+
 ---
 
 ## How to work in this repo
@@ -94,7 +98,7 @@ node diff-runs.js runs/baseline.json runs/mine.json
 # One spec, one worker, much faster
 E2E_WORKERS=1 npx playwright test e2e/xp-history.spec.js --grep "75 "
 
-# Compat-layer contract tests (74, all green — keep them that way)
+# Compat-layer contract tests (103, all green — keep them that way)
 npm run test:node
 
 # Jasmine in headless Chrome (166 run, 140 pass; the 26 are stale, see below)
@@ -132,10 +136,17 @@ Start the server yourself first: `YORICK_ALLOW_SEED=1 node index.js &`
 | | |
 |---|---|
 | Legacy baseline | `runs/baseline.json` — 447 tests, verified clean-vs-clean |
-| parse@8 run | `runs/parse8s.json` — 67 passing, 18 regressions |
+| parse@8 run | `runs/m18.json` — **447 same-pass, 0 NEW-FAIL** |
+| Was | `runs/parse8s.json` — 67 passing, 18 regressions |
 | Started at | 2 passing |
-| Compat contract tests | 74, green |
-| Commits on branch | 24 |
+| Compat contract tests | 103, green |
+| Commits | 24 + 17 |
+
+The 18 are gone, and so is everything they were hiding. The passing count went
+67 → 138 → 198 → 274 → 333 → 447 while NEW-FAIL went 18 → 16 → 15 → 12 → 7 →
+0, because most of the 18 were one early defect standing in front of hundreds
+of tests. What each of them turned out to be is in
+`docs/runbooks/parse8-remaining-queue.md`.
 
 The compatibility layer is `public/scripts/lib/parse-compat/`: `promise`,
 `collection`, `events`, `router`, `storage`, `thenable`, assembled by `index.js`
@@ -148,98 +159,34 @@ cycle (see `always()` below).
 
 ---
 
-## Start here: `instanceof Backbone.Model` is blind to `Parse.Object`
+## Start here: S10
 
-**This is the biggest single defect and it was found last, by reading the server
-error log — which nobody had looked at.** Check `logs/parse-server.err.*` early
-and often.
+The browser side is finished. Everything below is still true and still worth
+reading before touching this code, but there is no queue of known regressions
+left to work through. The next piece is S10, further down.
 
-```
-768  Invalid field name: _compatPending
- 34  Invalid field name: _objCount
-```
+If you are picking it up because something regressed, the loop is unchanged:
+read the failure out of the captured JSON, reproduce it in a standalone probe,
+fix, verify the probe, full suite, diff. And check `logs/parse-server.err.*` —
+it is still the cheapest signal in the repo.
 
-The compat layer's own internals are being written to real database rows.
+## What the 18 taught, in one line each
 
-Backbone 1.1.2 decides "already a model, or a raw attribute hash?" with
-`attrs instanceof Model` (`public/scripts/lib/backbone.js:690` and `:916`). A
-parse@8 `ParseObject` fails that test, so **every object added to or reset into
-a `Parse.Collection` is silently replaced by `new this.model(theParseObject)`** —
-the Parse object used as an attribute bag. parse@8's `set` walks it with
-`for (const k in changes)`, so the clone's attributes become `className`,
-`_objCount`, `_localId`, `_compatPending`, `changed`, `_compatPrevious`,
-`__compatEventsApplied`. And `id` is copied across, so those junk SetOps land on
-the **real row** and get PUT to the server.
+- **Read `parse-1.5.0.js`. Do not reason about what promises "should" do.** The
+  two biggest finds were both places where this layer had implemented the
+  sensible modern semantics instead of the shipped 1.5 ones: `.fail` recovering
+  a chain (1.5 runs non-A+, `:3892`, and rejects with the handler's return
+  value at `:4126`), and construction validating (1.5's constructor sets
+  `{silent: true}` at `:4526`, and `_validate` returns early when silent at
+  `:5917`).
+- **Ten of the 18 were "something silently stopped happening".** Missing
+  events, dropped arguments, guards that used to be true. None threw.
+- **Four of the last six were not Parse at all** — rendering races the legacy
+  stack won on timing. They are real defects for a player too.
+- **A test that passes at four workers and fails at eight is telling you
+  something is re-rendering underneath an interaction.** That was test 54.
 
-Parse 1.5 guarded on the right type (`parse-1.5.0.js:6851`):
-
-```js
-_prepareModel: function(model, options) {
-  if (!(model instanceof Parse.Object)) { … }   // Parse.Object, not Backbone.Model
-```
-
-The fix, the blast-radius check, and the reason the existing contract tests
-missed it (the stub *is* a `Backbone.Model`) are all in
-**`docs/runbooks/parse8-remaining-queue.md`, item 1.** Estimated 8 of the 18.
-
-Items 1–3 in that queue are additive compat-layer changes that should land
-together and then be re-measured. **Re-measure before starting item 4** — the
-attribution of the 7 timeouts is not clean, and some of them are probably item 1
-in disguise.
-
-## Then: the creation cluster
-
-Fully diagnosed, not yet fixed.
-
-```
-toJSON → encode → toPointer → "Cannot create a pointer to an unsaved ParseObject"
-```
-
-**parse@8 refuses to encode a parent that references an unsaved child. Parse 1.5
-tolerated it.**
-
-Inside `Character.update_trait` (`public/scripts/app/models/Character.js:144`),
-a new `SimpleTrait` is created and linked to the character, and the character is
-then encoded before that child has been saved.
-
-Evidence:
-
-- `update_trait('Academics', 0, 'skills', 0)` **succeeds** on a freshly fetched character
-- the identical call **fails** on the character the wizard view holds
-- at rest that character has **zero** unsaved pointers, so the child is created
-  during the call
-- `get_category_for_fetch` already filters on `id`, so it is not the array
-  element itself — it is a nested attribute
-
-It surfaces as seven `waitForHashToLeave` timeouts because
-`CharacterCreateSimpleTraitNewView.clicked`'s `.fail` handler only does
-`console.log(error.message)` — the hash never moves and nothing is reported.
-
-**Fix shape:** save the child before the parent is encoded.
-
-**Be careful here.** `update_trait` is what XP arithmetic runs through, and
-errors in it are silent wrong numbers rather than exceptions. Test 341 in
-`e2e/lifecycle-vampire.spec.js` was written specifically to catch that class of
-bug (it is mutation-checked — capping the refund in `Character.remove_trait`
-fails it). Run it after any change here:
-
-```bash
-E2E_WORKERS=1 npx playwright test e2e/lifecycle-vampire.spec.js --grep "341"
-```
-
-## The work queue
-
-**`docs/runbooks/parse8-remaining-queue.md`** covers all 18, ordered by
-tests-cleared over risk, with the fix designed for three of the four items and
-an honest "not designed yet" on the fourth. It was produced by a parallel
-diagnosis pass in which every root cause was attacked by an independent skeptic;
-none were refuted. Claims are cited to file:line — verify before trusting.
-
-It also carries a list of open questions worth reading before you start,
-including two comments in the compat layer that will become misleading once
-item 1 lands, and one comment that is already wrong.
-
-## After that: S10, untouched
+## S10, untouched
 
 `cloud/main.js` — 13 Cloud functions and 14 hooks still on the
 `(request, response)` signature parse-server 3.0 removed, plus 60
@@ -271,10 +218,30 @@ prototype. Building a real chain anyway was tried and cost 32 tests. The fix tha
 worked is explicit composition — `Character.baseMethods` plus
 `_.defaults(instance_methods, Character.baseMethods)` in each venue.
 
-**`always()` is `then(cb, cb)`** (`parse-1.5.0.js:4169`). It propagates the
-callback's return value AND converts rejections to fulfilment — so every
-`.always(...).fail(...)` chain in `mobileRouter` has dead `.fail` handlers. That
-is preserved deliberately. Making them fire is a behaviour change, not a fix.
+That was only half of it, and the other half was invisible until the first
+half landed. The repeated className also meant the three venues shared one
+constructor, so `Model.create = ...` in three modules was three writes to one
+slot: measured, `Vampire.create === Werewolf.create`, and
+`Vampire.all_text_attributes()` returned the Changeling list. And 1.5's
+`Parse.Query` kept the CLASS, not just the name (`:8129`, `obj = new
+self.objectClass()` at `:8277`), which is what made
+`new Parse.Query(Werewolf).get(id)` come back with Werewolf's methods.
+`app/helpers/VenueClass.js` restores both — a per-module identity, and a
+`__compatCast` the query shim in `lib/parse-compat/query.js` applies to
+results. One registered class, three identities.
+
+**`always()` is `then(cb, cb)`** (`parse-1.5.0.js:4169`), and it propagates the
+callback's return value. It does **not** convert a rejection to fulfilment —
+the earlier version of this note said it did, and was wrong. 1.5 runs with
+`_isPromisesAPlusCompliant: false` (`:3892`), so the rejection branch ends at
+`promise.reject(result[0])` (`:4126`): the chain stays rejected, carrying the
+callback's return value. The `.always(...).fail(...)` chains in `mobileRouter`
+are live, and `show_character_helper`'s redirect-on-denial depends on it.
+
+The corollary is a real trap: **put `always(hide)` LAST in a chain.** Anywhere
+above a `.fail`, it replaces the rejection reason with `undefined`, and the
+handler below reports "An unknown error occurred." That regressed test 201b
+once already.
 
 **`Parse.Cloud.run` is a non-configurable getter.** Assigning to it throws during
 install and kills bootstrap. `thenable.js` shadows it on a delegating object
@@ -287,9 +254,19 @@ via the prototype chain instead.
 **parse@8's attribute bag is `Object.create(null)`** — never call
 `attrs.hasOwnProperty(k)`.
 
+**This layer runs with unique instances**, because 1.5 had no object registry:
+every query built its results with `new self.objectClass()`. `install()` calls
+`Parse.Object.disableSingleInstance()` first, before any subclass is registered.
+Two consequences worth knowing before you debug something: the same row read
+twice gives two objects, and a save response's bare pointers would unfetch what
+you already have — which is why `_handleSaveResponse` is wrapped to put the
+fetched objects back, exactly as `_finishSave` did at `parse-1.5.0.js:5100`.
+
 **The noise floor is low but not zero** (~1 bad run in 7, tests 49 and 114). A
 small NEW-FAIL count means re-run before believing it. See
-`docs/runbooks/harness-noise-floor.md`.
+`docs/runbooks/harness-noise-floor.md`. `runs/m17.json` is a fresh example: one
+NEW-FAIL in test 49, and the immediately following run of identical code was
+clean at 447.
 
 **26 Jasmine specs fail** because they predate the R1–R51 security work and hit
 `require_a_user` / CLP guards. That is a separate, known piece of work.
