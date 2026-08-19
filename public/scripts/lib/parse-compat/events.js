@@ -522,6 +522,61 @@
       }
     }
 
+    // `fetchAllIfNeeded` with nothing to fetch must not hit the network.
+    //
+    // Parse 1.5 short-circuited: `_fetchAll` built the id list first and
+    // returned `Parse.Promise.as([])` when it was empty
+    // (parse-1.5.0.js:6046-6048). parse@8's object controller only checks the
+    // INPUT length -- `if (target.length < 1) return Promise.resolve([])`
+    // (parse-8.6.0.js:44644) -- and otherwise issues the query regardless, so a
+    // list of already-fetched objects produces a real round trip:
+    //
+    //     POST /parse/1/classes/SimpleTrait {"where":{"objectId":{"$in":[]}},"limit":0}
+    //
+    // `Character.get_character` calls this on every visit and then recurses, so
+    // it is several wasted round trips per navigation. That is not merely
+    // wasteful: the app has races it wins on speed. `mobileRouter.ifCurrent`
+    // cancels a route's tail if another route dispatched while its
+    // `get_character` was in flight, and the completion route lost that race
+    // to the test's own follow-up navigation -- `complete_character_creation`
+    // was never called at all.
+    //
+    // Skipped only when every member is already fetched AND has an id, so the
+    // SDK's own "All objects must have an ID" / "same class" validation still
+    // runs whenever there is anything real to do. Left alone when `include` is
+    // requested, since that can pull in pointers a fetched object does not yet
+    // hold.
+    if (typeof ParseObject.fetchAllIfNeeded === 'function' &&
+        !ParseObject.fetchAllIfNeeded.__compatShortCircuits) {
+      var originalFetchAllIfNeeded = ParseObject.fetchAllIfNeeded;
+      var shortCircuiting = function (list, options) {
+        if (Array.isArray(list) && !(options && options.include)) {
+          var nothingToDo = true;
+          for (var i = 0; i < list.length; i++) {
+            var member = list[i];
+            if (!member || !member.id ||
+                typeof member.isDataAvailable !== 'function' ||
+                !member.isDataAvailable()) {
+              nothingToDo = false;
+              break;
+            }
+          }
+          if (nothingToDo) return Promise.resolve(list);
+        }
+        return originalFetchAllIfNeeded.call(this, list, options);
+      };
+      shortCircuiting.__compatShortCircuits = true;
+      try {
+        ParseObject.fetchAllIfNeeded = shortCircuiting;
+      } catch (err) {
+        try {
+          Object.defineProperty(ParseObject, 'fetchAllIfNeeded', {
+            configurable: true, writable: true, value: shortCircuiting
+          });
+        } catch (err2) { /* keep the SDK's, and the round trip with it */ }
+      }
+    }
+
     proto.__compatEventsApplied = true;
     return ParseObject;
   }
