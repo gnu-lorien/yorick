@@ -641,8 +641,14 @@ define([
                     "#charactercreate/simpletraits/<%= self.category %>/<%= self.character.id %>/specialize/<%= b.linkId() %>/" + i);
             }).then(function () {
                 $.mobile.changePage("#character-create-simpletrait-new", { reverse: false, changeHash: false });
-            }).fail(ReportError.on("Couldn't open that pick")).fail(function () {
+            }).always(function () {
+                // Same as the simpletext pickers above: re-opening the picker
+                // you are already on is a same-page changePage, which hides
+                // nothing, and the centred spinner then eats clicks on the
+                // options. The failure path below already hid it; the success
+                // path did not.
                 $.mobile.loading("hide");
+            }).fail(ReportError.on("Couldn't open that pick")).fail(function () {
                 window.location.hash = "#charactercreate/" + cid;
             });
         },
@@ -698,7 +704,22 @@ define([
                 return self.simpleTextNewView.register(c, category, target, "#charactercreate/" + c.id);
             }).then(function () {
                 $.mobile.changePage("#simpletext-new", { reverse: false, changeHash: false });
-            });
+            }).always(function () {
+                // Every other route in this file hides the spinner it showed.
+                // These two did not, and got away with it only because
+                // `changePage` to a DIFFERENT page hides it as a side effect
+                // (jQuery Mobile's `_cssTransition` calls `_hideLoading`,
+                // jquery.mobile-1.4.5.js:5337). Arriving at the picker you are
+                // already on takes the same-page branch at :5598, which
+                // transitions nothing and hides nothing -- so the spinner stays
+                // up over the list, and jQuery Mobile centres it, which is
+                // squarely on top of the options.
+                //
+                // It is not merely cosmetic: a fixed-position overlay swallows
+                // clicks on whatever is under it, so the option a player aims
+                // at can simply not respond.
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
         },
 
         charactercreateunpicksimpletext: function (category, target, cid) {
@@ -1695,7 +1716,11 @@ define([
                 return self.simpleTextNewView.register(c, category, target, "#character?" + c.id);
             }).then(function () {
                 $.mobile.changePage("#simpletext-new", { reverse: false, changeHash: false });
-            });
+            }).always(function () {
+                // See charactercreatepicksimpletext: a same-page changePage
+                // hides nothing, so this has to.
+                $.mobile.loading("hide");
+            }).fail(PromiseFailReport);
         },
 
         simpletextunpick: function (category, target, cid) {
