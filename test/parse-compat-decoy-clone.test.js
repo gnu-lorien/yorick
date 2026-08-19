@@ -312,3 +312,55 @@ test('an object nobody saved never fires "saved"', () => {
   obj.set('remaining', 1);
   assert.strictEqual(fired, 0);
 });
+
+// --- options.changes, which 1.5's change listeners read ---
+
+test('a change event carries which attributes moved, in options.changes', () => {
+  // `Character.on_update_experience_notation` (Character.js:495) opens with
+  // `var c = changes.changes; if (c.entered) {...}` on the collection's
+  // forwarded change event. parse-1.5.0.js:5347 filled that hash.
+  const obj = savedThing('ch1', { entered: 1, reason: 'a' });
+  let seen = null;
+  obj.on('change', (m, options) => { seen = options; });
+
+  obj.set('entered', 2);
+
+  assert.ok(seen, 'the change event fired');
+  assert.deepStrictEqual(seen.changes, { entered: true });
+});
+
+test('a multi-attribute set reports every attribute that moved', () => {
+  const obj = savedThing('ch2', { a: 1, b: 1, c: 1 });
+  let seen = null;
+  obj.on('change', (m, options) => { seen = options; });
+
+  obj.set({ a: 2, b: 2 });
+
+  assert.deepStrictEqual(seen.changes, { a: true, b: true });
+});
+
+test('a held-back silent change is reported in options.changes when it lands', () => {
+  const obj = savedThing('ch3', { a: 1, b: 1 });
+  let seen = null;
+  obj.on('change', (m, options) => { seen = options; });
+
+  obj.set('a', 2, { silent: true });
+  assert.strictEqual(seen, null, 'silent means silent');
+
+  obj.set('b', 2);
+  assert.deepStrictEqual(seen.changes, { a: true, b: true },
+    'the silent change is reported alongside the next real one, as 1.5 did');
+});
+
+test('change:<attr> gets the same options object as change', () => {
+  const obj = savedThing('ch4', { a: 1 });
+  let fromAttr = null;
+  let fromChange = null;
+  obj.on('change:a', (m, value, options) => { fromAttr = options; });
+  obj.on('change', (m, options) => { fromChange = options; });
+
+  obj.set('a', 2);
+
+  assert.strictEqual(fromAttr, fromChange);
+  assert.deepStrictEqual(fromAttr.changes, { a: true });
+});

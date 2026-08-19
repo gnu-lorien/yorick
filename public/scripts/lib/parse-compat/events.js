@@ -183,10 +183,35 @@
       }
       model._compatPrevious = before;
 
-      for (var m = 0; m < pending.length; m++) {
-        model.trigger('change:' + pending[m], model, model.get(pending[m]), options || {});
+      // `options.changes`, which 1.5's listeners are written against.
+      //
+      // Parse 1.5's `set` seeded `options.changes = {}` (parse-1.5.0.js:5307)
+      // and filled it with `options.changes[attr] = true` per real change
+      // (:5347) before handing that same object to every `change` trigger
+      // (:5798). So a listener's second argument carries WHICH attributes
+      // moved, not merely that something did.
+      //
+      // `Character.on_update_experience_notation` (Character.js:495) is bound
+      // to the ExperienceNotation collection's forwarded `change` and opens
+      // with `var c = changes.changes; if (c.entered) {...}`. Without this it
+      // dies on "Cannot read properties of undefined (reading 'entered')" --
+      // and because it is reached through `join_troupe`'s promise chain, the
+      // failure surfaced as `character_join_troupe` bouncing the hash back to
+      // `#character?<cid>` with nothing logged.
+      //
+      // 1.5 mutated the CALLER's options object rather than copying it, and so
+      // does this: a listener that keeps the options around sees the same
+      // accumulation it always did.
+      var eventOptions = options || {};
+      if (!eventOptions.changes) eventOptions.changes = {};
+      for (var c = 0; c < pending.length; c++) {
+        eventOptions.changes[pending[c]] = true;
       }
-      model.trigger('change', model, options || {});
+
+      for (var m = 0; m < pending.length; m++) {
+        model.trigger('change:' + pending[m], model, model.get(pending[m]), eventOptions);
+      }
+      model.trigger('change', model, eventOptions);
 
       return result;
     }
