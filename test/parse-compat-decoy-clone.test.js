@@ -277,3 +277,38 @@ test('a silent addUnique does not leak its options into the next set', () => {
   assert.deepStrictEqual(fired, ['change']);
   assert.strictEqual(obj.get('other'), 2);
 });
+
+// --- the `saved` event, which parse@8 has no equivalent for ---
+
+test('a completed save fires "saved", as parse-1.5.0.js:5112 did', () => {
+  // Five sub-views of the creation wizard re-render on this event
+  // (CharacterCreateViewNew.js:230, 257, 284, 322, 361), which is how the
+  // pool counters move. `_handleSaveResponse` is parse@8's `_finishSave`.
+  const obj = savedThing('sv1', { remaining: 3 });
+  const seen = [];
+  obj.on('saved', (m) => seen.push(m));
+
+  obj._handleSaveResponse({ objectId: 'sv1', remaining: 2 }, 200);
+
+  assert.strictEqual(seen.length, 1);
+  assert.strictEqual(seen[0], obj, 'the event carries the object, as 1.5 did');
+});
+
+test('"saved" fires after the response has been merged, not before', () => {
+  const obj = savedThing('sv2', { remaining: 3 });
+  let atFireTime = null;
+  obj.on('saved', () => { atFireTime = obj.get('remaining'); });
+
+  obj._handleSaveResponse({ objectId: 'sv2', remaining: 2 }, 200);
+
+  assert.strictEqual(atFireTime, 2,
+    'a listener that re-renders must see the saved values, not the old ones');
+});
+
+test('an object nobody saved never fires "saved"', () => {
+  const obj = savedThing('sv3', { remaining: 3 });
+  let fired = 0;
+  obj.on('saved', () => { fired++; });
+  obj.set('remaining', 1);
+  assert.strictEqual(fired, 0);
+});

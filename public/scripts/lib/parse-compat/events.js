@@ -270,6 +270,42 @@
       };
     }
 
+    // The `saved` event, from `parse-1.5.0.js:5112`.
+    //
+    // 1.5's `_finishSave` ended with `self.trigger('saved', self)` once the
+    // server response had been merged. parse@8 removed object events entirely,
+    // and this layer restored only `change` -- but eleven live listeners in five
+    // files are bound to `saved`, and they are not cosmetic:
+    //
+    //   CharacterCreateViewNew.js:230, 257, 284, 322, 361
+    //       `listenTo(self.model.get("creation"), "saved", self.render)` --
+    //       the creation wizard's pool counters. Without it the badges never
+    //       move: measured, a Vampire whose `disciplines_2_remaining` had gone
+    //       1 -> 0 on the server still rendered "Disciplines 3", so the next
+    //       pick was refused by the route with "No creation picks left for
+    //       disciplines at rating 2" and six specs died in
+    //       `spendAllCreationPools`. A hard reload showed the correct 2, which
+    //       is what pinned it on the render rather than the arithmetic.
+    //
+    //   Character.js:634  `self.on("saved", self.update_recorded_changes)`
+    //   CharacterApprovalView.js:132, 189 and CharactersPrintView.js:124, 181
+    //
+    // `_handleSaveResponse` is parse@8's `_finishSave`: it merges the response
+    // and it is called per object on BOTH save paths, the single request
+    // (`parse-8.6.0.js:44863`) and the batch (`:44814`), so children saved as
+    // part of a deep save get their event too -- as they did in 1.5.
+    //
+    // 1.5 also fired `sync`, `error` and `destroy`; nothing in this app listens
+    // for those, so they are left out rather than guessed at.
+    var originalHandleSaveResponse = proto._handleSaveResponse;
+    if (typeof originalHandleSaveResponse === 'function') {
+      proto._handleSaveResponse = function () {
+        var result = originalHandleSaveResponse.apply(this, arguments);
+        this.trigger('saved', this);
+        return result;
+      };
+    }
+
     proto.previousAttributes = function () {
       return this._compatPrevious || {};
     };
