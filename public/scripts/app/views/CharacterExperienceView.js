@@ -278,8 +278,24 @@ define([
             // A popup that is currently open is deliberately left alone:
             // removing it would take the dialog away from whoever is typing in
             // it, which is a worse bug than the leak.
+            //
+            // "Open" is `ui-popup-hidden`, not `ui-popup-active`. jQuery Mobile
+            // un-hides the container first and marks it active only once the
+            // open prerequisites finish: `container.removeClass(
+            // "ui-popup-hidden" )` at jquery.mobile-1.4.5.js:11023, then
+            // `container.addClass( "ui-popup-active" )` at :10969, one screen
+            // fade later. Between the two the dialog is on screen and being
+            // typed into while carrying neither class -- and this sweep, keyed
+            // off `ui-popup-active`, deleted it.
+            //
+            // Measured: the reason popup opened, accepted its text, and was
+            // gone by the time the Update button was clicked; the failure
+            // snapshot shows the notations table with no popup anywhere.
+            // Closing works the same way round (`ui-popup-active` removed at
+            // :11079 before `ui-popup-hidden` is added at :11056), so hidden is
+            // the only class that means "not on screen" at both ends.
             var stale_popups = "#popupEditEntered, #popupEditReason, #alterationpopupEdit";
-            $(".ui-popup-container").not(".ui-popup-active").each(function () {
+            $(".ui-popup-container.ui-popup-hidden").each(function () {
                 var container = $(this);
                 if (container.find(stale_popups).length) {
                     container.remove();
