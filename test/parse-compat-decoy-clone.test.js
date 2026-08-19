@@ -404,3 +404,39 @@ test('a pointer to something never fetched is left alone', () => {
   assert.strictEqual(ptr.id, 'never');
   assert.strictEqual(ptr.get('name'), undefined);
 });
+
+// --- the destroy event, which is how a collection drops a row ---
+
+test('destroy() fires "destroy" and the collection drops the model', () => {
+  // parse-1.5.0.js:5699. Backbone's Collection._onModelEvent does
+  // `if (event === 'destroy') this.remove(model, options)` (backbone.js:945),
+  // which is the only thing that takes a destroyed row out of a live list.
+  const c = new Parse.Collection([], { model: Thing });
+  const obj = savedThing('gone1', { name: 'x' });
+  c.add(obj);
+  assert.strictEqual(c.length, 1);
+
+  let fired = null;
+  obj.on('destroy', (m) => { fired = m; });
+
+  // Optimistic, as 1.5 was: the event is fired before the request, so this
+  // does not need the request to succeed.
+  // `.fail` no longer recovers a chain (see parse-compat/promise.js), so the
+  // rejection is absorbed by handing back a fresh promise rather than a value.
+  obj.destroy().fail(() => Parse.Promise.as());
+
+  assert.strictEqual(fired, obj);
+  assert.strictEqual(c.length, 0, 'the collection removed it');
+});
+
+test('destroy({wait: true}) holds the event until the request succeeds', async () => {
+  const c = new Parse.Collection([], { model: Thing });
+  const obj = savedThing('gone2', { name: 'x' });
+  c.add(obj);
+
+  const settled = new Promise((resolve) => {
+    obj.destroy({ wait: true }).always(() => resolve());
+  });
+  assert.strictEqual(c.length, 1, 'still there while the request is in flight');
+  await settled;
+});

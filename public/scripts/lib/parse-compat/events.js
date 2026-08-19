@@ -522,6 +522,76 @@
       }
     }
 
+    // The `destroy` event, which is how a Backbone collection drops a row.
+    //
+    // Parse 1.5 fired it from `destroy` (parse-1.5.0.js:5699) and from
+    // `destroyAll` (:4652), both as
+    // `model.trigger('destroy', model, model.collection, options)`. Nothing in
+    // this app listens for it directly -- Backbone does, in
+    // `Collection._onModelEvent`: `if (event === 'destroy') this.remove(model,
+    // options)` (backbone.js:945). That is the only thing that takes a
+    // destroyed row out of a live collection, and therefore out of the list a
+    // Marionette CollectionView is rendering.
+    //
+    // Measured without it: deleting a Patronage removed the row server-side --
+    // the test's own `Parse.Query('Patronage').get(id)` threw -- and the admin
+    // listing still rendered a link to it.
+    //
+    // 1.5's timing is optimistic and is preserved: the event fires BEFORE the
+    // request unless `options.wait` is set, which is what makes the list update
+    // the moment the button is pressed rather than a round trip later.
+    if (typeof proto.destroy === 'function' && !proto.destroy.__compatTriggersDestroy) {
+      var originalDestroy = proto.destroy;
+      var destroyWithEvent = function (options) {
+        var self = this;
+        var opts = options || {};
+        var fire = function () {
+          self.trigger('destroy', self, self.collection, opts);
+        };
+        if (!self.id || !opts.wait) {
+          fire();
+          return originalDestroy.call(self, options);
+        }
+        var result = originalDestroy.call(self, options);
+        if (result && typeof result.then === 'function') {
+          return result.then(function (value) { fire(); return value; });
+        }
+        fire();
+        return result;
+      };
+      destroyWithEvent.__compatTriggersDestroy = true;
+      proto.destroy = destroyWithEvent;
+    }
+
+    if (typeof ParseObject.destroyAll === 'function' &&
+        !ParseObject.destroyAll.__compatTriggersDestroy) {
+      var originalDestroyAll = ParseObject.destroyAll;
+      var destroyAllWithEvents = function (list, options) {
+        var result = originalDestroyAll.apply(this, arguments);
+        // 1.5 fired per object, unconditionally, alongside the batch
+        // (parse-1.5.0.js:4650-4653).
+        if (Array.isArray(list)) {
+          for (var i = 0; i < list.length; i++) {
+            var member = list[i];
+            if (member && typeof member.trigger === 'function') {
+              member.trigger('destroy', member, member.collection, options || {});
+            }
+          }
+        }
+        return result;
+      };
+      destroyAllWithEvents.__compatTriggersDestroy = true;
+      try {
+        ParseObject.destroyAll = destroyAllWithEvents;
+      } catch (err) {
+        try {
+          Object.defineProperty(ParseObject, 'destroyAll', {
+            configurable: true, writable: true, value: destroyAllWithEvents
+          });
+        } catch (err2) { /* leave the SDK's in place */ }
+      }
+    }
+
     // `fetchAllIfNeeded` with nothing to fetch must not hit the network.
     //
     // Parse 1.5 short-circuited: `_fetchAll` built the id list first and
