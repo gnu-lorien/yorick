@@ -138,9 +138,54 @@
         next.reject(err);
         return;
       }
-      // A rejection handler that returns normally recovers the chain, exactly
-      // as `.catch` does natively and as the original Parse.Promise did.
-      next.resolve(result);
+      if (settled._state === FULFILLED) {
+        next.resolve(result);
+        return;
+      }
+
+      // A rejection handler does NOT recover the chain unless it hands back a
+      // promise. This is the one place where reading `parse-1.5.0.js` and
+      // reasoning about "what promises do" give different answers, and the
+      // reading wins.
+      //
+      // 1.5 ships `_isPromisesAPlusCompliant: false` (`:3892`) and nothing in
+      // this app turns it on. In that mode the rejection branch ends
+      // (`:4116-4127`):
+      //
+      //     if (result.length === 1 && Parse.Promise.is(result[0])) {
+      //       result[0].then(resolve, reject);          // adopt it
+      //     } else if (Parse.Promise._isPromisesAPlusCompliant) {
+      //       promise.resolve.apply(promise, result);   // NOT taken
+      //     } else {
+      //       promise.reject(result[0]);                // taken
+      //     }
+      //
+      // So a `.fail` whose handler returns nothing leaves the chain rejected --
+      // rejected with that return value, not with the original error. The app
+      // is written against exactly that:
+      //
+      //     .fail(PromiseFailReport).fail(function () { window.location.hash = back_url; })
+      //
+      // in `mobileRouter.show_character_helper`. `PromiseFailReport` logs and
+      // returns undefined, and the second handler is what puts a player who
+      // opened someone else's sheet back on `#characters?all`. Treating the
+      // first handler as a recovery makes the second dead code and leaves the
+      // hash pointing at a character the player cannot read.
+      //
+      // The same rule is what keeps `.always(cb).then(...)` working: `always`
+      // is `then(cb, cb)` (`:4169`), and when its callback returns a promise
+      // the adopt branch above runs, so
+      // `Character.add_experience_notation`'s
+      // `.always(function () { return self.get_experience_notations(); })`
+      // still resolves with the notations. An earlier version of this file
+      // made `always` re-emit the ORIGINAL outcome and discard the callback's
+      // return value; that is a different thing, and it broke character
+      // creation.
+      if (isThenable(result)) {
+        next.resolve(result);
+      } else {
+        next.reject(result);
+      }
     });
     return next;
   };

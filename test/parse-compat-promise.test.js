@@ -176,23 +176,32 @@ test('always() runs on success, and its return value REPLACES the value', async 
   assert.strictEqual(downstream, 'replaced');
 });
 
-test('always() SWALLOWS the rejection, as then(cb, cb) does', () => {
-  // Verified against parse-1.5.0.js:4169 -- `always: function(callback) {
-  // return this.then(callback, callback); }`. An earlier version of the shim
-  // re-emitted the original outcome because swallowing looked wrong; that was
-  // reasoning about what ought to happen instead of reading what did, and it
-  // broke character creation.
+test('always() runs on rejection and leaves the chain rejected', () => {
+  // `always` is `then(callback, callback)` (parse-1.5.0.js:4169), and the
+  // rejection branch of 1.5's `then` ends at `promise.reject(result[0])`
+  // (:4126) because `_isPromisesAPlusCompliant` is false (:3892) and nothing
+  // in this app turns it on. So the callback runs, its return value becomes
+  // the new rejection reason, and a `.fail` after it DOES fire.
+  //
+  // An earlier version of this shim treated the rejection as recovered, on the
+  // reasoning that `then(cb, cb)` "absorbs" it. That is what `.catch` does; it
+  // is not what 1.5 did, and it made `mobileRouter`'s redirect-on-denial
+  // handlers dead code.
   const calls = [];
   let reachedFail = false;
-  return P.error(new Error('boom'))
-    .always(() => calls.push('always'))
-    .fail(() => { reachedFail = true; })
-    .then(() => {
-      assert.deepStrictEqual(calls, ['always']);
-      assert.strictEqual(reachedFail, false,
-        'the rejection is converted to fulfilment, so .fail after .always is dead code -- ' +
-        'true of this app today and preserved deliberately');
-    });
+  return new Promise((resolve, reject) => {
+    P.error(new Error('boom'))
+      .always(() => calls.push('always'))
+      .fail(() => { reachedFail = true; })
+      .always(() => {
+        try {
+          assert.deepStrictEqual(calls, ['always']);
+          assert.strictEqual(reachedFail, true,
+            '.fail after .always is live, as it is in parse-1.5.0.js');
+          resolve();
+        } catch (err) { reject(err); }
+      });
+  });
 });
 
 test('always() propagates its callback return value', () => {
@@ -210,23 +219,45 @@ test('always() propagates its callback return value', () => {
 
 test('the real chain shape from mobileRouter: done -> always -> fail', () => {
   const order = [];
-  return P.error(new Error('nope'))
-    .done(() => order.push('done'))
-    .always(() => order.push('always'))
-    .fail(() => order.push('fail'))
-    .then(() => {
-      assert.deepStrictEqual(order, ['always'],
-        'done is skipped; always runs and absorbs the rejection, so fail never fires');
-    });
+  return new Promise((resolve, reject) => {
+    P.error(new Error('nope'))
+      .done(() => order.push('done'))
+      .always(() => order.push('always'))
+      .fail(() => order.push('fail'))
+      .always(() => {
+        try {
+          assert.deepStrictEqual(order, ['always', 'fail'],
+            'done is skipped; always runs, and the rejection survives it to reach fail');
+          resolve();
+        } catch (err) { reject(err); }
+      });
+  });
 });
 
 // --------------------------------------------------------------------------
 // then semantics
 // --------------------------------------------------------------------------
 
-test('a rejection handler that returns normally recovers the chain', async () => {
+test('a rejection handler that returns a value does NOT recover the chain', async () => {
+  // parse-1.5.0.js:4126, non-A+ mode: `promise.reject(result[0])`. The
+  // handler's return value becomes the next rejection reason.
+  let resolvedWith = null;
+  let rejectedWith = 'untouched';
+  P.error(new Error('x'))
+    .fail(() => 'not a recovery')
+    .then((v) => { resolvedWith = v; }, (e) => { rejectedWith = e; });
+  await tick();
+  assert.strictEqual(resolvedWith, null, 'the chain did not resolve');
+  assert.strictEqual(rejectedWith, 'not a recovery',
+    'it stays rejected, carrying the handler return value');
+});
+
+test('a rejection handler that returns a PROMISE does recover the chain', async () => {
+  // The one branch 1.5 takes before the reject: `if (Parse.Promise.is(result[0]))`
+  // adopts it (parse-1.5.0.js:4116-4122). This is what keeps
+  // `.always(function () { return self.get_experience_notations(); })` usable.
   let recovered = null;
-  P.error(new Error('x')).fail(() => 'recovered').then((v) => { recovered = v; });
+  P.error(new Error('x')).fail(() => P.as('recovered')).then((v) => { recovered = v; });
   await tick();
   assert.strictEqual(recovered, 'recovered');
 });
