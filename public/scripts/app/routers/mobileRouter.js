@@ -1642,10 +1642,17 @@ define([
             self.set_back_button("#simpletraits/" + category + "/" + cid + "/all");
             self.withSimpleTraitChangeView(function () {
                 self.get_character(cid, [category]).then(function (character) {
+                    // Coerced, because these come off the URL and
+                    // `SimpleTraitMixin.validate` rejects a non-finite `value`
+                    // or `free_value`. Parse 1.5 constructed silently and never
+                    // validated (parse-1.5.0.js:4526 -> :5917); parse@8 throws,
+                    // and the throw arrives as "Can't create an invalid Parse
+                    // Object" with no clue which field was wrong. A hand-typed
+                    // or stale hash should land on a page, not kill the route.
                     var trait = new SimpleTrait({
                         name: decodeURIComponent(name),
-                        value: _.parseInt(value),
-                        free_value: _.parseInt(free_value),
+                        value: _.parseInt(value) || 0,
+                        free_value: _.parseInt(free_value) || 0,
                         category: category,
                     });
                     self.simpleTraitChangeView.register(character, trait, category);
@@ -1660,10 +1667,11 @@ define([
             var self = this;
             self.set_back_button("#simpletraits/" + category + "/" + cid + "/all");
             self.get_character(cid, [category]).then(function (character) {
+                // Coerced for the same reason as `simpletraitnew` above.
                 var trait = new SimpleTrait({
                     name: decodeURIComponent(name),
-                    value: _.parseInt(value),
-                    free_value: _.parseInt(free_value)
+                    value: _.parseInt(value) || 0,
+                    free_value: _.parseInt(free_value) || 0
                 })
                 return self.simpleTraitNewSpecializationView.register(
                     trait,
