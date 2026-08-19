@@ -11,6 +11,26 @@
 > and re-run before believing a small NEW-FAIL count.
 
 
+> **Second correction, 2026-08-19.** Re-measured across five consecutive
+> eight-worker runs at the end of the parse@8 work (`runs/m17` … `m20`, plus a
+> four-worker `m16`). One run was completely clean — `m18`, 447 same-pass, 0
+> NEW-FAIL — and every other failure in those five was test 49 or test 114,
+> never anything else.
+>
+> The useful new datum is that **test 49 fails with a byte-identical signature
+> on both stacks**. `runs/candidate.json`, `runs/vendor.json` and `runs/w4a.json`
+> were recorded on the LEGACY stack, and all three carry exactly
+> `expect(received).toBe(expected) // Expected: 2, Received: undefined` at
+> `admin-referendums.spec.js:452:45` — the same string `m17` and `m20` produce
+> under parse@8. In those legacy runs 49 and 114 failed as a pair; under
+> parse@8 they have been failing singly. So this is the harness, not the SDK,
+> and the migration did not change it.
+>
+> Rate on a machine that had been running suites back to back for six hours:
+> roughly one in three, which is worse than the one-in-seven above and is
+> probably what sustained load does to it. On a quiet machine, treat
+> one-in-seven as the figure and re-run.
+
 **Measured 2026-08-18 on `claude/office-hours-upgrade-plan-092d60`.**
 
 Two consecutive double-runs of the full suite, each diffed against its own pair
