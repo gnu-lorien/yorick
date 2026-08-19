@@ -44,7 +44,7 @@
   'use strict';
 
   /**
-   * Replace `Parse.Query` with a subclass that records its `objectClass`.
+   * Record `objectClass` on every query the app builds, and cast results.
    *
    * Idempotent. Returns the namespace.
    */
@@ -64,43 +64,38 @@
       return null;
     }
 
+    // The wrappers go on the SDK's OWN prototype, not on a fresh one.
+    //
+    // This matters more than it looks. `thenable.js` runs after this and does
+    // `wrap(Parse.Query.prototype, 'find')` and friends, which is what gives
+    // every query result a `.fail`/`.always`/`.done`. Giving Parse.Query a
+    // separate prototype means thenable patches only the queries the APP
+    // constructs -- and the SDK builds plenty of its own, `ParseRelation.query()`
+    // and `eachBatch`'s internal clone among them. Measured, when this file
+    // first did that: `initialize_troupe_membership` does
+    // `self.troupes.query().each(...).then(...)`, whose promise came back
+    // native, and the whole character route died on
+    // "self.get_character(...).done is not a function" -- the app stuck on the
+    // splashscreen for ten specs.
+    //
+    // So: one prototype, shared, and the wrappers no-op unless the query
+    // actually carries an objectClass that asked to be cast.
+    //
     // `find` and `first` are the only two places the SDK turns JSON into
     // objects; `get` is `first` with an objectId constraint
     // (`parse-8.6.0.js:45641`), so it is covered by wrapping `first`.
     //
     // `each`/`eachBatch` are wrapped separately rather than through `find`,
     // because `eachBatch` runs its pages through a CLONE it builds itself with
-    // `ParseQuery.fromJSON(this.className, ...)` (`:45860`) -- a plain Base
-    // instance that never saw the objectClass. Casting in the callback reaches
-    // the same objects without having to reconstruct that clone.
+    // `ParseQuery.fromJSON(this.className, ...)` (`:45860`) -- a fresh instance
+    // that never saw the objectClass. Casting in the callback reaches the same
+    // objects without having to reconstruct that clone.
     var originalFind = proto.find;
     var originalFirst = proto.first;
     var originalEachBatch = proto.eachBatch;
     var originalEach = proto.each;
 
-    var Compat = function ParseCompatQuery(objectClass) {
-      var self = new.target
-        ? Reflect.construct(Base, arguments, new.target)
-        : new Base(objectClass);
-      if (objectClass && typeof objectClass === 'function' &&
-          typeof objectClass.__compatCast === 'function') {
-        Object.defineProperty(self, '__compatObjectClass', {
-          configurable: true, enumerable: false, writable: true, value: objectClass
-        });
-      }
-      return self;
-    };
-
-    // Statics (`fromJSON`, `or`, `and`, `nor`, ...) resolve through the
-    // prototype chain rather than being copied, so nothing has to be kept in
-    // step when the SDK grows one.
-    Object.setPrototypeOf(Compat, Base);
-    Compat.prototype = Object.create(proto, {
-      constructor: { value: Compat, enumerable: false, writable: true, configurable: true }
-    });
-    Compat.__compatQuery = true;
-
-    Compat.prototype.find = function (options) {
+    proto.find = function (options) {
       var cast = castFor(this);
       var result = originalFind.call(this, options);
       if (!cast) return result;
@@ -115,14 +110,14 @@
       });
     };
 
-    Compat.prototype.first = function (options) {
+    proto.first = function (options) {
       var cast = castFor(this);
       var result = originalFirst.call(this, options);
       if (!cast) return result;
       return result.then(function (object) { return object ? cast(object) : object; });
     };
 
-    Compat.prototype.eachBatch = function (callback, options) {
+    proto.eachBatch = function (callback, options) {
       var cast = castFor(this);
       if (!cast) return originalEachBatch.call(this, callback, options);
       return originalEachBatch.call(this, function (results) {
@@ -131,13 +126,35 @@
       }, options);
     };
 
-    Compat.prototype.each = function (callback, options) {
+    proto.each = function (callback, options) {
       var cast = castFor(this);
       if (!cast) return originalEach.call(this, callback, options);
       return originalEach.call(this, function (object) {
         return callback(object ? cast(object) : object);
       }, options);
     };
+
+    // The constructor exists only to record the objectClass. It returns a plain
+    // SDK query -- a constructor that returns an object yields that object --
+    // so there is exactly one kind of query instance in the process.
+    var Compat = function ParseCompatQuery(objectClass) {
+      var query = new Base(objectClass);
+      if (objectClass && typeof objectClass === 'function' &&
+          typeof objectClass.__compatCast === 'function') {
+        Object.defineProperty(query, '__compatObjectClass', {
+          configurable: true, enumerable: false, writable: true, value: objectClass
+        });
+      }
+      return query;
+    };
+
+    // Statics (`fromJSON`, `or`, `and`, `nor`, ...) resolve through the
+    // prototype chain rather than being copied, so nothing has to be kept in
+    // step when the SDK grows one. The prototype is shared outright, so
+    // `q instanceof Parse.Query` is still true for every query.
+    Object.setPrototypeOf(Compat, Base);
+    Compat.prototype = proto;
+    Compat.__compatQuery = true;
 
     try {
       Parse.Query = Compat;
