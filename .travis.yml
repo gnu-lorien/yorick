@@ -1,11 +1,12 @@
+# Node 8 and g++-4.8 were here to build the native `bcrypt` addon, which this
+# tree no longer needs: seed_db.js uses `bcryptjs` directly (pure JS, no
+# toolchain) since c666b31, and parse-server's own `bcrypt` is an
+# optionalDependency that is not installed.
+#
+# The version tracks package.json's `engines`. It is not a free choice:
+# mongodb-memory-server, required at boot by index.js, declares node >=20.19,
+# and parse-server 9.10.0 will require the same at Step 13.
 language: node_js
 node_js:
-  - "8"
-env:
-  - CXX=g++-4.8
-addons:
-  apt:
-    sources:
-      - ubuntu-toolchain-r-test
-    packages:
-      - g++-4.8
+  - "20.19"
+  - "22"
