@@ -31,6 +31,73 @@
 > probably what sustained load does to it. On a quiet machine, treat
 > one-in-seven as the figure and re-run.
 
+> **Third correction, 2026-08-20, S10 Step 2.** Both corrections above understate
+> this, and the way they understate it is the reason it matters. They count
+> *failures*; the number that decides whether a migration can be measured is the
+> count of tests that stop producing a verdict.
+>
+> Measured across every recorded eight-worker run of unchanged code
+> (`m16`–`m20`, `s10-baseA`, `s10-baseB`):
+>
+> | run | failed | coverage lost to its serial tail |
+> |---|---|---|
+> | m16 | 114 | 14 |
+> | m17 | 49 | 4 |
+> | m18 | — | 0 |
+> | m19 | 114 | 14 |
+> | m20 | 49 | 4 |
+> | s10-baseA | — | 0 |
+> | s10-baseB | 114 **and 54** | 36 |
+>
+> **Two of seven runs are clean, not six of seven.** The earlier figure counted
+> the runs that were declared clean during the browser phase, when a NEW-FAIL
+> count of 1–2 was read as "the known flakes" and waved through. It is the same
+> data; what changed is that the gate now counts the tests each flake *strands*
+> rather than the flakes themselves.
+>
+> **The cost is not one test, it is the serial tail.** 17 of 21 spec files are
+> `mode: 'serial'`, so a failure aborts the rest of its file. Test 114 takes 14
+> tests with it, test 54 takes 22, test 49 takes 4. `s10-baseB` reports 2
+> failures and loses 38 tests — 8.5% of the suite going dark while the headline
+> number says "2".
+>
+> **Test 54 is not fixed.** `parse8-remaining-queue.md:85` records it as
+> "load-sensitive before it was fixed". Measured on a 32-CPU box with 43 GB
+> free, no orphaned processes, and the file running *alone* on one worker:
+>
+> | attempt | result |
+> |---|---|
+> | s10-baseB, 8 workers | FAIL |
+> | heal-xp, 1 file alone | FAIL, and FAIL again on the retry |
+> | heal-xp2, 1 file alone | PASS, 23/23, 41s |
+>
+> Three failures and one pass with less load than the runs it was said to need.
+> Whatever 54 is sensitive to, it is not machine load, and the isolation runs
+> rule out worker contention as the mechanism.
+>
+> **The mechanism is the popup lifecycle, not the harness.** Every failure lands
+> in `submitActivePopup` (`e2e/helpers/jqm-helpers.js:292`) with the same shape:
+> the submit button *resolves*, then oscillates `not stable` → `not visible` for
+> the full 20s. Playwright's `click()` already auto-waits for visible, stable and
+> enabled, so this is not a missing wait in the test — the element is being torn
+> down and rebuilt underneath the click. `jqm-helpers.js:265-275` records the app
+> side directly: "4 to 7 copies of `#popupEditReason` can be live at once", and
+> "fixing that did NOT stop `xp-history` 75 being flaky, so it is not the whole
+> story."
+>
+> Tests 54, 75, 114 and 360 are the same defect wearing four numbers, and it is
+> in `CharacterExperienceView` and the jQuery Mobile popup teardown — code this
+> migration changed. Commits `1b24a57`, `eeebc30`, `8ac6ac0` and `3f5813e` each
+> took a piece of it. It is not finished.
+>
+> **Consequence for S10.** The differential is the entire strategy for the server
+> phase, and a clean full run is currently the exception rather than the rule. A
+> server change measured against this harness produces an ambiguous answer more
+> often than a trustworthy one. The gate reports this honestly — stranded
+> coverage exits 3, never 0 — so nothing is silently lost; the cost is paid in
+> re-runs instead, and the plan's 25–36 run budget does not include them.
+
+
 **Measured 2026-08-18 on `claude/office-hours-upgrade-plan-092d60`.**
 
 Two consecutive double-runs of the full suite, each diffed against its own pair
