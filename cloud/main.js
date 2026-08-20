@@ -866,19 +866,21 @@ Parse.Cloud.define("make_me_admin", function(request, response) {
     });
 });
 
-Parse.Cloud.beforeSave("VampireApproval", function(request, response) {
+compat.beforeSave("VampireApproval", function(request) {
     if (!request.user) {
-        return response.error("Unauthorized: Must be logged in to create approvals.");
+        throw new Parse.Error(Parse.Error.SCRIPT_FAILED,
+            "Unauthorized: Must be logged in to create approvals.");
     }
     var approval = request.object;
     var character = approval.get("owner");
     if (!character) {
-        return response.error("Approval must have an associated character owner.");
+        throw new Parse.Error(Parse.Error.SCRIPT_FAILED,
+            "Approval must have an associated character owner.");
     }
 
     var charQuery = new Parse.Query("Vampire");
     charQuery.include("owner");
-    charQuery.get(character.id, {useMasterKey: true}).then(function (vampire) {
+    return charQuery.get(character.id, {useMasterKey: true}).then(function (vampire) {
         var owner = vampire.get("owner");
         var isOwner = owner && owner.id === request.user.id;
 
@@ -917,10 +919,16 @@ Parse.Cloud.beforeSave("VampireApproval", function(request, response) {
         acl.setReadAccess(request.user, true);
         acl.setWriteAccess(request.user, true);
         approval.setACL(acl);
-        response.success();
     }, function (error) {
+        // Do not simplify this normalisation. It is what turns the bare strings
+        // `Parse.Promise.error(...)` rejects with above into a client-visible
+        // message, and those two messages are asserted verbatim by four
+        // `toContain`s in approvals.spec.js. Wrapping in a Parse.Error here is
+        // exactly what 2.8.4's getResponseObject.error did with the bare string
+        // it used to be handed (triggers.js:253), so the wire is unchanged:
+        // same code 141, same message, same JSON.
         var msg = error && error.message ? error.message : (typeof error === "string" ? error : "Approval rejected.");
-        response.error(msg);
+        throw new Parse.Error(Parse.Error.SCRIPT_FAILED, msg);
     });
 });
 
