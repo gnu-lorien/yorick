@@ -117,7 +117,21 @@ async function startServer() {
     "databaseURI": databaseURI,
     "mountPath": process.env.MOUNT_PATH || "/parse/1",
     "cloud": process.env.CLOUD_CODE_MAIN || path.join(__dirname, 'cloud', 'main.js'),
-    "verbose": true,
+    // parse-server 2.8.4 defaults this TRUE and every version from 3.0 on
+    // defaults it FALSE (lib/Options/Definitions.js, "defaults to true" vs
+    // "defaults to false"). Left implicit it would flip underneath the bump.
+    // All 30 classes the app persists are declared in
+    // database_seed/_SCHEMA.json, so a seeded database never needs it; the
+    // exposure is a production schema the seeder has never touched.
+    "allowClientClassCreation": false,
+    // Every request and response body is logged at this level. One local day
+    // of E2E runs produced a 3.9 GB log, and on a dyno all of it goes to the
+    // platform log drain -- character sheet bodies included. VERBOSE is
+    // parse-server's own switch for it (lib/defaults.js) and reads the same
+    // way in 2.8.4 and 9.10.0, so this is the gate that survives the bump.
+    // parse-server.err stays at level "error" regardless
+    // (Adapters/Logger/WinstonLogger.js:56), so the error log is unaffected.
+    "verbose": process.env.VERBOSE ? true : false,
     "publicServerURL": process.env.PUBLIC_SERVER_URL || "https://yorick-latest-parse-server-gnu-lorien.c9users.io/parse/1",
     "serverURL": "http://0.0.0.0:" + port + "/parse/1"
   };
