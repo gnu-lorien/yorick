@@ -53,7 +53,7 @@ var create_thumbnail = function(portrait, input_image, size) {
     });
 }
 
-var crop_and_thumb = function(req, res) {
+var crop_and_thumb = function(req) {
     var portrait = req.object;
     var THUMBNAIL_SIZES = [32, 64, 128, 256];
     var needed_sizes = [];
@@ -71,13 +71,16 @@ var crop_and_thumb = function(req, res) {
     })
 
     if (0 == needed_sizes.length) {
-        res.success();
+        // Returns `undefined`, not a promise, and that is intended on both
+        // versions: the seam calls `response.success()` for a non-thenable, and
+        // parse-server 9 ignores a returned `undefined`. There is nothing to
+        // wait for - every thumbnail already exists.
         return;
     }
 
     var original_url = portrait.get("original").url();
 
-    Image.read(original_url).then(function (image) {
+    return Image.read(original_url).then(function (image) {
         // jimp 0.2.28 can settle this promise with NOTHING, and call it success.
         //
         // Its throwError does `if ("string" == typeof error) error = console.error(error)`
@@ -122,10 +125,6 @@ var crop_and_thumb = function(req, res) {
             promises.push(create_thumbnail(portrait, image, size))
         })
         return Parse.Promise.when(promises);
-    }).then(function () {
-        res.success();
-    }, function (error) {
-        res.error(error);
     });
 };
 
@@ -175,33 +174,14 @@ var require_a_user = function(request, noun) {
     }
 };
 
-// Scaffolding for the Step 6 conversion, deleted in its last slice. Hooks not
-// yet moved onto `compat.beforeSave`/`compat.beforeDelete` still receive a
-// `response` and still read a boolean.
-//
-// Wire-identical to what it replaces: 2.8.4's `getResponseObject.error`
-// (node_modules/parse-server/lib/triggers.js:253) maps a bare string to
-// `new Parse.Error(SCRIPT_FAILED, string)` and passes a `Parse.Error` straight
-// to `reject`, so both spellings put the same code (141) and the same message
-// on the wire.
-var require_a_user_legacy = function(request, response, noun) {
-    try {
-        require_a_user(request, noun);
-    } catch (error) {
-        response.error(error);
-        return false;
-    }
-    return true;
-};
-
-Parse.Cloud.beforeSave("TroupePortrait", function(request, response) {
-    if (!require_a_user_legacy(request, response, "Troupe portraits")) { return; }
-    crop_and_thumb(request, response);
+compat.beforeSave("TroupePortrait", function(request) {
+    require_a_user(request, "Troupe portraits");
+    return crop_and_thumb(request);
 });
 
-Parse.Cloud.beforeSave("CharacterPortrait", function(request, response) {
-    if (!require_a_user_legacy(request, response, "Character portraits")) { return; }
-    crop_and_thumb(request, response);
+compat.beforeSave("CharacterPortrait", function(request) {
+    require_a_user(request, "Character portraits");
+    return crop_and_thumb(request);
 });
 
 var get_vampire_change_acl = function(vampire) {
