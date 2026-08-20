@@ -6,3 +6,11 @@
 # the one that was committed -- harmless to JSON.parse, fatal to "is this the
 # artefact I recorded?".
 runs/*.json -text
+
+# Captured parse-server log lines are evidence too.
+#
+# Every line in these fixtures is real parse-server 2.8.4 output; the whole
+# point of them is that they were not hand-written, so they cannot drift away
+# from the log's real shape. CRLF injected on checkout would make them a file
+# nobody ever measured.
+test/fixtures/hook-counts/**/parse-server.* -text

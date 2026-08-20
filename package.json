@@ -57,6 +57,7 @@
     "audit-permissions": "node audit_db_permissions.js",
     "test:node": "node --test test/*.test.js",
     "test:diff": "node diff-runs.js",
+    "hook-counts": "node hook-counts.js",
     "gate": "node gate.js",
     "test": "node test_runner.js localhost",
     "test:localhost": "node test_runner.js localhost",

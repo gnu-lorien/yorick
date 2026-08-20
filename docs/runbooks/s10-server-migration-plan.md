@@ -149,6 +149,69 @@ So Step 3 is cheaper than budgeted, needs no code change to `cloud/`, and Step 9
 verbose gating does not damage it. **Do not add cloud markers. Do not set
 VERBOSE=1.** Count parse-server's own lines.
 
+**Step 3 is now built: `hook-counts.js`, `npm run hook-counts`.** Four things it
+measured that this section did not know:
+
+1. **It covers the `define` handlers too, free.** `FunctionsRouter.js:153` logs
+   `Ran cloud function <name>` at `level:"info"` with a `functionName` field, and
+   `:164` is the failure. So the same oracle watches 19 of the 23 registrations in
+   `cloud/`, not just the triggers. The four it can never see are
+   `afterSave("PaymentPaypal")`, `check_user_password`, `make_me_admin` and
+   `submit_facebook_profile_data` — nothing exercises them, so they read as zero
+   in every run and always will.
+2. **All eight workers append to ONE log file, and there is no way to tell them
+   apart.** `logsFolder` resolves against `process.cwd()`
+   (`parse-server/lib/defaults.js:11`), and `playwright.config.js` starts every
+   backend as `node index.js` from the repo root — `logs/parse-server.info.2026-08-18`
+   carries requests for all of ports 1337-1344. The trigger lines carry no port,
+   host or pid. **The diff is per-run and aggregate; per-worker is not available
+   even in principle.** That is enough, because a before-trigger that dies under
+   parse-server 9 dies on all eight at once.
+3. **The file is named by DATE, so a naive count is the whole day.**
+   `logs/parse-server.info.2026-08-20` holds 96,913 hook records across the day's
+   ~22 runs; the `runs/s10-baseA.json` run alone is 4,362 of them. Always pass
+   `--run <report.json>` — it takes the window from the report's
+   `stats.startTime`/`duration` — and `--save` to freeze the result before the
+   next run appends.
+4. **A before-trigger record means SETTLED, not entered.** `triggers.js:431`
+   writes it from inside the `response.success` callback, so the parse-server 9
+   failure (no `response`, never settles) makes the count fall to zero. That is a
+   strong signal. An `afterSave` record is written at `:449` right after the
+   trigger returns, before its promise settles and with rejections swallowed, so
+   for the two afterSave hooks it only means *entered*. Weak, and still the only
+   oracle they have.
+
+The before-picture for Step 13 is saved at **`runs/hooks-s10-baseA.json`**,
+windowed to the `runs/s10-baseA.json` gate baseline — gitignored like every other
+run record, so re-derive it with
+`node hook-counts.js logs/parse-server.info.2026-08-20 --run runs/s10-baseA.json --save runs/hooks-s10-baseA.json`
+if it is gone. Compare with
+`node hook-counts.js --diff runs/hooks-s10-baseA.json <new counts>`. Its figures:
+
+| hook | ok | failed | | hook | ok | failed |
+|---|---:|---:|---|---|---:|---:|
+| `Vampire/beforeSave` | 987 | 1 | | `CharacterPortrait/beforeSave` | 2 | 1 |
+| `SimpleTrait/beforeSave` | 865 | 0 | | `TroupePortrait/beforeSave` | 2 | 0 |
+| `SimpleTrait/afterSave` | 865 | 0 | | `VampireApproval/beforeSave` | 12 | 4 |
+| `SimpleTrait/beforeDelete` | 516 | 0 | | `Patronage/afterSave` | 7 | 0 |
+| `VampireCreation/beforeSave` | 500 | 0 | | `get_expected_vampire_ids` | 89 | 0 |
+| `ExperienceNotation/beforeSave` | 282 | 0 | | `get_my_patronage_status` | 23 | 0 |
+| `ExperienceNotation/beforeDelete` | 158 | 0 | | `update_vampire_change_permissions_for` | 10 | 0 |
+| `LongText/beforeSave` | 20 | 0 | | `change_troupe_staff` | 9 | 0 |
+| | | | | `vote_for_referendum` | 4 | 2 |
+| | | | | `get_captured_emails` | 2 | 0 |
+| | | | | `request_password_reset_for` | 1 | 0 |
+
+The `failed` column is not damage. Every one of those eight is a negative-path
+spec getting the rejection it asked for — checked in `logs/parse-server.err.2026-08-20`:
+`VampireApproval` "Players cannot approve their own character changes",
+`Vampire/beforeSave` "Characters can only be changed by a logged in user" on an
+anonymous create probe, `CharacterPortrait` on a `.txt` uploaded as a portrait,
+`vote_for_referendum` "Existing ballot found". They have to stay non-zero too — a
+hook that stops rejecting is as much a regression as one that stops running,
+which is why `hook-counts.js` tracks `ok` and `failed` separately instead of
+summing them.
+
 ### Step 4, answered by the owner
 
 **PayPal patron ingestion is LIVE.** Money still flows `POST /deez` →
