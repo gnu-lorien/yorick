@@ -159,9 +159,17 @@ async function startServer() {
     "verbose": process.env.VERBOSE ? true : false,
     "publicServerURL": process.env.PUBLIC_SERVER_URL || "https://yorick-latest-parse-server-gnu-lorien.c9users.io/parse/1",
     // 127.0.0.1, not 0.0.0.0. `0.0.0.0` is a bind address, not a destination,
-    // and modern parse-server FETCHES serverURL at startup to verify it. The
-    // path follows mountPath rather than duplicating the literal it is mounted
-    // at, so the two cannot disagree.
+    // so anything that dials serverURL needs a real host. The path follows
+    // mountPath rather than duplicating the literal it is mounted at, so the
+    // two cannot disagree.
+    //
+    // NOTE, because the obvious assumption is wrong: parse-server does NOT
+    // verify this at startup on the path we take. `verifyServerUrl()` is
+    // reached only from `startApp()` (ParseServer.js:455); index.js calls
+    // `start()` (:148-233), which never calls it. So a deployed serverURL that
+    // points nowhere produces no boot warning at all -- it produces failures
+    // later, at whatever first dials it. Do not rely on a startup check that
+    // is not there.
     "serverURL": "http://127.0.0.1:" + port + mountPath,
     // 9.10.0 defaults: enableForPublic false, enableForAnonymousUser false,
     // enableForAuthenticatedUser TRUE. Portrait uploads are made by logged-in
