@@ -1,8 +1,8 @@
 var fs = require('fs');
 var path = require('path');
 var MongoClient = require('mongodb').MongoClient;
-var ObjectID = require('mongodb').ObjectID;
-var password = require('parse-server/lib/password');
+var ObjectID = require('mongodb').ObjectId;
+var bcrypt = require('bcryptjs');
 var seedExtra = require('./seed_extra');
 
 function parseEJSON(val) {
@@ -53,7 +53,7 @@ var TEST_USERS = [
 async function seedTestUsers(db) {
   for (var i = 0; i < TEST_USERS.length; i++) {
     var u = TEST_USERS[i];
-    var hashed = await password.hash(u.password);
+    var hashed = await bcrypt.hash(u.password, 10);
     await db.collection('_User').updateOne(
       { username: u.username },
       {
@@ -88,7 +88,7 @@ async function seedTestUsers(db) {
  * rather than as a wall of confusing per-test auth failures.
  */
 async function verifyTestUsers(databaseURI) {
-  var client = await MongoClient.connect(databaseURI, { useNewUrlParser: true });
+  var client = await MongoClient.connect(databaseURI);
   var missing = [];
   try {
     var db = client.db();
@@ -164,7 +164,7 @@ async function seedDatabase(databaseURI, options) {
     return { seeded: false, reason: 'not-allowed' };
   }
 
-  var client = await MongoClient.connect(databaseURI, { useNewUrlParser: true });
+  var client = await MongoClient.connect(databaseURI);
   var db = client.db();
 
   try {

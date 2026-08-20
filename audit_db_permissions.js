@@ -97,7 +97,7 @@ async function auditDatabase(mongoUri, fixMode) {
     console.log(`Connecting to: ${mongoUri}`);
     console.log(`Fix Mode: ${fixMode ? 'ENABLED (Will repair issues)' : 'DISABLED (Read-only check)'}\n`);
 
-    const client = await MongoClient.connect(mongoUri, { useNewUrlParser: true });
+    const client = await MongoClient.connect(mongoUri);
     const db = client.db();
 
     let passed = 0;
