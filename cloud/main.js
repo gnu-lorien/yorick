@@ -314,9 +314,9 @@ compat.beforeSave("Vampire", function(request) {
             vc.setACL(acl);
             return vc;
         }), {useMasterKey: true});
-    }).fail(function (error) {
+    }).catch(function (error) {
         console.log(error.message);
-        // See beforeDelete("SimpleTrait"): a `.fail` handler that returns
+        // See beforeDelete("SimpleTrait"): a `.catch` handler that returns
         // normally recovers the chain, and would allow a character save whose
         // audit rows failed to write.
         throw error;
@@ -580,7 +580,7 @@ var record_experience_notation = function (notation, type, user) {
     save_experience_notation_change(
         notation,
         experience_notation_change(notation, type, {}, user)
-    ).fail(function (error) {
+    ).catch(function (error) {
         console.log("Failed to record an ExperienceNotation " + type + ": " +
             ((error && error.message) ? error.message : JSON.stringify(error)));
     });
@@ -670,7 +670,7 @@ Parse.Cloud.afterSave("Patronage", function(request) {
         console.log("afterSave Patronage Updating vampire " + vampire.id + " expiresOn " + new_expiration);
         vampire.set("expiresOn", new_expiration);
         return vampire.save({}, {useMasterKey: true});
-    }, {useMasterKey: true}).fail(function (error) {
+    }, {useMasterKey: true}).catch(function (error) {
         if (_.isArray(error)) {
             _.each(error, function (e) {
                 console.error("afterSave Patronage " + e.message);
@@ -712,7 +712,7 @@ Parse.Cloud.afterSave("PaymentPaypal", function (request) {
     acl.setRoleReadAccess("Administrator", true);
     acl.setRoleWriteAccess("Administrator", true);
     patronage.setACL(acl);
-    patronage.save({}, {useMasterKey: true}).fail(function (error) {
+    patronage.save({}, {useMasterKey: true}).catch(function (error) {
         console.log("afterSave PaymentPaypal Failed to save patronage " + error.message);
     });
 })
@@ -766,7 +766,7 @@ Parse.Cloud.define("get_expected_vampire_ids", function(request, response) {
          }, {useMasterKey: true});
     })).then(function () {
         response.success(results);
-    }).fail(function (error) {
+    }).catch(function (error) {
         response.error(error);
     })
 });
@@ -1178,7 +1178,7 @@ Parse.Cloud.define("change_troupe_staff", function(request, response) {
         })
         var to_save = _.values(roles);
         var promises = _.map(to_save, function (s) {
-            return s.save({}, {useMasterKey: true}).fail(function (error) {
+            return s.save({}, {useMasterKey: true}).catch(function (error) {
                 console.log("Failed to save role " + s.get("name") + " with " + JSON.stringify(error));
             });
         })

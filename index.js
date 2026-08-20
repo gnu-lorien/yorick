@@ -194,7 +194,7 @@ async function startServer() {
               var p = new PaymentPaypal;
               p.save(req.body, {useMasterKey: true}).then(function (newpaymente) {
                   console.log("Boom new payment");
-              }).fail(function (error) {
+              }).catch(function (error) {
                   console.error(error.message);
               })
           }
