@@ -1,0 +1,13 @@
+{
+  "config": { "version": "1.62.1" },
+  "suites": [],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-08-19T00:00:00.000Z",
+    "duration": 0,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}
