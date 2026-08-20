@@ -24,7 +24,7 @@ var Model = Parse.Object.extend( "Troupe", {
                 return q.each(function(user) {
                     user.set("role", title);
                     users.push(user);
-                });
+                }, {useMasterKey: true});
             })
             return Parse.Promise.when(userqs);
         }).then(function() {
@@ -38,7 +38,7 @@ var Model = Parse.Object.extend( "Troupe", {
         var promises = _.map(self.title_options, function (title) {
             var q = new Parse.Query(Parse.Role);
             q.equalTo("name", title + "_" + self.id);
-            return q.first().then(function (role) {
+            return q.first({useMasterKey: true}).then(function (role) {
                 roles[title] = role;
             });
         })
@@ -53,7 +53,7 @@ var Model = Parse.Object.extend( "Troupe", {
         var promises = _.map(self.title_options, function (title) {
             var q = new Parse.Query(Parse.Role);
             q.equalTo("name", title);
-            return q.first().then(function (role) {
+            return q.first({useMasterKey: true}).then(function (role) {
                 roles[title] = role;
             });
         })

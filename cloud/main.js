@@ -1075,7 +1075,7 @@ function matchUserInRoles(all_roles_to_check, user_id) {
     var users_relation = role.getUsers();
     var uq = users_relation.query();
     uq.equalTo("objectId", user_id);
-    return uq.get(user_id).then(function (user) {
+    return uq.get(user_id, {useMasterKey: true}).then(function (user) {
         console.log("Matched a user in the role! " + role.get("name") + " " + user.get("username"));
         return Parse.Promise.as(user);
     }, function (error) {
