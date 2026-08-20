@@ -176,14 +176,6 @@ async function startServer() {
   app.use('/parse/1', api);
   app.use(serveStatic(process.env.PUBLIC_BASE || path.join(__dirname, 'public')));
 
-  app.get('/deez', function (req, res) {
-      new Parse.Query("Vampire").first({useMasterKey: true}).then(function (v) {
-          res.send("I got something named what exactly? " + v.get("name"));
-      }).fail(function (error) {
-          res.send(error.message);
-      });
-  });
-
   app.use(bodyParser.urlencoded({extended: false}));
   app.use(bodyParser.json());
 
