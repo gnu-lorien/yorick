@@ -568,6 +568,31 @@ it is speculative until someone runs it.
 
 ## 7. What could not be verified
 
+> **Correction, 2026-08-20: there is network access.** `npm view` and
+> `npm install` both reach the registry from this machine. The paragraph below
+> was written when they did not, and it is the single assumption that made this
+> section's list unanswerable.
+>
+> Demonstrated rather than asserted: `jimp@0.22.12` was installed into a scratch
+> directory *outside the repo* and its failure behaviour measured directly
+> against a local HTTP server, which settled one of the Step 12 unknowns in
+> about a minute (see `portrait-pipeline-jimp.md` §1 for the table, and §5 for
+> what it means for that step).
+>
+> **Every item in the list below can now be answered the same way** — install the
+> target package into a scratch directory and probe it. That is a far cheaper
+> question than it was when this plan was written, and it is worth doing
+> *before* Step 13 rather than discovering the answers inside it. Step 13's
+> effort range is wide specifically because "an unknown-unknown from an
+> uninstallable package" could cost a day; the package is no longer
+> uninstallable.
+>
+> Do this in a scratch directory. Installing the S10 target stack into the repo
+> would replace the working `node_modules` that the browser phase's evidence and
+> the gate both depend on, and Blocker G's warning about a botched install still
+> stands.
+
+
 **Nothing from the S10 target stack is installed on this machine, and there was
 no network access.** parse-server 9.10.0, the parse 8.6 node build, modern jimp,
 mongodb driver 5/6/7 — none of them. Every statement about how those versions

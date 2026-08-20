@@ -81,7 +81,39 @@ var crop_and_thumb = function(req, res) {
         return;
     }
 
-    Image.read(portrait.get("original").url()).then(function (image) {
+    var original_url = portrait.get("original").url();
+
+    Image.read(original_url).then(function (image) {
+        // jimp 0.2.28 can settle this promise with NOTHING, and call it success.
+        //
+        // Its throwError does `if ("string" == typeof error) error = console.error(error)`
+        // (node_modules/jimp/index.js), and console.error returns undefined - so a
+        // string-valued failure reaches Jimp.read's
+        // `if (err) reject(err); else resolve(image)` with err undefined and image
+        // never passed. It resolves, empty. Every string failure in jimp's URL
+        // branch goes this way: a non-200 response, an empty body, a JSON error
+        // page, anything whose MIME cannot be sniffed. Measured against a local
+        // server: 404, an empty 200 and a JSON 200 all resolve undefined; only a
+        // truncated JPEG rejects.
+        //
+        // Without this guard the next line reads .bitmap off undefined, and what
+        // surfaces is "Cannot read properties of undefined (reading 'bitmap')" -
+        // naming neither this portrait, nor the URL, nor the reason. jimp printed
+        // the real message to the server log and discarded it everywhere else.
+        // That error has already been misread once as a failure of an unrelated
+        // test in assets-rename-portrait.spec.js.
+        //
+        // Correct under the newer jimp too, where it simply never fires: 0.22.x
+        // rejects with a real Error for all four of those cases.
+        if (!image) {
+            throw new Error(
+                "could not read the uploaded image back from " + original_url +
+                " - jimp resolved without one, and discards the reason. Look for " +
+                "'Could not find MIME for Buffer' or 'Could not load Buffer from " +
+                "URL' in the server log; it carries the HTTP status."
+            );
+        }
+
         // Crop the image to the smaller of width or height.
         var size = Math.min(image.bitmap.width, image.bitmap.height);
         return image.crop(

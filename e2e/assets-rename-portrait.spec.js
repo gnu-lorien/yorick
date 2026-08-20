@@ -756,9 +756,16 @@ test.describe('Task 6 - Rename And Portraits, Verified Everywhere They Appear', 
     ).rejects.toThrow(/rejected/);
 
     // The file input has no `accept` filter (public/index.html:989), so the
-    // browser happily attaches the .txt file; crop_and_thumb's Image.read()
-    // then rejects it server-side and the beforeSave failure aborts the whole
-    // save - the previously-saved thumb_* values are never touched.
+    // browser happily attaches the .txt file, and the beforeSave failure aborts
+    // the whole save - the previously-saved thumb_* values are never touched.
+    //
+    // Note what actually rejects it, because it is not what it looks like: under
+    // jimp 0.2.28 `Image.read` does NOT reject on a non-image. It resolves with
+    // undefined - its throwError discards string errors - and crop_and_thumb's
+    // explicit guard is what turns that into a real error. So the server log for
+    // THIS test carries a "Could not find MIME for Buffer <...portraittxt.txt>"
+    // line on every single run. That line is expected here, and is not a symptom
+    // of anything.
     await hardReload(memberPage);
     await navigateToHash(memberPage, `character?${state.primary.id}`, '#character');
     await expectPortraitMatches(memberPage, CHARACTER_PORTRAIT_SELECTORS.sheet, fixtures.characterBlue.color, 'sheet still blue after rejected upload');
