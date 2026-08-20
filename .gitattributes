@@ -1,0 +1,8 @@
+# Recorded Playwright reports are evidence, not source.
+#
+# These are compared byte-for-byte and hashed to prove a run is the run it
+# claims to be, so git must not rewrite their line endings on checkout. Without
+# this, `core.autocrlf` on a Windows clone hands back a file that differs from
+# the one that was committed -- harmless to JSON.parse, fatal to "is this the
+# artefact I recorded?".
+runs/*.json -text
