@@ -392,8 +392,13 @@ function windowFromReport(reportPath, slackMs) {
 // Registrations
 // ---------------------------------------------------------------------------
 
+// `compat.` is the S10 Step 6 before-trigger seam (cloud/trigger-compat.js),
+// which registers through Parse.Cloud on the hook's behalf. Matching it matters
+// more than it looks: without it every converted hook reads as "logged but not
+// registered", and at the parse-server 9 bump this tool's whole job is telling
+// "this hook stopped firing" apart from "this hook was never registered".
 const TRIGGER_RE =
-  /Parse\.Cloud\.(beforeSave|afterSave|beforeDelete|afterDelete|beforeFind|afterFind)\s*\(\s*["']([^"']+)["']/g;
+  /(?:Parse\.Cloud|compat)\.(beforeSave|afterSave|beforeDelete|afterDelete|beforeFind|afterFind)\s*\(\s*["']([^"']+)["']/g;
 const DEFINE_RE = /Parse\.Cloud\.define\s*\(\s*["']([^"']+)["']/g;
 
 /**

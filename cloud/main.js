@@ -7,6 +7,7 @@ var Troupe = require('./Troupe.js').Troupe;
 var Image = require("jimp");
 var Promise = global.Promise;
 var moment = require("moment");
+var compat = require('./trigger-compat.js');
 
 /* FIXME Shouldn't just paste this class in here. Still need a way to sync between
    the require world and the node world */
@@ -158,27 +159,48 @@ var crop_and_thumb = function(req, res) {
  * each row's ACL out of the character's own owner, and every save cloud code
  * makes on a character's behalf passes useMasterKey, which sets request.master.
  *
- * Answers the request itself when it refuses, so callers read as:
+ * Throws when it refuses, so callers read as one line at the top of the hook:
  *
- *     if (!require_a_user(request, response, "Traits")) { return; }
+ *     require_a_user(request, "Traits");
  *
- * @return {boolean} true when the request may go ahead
+ * @throws {Parse.Error} SCRIPT_FAILED, when the request carries neither a user
+ *     nor the master key
  */
-var require_a_user = function(request, response, noun) {
+var require_a_user = function(request, noun) {
     if (!request.master && !request.user) {
-        response.error(noun + " can only be changed by a logged in user.");
+        throw new Parse.Error(
+            Parse.Error.SCRIPT_FAILED,
+            noun + " can only be changed by a logged in user."
+        );
+    }
+};
+
+// Scaffolding for the Step 6 conversion, deleted in its last slice. Hooks not
+// yet moved onto `compat.beforeSave`/`compat.beforeDelete` still receive a
+// `response` and still read a boolean.
+//
+// Wire-identical to what it replaces: 2.8.4's `getResponseObject.error`
+// (node_modules/parse-server/lib/triggers.js:253) maps a bare string to
+// `new Parse.Error(SCRIPT_FAILED, string)` and passes a `Parse.Error` straight
+// to `reject`, so both spellings put the same code (141) and the same message
+// on the wire.
+var require_a_user_legacy = function(request, response, noun) {
+    try {
+        require_a_user(request, noun);
+    } catch (error) {
+        response.error(error);
         return false;
     }
     return true;
 };
 
 Parse.Cloud.beforeSave("TroupePortrait", function(request, response) {
-    if (!require_a_user(request, response, "Troupe portraits")) { return; }
+    if (!require_a_user_legacy(request, response, "Troupe portraits")) { return; }
     crop_and_thumb(request, response);
 });
 
 Parse.Cloud.beforeSave("CharacterPortrait", function(request, response) {
-    if (!require_a_user(request, response, "Character portraits")) { return; }
+    if (!require_a_user_legacy(request, response, "Character portraits")) { return; }
     crop_and_thumb(request, response);
 });
 
@@ -220,7 +242,7 @@ Parse.Cloud.beforeSave("Vampire", function(request, response) {
     // Werewolf and ChangelingBetaSlice are both Parse.Object.extend("Vampire",
     // ...) over this same underlying class, so this covers all three creature
     // types.
-    if (!require_a_user(request, response, "Characters")) { return; }
+    if (!require_a_user_legacy(request, response, "Characters")) { return; }
 
     var tracked_texts = [
         "name",
@@ -332,7 +354,7 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
     // VampireChange audit row, so an unguarded anonymous write did not merely
     // land a trait on somebody's sheet, it also wrote itself into the log the
     // approvals workflow reads.
-    if (!require_a_user(request, response, "Traits")) { return; }
+    if (!require_a_user_legacy(request, response, "Traits")) { return; }
 
     console.log("beforeSave SimpleTrait");
     var vc = new Parse.Object("VampireChange");
@@ -433,7 +455,7 @@ Parse.Cloud.afterSave("SimpleTrait", function(request) {
 });
 
 Parse.Cloud.beforeDelete("SimpleTrait", function(request, response) {
-    if (!require_a_user(request, response, "Traits")) { return; }
+    if (!require_a_user_legacy(request, response, "Traits")) { return; }
 
     var vc = new Parse.Object("VampireChange");
     var trait = request.object;
@@ -558,7 +580,7 @@ var record_experience_notation = function (notation, type, user) {
 // first, ahead of the audit record - refusing the write and then recording it
 // would be worse than not recording it at all.
 Parse.Cloud.beforeSave("ExperienceNotation", function(request, response) {
-    if (!require_a_user(request, response, "Experience entries")) { return; }
+    if (!require_a_user_legacy(request, response, "Experience entries")) { return; }
 
     var notation = request.object;
     var is_new = _.isUndefined(notation.id);
@@ -578,7 +600,7 @@ Parse.Cloud.beforeDelete("ExperienceNotation", function(request, response) {
     // A delete is a write. The incoming security work guarded the save; the
     // same argument applies here, and this hook did not exist to guard when it
     // was written.
-    if (!require_a_user(request, response, "Experience entries")) { return; }
+    if (!require_a_user_legacy(request, response, "Experience entries")) { return; }
 
     response.success();
     record_experience_notation(request.object, "remove", request.user);
@@ -588,16 +610,15 @@ Parse.Cloud.beforeDelete("ExperienceNotation", function(request, response) {
 // character models as the logged-in owner, and touched by cloud code only with
 // the master key, so the guard is the whole of the hook - there is no existing
 // behaviour here to sit in front of, unlike SimpleTrait, Vampire and
-// ExperienceNotation.
+// ExperienceNotation. Since the Step 6 conversion that is literally all these
+// two are: the guard throws to refuse, and falling off the end allows.
 
-Parse.Cloud.beforeSave("LongText", function(request, response) {
-    if (!require_a_user(request, response, "Character texts")) { return; }
-    response.success();
+compat.beforeSave("LongText", function(request) {
+    require_a_user(request, "Character texts");
 });
 
-Parse.Cloud.beforeSave("VampireCreation", function(request, response) {
-    if (!require_a_user(request, response, "Character creation records")) { return; }
-    response.success();
+compat.beforeSave("VampireCreation", function(request) {
+    require_a_user(request, "Character creation records");
 });
 
 Parse.Cloud.afterSave("Patronage", function(request) {
