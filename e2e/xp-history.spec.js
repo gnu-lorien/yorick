@@ -145,6 +145,28 @@ const {
   DEFAULT_REASON
 } = require('./helpers/xp');
 const { openLog, readLogRows } = require('./helpers/logs');
+const { installPopupTrace, collectTraceConsole, formatTimeline } = require('./helpers/popup-trace');
+
+/**
+ * Popup lifecycle tracing, off unless `E2E_POPUP_TRACE=1`.
+ *
+ * The seeding in `beforeAll` is where this file's long-standing flake fires,
+ * and a bare Playwright timeout says nothing about what happened to the popup.
+ * Setting the variable records the whole lifecycle - widget events, container
+ * class transitions, every removal with the stack that caused it, and every
+ * `CharacterExperienceView.render` - and writes it to `tmp-probes/out/`.
+ * Diagnostics only: with the variable unset nothing below runs.
+ *
+ * `E2E_POPUP_TRACE_QUIET=1` keeps the recording but stops it echoing every
+ * record to the console. That matters: streaming a few hundred console messages
+ * across the CDP connection is itself a delay between the popup opening and the
+ * submit click, and it is enough to turn this file's ~50% flake into a
+ * reproduction every time. Quiet mode is the one to use when you need a
+ * *passing* timeline to diff against.
+ */
+const POPUP_TRACE = process.env.E2E_POPUP_TRACE === '1';
+const POPUP_TRACE_QUIET = process.env.E2E_POPUP_TRACE_QUIET === '1';
+let popupTraceRecords = null;
 
 /** Every character this file creates is named with this prefix, so teardown is a query. */
 const FIXTURE_PREFIX = 'E2E T4 ';
@@ -427,6 +449,10 @@ test.describe('Task 4 - XP History', () => {
   test.beforeAll(async ({ browser }) => {
     test.setTimeout(600000);
     page = await browser.newPage();
+    if (POPUP_TRACE) {
+      popupTraceRecords = POPUP_TRACE_QUIET ? [] : collectTraceConsole(page);
+      await installPopupTrace(page, { console: !POPUP_TRACE_QUIET });
+    }
     await loginAsAdmin(page);
 
     // Self-heal first: sweep anything a crashed earlier run left behind, keyed by
@@ -498,6 +524,27 @@ test.describe('Task 4 - XP History', () => {
 
   test.afterAll(async () => {
     if (!page) return;
+
+    if (POPUP_TRACE && popupTraceRecords) {
+      const fs = require('fs');
+      const path = require('path');
+      const dir = path.join(__dirname, '..', 'tmp-probes', 'out');
+      fs.mkdirSync(dir, { recursive: true });
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const snapshot = await page.evaluate(() => window.__popupTrace.snapshot()).catch(() => null);
+      // The in-page buffer is the complete record; the console stream is only a
+      // live echo of it. Prefer whichever is longer so quiet mode still writes.
+      const inPage = await page.evaluate(() => window.__popupTrace.dump()).catch(() => []);
+      const records = inPage.length >= popupTraceRecords.length ? inPage : popupTraceRecords;
+      fs.writeFileSync(path.join(dir, `spec-${stamp}.json`),
+        JSON.stringify({ snapshot, records }, null, 1));
+      fs.writeFileSync(path.join(dir, `spec-${stamp}.txt`),
+        `snapshot: ${JSON.stringify(snapshot)}
+
+${formatTimeline(records)}
+`);
+      console.log(`[e2e xp-history] popup trace: ${records.length} records -> tmp-probes/out/spec-${stamp}.txt`);
+    }
 
     const destroyed = await destroyCharactersByPrefix(page, FIXTURE_PREFIX)
       .catch((e) => ({ characters: 0, children: 0, errors: [String(e)] }));
