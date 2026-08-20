@@ -238,11 +238,11 @@ var get_vampire_change_acl = function(vampire) {
     return acl;
 };
 
-Parse.Cloud.beforeSave("Vampire", function(request, response) {
+compat.beforeSave("Vampire", function(request) {
     // Werewolf and ChangelingBetaSlice are both Parse.Object.extend("Vampire",
     // ...) over this same underlying class, so this covers all three creature
     // types.
-    if (!require_a_user_legacy(request, response, "Characters")) { return; }
+    require_a_user(request, "Characters");
 
     var tracked_texts = [
         "name",
@@ -277,13 +277,13 @@ Parse.Cloud.beforeSave("Vampire", function(request, response) {
     var desired_changes = _.intersection(tracked_texts, v.dirtyKeys());
     if (0 === desired_changes.length) {
         console.log("Saving vampire (" + v.id + ") and there are no changes we track here");
-        return response.success();
+        return;
     }
     
     var modified_vampire = request.object;
     if (_.isUndefined(modified_vampire.id)) {
         console.log("Creating a new vampire named " + request.object.get("name"));
-        return response.success();
+        return;
     }
     
     // TODO: Update the history permissions if troupes has changed
@@ -303,7 +303,7 @@ Parse.Cloud.beforeSave("Vampire", function(request, response) {
         new_values[k] = v.get(k);
     })
     var vToFetch = new Vampire({id: v.id});
-    vToFetch.fetch({useMasterKey: true}).then(function(vampire) {
+    return vToFetch.fetch({useMasterKey: true}).then(function(vampire) {
         return Parse.Object.saveAll(_.map(_.toPairs(new_values), function(a) {
             var attribute = a[0], val = a[1];
             var vc = new Parse.Object("VampireChange");
@@ -320,11 +320,12 @@ Parse.Cloud.beforeSave("Vampire", function(request, response) {
             vc.setACL(acl);
             return vc;
         }), {useMasterKey: true});
-    }).then(function () {
-        return response.success();
     }).fail(function (error) {
         console.log(error.message);
-        response.error(error);
+        // See beforeDelete("SimpleTrait"): a `.fail` handler that returns
+        // normally recovers the chain, and would allow a character save whose
+        // audit rows failed to write.
+        throw error;
     })
 });
 
