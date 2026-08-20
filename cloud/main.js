@@ -444,10 +444,33 @@ Parse.Cloud.afterSave("SimpleTrait", function(request) {
         console.log("afterSave SimpleTrait older change that wasn't really updated and doesn't have new source value");
         return;
     }
-    q.get(modified_trait.get("definition_change").id, {useMasterKey: true}).then(function (vc) {
+    // Returned, not fired and forgotten. parse-server absorbs an afterSave's
+    // rejection - 2.8.4 does `triggerPromise.then(resolve, resolve)`
+    // (triggers.js:450-451) and discards the resolved value (`RestWrite.js:111`
+    // chains straight past it) - so returning the chain is what gives this
+    // rejection an owner. Unreturned it is orphaned: silent today, because a
+    // `Parse.Promise` has no unhandled-rejection tracking, and fatal under
+    // parse@8 + node 24, where the chain is native and an unhandled rejection
+    // reaches parse-server's own uncaughtException handler and exits.
+    //
+    // The cost is that the SimpleTrait write now waits for the back-reference
+    // before it answers the client, closing a read-after-write window that has
+    // been open on every trait save. It cannot refuse the save: the row is
+    // already written by the time an afterSave runs, and `runAfterTrigger`'s
+    // result is not part of the response.
+    return q.get(modified_trait.get("definition_change").id, {useMasterKey: true}).then(function (vc) {
         return vc.save({"simple_trait_id": modified_trait.id}, {useMasterKey: true});
     }, function (error) {
-        console.log("Error trying to find vc for " + modified_trait.id + " with id " + modified_trait.get("definition_change").id);
+        console.log("Error trying to find vc for " + modified_trait.id + " with id " +
+            modified_trait.get("definition_change").id + ": " +
+            ((error && error.message) ? error.message : JSON.stringify(error)));
+        // See beforeSave("Vampire") and beforeDelete("SimpleTrait"): returning
+        // normally from a rejection handler RECOVERS the chain. That is what
+        // this handler used to do, so the `.then` below read `.id` off
+        // `undefined` and a TypeError replaced the real reason the lookup
+        // failed - the one thing worth knowing here. Rethrow, and the reason
+        // survives to the line above and the chain stays rejected.
+        throw error;
     }).then(function (vc) {
         console.log("afterSave SimpleTrait Added simple_trait_id " + modified_trait.id + " to change " + vc.id);
     });
