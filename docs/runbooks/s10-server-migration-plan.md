@@ -42,12 +42,12 @@ original reasoning stays legible next to what measurement did to it.
 
 | Step | State | Evidence |
 |---|---|---|
-| 1. Gate wrapper | **done** | `gate.js`, `test/gate.test.js`, 27 self-tests |
+| 1. Gate wrapper | **done** | `gate.js`, `test/gate.test.js`, 42 self-tests |
 | 2. S10 baseline | **done** | `runs/s10-baseA.json` — 451 discovered, 448 passed, 3 skipped, committed |
 | 3. Log oracle | **done** (`9389ad1`) | `hook-counts.js`, 19 self-tests |
 | 4. PaymentPaypal | **decided — see below** | owner, 2026-08-20 |
 | 5. MongoDB 8.2.6 alone | **answered — the experiment is impossible** | gate **2**; `mongodb-8-op-query.md` |
-| 6. Before-trigger seam + conversions | **done** (`9d374af`..`10279f2`) | seven gates, all 0 |
+| 6. Before-trigger seam + conversions | **done** (`9d374af`..`10279f2`) | seven gates: six exit 0. `174d795` was exit **3, INCONCLUSIVE** — quarantined test 114 stranded 14 tests in `assets-rename-portrait`; cleared by the targeted re-run the gate printed, exit 0, all 30 of that file's baseline passes intact |
 | 7. Deletions | **done** (`5347818`) | gate 0 |
 | 8. Master-key role reads | **done** (`dcdff91`) | gate 0 |
 | 9. Explicit options | **done** (`fbccc99`) | gate 0 |
@@ -80,7 +80,8 @@ Measured against a real parse-server 9.10.0 install. **It is not "24 handlers
 that fail silently". It is 13 that do not fail at all and 11 that fail loudly,
 some of them fatally.**
 
-- **All 13 `Parse.Cloud.define` handlers work unchanged.** parse-server 9
+- **All the `Parse.Cloud.define` handlers work unchanged** — 13 when this was
+  measured, **10** in the tree now, Step 7 having deleted three. parse-server 9
   *restored* Express-style support: `Routers/FunctionsRouter.js:333` is
   `if (theFunction.length >= 2) return theFunction(request, responseObject);`.
   Verified live: `response.success(v)` resolves, `response.error(m)` rejects
@@ -124,6 +125,26 @@ call remains in `cloud/`. The 10 `Parse.Cloud.define` handlers and the 3
 `afterSave` handlers are deliberately **unchanged** — neither is coupled to the
 bump, and touching them would have spent gate cycles for no change in behaviour.
 
+**Six of the seven gates were exit 0. One was not.** `174d795`
+(`beforeSave("VampireApproval")`) gated **exit 3, INCONCLUSIVE**: quarantined
+test 114 — the jQuery Mobile transition-lock flake in `harness-noise-floor.md` —
+fired and stranded 14 tests in `assets-rename-portrait.spec.js`, so that run
+measured less than the baseline did and the gate refused to call it green.
+It was resolved the way `gate.js`'s header says to resolve a 3: the targeted
+re-run the gate itself printed, `--filter assets-rename-portrait.spec.js`,
+returned **exit 0** with all 30 of that file's baseline passes intact. Nothing
+in that slice touched the portrait hooks — they were still on the legacy shape
+until `10279f2`, which gated 0 outright. Recording this as "seven gates, all 0"
+was wrong, and it matters here specifically: a 3 means *coverage was not
+measured*, and this section is what Step 13 reads to decide what has been.
+
+**§2's settlement counts are pre-Step-6 and no longer describe the tree.** Live
+`response.success`/`response.error` calls in `cloud/` are now **31**, not 55: 27
+inside the `Parse.Cloud.define` handlers, which Step 6 deliberately left alone,
+and 4 inside `trigger-compat.js` itself, which is where the whole before-trigger
+side of that count went. §2's **35** live `Parse.Promise` uses are unchanged —
+Step 6 removed none, and that removal is still its own step.
+
 **There is no `LEGACY` flag, and Step 13 has nothing to flip.** The seam detects
 at invocation: 2.8.4 calls a before-trigger as `trigger(request, response)`
 (`triggers.js:447`) and honours the returned promise only for afterSave and
@@ -140,7 +161,15 @@ Two hazards found in the conversion, both of which would have been silent:
    `parse@1.11.1` is A+ compliant (`ParsePromise.js:39`, branch at `:171-198`) —
    so deleting `response.error(error)` and leaving the handler otherwise empty
    makes the hook's promise **resolve**, allowing a write it had just decided to
-   refuse. Five sites; all five carry the `throw` now, and a comment saying why.
+   refuse. Five sites, and **four** carry the `throw` — `cloud/main.js:308`,
+   `:420`, `:484` (`throw error`) and `:911` (`throw new Parse.Error(...)`,
+   because that chain rejects with a bare string) — each with a comment saying
+   why. The fifth, `crop_and_thumb`'s tail, carries none because it **no longer
+   exists**: it did nothing but call `res.error`, so `10279f2` deleted it
+   outright instead of converting it, leaving the chain rejecting with exactly
+   what that call used to receive. That is the one place in Step 6 where
+   deleting a rejection handler is safe, and it is safe *because* there is
+   nothing left to recover the chain.
 2. **`beforeSave("SimpleTrait")`'s mid-chain success.** Success used to be
    signalled at the `isMeaningfulChange` short-circuit with two `.then()`s still
    to run. Now the chain's completion *is* the success signal, so the
@@ -157,12 +186,16 @@ shape got for free, and one that Steps 12 and 13 could easily take away.
 Measured after the last slice, windowed to `runs/s10-step6-7.json`: all twelve
 logged trigger tallies **identical to `runs/hooks-s10-baseA.json`, `failed`
 columns included** — `Vampire/beforeSave` 987/1, `VampireApproval/beforeSave`
-12/4, `CharacterPortrait/beforeSave` 2/1. The hooks that reject still reject, in
+12/4, `CharacterPortrait/beforeSave` 2/1. Only the cloud-function side moved, and
+only in two places: `get_expected_vampire_ids` 89 → 60 and
+`get_my_patronage_status` 23 → 24, neither of them a hook Step 6 touched. The
+hooks that reject still reject, in
 the same places, the same number of times. Saved at
 `runs/hooks-s10-step6-7.json`; **use that, not `hooks-s10-baseA.json`, as Step
 13's before-picture** — the baseline was recorded before four server-config
-commits and its `get_expected_vampire_ids` tally (89, against 58-60 now) is stale
-for reasons that have nothing to do with cloud code.
+commits, and **two** of its `fn:` tallies are stale for reasons that have nothing
+to do with cloud code: `get_expected_vampire_ids` (89, against **60** now) and
+`get_my_patronage_status` (23, against **24**).
 
 ### §7's unknowns, now answered
 
@@ -238,8 +271,10 @@ measured that this section did not know:
    even in principle.** That is enough, because a before-trigger that dies under
    parse-server 9 dies on all eight at once.
 3. **The file is named by DATE, so a naive count is the whole day.**
-   `logs/parse-server.info.2026-08-20` holds 96,913 hook records across the day's
-   ~22 runs; the `runs/s10-baseA.json` run alone is 4,362 of them. Always pass
+   `logs/parse-server.info.2026-08-20` held 96,913 hook records when this was
+   written and **133,690** by the end of that day — the figure is not stable,
+   which is the point — while the `runs/s10-baseA.json` run alone is 4,362 of
+   them, and stays 4,362 because it is windowed. Always pass
    `--run <report.json>` — it takes the window from the report's
    `stats.startTime`/`duration` — and `--save` to freeze the result before the
    next run appends.
@@ -264,13 +299,25 @@ if it is gone. Compare with
 | `SimpleTrait/beforeSave` | 865 | 0 | | `TroupePortrait/beforeSave` | 2 | 0 |
 | `SimpleTrait/afterSave` | 865 | 0 | | `VampireApproval/beforeSave` | 12 | 4 |
 | `SimpleTrait/beforeDelete` | 516 | 0 | | `Patronage/afterSave` | 7 | 0 |
-| `VampireCreation/beforeSave` | 500 | 0 | | `get_expected_vampire_ids` | 89 | 0 |
-| `ExperienceNotation/beforeSave` | 282 | 0 | | `get_my_patronage_status` | 23 | 0 |
+| `VampireCreation/beforeSave` | 500 | 0 | | `get_expected_vampire_ids` † | 89 | 0 |
+| `ExperienceNotation/beforeSave` | 282 | 0 | | `get_my_patronage_status` † | 23 | 0 |
 | `ExperienceNotation/beforeDelete` | 158 | 0 | | `update_vampire_change_permissions_for` | 10 | 0 |
 | `LongText/beforeSave` | 20 | 0 | | `change_troupe_staff` | 9 | 0 |
 | | | | | `vote_for_referendum` | 4 | 2 |
 | | | | | `get_captured_emails` | 2 | 0 |
 | | | | | `request_password_reset_for` | 1 | 0 |
+
+† **Two `fn:` counts have drifted since, not one.** Against the current tree
+(`runs/hooks-s10-step6-7.json`) `get_expected_vampire_ids` reads **60**, not 89,
+and `get_my_patronage_status` reads **24**, not 23. Neither is cloud-code damage
+— both moved under the four server-config commits between the two runs, and
+`node hook-counts.js --diff runs/hooks-s10-baseA.json runs/hooks-s10-step6-7.json`
+reports 17 steady, one dropped and one risen, all twelve triggers among the
+steady. Expect it to **exit 1**: a material drop is a failure by its rules. The
+drop is `get_expected_vampire_ids`; the rise is `get_my_patronage_status`, which
+`--diff` counts in its summary but does not name in a table. Use the step6-7
+figures as Step 13's before-picture; the table above is kept as what
+`hooks-s10-baseA.json` itself holds.
 
 The `failed` column is not damage. Every one of those eight is a negative-path
 spec getting the rejection it asked for — checked in `logs/parse-server.err.2026-08-20`:
