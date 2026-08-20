@@ -226,7 +226,41 @@ define([
                     }
                     modified_trait.set("cost", cost);
                     self.increment("change_count");
-                    self.addUnique(category, modified_trait, {silent: true});
+                    // Only when it is not already there. Adding an object to an
+                    // array it is already in is a no-op by definition, so this
+                    // guard changes no behaviour on any server -- but leaving
+                    // the redundant op pending silently DESTROYED the category
+                    // on parse-server 9, and that is worth writing down.
+                    //
+                    // Measured. parse-server returns an array field in the save
+                    // response only when the op actually changed it. A rename or
+                    // a value change re-adds a trait the array already holds, so
+                    // the array does not change and `backgrounds` is absent from
+                    // the response -- while `change_count`'s Increment, which
+                    // did change, comes back. parse@8 then reaches
+                    // `else if (!(attr in response)) changes[attr] =
+                    // pending[attr].applyTo(void 0)` (parse-8.6.0.js:43309) and
+                    // applies AddUnique to UNDEFINED rather than to the stored
+                    // array, so the client's category collapses to the single
+                    // trait just touched. The database stays correct; only the
+                    // in-memory character is wrong, which is what made it so
+                    // hard to see.
+                    //
+                    // Downstream that is not a display glitch. `update_trait`'s
+                    // own duplicate-name check reads `self.get(category)`, so
+                    // with one element left there is nothing to collide with and
+                    // a colliding rename is accepted (traits-lifecycle 246); the
+                    // category listing renders one row (approvals 79,
+                    // creation-changeling 238).
+                    //
+                    // parse-server 2.8.4 hid all of it by echoing the whole
+                    // object back on every save of a class carrying a beforeSave
+                    // trigger, so `backgrounds` was always in the response and
+                    // the pending op was always overwritten by the server's own
+                    // array.
+                    if (!_.contains(self.get(category), modified_trait)) {
+                        self.addUnique(category, modified_trait, {silent: true});
+                    }
                     self.progress("Updating trait " + modified_trait.get("name"));
     
                     // saveAll, not save: this graph is two levels deep.

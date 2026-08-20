@@ -197,6 +197,69 @@ async function letSettleAgain() {
   for (let i = 0; i < 20; i++) await tick();
 }
 
+/**
+ * A hand-rolled, non-native thenable.
+ *
+ * Six tests below built theirs with `Parse.Promise.as(...)` / `.error(...)`
+ * until Step 13; parse@8 has no `Parse.Promise` at all. The property they pin
+ * was never Parse.Promise's in particular -- it is that the seam calls `.then`
+ * on the returned value ITSELF (trigger-compat.js:56) instead of adopting it,
+ * so any thenable has to work. Hand-rolling one keeps that assertion live on an
+ * SDK that ships no such type, and names what is being tested more honestly
+ * than the SDK class did.
+ *
+ * Callbacks are deferred with `process.nextTick`, which is what parse@1.11.1
+ * did (ParsePromise.js:205-208), so `tick()` still clears them and the
+ * "not settled before the chain finishes" assertions still mean what they meant.
+ */
+function deferredThenable() {
+  let state = null;
+  let waiting = [];
+
+  function flush() {
+    if (!state) return;
+    const pending = waiting;
+    waiting = [];
+    pending.forEach(function (w) {
+      process.nextTick(function () {
+        if (state.kind === 'resolved') {
+          if (w.onFulfilled) w.onFulfilled(state.value);
+        } else if (w.onRejected) {
+          w.onRejected(state.value);
+        }
+      });
+    });
+  }
+
+  const thenable = {
+    then: function (onFulfilled, onRejected) {
+      waiting.push({ onFulfilled, onRejected });
+      flush();
+      return thenable;
+    }
+  };
+
+  return {
+    thenable,
+    resolve(value) { if (!state) { state = { kind: 'resolved', value }; flush(); } },
+    reject(error) { if (!state) { state = { kind: 'rejected', value: error }; flush(); } }
+  };
+}
+
+/** An already-resolved non-native thenable -- the old `Parse.Promise.as(v)`. */
+function resolvedThenable(value) {
+  const d = deferredThenable();
+  d.resolve(value);
+  return d.thenable;
+}
+
+/** An already-rejected non-native thenable -- the old `Parse.Promise.error(e)`. */
+function rejectedThenable(error) {
+  const d = deferredThenable();
+  d.reject(error);
+  return d.thenable;
+}
+
 // ---------------------------------------------------------------------------
 // 1. The modern path -- the branch that has never run
 // ---------------------------------------------------------------------------
@@ -238,8 +301,10 @@ test('modern: a returned promise is handed back unadopted and resolves to its va
   assert.strictEqual(await returned, 'allowed');
 });
 
-test('modern: a returned Parse.Promise is handed back unadopted', async () => {
-  const p = Parse.Promise.as('allowed');
+test('modern: a returned non-native thenable is handed back unadopted', async () => {
+  // Was `Parse.Promise.as('allowed')` before the Step 13 bump. See
+  // `deferredThenable` above for why the SDK type is not what mattered.
+  const p = resolvedThenable('allowed');
   const { returned } = callModern(() => p);
   assert.strictEqual(returned, p);
   assert.strictEqual(await returned, 'allowed');
@@ -264,12 +329,12 @@ test('modern: a returned rejected promise stays rejected, with the same value', 
   await assert.rejects(returned, (error) => error === boom);
 });
 
-test('modern: a returned rejected Parse.Promise stays rejected, with the same value', async () => {
-  // A bare string is what `Parse.Promise.error(...)` rejects with in
-  // beforeSave("VampireApproval"), and the hook's own normaliser is what turns
-  // it into a Parse.Error. The seam must not get in the way of either.
+test('modern: a returned rejected non-native thenable stays rejected, with the same value', async () => {
+  // A bare string is what beforeSave("VampireApproval") rejects with, and the
+  // hook's own normaliser is what turns it into a Parse.Error. The seam must
+  // not get in the way of either.
   const boom = 'Unauthorized: Players cannot approve their own character changes';
-  const { returned } = callModern(() => Parse.Promise.error(boom));
+  const { returned } = callModern(() => rejectedThenable(boom));
 
   let settled = null;
   await Promise.resolve(returned).then(
@@ -357,7 +422,7 @@ test('legacy: the handler runs synchronously inside the trigger call', () => {
 });
 
 test('legacy: a resolving thenable settles with success, once, asynchronously', async () => {
-  const rec = callLegacy(() => Parse.Promise.as('whatever'));
+  const rec = callLegacy(() => resolvedThenable('whatever'));
 
   assert.strictEqual(rec.calls.length, 0, 'not settled before the chain finishes');
   await awaitSettlements(rec, 1);
@@ -384,7 +449,7 @@ test('legacy: a synchronous throw reaches response.error with the same value', (
 
 test('legacy: a rejected thenable reaches response.error with the same value', async () => {
   const boom = new Parse.Error(Parse.Error.SCRIPT_FAILED, 'Existing ballot found.');
-  const rec = callLegacy(() => Parse.Promise.error(boom));
+  const rec = callLegacy(() => rejectedThenable(boom));
 
   await awaitSettlements(rec, 1);
   assert.strictEqual(rec.calls[0].kind, 'error');
@@ -416,14 +481,19 @@ test('legacy: beforeDelete goes through the same seam', async () => {
 // ---------------------------------------------------------------------------
 
 test('no double-settle: a resolving chain settles exactly once', async () => {
-  const rec = callLegacy(() => Parse.Promise.as('ok'));
+  const rec = callLegacy(() => resolvedThenable('ok'));
   await awaitSettlements(rec, 1);
   await letSettleAgain();
   assert.deepStrictEqual(rec.calls.map((c) => c.kind), ['success']);
 });
 
 test('no double-settle: a rejecting chain never also calls success', async () => {
-  const rec = callLegacy(() => Parse.Promise.error('refused'));
+  // This one PASSED through the bump for the wrong reason and is worth naming.
+  // With `Parse.Promise.error('refused')` still in it, parse@8 made the handler
+  // throw `Parse.Promise is undefined` synchronously; the seam caught that and
+  // called `response.error`, so the assertion below -- ['error'] -- held while
+  // testing nothing it claimed to. A rejecting thenable never reached the seam.
+  const rec = callLegacy(() => rejectedThenable('refused'));
   await awaitSettlements(rec, 1);
   await letSettleAgain();
   assert.deepStrictEqual(rec.calls.map((c) => c.kind), ['error']);
@@ -435,24 +505,33 @@ test('no double-settle: a synchronous throw never also calls success', async () 
   assert.deepStrictEqual(rec.calls.map((c) => c.kind), ['error']);
 });
 
-test('no double-settle: the guarantee lives in Parse.Promise, which refuses a second settlement', async () => {
-  // Worth being precise about where the safety is. The seam calls `.then` on
-  // the returned value itself and passes one callback to each arm; it has no
-  // guard of its own against a thenable that calls both. It does not need one,
-  // because these chains are Parse.Promises and node-side parse@1.11.1 THROWS
-  // on a second settlement (ParsePromise.js:80, :106) rather than quietly
-  // calling through twice. Under parse-server 9 that stops mattering entirely:
-  // there is no `response` left to settle twice.
-  const p = new Parse.Promise();
-  const rec = callLegacy(() => p);
-
-  p.resolve('first');
-  assert.throws(() => p.resolve('second'), /already been resolved/);
-  assert.throws(() => p.reject('too late'), /already been resolved/);
+test('no double-settle: the guarantee left with Parse.Promise, and the legacy arm has none of its own', async () => {
+  // This test used to assert the safety rather than the gap: `new
+  // Parse.Promise()` THREW on a second settlement (parse@1.11.1,
+  // ParsePromise.js:80, :106), so the seam did not need a guard of its own
+  // against a thenable that calls both arms. parse@8 ships no Parse.Promise,
+  // that guarantee is gone, and what it was covering for is now visible --
+  // handed a misbehaving thenable, the legacy arm settles TWICE.
+  //
+  // Characterised rather than fixed, deliberately, because the path is
+  // unreachable: parse-server 9 calls `trigger(request)`, so `response` is
+  // undefined and the legacy arm never runs at all. Every thenable that does
+  // reach the modern arm is handed back by identity and adopted by
+  // parse-server's own chain, where a second settlement is ignored by
+  // construction. If the legacy arm is ever revived against a server that
+  // passes a response, it needs the guard this test no longer finds.
+  const rec = callLegacy(() => ({
+    then: function (onFulfilled, onRejected) {
+      process.nextTick(function () {
+        onFulfilled('first');
+        onRejected('too late');
+      });
+    }
+  }));
 
   await awaitSettlements(rec, 1);
   await letSettleAgain();
-  assert.deepStrictEqual(rec.calls.map((c) => c.kind), ['success']);
+  assert.deepStrictEqual(rec.calls.map((c) => c.kind), ['success', 'error']);
   assert.strictEqual(rec.calls[0].argc, 0);
 });
 

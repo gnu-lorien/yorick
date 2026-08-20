@@ -110,12 +110,16 @@ async function startServer() {
     console.log('[seed] Continuing without seeding.');
   }
 
+  // Hoisted out of the settings literal because three things need it now: the
+  // setting itself, the express mount, and serverURL's path.
+  var mountPath = process.env.MOUNT_PATH || "/parse/1";
+
   var settings = {
     "appId": process.env.APPLICATION_ID || "APPLICATION_ID",
     "appName": process.env.APPLICATION_NAME || "Yorick",
     "masterKey": process.env.MASTER_KEY || "MASTER_KEY",
     "databaseURI": databaseURI,
-    "mountPath": process.env.MOUNT_PATH || "/parse/1",
+    "mountPath": mountPath,
     "cloud": process.env.CLOUD_CODE_MAIN || path.join(__dirname, 'cloud', 'main.js'),
     // parse-server 2.8.4 defaults this TRUE and every version from 3.0 on
     // defaults it FALSE (lib/Options/Definitions.js, "defaults to true" vs
@@ -154,7 +158,54 @@ async function startServer() {
     // (Adapters/Logger/WinstonLogger.js:56), so the error log is unaffected.
     "verbose": process.env.VERBOSE ? true : false,
     "publicServerURL": process.env.PUBLIC_SERVER_URL || "https://yorick-latest-parse-server-gnu-lorien.c9users.io/parse/1",
-    "serverURL": "http://0.0.0.0:" + port + "/parse/1"
+    // 127.0.0.1, not 0.0.0.0. `0.0.0.0` is a bind address, not a destination,
+    // and modern parse-server FETCHES serverURL at startup to verify it. The
+    // path follows mountPath rather than duplicating the literal it is mounted
+    // at, so the two cannot disagree.
+    "serverURL": "http://127.0.0.1:" + port + mountPath,
+    // 9.10.0 defaults: enableForPublic false, enableForAnonymousUser false,
+    // enableForAuthenticatedUser TRUE. Portrait uploads are made by logged-in
+    // players, so the defaults would already work -- these are pinned for the
+    // same reason allowClientClassCreation above is: an inherited default is a
+    // behaviour that can move under a later bump without appearing in a diff.
+    //
+    // This is a real tightening against 2.8.4, which gated POST /files not at
+    // all: an unauthenticated client could upload, and `require_a_user` only
+    // refused the CharacterPortrait ROW afterwards, leaving an orphan file in
+    // GridFS. Nothing in the suite uploads while logged out.
+    //
+    // `fileExtensions` is deliberately left at its default, which reads as a
+    // whitelist and is really a negative-lookahead BLACKLIST: it refuses only
+    // the script-bearing markup types (html/xhtml/svg/xml/xslt/xsd/rng/rdf/
+    // owl/mathml) and permits everything else. Measured against the regex
+    // itself -- txt, png, jpg, jpeg and gif all pass, svg/html/xml/htm do not.
+    // That matters because CharacterPortraitView.js:49 names the upload
+    // "portrait" + the source file's extension, and the E2E portrait test
+    // uploads a .txt to exercise the hook's rejection path. Were .txt refused,
+    // the file layer would reject ahead of CharacterPortrait/beforeSave and
+    // the test would still pass -- it asserts only that the upload was
+    // rejected -- while the hook silently stopped running.
+    "fileUpload": {
+      "enableForPublic": false,
+      "enableForAnonymousUser": false,
+      "enableForAuthenticatedUser": true
+    },
+    // New in 9.x and ON by default: a CLP refusal is logged in full
+    // server-side but answered to the client as the bare string
+    // "Permission denied" (lib/Error.js, createSanitizedError). 2.8.4 always
+    // sent the detailed message, and the suite reads it -- access-control 382
+    // asserts the refusal names `bnsmetv1_ClanRule`, admin-patronage 15
+    // asserts the exact "Permission denied for action create on class
+    // Patronage.".
+    //
+    // Pinned to 2.8.4's behaviour rather than adopting the new default,
+    // because which message a client sees is a product decision and this step
+    // is a version bump. Turning it on is a real (small) hardening -- the
+    // detailed message tells an unauthenticated caller which classes exist and
+    // what it may not do to them -- and it is a two-line change here plus
+    // those two assertions. It wants its own commit and its own gate, not a
+    // default silently changing underneath this one.
+    "enableSanitizedErrorResponse": false
   };
 
   // R51. Password reset needs an `emailAdapter` as well as the `appName` and
@@ -177,7 +228,22 @@ async function startServer() {
   }
 
   var api = new ParseServer(settings);
-  app.use('/parse/1', api);
+  // parse-server 2.8.4's `ParseServer` export was a factory that returned
+  // `server.app` (lib/index.js:52-56), so `new ParseServer(settings)` handed
+  // back an express app by accident of calling `new` on a factory. 9.10.0's
+  // export is still a factory but returns the SERVER (lib/index.js), so this
+  // is an instance and the express app is `api.app`.
+  //
+  // `start()` MUST be awaited before listen(). Cloud code is `require`d inside
+  // it (ParseServer.js:181-198), so not one hook is registered until it
+  // resolves -- and a hook that has not registered yet does not fail, it
+  // silently permits. `startServer()` is already async and its caller already
+  // turns a rejection into process.exit(1).
+  await api.start();
+  // `settings.mountPath` rather than the literal it duplicated. The setting was
+  // read at :118 from MOUNT_PATH and then ignored here, so setting MOUNT_PATH
+  // moved nothing and 404ed nothing. Now it does what it says.
+  app.use(settings.mountPath, api.app);
   app.use(serveStatic(process.env.PUBLIC_BASE || path.join(__dirname, 'public')));
 
   app.use(bodyParser.urlencoded({extended: false}));

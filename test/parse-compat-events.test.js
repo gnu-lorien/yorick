@@ -192,14 +192,24 @@ test('a real, installed Parse SDK gains working change events', (t) => {
   let version;
   try {
     Parse = require('parse/node');
-    version = require('parse/package.json').version;
+    // NOT `require('parse/package.json')`. parse@8 declares an `exports` map
+    // that does not list `./package.json`, so that require throws
+    // ERR_PACKAGE_PATH_NOT_EXPORTED -- which the catch below read as "no parse
+    // installed" and turned into a skip. This test asserts its own premise
+    // (that the SDK has no emitter); silently skipping it on the exact SDK the
+    // migration targets is the one outcome it must not have. Resolve the entry
+    // point and read the manifest off disk instead, which works on both.
+    var path = require('path');
+    var fs = require('fs');
+    version = JSON.parse(
+      fs.readFileSync(path.join(path.dirname(require.resolve('parse/node')), 'package.json'), 'utf8')
+    ).version;
   } catch (err) {
     t.skip('no parse package installed in this checkout');
     return;
   }
 
-  // Say out loud which SDK this actually exercised. The migration targets
-  // 8.6.0; what is installed here today is 1.11.1, via parse-server@2.8.4.
+  // Say out loud which SDK this actually exercised.
   t.diagnostic('exercised against parse@' + version);
 
   // Confirm the premise rather than assuming it: this SDK really has no events.

@@ -47,7 +47,15 @@ var create_thumbnail = function(portrait, input_image, size) {
     }).then(function (buffer) {
         var base64 = buffer.toString("base64");
         var cropped = new Parse.File("thumbnail_" + size + ".jpg", {base64: base64});
-        return cropped.save();
+        // With the master key. This is the server writing a derived file on its
+        // own behalf, inside beforeSave("CharacterPortrait"), so it has no user
+        // and no session token -- and parse-server 9 gates POST /files, where
+        // 2.8.4 did not gate it at all. Left bare, all four thumbnail writes
+        // are refused with `File upload by public is disabled.` (code 130) and
+        // the portrait hook fails, while the player's OWN upload a moment
+        // earlier succeeded: the 201 makes it look as though uploading works
+        // and only the hook is broken.
+        return cropped.save({useMasterKey: true});
     }).then(function(cropped) {
         portrait.set("thumb_" + size, cropped);
     });
@@ -812,14 +820,22 @@ Parse.Cloud.define("check_user_password", function(request, response)
 {
     var password = request.params.password;
 
-    Parse.User.logIn(request.user.getUsername(), password, {
-        success: function(results)
-        {
-            response.success(true);
-        },
-        error: function() {
-            response.success(false);
-        }
+    // The `{success, error}` callbacks bag was dropped at SDK 2.0. Under
+    // parse@8 the third argument is an OPTIONS bag ({useMasterKey,
+    // installationId, ...}) and `success`/`error` are simply unrecognised
+    // keys -- so neither callback ever fires, `response` is never settled, and
+    // the request HANGS. Not an error: a hang. Nothing exercises this function,
+    // so there is no E2E oracle and no log signal for it; the only symptom
+    // would have been a client timeout in production.
+    //
+    // Returned rather than fire-and-forget so the legacy arm of
+    // FunctionsRouter (`theFunction.length >= 2`) still has a promise to
+    // settle. Semantics are preserved exactly, including the deliberate one: a
+    // wrong password answers success(false), it does not raise an error.
+    return Parse.User.logIn(request.user.getUsername(), password).then(function () {
+        response.success(true);
+    }, function () {
+        response.success(false);
     });
 });
 

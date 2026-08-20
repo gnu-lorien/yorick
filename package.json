@@ -19,9 +19,9 @@
     "jimp": "^0.22.12",
     "lodash": "^4.17.10",
     "moment": "^2.22.2",
-    "mongodb": "3.1.1",
-    "parse": "^1.9.0",
-    "parse-server": "=2.8.4",
+    "mongodb": "7.1.0",
+    "parse": "8.6.0",
+    "parse-server": "=9.10.0",
     "paypal-ipn": "^3.0.0",
     "serve-static": "^1.13.2"
   },
@@ -49,7 +49,7 @@
     "url": "https://github.com/gnu-lorien/yorick.git"
   },
   "engines": {
-    "node": ">=20.19"
+    "node": ">=20.19.0 <21.0.0 || >=22.13.0 <23.0.0 || >=24.11.0 <25.0.0"
   },
   "scripts": {
     "start": "node index.js",
