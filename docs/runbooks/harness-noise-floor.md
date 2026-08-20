@@ -31,6 +31,49 @@
 > probably what sustained load does to it. On a quiet machine, treat
 > one-in-seven as the figure and re-run.
 
+> **Resolved, 2026-08-20.** Root-caused and fixed in `6b790dc`. It was one
+> defect, not four flaky tests: jQuery Mobile closes every open popup on
+> `pagebeforechange`, the routes ask for the page they are already showing, and
+> that no-op request gets queued behind a running animation and replayed a fifth
+> of a second later — landing, in the failing runs, 61 ms into a dialog's life.
+> jQuery Mobile's own guard for this (`this._myUrl !== toUrl`) is dead code here,
+> because `main.js` turns off hash listening so Backbone can own the URL, so
+> `_myUrl` is never assigned. See the commit message for the traced timeline.
+>
+> Measured, same method as the numbers above:
+>
+> | | before (`c390d1f`) | after (`6b790dc`) |
+> |---|---|---|
+> | `xp-history` alone | 9 of 10 runs FAILED | **0 of 40** |
+> | full 8-worker runs | 2 of 7 clean | **2 of 2 clean** |
+>
+> The 40 single-file runs are two independent agents' 20 each, on separate ports.
+> 0 of 40 puts the 95% upper bound on the residual rate at about 7%; it does not
+> prove zero, and nobody should claim it does — the honest statement is that the
+> ~90% single-file rate and the 5-of-7 full-run rate are both excluded.
+>
+> **The four numbers were one bug.** 54, 75, 114 and 360 all sat in the same
+> place: a dialog destroyed between the fill and the submit, by a navigation
+> nobody asked for. That is why fixing the leak, the locator disagreement, the
+> sweep and the deferred render each helped and none of them cured it — all four
+> were real defects on the same page, and none of them was this one.
+>
+> **Still open, and deliberately not fixed here:**
+> - The redundant navigation itself. `mobileRouter.js:448` and ~74 siblings still
+>   ask jQuery Mobile for the page already on screen; it is now harmless, but it
+>   is what made this reachable. A `show_page()` guard would remove it at source.
+> - A `#popupEditLogin-popup` container leaks one duplicate-id element per full
+>   render of the experience page, because `enhanceWithin()` re-creates it and
+>   the sweep from `1b24a57` only knows about the three XP popups.
+> - `traits-lifecycle` 270 went flaky once in the two post-fix full runs and
+>   self-healed on retry. Different file, different assertion (a DevTools-only
+>   console check), no popup involvement — a separate, smaller thing.
+> - `assets-rename-portrait` 99 failed once during verification with a
+>   server-side `TypeError: Cannot read properties of undefined (reading
+>   'bitmap')`. That is the jimp path, and it is the oracle S10 Step 12 depends
+>   on, so it wants understanding before that step rather than after.
+
+
 > **Third correction, 2026-08-20, S10 Step 2.** Both corrections above understate
 > this, and the way they understate it is the reason it matters. They count
 > *failures*; the number that decides whether a migration can be measured is the
