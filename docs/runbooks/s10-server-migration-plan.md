@@ -45,13 +45,29 @@ original reasoning stays legible next to what measurement did to it.
 | 1. Gate wrapper | **done** | `gate.js`, `test/gate.test.js`, 27 self-tests |
 | 2. S10 baseline | **done** | `runs/s10-baseA.json` — 451 discovered, 448 passed, 3 skipped, committed |
 | 4. PaymentPaypal | **decided — see below** | owner, 2026-08-20 |
+| 5. MongoDB 8.2.6 alone | **answered — the experiment is impossible** | gate **2**; `mongodb-8-op-query.md` |
 | 7. Deletions | **done** (`5347818`) | gate 0 |
 | 8. Master-key role reads | **done** (`dcdff91`) | gate 0 |
 | 9. Explicit options | **done** (`fbccc99`) | gate 0 |
 | 10. Seeder/driver decoupling | **done** (`c666b31`) | gate 0 |
 
-Not done: **3** (log oracle), **5** (MongoDB 8.2.6 alone), **6** (adapter +
-conversions), **11** (lockfile), **12** (jimp), **13** (the bump).
+Not done: **3** (log oracle), **6** (adapter + conversions), **11** (lockfile),
+**12** (jimp), **13** (the bump).
+
+**Step 5 is closed, and §5's premise below is wrong.** MongoDB is not a
+separable variable: under `MONGODB_BINARY_VERSION=8.2.6` the backend never
+boots. `mongodb@3.1.1` frames every operation as a legacy `OP_QUERY`
+(`mongodb-core/lib/wireprotocol/3_2_support.js:145`, `:611`, `:667`; there is no
+`OP_MSG` path in that package at all), and 8.2.6 refuses it — code 352,
+`UnsupportedOpQueryCommand`, on the seeder's first `find`. **The layer is the
+driver, not the storage engine and not parse-server**, proven by a probe holding
+only `mongodb@3.1.1` and a mongod. The control run at 4.4.18, same commit, same
+minute, gates 0. So the mongo move is welded to the driver move and therefore to
+Step 13; re-run it there, and check the new driver's *minimum* server version
+while you are at it, because the pairing may invert. It also leaves §7's
+`filemd5` unknown untouched — the run reached no test at all. Full record and
+the production caveat (production is 5.0.32; this only tested the harness's
+in-memory mongod): **`mongodb-8-op-query.md`**.
 
 Unrelated but relevant: the harness flake that made all of this hard to measure
 was root-caused and fixed (`6b790dc`); see `harness-noise-floor.md`. Full runs
@@ -462,6 +478,11 @@ payment ingestion, not an engineering one — ask.**
 
 **Step 5. MongoDB 8.2.6 alone. ~30min, 2 runs. The only free experiment in S10.**
 
+> **Run 2026-08-20. It is free and it is impossible — do not run it again.** The
+> backend does not boot: `mongodb@3.1.1` speaks only the legacy `OP_QUERY`
+> opcode and 8.2.6 refuses it (352). Gate 2, DID NOT RUN. See §0 and
+> `mongodb-8-op-query.md`. Everything below is left as written.
+
 `index.js:83` reads `process.env.MONGODB_BINARY_VERSION || '4.4.18'`, and both
 binaries are already cached (`mongod-x64-win32-4.4.18.exe` and
 `mongod-x64-win32-8.2.6.exe`). So:
@@ -842,7 +863,10 @@ Specifically unverified, and load-bearing:
 - Whether the `filemd5` command GridStore issues still exists on MongoDB 5.0+.
   If it does not, portrait uploads have been broken in production since that
   move and the upgrade would *fix* them — which changes how you read any
-  "portraits are broken" report.
+  "portraits are broken" report. **Still open after Step 5**, which was supposed
+  to answer it: the 8.2.6 run never reached a file write, or any test, because
+  the driver was refused at the first query. It moves to Step 13, against a
+  different driver. See `mongodb-8-op-query.md`.
 - Production's actual `_SCHEMA`: 29 entries in the 2026-07-03 dump versus 30 in
   the seed. Which class is missing is unknown.
 - **Which Heroku app is live.** greensboro's source default and its committed
