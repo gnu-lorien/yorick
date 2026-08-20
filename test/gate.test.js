@@ -238,6 +238,63 @@ test('m18 vs m19 fails, and cites the NEW-FAIL AND the 14 tests that stopped run
   assert.ok(r.lost.every((l) => l.kind === 'serial-abort'));
 });
 
+// ---------------------------------------------------------------------------
+// Hole C, mirrored -- a test that never ran in the baseline hides a failure
+// ---------------------------------------------------------------------------
+
+test('a candidate FAILURE that was SKIPPED in the baseline cannot hide from the verdict', () => {
+  // `compare()` drops any pair where EITHER side is skipped, so baseline-
+  // skipped + candidate-failed is classified as neither newFail nor sameFail
+  // and no number the verdict reads can see it. This returned PASS / exit 0.
+  //
+  // The fixture is the shape that will actually bite S10: a flake stranded the
+  // tail when the baseline was recorded, then the dependency bump cleared the
+  // flake and broke every test in the tail. All four failures are baseline-
+  // skipped, so all four were invisible.
+  const r = judge(
+    fix('serial-baseline-degraded.json'),
+    fix('serial-tail-failed-under-skipped-baseline.json')
+  );
+  assert.strictEqual(r.exitCode, gate.EXIT_FAIL, 'four failing tests must not be green');
+  assert.strictEqual(r.numbers.unnamedFailures, 4);
+  assert.strictEqual(r.numbers.statsUnexpected, 4, 'the candidate says so in its own stats');
+
+  // The point of the test: every OTHER number stays silent, which is why the
+  // assertion has to exist at all.
+  assert.strictEqual(r.numbers.newFail, 0, 'the oracle reports no regression here');
+  assert.strictEqual(r.numbers.lost, 0);
+  assert.strictEqual(r.numbers.stoppedPassing, 0, 'even the honest headline reads zero');
+
+  assert.ok(
+    r.failures.some((f) => /CANNOT NAME/.test(f) && /unexpected = 4/.test(f)),
+    r.failures.join(' | ')
+  );
+  assert.ok(
+    r.unnamedFailures.length === 4 && r.lines.join('\n').includes(r.unnamedFailures[0]),
+    'the unnamed failures must be named on the page, not just counted'
+  );
+});
+
+test('the unnamed-failure assertion fires on no recorded pair', (t) => {
+  // A check that blocks the migration must not fire on a good run. Measured at
+  // zero across every recorded pair the gate is expected to judge.
+  const names = ['baseline.json', 'm18.json', 'm19.json', 'm20.json'];
+  if (needRuns(t, names)) return;
+  const pairs = [
+    ['baseline.json', 'm18.json'],
+    ['m18.json', 'm19.json'],
+    ['baseline.json', 'm19.json'],
+    ['m19.json', 'm20.json']
+  ];
+  for (const [b, c] of pairs) {
+    const r = judge(run(b), run(c));
+    assert.strictEqual(
+      r.numbers.unnamedFailures, 0,
+      'false positive on ' + b + ' -> ' + c + ': ' + r.unnamedFailures.join(', ')
+    );
+  }
+});
+
 test('baseline vs m18 passes -- the gate does not cry wolf on the clean run', (t) => {
   if (needRuns(t, ['baseline.json', 'm18.json'])) return;
   const r = judge(run('baseline.json'), run('m18.json'));
@@ -374,6 +431,124 @@ test('a quarantined test that already failed in the baseline is a hard fail', ()
   assert.ok(
     r.failures.some((f) => f.includes('failed in the baseline')),
     r.failures.join(' | ')
+  );
+});
+
+test('a degraded baseline is refused whether or not the failure is quarantined', () => {
+  // The asymmetry that made this worth fixing: the SAME shape was a hard fail
+  // when the failing key happened to be on the quarantine list and a PASS when
+  // it was not. An unknown failure is the more dangerous of the two, and it was
+  // the one being forgiven. Measured before the fix: `PASS -- all 433 tests
+  // that passed in the baseline still pass`, exit 0, with 1 test permanently
+  // failing and 14 permanently dark -- while printing a warning saying so.
+  const quarantined = judge(
+    fix('serial-baseline-degraded.json'), fix('serial-tail-lost.json'),
+    { quarantine: SYNTH_QUARANTINE }
+  );
+  const unquarantined = judge(fix('serial-baseline-degraded.json'), fix('serial-tail-lost.json'));
+
+  assert.strictEqual(quarantined.exitCode, gate.EXIT_FAIL);
+  assert.strictEqual(
+    unquarantined.exitCode, gate.EXIT_FAIL,
+    'an UNKNOWN baseline failure must not be forgiven where a known one is refused'
+  );
+
+  // And the tail is measured, not asserted. The old warning claimed "their
+  // serial tails never ran on either side" without checking whether one
+  // existed; citing the real number is what makes the refusal actionable.
+  assert.strictEqual(unquarantined.numbers.darkBehindBaselineFailure, 4);
+  assert.ok(
+    unquarantined.failures.some((f) => /4 test\(s\) stranded behind them/.test(f)),
+    unquarantined.failures.join(' | ')
+  );
+  assert.ok(
+    unquarantined.lines.join('\n').includes('DARK ON BOTH SIDES'),
+    'the dark tests must be named on the page'
+  );
+});
+
+test('a baseline failure with nothing stranded behind it warns rather than refusing', () => {
+  // The other side of the line: a baseline failure hides coverage only when
+  // something is dark behind it. Test 6 is last in the file, so nothing is.
+  const r = judge(fix('serial-baseline-last-failed.json'), fix('serial-baseline-last-failed.json'));
+  assert.strictEqual(r.verdict, 'PASS', r.failures.join(' | '));
+  assert.strictEqual(r.numbers.baselineFailed, 1);
+  assert.strictEqual(r.numbers.darkBehindBaselineFailure, 0, 'nothing is dark behind it');
+  assert.ok(
+    r.warnings.some((w) => /Nothing is stranded behind them/.test(w)),
+    r.warnings.join(' | ')
+  );
+});
+
+test('a quarantined test that FAILED is never reported as passed', () => {
+  // Precondition: it was SKIPPED in the baseline, so `compare()` drops the pair
+  // and the key is not in newFail. The old ternary read "not SKIPPED" as
+  // "PASSED" and printed
+  //
+  //   [PASSED] ... 2 the noisy one
+  //       now:  passed this run -- consider removing the quarantine
+  //
+  // over a MongoServerError, with VERDICT PASS -- the loud section stating the
+  // opposite of the truth and inviting deletion of the pin that would have
+  // caught it next time. `signatureMatches` was never consulted at all.
+  const r = judge(
+    fix('serial-baseline-quarantined-skipped.json'), fix('serial-quarantined-failed.json'),
+    { quarantine: SYNTH_QUARANTINE }
+  );
+  const q = r.quarantineStatus.find((s) => s.key === SYNTH_KEY);
+  assert.ok(q, 'the quarantined key must be judged');
+  assert.notStrictEqual(q.state, 'PASSED', 'a test that failed must never be labelled PASSED');
+  assert.strictEqual(q.state, 'FAILED (UNCOMPARED)');
+  assert.ok(/signature pin was never consulted/.test(q.detail), q.detail);
+  assert.strictEqual(r.exitCode, gate.EXIT_FAIL, 'and it must not be forgiven');
+  assert.strictEqual(r.numbers.forgiven, 0);
+
+  // Reported once, under the quarantine heading -- not twice, once here and
+  // once as an unnamed failure.
+  assert.strictEqual(r.numbers.unnamedFailures, 0);
+  assert.strictEqual(
+    r.failures.filter((f) => f.includes(SYNTH_KEY)).length, 1,
+    r.failures.join(' | ')
+  );
+});
+
+test('a forgiven flake may not grow its blast radius past the recorded tail', () => {
+  // `tail` was declared on every QUARANTINE entry, documented as part of the
+  // pin, and read by nothing -- so an INCONCLUSIVE stranding 25 tests printed
+  // byte-identically in shape to one stranding 14, and noticing the growth
+  // relied on a human diffing two runs by eye.
+  const atCost = (tail) =>
+    judge(fix('serial-baseline.json'), fix('serial-tail-lost.json'), {
+      quarantine: { [SYNTH_KEY]: Object.assign({}, SYNTH_QUARANTINE[SYNTH_KEY], { tail: tail }) }
+    });
+
+  const asRecorded = atCost(4);
+  assert.strictEqual(asRecorded.verdict, 'INCONCLUSIVE', 'the known cost is still forgiven');
+  assert.strictEqual(asRecorded.numbers.lostBehindQuarantine, 4);
+
+  const grown = atCost(2);
+  assert.strictEqual(grown.exitCode, gate.EXIT_FAIL, 'a cost of 4 against a recorded 2 must fail');
+  assert.ok(
+    grown.failures.some((f) => /blast radius GREW/.test(f) && /stranded 4 test\(s\)/.test(f)),
+    grown.failures.join(' | ')
+  );
+
+  // Only growth fires -- a --filter'ed heal run legitimately sees less.
+  assert.strictEqual(atCost(9).verdict, 'INCONCLUSIVE', 'a shorter tail than recorded is fine');
+});
+
+test('the real quarantine tails match what the recorded runs actually strand', (t) => {
+  // The pin is only worth asserting if the recorded numbers are the true ones.
+  if (needRuns(t, ['m18.json', 'm19.json'])) return;
+  const r = judge(run('m18.json'), run('m19.json'), { quarantine: gate.QUARANTINE });
+  const entry = gate.QUARANTINE[
+    Object.keys(gate.QUARANTINE).find((k) => k.startsWith('assets-rename-portrait'))
+  ];
+  assert.strictEqual(entry.tail, 14, 'the recorded cost of forgiving test 114');
+  assert.strictEqual(r.numbers.lostBehindQuarantine, 14, 'and what it actually strands');
+  assert.ok(
+    !r.failures.some((f) => /blast radius/.test(f)),
+    'the assertion must not fire on the pair it was measured on: ' + r.failures.join(' | ')
   );
 });
 
@@ -527,6 +702,158 @@ test('the port sweep is derived from e2e/ports.js and covers the default band', 
   }
   assert.deepStrictEqual(swept, [...swept].sort((a, b) => a - b));
   assert.strictEqual(new Set(swept).size, swept.length, 'no port swept twice');
+});
+
+// ---------------------------------------------------------------------------
+// The launch path -- the one region no test could reach, and the one that
+// contained a blocking defect
+// ---------------------------------------------------------------------------
+
+test('the Playwright CLI specifier actually resolves', () => {
+  // This was `require.resolve('@playwright/test/cli.js')`, and it was the FIRST
+  // statement of the only function that launches the suite. The package
+  // declares an exports map -- {".", "./cli", "./package.json", "./reporter"} --
+  // so Node refused the './cli.js' subpath with ERR_PACKAGE_PATH_NOT_EXPORTED
+  // even though cli.js is right there on disk. Every real `npm run gate` died
+  // on a raw stack trace after passing every pre-flight check.
+  //
+  // Costs no suite run, and would have caught it.
+  assert.doesNotThrow(() => gate.resolvePlaywrightCli());
+  assert.ok(
+    /[\\/]cli\.js$/.test(gate.resolvePlaywrightCli()),
+    'expected the Playwright CLI entry point, got ' + gate.resolvePlaywrightCli()
+  );
+  assert.ok(fs.existsSync(gate.resolvePlaywrightCli()), 'and the file must exist');
+});
+
+test('a candidate that is valid JSON but not an object says WHY', () => {
+  // `JSON.parse('null')` succeeds and returns a falsy value, so gating the
+  // shape checks on the value itself let `null` skip all of them and fall
+  // through to a refusal with an EMPTY reason list -- a tool whose whole job is
+  // explaining why a run cannot be trusted going wordless on the most
+  // degenerate input there is.
+  const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'yorick-gate-test-'));
+  try {
+    for (const body of ['null', '[]', '7', '"a string"']) {
+      const p = path.join(tmp, 'x.json');
+      fs.writeFileSync(p, body);
+      const r = judge(fix('serial-baseline.json'), p);
+      assert.strictEqual(r.exitCode, gate.EXIT_DID_NOT_RUN, 'must refuse ' + body);
+      assert.ok(
+        r.integrityFailed.some((f) => f.includes('not a Playwright report')),
+        'refused ' + body + ' with no reason: ' + JSON.stringify(r.integrityFailed)
+      );
+      assert.ok(
+        r.lines.some((l) => l.includes('not a Playwright report')),
+        'the reason must reach the page for ' + body
+      );
+    }
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('the COVERAGE partition adds up to the total printed under it', (t) => {
+  // The four labelled rows are a partition of `baselinePassed`. `n.removed`
+  // counts every removed key regardless of its baseline outcome, so printing it
+  // there made the column visibly not close: m18 vs an empty report showed
+  // 0 + 0 + 0 + 451 under a heading of 448, because the 3 deliberate
+  // `test.skip()`s never passed. In THE RUN DID NOT HAPPEN -- the one output
+  // that has to be maximally credible -- arithmetic that does not close is what
+  // makes a reader stop believing the rest of the page.
+  if (needRuns(t, ['m18.json'])) return;
+  const r = judge(run('m18.json'), fix('empty-report.json'));
+  const n = r.numbers;
+  assert.strictEqual(n.baselinePassed, 448);
+  assert.strictEqual(n.removed, 451, 'the raw count is still available for the integrity message');
+  assert.strictEqual(n.removedPassing, 448, 'but the partition row counts only passing tests');
+  assert.strictEqual(
+    n.samePass + n.newFail + n.lost + n.removedPassing,
+    n.baselinePassed,
+    'the partition must close'
+  );
+  assert.ok(
+    r.integrityFailed.some((f) => f.includes('451 test(s) present in the baseline')),
+    'the raw count belongs in the integrity failure: ' + r.integrityFailed.join(' | ')
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Argument parsing -- a bad flag must never cost a five-minute suite run
+// ---------------------------------------------------------------------------
+
+/**
+ * Run the gate as a child process and capture its refusal.
+ *
+ * Every invocation here is deliberately shaped so that a REGRESSION of the fix
+ * under test still cannot launch Playwright: either --skip-run is present, or
+ * the baseline path does not exist, so the worst case is a different exit-2
+ * message rather than four minutes of eight browsers.
+ */
+function runGate(args) {
+  const res = require('child_process').spawnSync(
+    process.execPath, [path.join(ROOT, 'gate.js')].concat(args),
+    { cwd: ROOT, encoding: 'utf8' }
+  );
+  return { code: res.status, err: res.stderr || '', out: res.stdout || '' };
+}
+
+test('a value-taking flag refuses to swallow the flag after it', () => {
+  // `--name --skip-run --baseline ...` set name to the string "--skip-run",
+  // left skipRun false, and fell straight through to spawning the full suite --
+  // precisely the resource this tool exists to protect.
+  const r = runGate(['--name', '--skip-run', '--baseline', 'no-such-baseline.json']);
+  assert.strictEqual(r.code, gate.EXIT_DID_NOT_RUN);
+  assert.ok(/--name needs a value/.test(r.err), r.err.split('\n')[0]);
+  assert.ok(!/running the suite/.test(r.out), 'it must not have launched anything');
+});
+
+test('a trailing --filter with no value is refused, not read as "compare everything"', () => {
+  // `undefined` became `null` downstream, silently turning an intended one-file
+  // heal run into a whole-suite comparison.
+  const r = runGate(['--skip-run', '--baseline', 'runs/m18.json', '--filter']);
+  assert.strictEqual(r.code, gate.EXIT_DID_NOT_RUN);
+  assert.ok(/--filter needs a value/.test(r.err), r.err.split('\n')[0]);
+});
+
+test('--not-before rejects an unparseable instant instead of calling the run stale', () => {
+  // Date.parse('yesterday') is NaN, NaN != null, so the freshness check ran
+  // against it and reported "the candidate report is STALE" -- diagnosing a
+  // typo in an argument as a dead suite. On current Node it was worse:
+  // new Date(NaN).toISOString() throws, so it died on a RangeError stack trace.
+  const r = runGate([
+    '--skip-run', '--baseline', 'runs/m18.json', '--candidate', 'runs/m19.json',
+    '--not-before', 'yesterday'
+  ]);
+  assert.strictEqual(r.code, gate.EXIT_DID_NOT_RUN);
+  assert.ok(/--not-before is not a parseable instant/.test(r.err), r.err.split('\n')[0]);
+  assert.ok(!/STALE/.test(r.out + r.err), 'a bad argument is not a dead suite');
+  assert.ok(!/RangeError/.test(r.err), 'and it must not be a stack trace');
+});
+
+test('--not-before is refused on a real run rather than silently discarded', () => {
+  // It was overwritten with Date.now() inside the !skipRun branch, so the flag
+  // did nothing on exactly the invocation someone would reach for it on.
+  // Silently ignoring an argument is worse than not accepting it.
+  const r = runGate(['--name', 'never-created', '--not-before', '2026-08-19T00:00:00Z']);
+  assert.strictEqual(r.code, gate.EXIT_DID_NOT_RUN);
+  assert.ok(/--not-before only applies to --skip-run/.test(r.err), r.err.split('\n')[0]);
+  assert.ok(!/running the suite/.test(r.out), 'and it must refuse before launching anything');
+  assert.ok(
+    !fs.existsSync(run('never-created.json')),
+    'the refusal must happen before any report path is claimed'
+  );
+});
+
+test('--help states that only exit 0 means proceed', () => {
+  // The default quarantine makes the blocking m18-vs-m19 case exit 3, not 1;
+  // only --no-quarantine on that pair exits 1. Any wrapper testing for 1 alone
+  // reads a stranded-coverage run as success, so the contract has to say so
+  // where a caller will actually look.
+  const r = runGate(['--help']);
+  assert.strictEqual(r.code, gate.EXIT_PASS);
+  assert.ok(/ONLY 0 MEANS PROCEED/.test(r.out), r.out);
+  assert.ok(/exit != 0/.test(r.out), 'and it must name the test callers should use');
 });
 
 test('a free port probes as free and an occupied one as occupied', async () => {

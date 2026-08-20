@@ -62,8 +62,8 @@
  * everything -- and the tests stranded behind a forgiven failure are reported
  * by name with the command that re-measures them.
  *
- * Exit codes
- * ----------
+ * Exit codes -- ONLY 0 MEANS PROCEED
+ * ----------------------------------
  *   0  PASS              everything that passed in the baseline still passes
  *   1  FAIL              regressions, or coverage lost behind something unknown
  *   2  DID NOT RUN       the candidate report is missing, stale, empty or
@@ -71,6 +71,11 @@
  *                        uses for "I could not do my job"
  *   3  INCONCLUSIVE      only quarantined failures, but coverage was lost
  *                        behind them and has not been re-measured
+ *
+ * Callers branch on `exit != 0`, never on `exit == 1`. The default quarantine
+ * makes the blocking m18-vs-m19 case exit 3; the same pair under
+ * `--no-quarantine` exits 1. A wrapper testing for 1 alone reads a
+ * stranded-coverage run as success.
  *
  * Usage
  * -----
@@ -356,6 +361,8 @@ function evaluate(opts) {
     lost: [],
     lostBehindQuarantine: [],
     lostUnexplained: [],
+    unnamedFailures: [],
+    darkBehindBaselineFailure: [],
     quarantineStatus: [],
     quarantineEvaluated: false,
     lines: []
@@ -387,26 +394,39 @@ function evaluate(opts) {
   // but only when the file is genuinely absent -- and the stale-report trap
   // (below) is exactly the case where it is not.
   let candidate = null;
+  let parsed = false;
   if (!fs.existsSync(opts.candidatePath)) {
     fail('the candidate report does not exist: ' + opts.candidatePath);
   } else {
     try {
       candidate = JSON.parse(fs.readFileSync(opts.candidatePath, 'utf8'));
+      parsed = true;
       ok('candidate report exists and parses');
     } catch (err) {
       fail('the candidate report is not valid JSON: ' + err.message);
     }
   }
 
-  if (candidate) {
+  // `parsed`, not `candidate`, because `JSON.parse('null')` succeeds and
+  // returns a falsy value. Gating this block on the value itself let `null`
+  // skip every check silently and drop through to the bottom, where the
+  // refusal printed the THE RUN DID NOT HAPPEN banner with an EMPTY reason
+  // list -- a tool whose entire job is explaining why a run cannot be trusted
+  // going wordless on the most degenerate input there is.
+  if (parsed) {
     // ---- 3. it must be shaped like a Playwright report --------------------
     //
     // `{}` is valid JSON, and `node diff-runs.js runs/m18.json` against it
     // exits 0 with "No regressions." Valid-but-not-a-report is the gap
     // truncation detection does not cover, because a truncated file is already
-    // invalid JSON and fails loudly at step 2.
-    const stats = candidate.stats;
+    // invalid JSON and fails loudly at step 2. `null`, `[]` and `7` are the
+    // same gap wearing a smaller hat, so the object test is explicit and comes
+    // first rather than being implied by a property access on a truthy value.
+    const isObject =
+      candidate !== null && typeof candidate === 'object' && !Array.isArray(candidate);
+    const stats = isObject ? candidate.stats : null;
     const shapeOk =
+      isObject &&
       candidate.config && typeof candidate.config === 'object' &&
       Array.isArray(candidate.suites) &&
       Array.isArray(candidate.errors) &&
@@ -540,6 +560,16 @@ function evaluate(opts) {
   n.sameFail = diff.sameFail.length;
   n.added = diff.added.length;
   n.removed = diff.removed.length;
+  // The COVERAGE block prints a PARTITION of `baselinePassed`, so its removed
+  // row has to count only the removed tests that actually passed in the
+  // baseline. `n.removed` counts every removed key regardless of outcome, and
+  // printing that in the partition made the column visibly not add up: m18 vs
+  // an empty report showed 0 + 0 + 0 + 451 under a heading of 448, because the
+  // 3 deliberate `test.skip()`s never passed. In the one output that has to be
+  // maximally credible -- THE RUN DID NOT HAPPEN -- arithmetic that does not
+  // close is what makes a reader stop believing the rest of the page. The raw
+  // count stays on `n.removed`, where the integrity failure above quotes it.
+  n.removedPassing = diff.removed.filter((k) => bFlat.get(k).outcome === PASSED).length;
   n.flaky = diff.flaky.length;
   n.baselineSkipped = baselineKeys.filter((k) => bFlat.get(k).outcome === SKIPPED).length;
   n.candidateSkipped = candidateKeys.filter((k) => cFlat.get(k).outcome === SKIPPED).length;
@@ -558,6 +588,8 @@ function evaluate(opts) {
   n.forgiven = 0;
   n.lostBehindQuarantine = 0;
   n.lostUnexplained = 0;
+  n.unnamedFailures = 0;
+  n.darkBehindBaselineFailure = 0;
 
   // ---- 8. the filter must select something -------------------------------
   //
@@ -647,6 +679,10 @@ function evaluate(opts) {
   // forgiveness: `--filter assets-rename-portrait` would silence all 30 tests
   // in that file including the tail, which is the opposite of the point.
   const forgivenKeys = new Set();
+  // Keys the quarantine block has already pushed a failure for, so the
+  // unnamed-failure assertion below does not report the same test twice under
+  // two different headings.
+  const quarantineClaimed = new Set();
   for (const key of Object.keys(quarantine)) {
     // The filter defines the scope of the whole comparison -- `compare()`
     // applies it to both sides -- so it has to scope quarantine as well. A
@@ -679,10 +715,38 @@ function evaluate(opts) {
         'quarantined test ' + JSON.stringify(key) + ' failed in the baseline: ' + status.detail
       );
     } else if (!diff.newFail.includes(key)) {
-      status.state = cFlat.get(key).outcome === SKIPPED ? 'NOT RUN' : 'PASSED';
-      status.detail = status.state === 'PASSED'
-        ? 'passed this run -- consider removing the quarantine'
-        : 'did not run this run';
+      // Three-way, never a boolean. This branch is reached whenever the pair is
+      // not a NEW-FAIL, and "not a NEW-FAIL" is NOT the same as "did not fail":
+      // `compare()` drops any pair where either side is skipped, so a
+      // quarantined test that was SKIPPED in the baseline and FAILED in the
+      // candidate lands here too. Reading "not SKIPPED" as "PASSED" printed
+      //
+      //   [PASSED] ... 114 Renaming to collide ...
+      //       now:  passed this run -- consider removing the quarantine
+      //
+      // over a MongoServerError, and returned PASS/exit 0 -- the loud section
+      // stating the exact opposite of the truth, and inviting the reader to
+      // delete the pin that would have caught the same test next time.
+      const outcome = cFlat.get(key).outcome;
+      if (outcome === FAILED) {
+        status.state = 'FAILED (UNCOMPARED)';
+        status.detail =
+          'FAILED this run, but it was SKIPPED in the baseline, so the oracle never ' +
+          'classified the pair and the signature pin was never consulted. The pin is the ' +
+          'whole defence here -- unapplied, it forgives nothing. Not forgiven.';
+        result.failures.push(
+          'quarantined test ' + JSON.stringify(key) + ' FAILED on a run whose baseline ' +
+          'never measured it (baseline SKIPPED, candidate FAILED), so the recorded ' +
+          'signature could not be checked against it'
+        );
+        quarantineClaimed.add(key);
+      } else if (outcome === SKIPPED) {
+        status.state = 'NOT RUN';
+        status.detail = 'did not run this run';
+      } else {
+        status.state = 'PASSED';
+        status.detail = 'passed this run -- consider removing the quarantine';
+      }
     } else {
       const spec = cSpecs.get(key);
       if (spec && signatureMatches(spec, entry)) {
@@ -712,6 +776,49 @@ function evaluate(opts) {
   n.newFailUnforgiven = result.newFail.length;
   n.forgiven = result.forgiven.length;
 
+  // ---- 12b. every failure in the candidate must be NAMED -----------------
+  //
+  // The mirror image of Hole C. Hole C is "a failure hides tests that never
+  // ran"; this is "a test that never ran in the baseline hides a failure".
+  //
+  // `compare()` drops any pair where EITHER side is skipped into the untyped
+  // `skipped` bucket (diff-runs.js:131-134), so baseline-SKIPPED plus
+  // candidate-FAILED is classified as neither newFail nor sameFail. The
+  // verdict keys entirely off newFail / lostUnexplained / skippedDelta, and
+  // none of the three can see it. Measured, two ways:
+  //
+  //   Un-skip one of runs/baseline.json's three deliberate `test.skip()`s into
+  //   a MongoServerError and the gate returned PASS / exit 0 on a report whose
+  //   own `stats.unexpected` was 1.
+  //
+  //   The shape that will actually bite S10: record the Step 2 baseline on a
+  //   run where a non-quarantined flake fires (one bad run in seven quiet, one
+  //   in three loaded) and strands its serial tail. Then the mongo bump clears
+  //   the flake and breaks all 22 stranded tests. Every one of them is
+  //   baseline-skipped, so every one is invisible: the gate printed
+  //   "0 NEW-FAIL / 0 LOST / 0 TESTS THAT STOPPED PASSING" and exit 0 beside a
+  //   candidate whose own stats said `unexpected: 22`.
+  //
+  // `n.statsUnexpected` was computed and then read by nothing. This is what
+  // reads it -- but the check works off `candidateKeys`, not off stats, so
+  // `--filter` still scopes it correctly. Measured at 0 on baseline->m18,
+  // m18->m19, baseline->m19 and m19->m20: no false positives on any recorded
+  // pair.
+  const named = new Set(diff.newFail.concat(diff.sameFail));
+  result.unnamedFailures = candidateKeys.filter(
+    (k) => cFlat.get(k).outcome === FAILED && !named.has(k) && !quarantineClaimed.has(k)
+  );
+  n.unnamedFailures = result.unnamedFailures.length;
+  if (result.unnamedFailures.length) {
+    result.failures.push(
+      result.unnamedFailures.length + ' test(s) FAILED in the candidate that the comparison ' +
+      'CANNOT NAME, because they were SKIPPED in the baseline. The oracle drops any pair ' +
+      'where either side is skipped, so these sit in no category the verdict reads -- ' +
+      'without this check the run reports PASS. The candidate\'s own stats say ' +
+      'unexpected = ' + n.statsUnexpected + '.'
+    );
+  }
+
   // ---- 13. attribute the lost tests --------------------------------------
   //
   // A lost test is "behind" a forgiven failure when it is in the same spec file
@@ -738,6 +845,45 @@ function evaluate(opts) {
   }
   n.lostBehindQuarantine = result.lostBehindQuarantine.length;
   n.lostUnexplained = result.lostUnexplained.length;
+
+  // ---- 13b. a forgiven flake may not grow its blast radius ---------------
+  //
+  // `tail` on each QUARANTINE entry is the cost that was MEASURED when the
+  // entry was justified: 4 tests behind test 49, 14 behind test 114. It was
+  // declared, documented as part of the pin, and then read by nothing -- so an
+  // INCONCLUSIVE stranding 25 tests printed byte-identically in shape to one
+  // stranding 14, and noticing the 79% growth relied on a human diffing two
+  // runs by eye. A quarantine is an argument that a known cost is acceptable;
+  // when the cost changes, the argument has not been made.
+  //
+  // Attribution is per FILE, matching step 13 above -- `forgivenPositions` is
+  // already keyed by file, so per-key attribution would over-count whenever two
+  // forgiven keys share a file and could fire on nothing. Only GROWTH fires: a
+  // `--filter`ed heal run legitimately observes a shorter tail.
+  const recordedTailByFile = new Map();
+  for (const key of forgivenKeys) {
+    const entry = quarantine[key];
+    if (!entry || typeof entry.tail !== 'number') continue;
+    const f = fileOf(key);
+    recordedTailByFile.set(f, (recordedTailByFile.get(f) || 0) + entry.tail);
+  }
+  const observedTailByFile = new Map();
+  for (const k of result.lostBehindQuarantine) {
+    const f = fileOf(k);
+    observedTailByFile.set(f, (observedTailByFile.get(f) || 0) + 1);
+  }
+  for (const [f, recorded] of recordedTailByFile) {
+    const observed = observedTailByFile.get(f) || 0;
+    if (observed > recorded) {
+      result.failures.push(
+        'the quarantined failure(s) in ' + f + ' stranded ' + observed + ' test(s), but the ' +
+        'recorded cost of that quarantine is ' + recorded + '. The blast radius GREW, so ' +
+        'this is not the quarantine that was justified -- something later in the file ' +
+        'started failing too, or the file grew. Re-measure the file, then update `tail` in ' +
+        'gate.js only if the new cost is genuinely acceptable.'
+      );
+    }
+  }
 
   // ---- 14. the verdict ---------------------------------------------------
   if (result.newFail.length) {
@@ -795,12 +941,67 @@ function evaluate(opts) {
     );
   }
 
+  // A test that FAILED in the baseline is classified `sameFail` by the oracle:
+  // never printed, never non-zero. If it aborted a serial file, every test
+  // behind it is skipped on BOTH sides, so `compare()` drops those pairs too
+  // and the whole tail is dark with no output anywhere. That is a permanent
+  // blind spot baked into every run from here on.
+  //
+  // The quarantine block above (see 'BAD BASELINE') already calls exactly this
+  // situation a hard fail when the failing key happens to be on the quarantine
+  // list. This used to be a WARNING and exit 0 when it was not -- so a known,
+  // documented flake was refused and an UNKNOWN failure was forgiven, which is
+  // precisely backwards. Measured: take m19 as a baseline and re-judge the same
+  // shape and the gate printed `PASS -- all 433 tests that passed in the
+  // baseline still pass.` with 1 test permanently failing and 14 permanently
+  // dark, while printing the warning that says so.
+  //
+  // The tail is MEASURED, not asserted. The old warning claimed "their serial
+  // tails never ran on either side" unconditionally, without checking whether a
+  // tail existed or how big it was; citing the real number is what makes the
+  // refusal actionable. A baseline failure with nothing stranded behind it
+  // hides no coverage -- the failing test itself is visible in the same-fail
+  // row -- so that stays a warning.
   if (n.baselineFailed > 0) {
-    result.warnings.push(
-      n.baselineFailed + ' test(s) already failed in the baseline. Their serial tails ' +
-      'never ran on either side, so this comparison cannot see them at all. ' +
-      'A degraded baseline lowers the bar permanently -- record a clean one.'
-    );
+    const failedAt = new Map();
+    for (const k of baselineKeys) {
+      if (bFlat.get(k).outcome !== FAILED) continue;
+      const f = fileOf(k);
+      const at = ordinal.has(k) ? ordinal.get(k) : -1;
+      if (!failedAt.has(f) || at < failedAt.get(f)) failedAt.set(f, at);
+    }
+    for (const k of baselineKeys) {
+      if (bFlat.get(k).outcome !== SKIPPED) continue;
+      const c = cFlat.get(k);
+      if (!c || c.outcome !== SKIPPED) continue;
+      const cut = failedAt.get(fileOf(k));
+      if (cut === undefined) continue;
+      if ((ordinal.has(k) ? ordinal.get(k) : Infinity) <= cut) continue;
+      // A deliberate `test.skip()` is not stranded -- the real suite carries 3
+      // of them permanently and they never ran on either side by design.
+      const bSpec = bSpecs.get(k);
+      if (bSpec && skipKind(bSpec) === 'deliberate') continue;
+      result.darkBehindBaselineFailure.push(k);
+    }
+    n.darkBehindBaselineFailure = result.darkBehindBaselineFailure.length;
+
+    if (result.darkBehindBaselineFailure.length) {
+      result.failures.push(
+        n.baselineFailed + ' test(s) FAILED in the BASELINE, and ' +
+        n.darkBehindBaselineFailure + ' test(s) stranded behind them never ran on EITHER ' +
+        'side. The oracle calls those pairs same-fail and skipped; neither is ever printed ' +
+        'and neither touches an exit code, so this baseline makes ' +
+        (n.baselineFailed + n.darkBehindBaselineFailure) + ' test(s) permanently invisible ' +
+        'to every run compared against it. Record a clean baseline -- a baseline this gate ' +
+        'would not itself certify is not a baseline.'
+      );
+    } else {
+      result.warnings.push(
+        n.baselineFailed + ' test(s) already failed in the baseline. Nothing is stranded ' +
+        'behind them, so no coverage is dark -- but the oracle calls them same-fail on ' +
+        'every run from here, which forgives them permanently. Record a clean baseline.'
+      );
+    }
   }
 
   if (result.failures.length) {
@@ -853,7 +1054,7 @@ function render(r) {
     L.push('  ' + num(n.samePass) + '  still passing');
     L.push('  ' + num(n.newFail) + '  NEW-FAIL   passed in the baseline, fails now');
     L.push('  ' + num(n.lost) + '  LOST       passed in the baseline, never ran');
-    L.push('  ' + num(n.removed) + '  removed    passed in the baseline, absent now');
+    L.push('  ' + num(n.removedPassing) + '  removed    passed in the baseline, absent now');
     L.push('  ' + '-'.repeat(66));
     L.push('  ' + num(n.stoppedPassing) + '  TESTS THAT STOPPED PASSING');
     L.push('');
@@ -862,6 +1063,10 @@ function render(r) {
     L.push('  ' + num(n.newPass) + '  new-pass');
     L.push('  ' + num(n.sameFail) + '  same-fail  already broken');
     L.push('  ' + num(n.added) + '  added');
+    L.push('  ' + num(n.removed) + '  removed    absent from the candidate entirely');
+    L.push('  ' + num(n.statsUnexpected) + '  unexpected the candidate\'s OWN stats. If this ' +
+      'is non-zero and nothing');
+    L.push('                  above accounts for it, the comparison is not seeing a failure.');
     L.push('  ' + num(n.flaky) + '  flaky      in at least one run');
     L.push('');
   }
@@ -897,6 +1102,18 @@ function render(r) {
   if (r.lostBehindQuarantine.length) {
     L.push('  LOST behind a quarantined failure -- deferred, NOT waived:');
     r.lostBehindQuarantine.forEach((k) => L.push('    - ' + k));
+    L.push('');
+  }
+  if (r.unnamedFailures.length) {
+    L.push('  FAILED in the candidate but SKIPPED in the baseline -- the comparison has');
+    L.push('  no category for these, so nothing else on this page counts them:');
+    r.unnamedFailures.forEach((k) => L.push('    - ' + k));
+    L.push('');
+  }
+  if (r.darkBehindBaselineFailure.length) {
+    L.push('  DARK ON BOTH SIDES -- skipped in the baseline and skipped again now,');
+    L.push('  behind a failure the baseline already carried:');
+    r.darkBehindBaselineFailure.forEach((k) => L.push('    - ' + k));
     L.push('');
   }
   for (const w of r.warnings) {
@@ -1079,8 +1296,30 @@ async function preflightPorts() {
  *            It also means the gate never deletes anything in runs/ -- the
  *            recorded runs are the only evidence this migration has.
  */
+/**
+ * Where is the Playwright CLI?
+ *
+ * `'@playwright/test/cli'`, NOT `'@playwright/test/cli.js'`. The package
+ * declares an exports map -- `{".", "./cli", "./package.json", "./reporter"}`
+ * -- so Node refuses the `./cli.js` subpath with ERR_PACKAGE_PATH_NOT_EXPORTED
+ * even though `cli.js` is sitting right there on disk and the two specifiers
+ * resolve to the same file.
+ *
+ * This is a function, and exported, for one reason: it used to be an inline
+ * `require.resolve` and it was the FIRST statement of `runSuite()`, which is
+ * the first thing on the only path that launches the suite. It threw
+ * synchronously, escaped into main()'s rejection handler, and every real
+ * `npm run gate` died on a raw stack trace after passing every pre-flight
+ * check. It failed safe -- exit 2, never a false PASS -- but the gate's primary
+ * function was unreachable and no test could see it, because nothing in this
+ * launch path was reachable from `test/gate.test.js` at all. Now it is.
+ */
+function resolvePlaywrightCli() {
+  return require.resolve('@playwright/test/cli');
+}
+
 function runSuite(runName, sentinel, extraArgs) {
-  const cli = require.resolve('@playwright/test/cli.js');
+  const cli = resolvePlaywrightCli();
   const env = Object.assign({}, process.env, {
     CI: '1',
     E2E_RUN_NAME: runName,
@@ -1120,15 +1359,19 @@ const USAGE = [
   '                      This is what makes the gate testable without five minutes.',
   '  --no-quarantine     forgive nothing. Every failure counts.',
   '  --not-before <iso>  assert the candidate recorded a start time at or after',
-  '                      this instant. Set automatically when the gate runs the',
-  '                      suite; pass it by hand to re-check a recorded run.',
+  '                      this instant. --skip-run ONLY: when the gate runs the',
+  '                      suite it stamps the launch instant itself.',
   '  --help              this text',
   '',
-  'exit codes:',
+  'exit codes -- ONLY 0 MEANS PROCEED. Branch on `exit != 0`, never on `exit == 1`:',
   '  0  PASS          everything that passed in the baseline still passes',
   '  1  FAIL          regressions, or coverage lost behind an unknown failure',
   '  2  DID NOT RUN   report missing, stale, empty or malformed -- nothing measured',
   '  3  INCONCLUSIVE  only quarantined failures, but tests behind them never ran',
+  '',
+  'A run that strands coverage behind a QUARANTINED failure exits 3, not 1, even',
+  'though it is blocking -- `--no-quarantine` on the same pair exits 1. Any wrapper',
+  'that tests for 1 alone treats a stranded-coverage run as success.',
   '',
   'Anything after `--` is passed straight to `playwright test`.',
   ''
@@ -1146,17 +1389,37 @@ function parseArgs(argv) {
     help: false,
     passthrough: []
   };
+  /**
+   * Take the next token as this flag's value, or refuse.
+   *
+   * Consuming it unconditionally meant a value-taking flag could swallow the
+   * flag after it: `node gate.js --name --skip-run --baseline runs/m18.json`
+   * set `name` to the string "--skip-run", left `skipRun` false, and fell
+   * straight through to spawning the full 4-5 minute suite -- precisely the
+   * resource this tool exists to protect. A trailing `--filter` with no value
+   * was worse and quieter: `undefined` became `null` downstream, silently
+   * turning an intended one-file heal run into a whole-suite comparison.
+   */
+  const takeValue = (flag, next) => {
+    if (next === undefined || next.startsWith('--')) {
+      console.error('gate: ' + flag + ' needs a value');
+      console.error(USAGE);
+      process.exit(EXIT_DID_NOT_RUN);
+    }
+    return next;
+  };
+
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--') {
       opts.passthrough = argv.slice(i + 1);
       break;
-    } else if (a === '--name') opts.name = argv[++i];
-    else if (a === '--baseline') opts.baseline = argv[++i];
-    else if (a === '--candidate') opts.candidate = argv[++i];
-    else if (a === '--filter') opts.filter = argv[++i];
+    } else if (a === '--name') opts.name = takeValue(a, argv[++i]);
+    else if (a === '--baseline') opts.baseline = takeValue(a, argv[++i]);
+    else if (a === '--candidate') opts.candidate = takeValue(a, argv[++i]);
+    else if (a === '--filter') opts.filter = takeValue(a, argv[++i]);
     else if (a.startsWith('--filter=')) opts.filter = a.slice('--filter='.length);
-    else if (a === '--not-before') opts.notBefore = argv[++i];
+    else if (a === '--not-before') opts.notBefore = takeValue(a, argv[++i]);
     else if (a === '--skip-run') opts.skipRun = true;
     else if (a === '--no-quarantine') opts.quarantine = false;
     else if (a === '--help' || a === '-h') opts.help = true;
@@ -1165,6 +1428,18 @@ function parseArgs(argv) {
       console.error(USAGE);
       process.exit(EXIT_DID_NOT_RUN);
     }
+  }
+
+  // Validate here, not at the point of use. `Date.parse('yesterday')` is NaN,
+  // NaN is not null, so the freshness check ran against it and the gate
+  // reported "the candidate report is STALE" -- diagnosing a typo in an
+  // argument as a dead suite and sending the reader after the wrong bug. On
+  // current Node it is worse than that: `new Date(NaN).toISOString()` throws,
+  // so the run died on a raw RangeError stack trace instead.
+  if (opts.notBefore !== null && Number.isNaN(Date.parse(opts.notBefore))) {
+    console.error('gate: --not-before is not a parseable instant: ' + JSON.stringify(opts.notBefore));
+    console.error('  expected something Date.parse understands, e.g. 2026-08-19T00:00:00Z');
+    process.exit(EXIT_DID_NOT_RUN);
   }
   return opts;
 }
@@ -1183,6 +1458,22 @@ async function main(argv) {
     ? path.resolve(ROOT, opts.candidate)
     : path.join(RUNS_DIR, name + '.json');
   let notBefore = opts.notBefore ? Date.parse(opts.notBefore) : null;
+
+  // `--not-before` only ever meant anything under `--skip-run`. On a real run
+  // the gate stamps the launch instant itself, which is a strictly better
+  // freshness token than anything a caller can type -- and the old code
+  // overwrote the flag with it unconditionally, so the flag was silently
+  // DISCARDED on exactly the invocation people would reach for it on. Silently
+  // ignoring an argument is worse than not accepting it, so say so.
+  if (opts.notBefore && !skipRun) {
+    console.error('');
+    console.error('gate: --not-before only applies to --skip-run.');
+    console.error('  When the gate runs the suite it stamps the launch instant itself, which');
+    console.error('  is a better freshness token than any value passed here. Drop the flag,');
+    console.error('  or add --skip-run to re-check an already-recorded report.');
+    console.error('');
+    return EXIT_DID_NOT_RUN;
+  }
 
   if (!fs.existsSync(baselinePath)) {
     console.error('');
@@ -1324,5 +1615,6 @@ module.exports = {
   pidOnPort,
   portsToSweep,
   preflightPorts,
+  resolvePlaywrightCli,
   main
 };
