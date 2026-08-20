@@ -1,2 +1,15 @@
 - Split the remove button and the "repick" page
 - Rewrite character creation system?
+- Finish referendum portraits. Half-built: the display side is live and
+  renders head_skull.png for every referendum today, the upload side was
+  never written, and the class is barred at the database. Three pieces:
+    - a ReferendumPortraitView + route (copy TroupePortraitView, which is
+      the closest shape - Referendum owns one portrait, same as Troupe)
+    - open ReferendumPortrait create/update to role:Administrator in
+      database_seed/_SCHEMA.json (it has been {} since c9b610d, so this was
+      never a working feature, not a regression)
+    - restore beforeSave("ReferendumPortrait") -> crop_and_thumb, deleted in
+      5347818 as unreachable. Without it the thumb_32/64/128/256 fields stay
+      empty and the list silently keeps showing the skull.
+  Read side already done: Referendum.get_thumbnail (models/Referendum.js) and
+  templates/referendums-list.html:8.
