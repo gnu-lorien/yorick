@@ -52,8 +52,9 @@ original reasoning stays legible next to what measurement did to it.
 | 8. Master-key role reads | **done** (`dcdff91`) | gate 0 |
 | 9. Explicit options | **done** (`fbccc99`) | gate 0 |
 | 10. Seeder/driver decoupling | **done** (`c666b31`) | gate 0 |
+| 11. Lockfile | **done** | gate 0; lock v2 → v3, 0 moved / 0 added / 43 removed; `cors` kept — see below |
 
-Not done: **11** (lockfile), **12** (jimp), **13** (the bump).
+Not done: **12** (jimp), **13** (the bump).
 
 **Step 5 is closed, and §5's premise below is wrong.** MongoDB is not a
 separable variable: under `MONGODB_BINARY_VERSION=8.2.6` the backend never
@@ -370,6 +371,75 @@ npm will hoist the *root's* 3.1.1, nesting 7.x under `parse-server/` — so
 `seed_db.js` and `audit_db_permissions.js` would keep loading the 2018 driver and
 the `ObjectId` / `useNewUrlParser` edits would never be exercised on the driver
 they were written for. Step 13's edit list does not mention this. Add it.
+
+### Step 11 is done, and two of its premises were wrong
+
+**`npm ci` is not broken.** §11 below opens on the claim that it is. The
+observation under it is true — `package-lock.json` listed
+`karma-phantomjs-launcher` and `phantomjs-prebuilt` in its root
+`devDependencies` (lines 41 and 45, 14 `phantomjs` references in all),
+`package.json` declared neither, `node_modules` contained neither, and the lock
+was v2 against a v3 `node_modules/.package-lock.json`. The conclusion drawn from
+it is not. Measured in a scratch copy *before* anything was edited, on npm
+11.6.2 / node v24.11.1: `npm ci` against the **old** lock exits **0** and
+reproduces the working tree exactly, phantomjs absent from the result. npm
+reconciles stale root entries rather than refusing on them. Step 11 was
+therefore the convenience the brief called it, not a prerequisite — nothing was
+ever blocked on it, and nothing downstream should be planned as if it were.
+
+**`cors` is not dead. It is the one of the four that had to stay.**
+`c9-parse-server.js:9` is `cors = require('cors')` and `:12` is
+`app.use(cors())` — a real require and a real call site, so it was **left in
+`package.json`**. It reads as dead for two reasons that are both real and both
+insufficient. §7's deletion list names `c9-parse-server.js`, but `5347818`
+executed that list for `my-parse-server.js` only; `server.js` and
+`c9-parse-server.js` are still in the tree. And §7 says "nothing references"
+them, while `dotfiles/initialize_c9.bash:22` runs
+`node /home/ubuntu/workspace/c9-parse-server.js` — a Cloud9 bootstrap pointing
+at a workspace path that stopped existing years ago. `cors` is also reachable
+transitively through karma's `socket.io`/`engine.io`, but only in a dev install,
+so leaning on that would break `c9-parse-server.js` under `--omit=dev`. **Drop
+`cors` in the same commit that finally deletes that file, not before.**
+
+The other three were dead as described and are gone. `request` —
+`cloud/main.js:8`'s require went in Step 7, zero call sites repo-wide; it stays
+in the tree at the same `2.88.0` as a transitive dependency of `jimp`,
+`parse-server` and `@parse/node-gcm`, so as §7 predicted the audit does not go
+quiet, and **Step 12 does not need to add it back**. `require` — the
+pre-requirejs browser loader `marcuswestin/require`, declared `"*"`, zero call
+sites, not to be confused with the `requirejs` devDependency that the front end
+actually uses. `parse-server-nodemailer-adapter` — "nodemailer" appears in no
+source file, and `index.js:167-177` wires `MemoryEmailAdapter`. Note that
+`index.js:168` is `require(process.env.MAIL_ADAPTER_MODULE)`, so a deployment
+could in principle name a package here; nothing in the repo or the docs names
+this one.
+
+**What regeneration moved: nothing.** `npm install --package-lock-only
+--lockfile-version 3` gave **0 packages moved, 0 added, 43 removed**. Every one
+of the 43 is in the transitive closure of the three dropped roots plus the two
+stale phantomjs entries — established by walking the old lock's reverse-
+dependency graph and confirming that no removed package had a surviving
+dependent, rather than by eyeballing the names. All five deliberate pins hold:
+`parse-server` 2.8.4, `parse` 1.11.1, `mongodb` 3.1.1, `bcryptjs` 2.4.3,
+`jimp` 0.2.28. The `npm ls --depth=0` set went 33 → 30, the three being exactly
+the dropped ones, every surviving version identical.
+
+The lock diff is 10,149 deletions against 5 insertions, which looks alarming and
+is not: the deletions are overwhelmingly v2's legacy `dependencies` mirror
+block, which v3 does not have. The five insertions are `"lockfileVersion": 3`,
+the three lines of the `engines` field npm 11 now records on the root entry, and
+one `"dev": true` on `amdefine` — correct, because its only production path ran
+through `require` → `uglify-js@2.3.0` → `source-map@0.1.43`. **This is the
+format rewrite Step 13 no longer has to carry**, which was the point of doing it
+alone.
+
+Two things to know for later. `--package-lock-only` rewrites
+`node_modules/.package-lock.json` (281 lines) even though it installs nothing,
+but it removes no directory from disk — the dropped subtrees stay physically
+present and report as `extraneous` in `npm ls` until someone reinstalls. Nothing
+requires them and the working install was verified intact afterwards. And
+`ip-address@10.5.0 extraneous` predates this step, appears identically in a
+clean `npm ci` of the *old* lock, and is unrelated to it.
 
 ### Blocker H — `allowClientClassCreation` and production's 29th class
 

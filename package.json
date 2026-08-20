@@ -22,10 +22,7 @@
     "mongodb": "3.1.1",
     "parse": "^1.9.0",
     "parse-server": "=2.8.4",
-    "parse-server-nodemailer-adapter": "^1.0.0",
     "paypal-ipn": "^3.0.0",
-    "request": "^2.87.0",
-    "require": "*",
     "serve-static": "^1.13.2"
   },
   "devDependencies": {
