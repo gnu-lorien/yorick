@@ -32,6 +32,176 @@ live `response.success`/`response.error` calls, not 60, and **35**
 
 ---
 
+## 0. Status, 2026-08-20 — read this before section 1
+
+Phase I and most of Phase III are done. **Several load-bearing claims below are
+now wrong**, and they are corrected here rather than edited in place, so the
+original reasoning stays legible next to what measurement did to it.
+
+### Done
+
+| Step | State | Evidence |
+|---|---|---|
+| 1. Gate wrapper | **done** | `gate.js`, `test/gate.test.js`, 27 self-tests |
+| 2. S10 baseline | **done** | `runs/s10-baseA.json` — 451 discovered, 448 passed, 3 skipped, committed |
+| 4. PaymentPaypal | **decided — see below** | owner, 2026-08-20 |
+| 7. Deletions | **done** (`5347818`) | gate 0 |
+| 8. Master-key role reads | **done** (`dcdff91`) | gate 0 |
+| 9. Explicit options | **done** (`fbccc99`) | gate 0 |
+| 10. Seeder/driver decoupling | **done** (`c666b31`) | gate 0 |
+
+Not done: **3** (log oracle), **5** (MongoDB 8.2.6 alone), **6** (adapter +
+conversions), **11** (lockfile), **12** (jimp), **13** (the bump).
+
+Unrelated but relevant: the harness flake that made all of this hard to measure
+was root-caused and fixed (`6b790dc`); see `harness-noise-floor.md`. Full runs
+are now clean, which is why the four gates above mean something.
+
+### The big correction: §1.2 and Step 6 are wrong about what breaks
+
+Measured against a real parse-server 9.10.0 install. **It is not "24 handlers
+that fail silently". It is 13 that do not fail at all and 11 that fail loudly,
+some of them fatally.**
+
+- **All 13 `Parse.Cloud.define` handlers work unchanged.** parse-server 9
+  *restored* Express-style support: `Routers/FunctionsRouter.js:333` is
+  `if (theFunction.length >= 2) return theFunction(request, responseObject);`.
+  Verified live: `response.success(v)` resolves, `response.error(m)` rejects
+  with code 141 and the verbatim message.
+- **The 11 before-triggers break.** `triggers.js:838` is a bare
+  `trigger(request)`; there is no arity branch anywhere in that file.
+  - settling **synchronously** → save rejected, code 141,
+    `"Cannot read properties of undefined (reading 'success')"`.
+  - settling **asynchronously** (inside a `.then`) → unhandled TypeError →
+    parse-server's own `uncaughtException` handler (`ParseServer.js:352`) →
+    **`process.exit(1)`. The backend dies.**
+
+  The async kind includes all three portrait hooks (`crop_and_thumb` settles in
+  a `.then`), and by inspection `beforeSave("Vampire")`,
+  `beforeSave("SimpleTrait")`, `beforeDelete("SimpleTrait")` and
+  `beforeSave("VampireApproval")`.
+
+  **Operationally:** flip the bump before the Step 6 adapter and the first
+  portrait or character save kills that worker's backend. Across 8 Playwright
+  workers that reads as a cascade of connection failures *mid-suite* — not a
+  boot failure, and not a test failure either. Know this shape before you see it.
+
+- **No arity validation at registration.** Nothing warns. Registration is silent
+  either way.
+
+So Step 6 shrinks: the adapter only has to cover **before-triggers**, and after
+Step 7's deletions the conversion count is **20, not 24** (13 defines → 10,
+9 beforeSaves → 8). The defines can convert later, or never, on their own
+schedule — they are no longer coupled to the bump.
+
+### §7's unknowns, now answered
+
+| Question | Answer |
+|---|---|
+| `global.Parse` still injected? | **Yes** — `ParseServer.js:58` calls `addParseCloud()` at module load, `:547` assigns it. `/* global Parse */` needs no change. `Parse.Promise` is gone, as assumed. |
+| `lib/password` still shipped? | **Yes**, `{hash, compare, dummyHash}`, backed by bcryptjs. And bcryptjs 3.0.3 verifies hashes made by the repo's 2.4.3 — **no existing password is invalidated**. |
+| Rejects unknown config keys? | **No.** `validateKeyNames()` ends at `logger.error(...)`; there is no throw path. `oauth` was never a boot blocker, only a permanent error line. |
+| Handler arity validated? | **No.** See above. |
+| Startup shape | `const s = new ParseServer(cfg); await s.start(); app.use(mount, s.app)` — and `start()` **must** be awaited before `listen()`: cloud code is `require`d inside it (`ParseServer.js:181-198`), so hooks are not registered until it resolves. `app.use(path, api)` on the class throws `TypeError: argument handler must be a function` — loud, at wiring time. |
+| Promise returned from beforeSave honoured? | **Yes**, and a rejection carries the message **verbatim** — which is what `approvals.spec.js`'s `toContain` assertions rely on. |
+| Value returned from beforeSave? | **Ignored**, unless it is a thenable resolving to `{object: …}` (`triggers.js:844-853`). That shape does not occur here, so `return;` and `return somePromiseChain` are both safe. |
+| Engines | parse-server 9.10.0 needs node 20.19+/22.13+/24.11+ (below 21/23/25 respectively). This machine is **v24.11.1** — satisfies it. |
+
+**§9's `fileUpload` claim is wrong.** The plan says all three default `false`.
+In 9.10.0, `enableForAuthenticatedUser` defaults **`true`**; only
+`enableForPublic` and `enableForAnonymousUser` are `false`. There is also a new
+default `fileExtensions` whitelist that blocks html/svg/xml (a `.html` upload
+gets 400 code 130), and `allowedFileUrlDomains: ["*"]`. So portrait uploads by a
+logged-in player are **not** the 30-spec cliff the plan predicts — but the
+extension whitelist is a new behaviour that did not exist before.
+
+**§9's `allowClientClassCreation` reasoning was half the story**, and the missing
+half is a deploy risk: it gates **reads** as well as writes
+(`RestQuery.js:234`, reached on every query), throwing 119 rather than returning
+`[]` for a class absent from `_SCHEMA`. Production's `_SCHEMA` has 29 entries to
+this seed's 30 and the missing one is unknown. It is therefore shipped as
+`process.env.ALLOW_CLIENT_CLASS_CREATION === "1"` — modern value by default,
+proven by the gate, with production able to keep the old behaviour for one
+release. **See Blocker H.**
+
+### Step 3's premise is wrong, and the real oracle is better
+
+The plan says to add cloud-code markers and count them in
+`logs/parse-server.info.*` with `verbose` on. **Cloud `console.log` never reaches
+that file at any level** — parse-server does not redirect `console`, so those go
+to stdout. Measured against a 31 MB verbose log: zero hits for every cloud marker.
+
+What *is* there, at `level:"info"`, is parse-server's own trigger log
+(`triggers.js:273`, `:283`), structured with `className` and `triggerType`:
+
+```
+504 Vampire/beforeSave   220 SimpleTrait/beforeSave   220 SimpleTrait/afterSave
+132 SimpleTrait/beforeDelete   86 VampireCreation/beforeSave
+ 54 ExperienceNotation/beforeSave   36 ExperienceNotation/beforeDelete
+ 11 LongText/beforeSave    7 Patronage/afterSave
+```
+
+That covers `afterSave("SimpleTrait")` and `afterSave("Patronage")` — the two
+hooks §6 calls structurally unobservable — and it is `logger.info`, so it
+**survives `verbose:false`**. Failures are `logger.error` (`triggers.js:292`).
+
+So Step 3 is cheaper than budgeted, needs no code change to `cloud/`, and Step 9's
+verbose gating does not damage it. **Do not add cloud markers. Do not set
+VERBOSE=1.** Count parse-server's own lines.
+
+### Step 4, answered by the owner
+
+**PayPal patron ingestion is LIVE.** Money still flows `POST /deez` →
+`PaymentPaypal` → `afterSave` → `Patronage`. It is ported, not deleted.
+
+- `afterSave("PaymentPaypal")` is already `function(request)` so it needs no
+  signature change, but its `.fail(...)` does (faithful per §1.1).
+- Note what it does today: a failed `Patronage` save is swallowed into a
+  `console.log`. **A payment that fails to become a subscription is silent.**
+  Preserve that in the migration — changing it is a product decision — but it is
+  worth raising separately.
+- `POST /deez` depends on a bare global `Parse` (fine — it still exists) and on
+  the `ipn` verifier. **This is the one path in S10 that can lose money
+  silently, and no test can cover it.** It belongs on the post-deploy hand-test
+  list, exercised *before* a real payment window, not after.
+- **`GET /deez` is deleted** — leftover debug, unauthenticated, `useMasterKey`,
+  returned a character name to anyone. No caller.
+
+### Two corrections to Step 8, and one to Step 13
+
+**Step 8 does not close the exposure that motivates it.** `cloud/Troupe.js`'s
+`get_staff` has zero server-side callers. The staff roster a player actually sees
+is rendered by `TroupeView.js:146` from `public/scripts/app/models/Troupe.js` — a
+**browser-side copy** of the same module, issuing the same unauthenticated
+`_User` query from the client, where a master key is neither available nor
+appropriate. The commit is still correct and still lands, but closing the real
+exposure means moving that read behind a Cloud function. **Design change, owner
+call, not a migration edit.**
+
+Related, and a loaded gun: `get_staff` now walks a role's `users` relation with
+the master key and returns whole `_User` objects. The moment anyone exposes it to
+a client it ships every troupe member's email address, bypassing both
+`enforcePrivateUsers` and 9.10.0's default `protectedFields`. Whoever writes that
+caller must strip fields at the boundary.
+
+**Step 13 must re-pin `mongodb`.** Step 10 declared it at `3.1.1` exact to stop
+it moving underneath the seeder. At the bump, parse-server 9 pins mongodb 7.x and
+npm will hoist the *root's* 3.1.1, nesting 7.x under `parse-server/` — so
+`seed_db.js` and `audit_db_permissions.js` would keep loading the 2018 driver and
+the `ObjectId` / `useNewUrlParser` edits would never be exercised on the driver
+they were written for. Step 13's edit list does not mention this. Add it.
+
+### Blocker H — `allowClientClassCreation` and production's 29th class
+
+New, belongs with the Phase V blockers. Before any deploy, establish **which
+class is in this seed's `_SCHEMA` and not production's**. Until then production
+must run with `ALLOW_CLIENT_CLASS_CREATION=1`, or a read path nobody touched
+starts throwing 119. The dump at `C:/prj/yorick/toimport/` would answer it — but
+it also contains a master key, so that is an owner task, not an agent one.
+
+---
+---
+
 ## 1. Two things that are the opposite of what you expect
 
 Read this section before writing any code. Both were verified by execution, not
