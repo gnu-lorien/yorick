@@ -11134,12 +11134,64 @@ $.widget( "mobile.popup", {
 	},
 
 	_closePopup: function( theEvent, data ) {
-		var parsedDst, toUrl,
+		var parsedDst, toUrl, destination, activePage,
 			currentOptions = this.options,
 			immediate = false;
 
 		if ( ( theEvent && theEvent.isDefaultPrevented() ) || $.mobile.popup.active !== this ) {
 			return;
+		}
+
+		// YORICK PATCH: a "page change" to the page already on screen is not a
+		// departure, and must not take the dialog away from whoever is typing
+		// in it.
+		//
+		// A popup belongs to the page it was opened from, so jQuery Mobile
+		// closes every open popup on `pagebeforechange`. The block further down
+		// is this widget's own version of "am I actually going somewhere
+		// else?", but it asks the question of `this._myUrl` — which is only
+		// ever set when popup history is enabled, and `_create` disables popup
+		// history whenever `$.mobile.hashListeningEnabled` is false. This
+		// application turns hash listening off in `main.js` so that Backbone
+		// owns the URL, so `_myUrl` is `undefined` here and every page change
+		// takes the `immediate` branch, real or not. Enabling popup history
+		// would not help either: the routes change page by element selector
+		// with `changeHash: false`, so the popup's URL and the requested
+		// "`#experience-notations-all`" never compare equal however they are
+		// normalised. Page elements are what `transition()` itself compares
+		// before deciding a change is a no-op, so compare those.
+		//
+		// The routes ask for their page unconditionally —
+		// `$.mobile.changePage("#experience-notations-all", ...)` at
+		// mobileRouter.js:448, and seventy-odd siblings — which is a no-op when
+		// that page is already active: `transition()` returns early at "there
+		// is no page change to be done". But `pagebeforechange` fires in
+		// `change()`, well before `transition()` gets to look, so the dialog is
+		// gone before jQuery Mobile decides nothing was going to happen.
+		//
+		// And a request that arrives while some earlier transition is still
+		// animating is never examined at all. `change()` puts it on
+		// `pageTransitionQueue` verbatim and `_releaseTransitionLock` replays
+		// it when the animation ends, so the no-op fires its popup-closing
+		// event at a moment that has nothing to do with anything the player
+		// did. Measured on the experience history, over three traced failures:
+		// a same-page `changePage` queued 206ms earlier landed 61ms after the
+		// reason dialog opened, and closed it with the player's text still in
+		// the textarea and unsaved.
+		//
+		// `allowSamePageTransition` is the caller saying they mean it — that
+		// one really does re-transition the page, so it still closes.
+		if ( theEvent && theEvent.type === "pagebeforechange" && data &&
+				!( data.options && data.options.allowSamePageTransition ) ) {
+			destination = ( data.toPage && data.toPage.jquery ) ? data.toPage :
+				( ( typeof data.toPage === "string" && /^#[\w\-]+$/.test( data.toPage ) ) ?
+					$( data.toPage ) : null );
+			activePage = $.mobile.activePage;
+			if ( destination && destination.length === 1 &&
+					activePage && activePage.length &&
+					destination[ 0 ] === activePage[ 0 ] ) {
+				return;
+			}
 		}
 
 		// restore location on screen
