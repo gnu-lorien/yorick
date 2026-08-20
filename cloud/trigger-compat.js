@@ -53,10 +53,11 @@ var before_trigger = function (handler) {
 
         if (result && typeof result.then === "function") {
             // `.then` on the value itself, not `Promise.resolve(result).then`:
-            // these chains are `Parse.Promise`s, thenable but not native, and
-            // calling `.then` directly is what the current code does. Adopting
-            // them into a native promise would insert a tick that today's
-            // ordering does not have.
+            // these chains are a MIX - `Parse.Promise`s from the SDK's own
+            // query and save methods, native ones everywhere else since the
+            // `Parse.Promise` conversion - and calling `.then` directly is what
+            // the current code does. Adopting them into a native promise would
+            // insert a tick that today's ordering does not have.
             result.then(
                 function () { response.success(); },
                 function (error) { response.error(error); }

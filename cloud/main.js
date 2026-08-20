@@ -138,7 +138,7 @@ var crop_and_thumb = function(req) {
         _.each(THUMBNAIL_SIZES, function (size) {
             promises.push(create_thumbnail(portrait, image, size))
         })
-        return Parse.Promise.when(promises);
+        return Promise.all(promises);
     });
 };
 
@@ -355,7 +355,7 @@ compat.beforeSave("SimpleTrait", function(request) {
     var vc = new Parse.Object("VampireChange");
     var modified_trait = request.object;
     if (_.isUndefined(modified_trait.id)) {
-        var flow_promise = Parse.Promise.as({});
+        var flow_promise = Promise.resolve({});
         console.log("beforeSave simpleTrait Setting blank flow promise");
     } else {
         var flow_promise = new Parse.Query("SimpleTrait").get(modified_trait.id, {useMasterKey: true}).then(function (st) {
@@ -545,7 +545,7 @@ var save_experience_notation_change = function (notation, vc) {
     var owner = notation.get("owner");
     if (!owner || !owner.id) {
         // Nothing to attach the record to, and no ACL to derive.
-        return Parse.Promise.as(null);
+        return Promise.resolve(null);
     }
     return new Parse.Query("Vampire").get(owner.id, {useMasterKey: true}).then(function (vampire) {
         vc.set("owner", vampire);
@@ -597,12 +597,12 @@ var record_experience_notation = function (notation, type, user) {
 //
 // Nothing throws synchronously today: `save_experience_notation_change` guards
 // `!owner || !owner.id` before touching anything, and `Parse.Query#get` does not
-// throw synchronously. This is not for today. It is for the next two steps -
-// under parse 8 both `Parse.Promise.as(null)` in that guard and the `.fail`
-// above it stop existing, and whatever replaces them is exactly the kind of edit
-// that turns a fire-and-forget into a synchronous throw. An audit trail must not
-// be able to break the thing it observes; that has to keep being true while the
-// code underneath it is being replaced.
+// throw synchronously. This is not for today. It was for the two steps that
+// followed - `Parse.Promise.as(null)` in that guard and `.fail` above it are
+// now `Promise.resolve(null)` and `.catch`, and that replacement is exactly the
+// kind of edit that turns a fire-and-forget into a synchronous throw. An audit
+// trail must not be able to break the thing it observes; that has to keep being
+// true while the code underneath it is being replaced.
 var dispatch_experience_notation_record = function (notation, type, user) {
     try {
         record_experience_notation(notation, type, user);
@@ -757,7 +757,7 @@ Parse.Cloud.define("get_expected_vampire_ids", function(request, response) {
         VampireChange: []
     };
     var v = new Parse.Object("Vampire", {id: character_id});
-    Parse.Promise.when(_.map(["SimpleTrait", "ExperienceNotation", "VampireChange"], function (class_name) {
+    Promise.all(_.map(["SimpleTrait", "ExperienceNotation", "VampireChange"], function (class_name) {
          var q = new Parse.Query(class_name)
             .equalTo("owner", v)
             .select("id");
@@ -777,7 +777,7 @@ var add_administrator_to_everything = function(model) {
     var acl = model.getACL();
     if (_.isUndefined(acl)) {
         // Not completely defined for some reason
-        return Parse.Promise.as([]);
+        return Promise.resolve([]);
     }
     acl.setRoleReadAccess("Administrator", true);
     acl.setRoleWriteAccess("Administrator", true);
@@ -807,7 +807,7 @@ Parse.Cloud.define("submit_facebook_profile_data", function(request, response) {
         .first({useMasterKey: true})
     .then(function (s) {
         if (s) {
-            return Parse.Promise.as(s);
+            return Promise.resolve(s);
         } else {
             var storage = new Parse.Object("UserFacebookData");
             var acl = new Parse.ACL;
@@ -818,7 +818,7 @@ Parse.Cloud.define("submit_facebook_profile_data", function(request, response) {
             acl.setRoleReadAccess("Administrator", true);
             acl.setRoleWriteAccess("Administrator", true);
             storage.setACL(acl);
-            return Parse.Promise.as(storage);
+            return Promise.resolve(storage);
         }
     })
     .then(function (storage) {
@@ -849,7 +849,7 @@ Parse.Cloud.define("make_me_admin", function(request, response) {
     }
     (new Parse.Query(Parse.Role)).equalTo("name", "Administrator").first({useMasterKey: true}).then(function (role) {
         if (!role) {
-            return Parse.Promise.error("Administrator role not found.");
+            return Promise.reject("Administrator role not found.");
         }
         role.getUsers().add(request.user);
         return role.save({}, {useMasterKey: true});
@@ -885,11 +885,11 @@ compat.beforeSave("VampireApproval", function(request) {
             var isAdmin = _.includes(roleNames, "Administrator") || _.includes(roleNames, "SiteAdministrator");
 
             if (isOwner && !isAdmin) {
-                return Parse.Promise.error("Unauthorized: Players cannot approve their own character changes.");
+                return Promise.reject("Unauthorized: Players cannot approve their own character changes.");
             }
 
             if (isAdmin) {
-                return Parse.Promise.as(true);
+                return Promise.resolve(true);
             }
 
             var troupeRelation = vampire.relation("troupes");
@@ -899,9 +899,9 @@ compat.beforeSave("VampireApproval", function(request) {
                 });
 
                 if (!canApprove) {
-                    return Parse.Promise.error("Unauthorized: Approver does not have Storyteller role for this troupe.");
+                    return Promise.reject("Unauthorized: Approver does not have Storyteller role for this troupe.");
                 }
-                return Parse.Promise.as(true);
+                return Promise.resolve(true);
             });
         });
     }).then(function () {
@@ -915,7 +915,7 @@ compat.beforeSave("VampireApproval", function(request) {
         approval.setACL(acl);
     }, function (error) {
         // Do not simplify this normalisation. It is what turns the bare strings
-        // `Parse.Promise.error(...)` rejects with above into a client-visible
+        // `Promise.reject(...)` rejects with above into a client-visible
         // message, and those two messages are asserted verbatim by four
         // `toContain`s in approvals.spec.js. Wrapping in a Parse.Error here is
         // exactly what 2.8.4's getResponseObject.error did with the bare string
@@ -980,17 +980,17 @@ Parse.Cloud.define("vote_for_referendum", function(request, response) {
             .descending("expiresOn");
         return q.first({useMasterKey: true});
     }, function (error) {
-        return Parse.Promise.error("Couldn't find referendum " + referendum_id + " because of " + JSON.stringify(error));
+        return Promise.reject("Couldn't find referendum " + referendum_id + " because of " + JSON.stringify(error));
     }).then(function (found) {
         if (_.isUndefined(found) || !found) {
-            return Parse.Promise.error("No patronage found");
+            return Promise.reject("No patronage found");
         }
         patronage = found;
 
         var expiredSeconds = new Date(patronage.get("expiresOn")).getTime();
         var nowSeconds = new Date().getTime();
         if (expiredSeconds < nowSeconds) {
-            return Parse.Promise.error("Latest patronage is expired");
+            return Promise.reject("Latest patronage is expired");
         }
         // Recorded from the check that just passed, rather than asserted.
         caster_is_patron = true;
@@ -1002,7 +1002,7 @@ Parse.Cloud.define("vote_for_referendum", function(request, response) {
     }).then(function (found) {
         console.log("Hunted for referendums and now seeing what I found " + JSON.stringify(found));
         if (!_.isUndefined(found) && found) {
-            return Parse.Promise.error("Existing ballot found." + JSON.stringify(found));
+            return Promise.reject("Existing ballot found." + JSON.stringify(found));
         }
 
         console.log("Creating the ballot");
@@ -1046,10 +1046,10 @@ Parse.Cloud.define("vote_for_referendum", function(request, response) {
 /** Resolve to `true` only for a master-key call or a member of an admin role. */
 var require_administrator = function (request) {
     if (request.master) {
-        return Parse.Promise.as(true);
+        return Promise.resolve(true);
     }
     if (!request.user) {
-        return Parse.Promise.error("Unauthorized: Must be logged in.");
+        return Promise.reject("Unauthorized: Must be logged in.");
     }
     return new Parse.Query(Parse.Role)
         .equalTo("users", request.user)
@@ -1059,9 +1059,9 @@ var require_administrator = function (request) {
                 return _.includes(["Administrator", "SiteAdministrator"], r.get("name"));
             });
             if (!isAdmin) {
-                return Parse.Promise.error("Unauthorized: Administrator access is required.");
+                return Promise.reject("Unauthorized: Administrator access is required.");
             }
-            return Parse.Promise.as(true);
+            return Promise.resolve(true);
         });
 };
 
@@ -1075,13 +1075,13 @@ Parse.Cloud.define("request_password_reset_for", function(request, response) {
     var user_id = request.params.user_id;
     require_administrator(request).then(function () {
         if (!user_id) {
-            return Parse.Promise.error("No user was named.");
+            return Promise.reject("No user was named.");
         }
         return new Parse.Query(Parse.User).get(user_id, {useMasterKey: true});
     }).then(function (user) {
         var email = user.get("email");
         if (!email) {
-            return Parse.Promise.error("That user has no email address on file.");
+            return Promise.reject("That user has no email address on file.");
         }
         return Parse.User.requestPasswordReset(email);
     }).then(function () {
@@ -1142,10 +1142,10 @@ function matchUserInRoles(all_roles_to_check, user_id) {
     uq.equalTo("objectId", user_id);
     return uq.get(user_id, {useMasterKey: true}).then(function (user) {
         console.log("Matched a user in the role! " + role.get("name") + " " + user.get("username"));
-        return Parse.Promise.as(user);
+        return Promise.resolve(user);
     }, function (error) {
         if (0 == remaining_roles_to_check.length) {
-            return Parse.Promise.error("Couldn't find user in appropriate roles");
+            return Promise.reject("Couldn't find user in appropriate roles");
         } else {
             return matchUserInRoles(remaining_roles_to_check, user_id);
         }
@@ -1182,7 +1182,7 @@ Parse.Cloud.define("change_troupe_staff", function(request, response) {
                 console.log("Failed to save role " + s.get("name") + " with " + JSON.stringify(error));
             });
         })
-        return Parse.Promise.when(promises);
+        return Promise.all(promises);
     }
     
     var all_roles_to_check = [];
@@ -1210,8 +1210,7 @@ Parse.Cloud.define("change_troupe_staff", function(request, response) {
         return matchUserInRoles(all_roles_to_check, request.user.id);
     }).then(function (user) {
         console.log("Got user for relation " + user.get("username"));
-        return Parse.Promise
-            .when(troupe.get_roles())
+        return troupe.get_roles()
             .then(alter_roles)
             .then(function () {
                 return troupe.get_generic_roles();
