@@ -119,12 +119,7 @@ async function startServer() {
     "cloud": process.env.CLOUD_CODE_MAIN || path.join(__dirname, 'cloud', 'main.js'),
     "verbose": true,
     "publicServerURL": process.env.PUBLIC_SERVER_URL || "https://yorick-latest-parse-server-gnu-lorien.c9users.io/parse/1",
-    "serverURL": "http://0.0.0.0:" + port + "/parse/1",
-    "oauth": {
-        "facebook": {
-            "appIds": process.env.FACEBOOK_APP_IDS || ""
-        }
-    }
+    "serverURL": "http://0.0.0.0:" + port + "/parse/1"
   };
 
   // R51. Password reset needs an `emailAdapter` as well as the `appName` and

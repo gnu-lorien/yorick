@@ -5,18 +5,11 @@ var Vampire = Parse.Object.extend("Vampire");
 var Patronage = Parse.Object.extend("Patronage");
 var Troupe = require('./Troupe.js').Troupe;
 var Image = require("jimp");
-var request = require("request");
 var Promise = global.Promise;
 var moment = require("moment");
 
 /* FIXME Shouldn't just paste this class in here. Still need a way to sync between
    the require world and the node world */
-
-// Use Parse.Cloud.define to define as many cloud functions as you want.
-// For example:
-Parse.Cloud.define("hello", function(request, response) {
-  response.success("Hello world!");
-});
 
 var create_thumbnail = function(portrait, input_image, size) {
     var promise = new Promise(
@@ -186,11 +179,6 @@ Parse.Cloud.beforeSave("TroupePortrait", function(request, response) {
 
 Parse.Cloud.beforeSave("CharacterPortrait", function(request, response) {
     if (!require_a_user(request, response, "Character portraits")) { return; }
-    crop_and_thumb(request, response);
-});
-
-Parse.Cloud.beforeSave("ReferendumPortrait", function(request, response) {
-    if (!require_a_user(request, response, "Referendum portraits")) { return; }
     crop_and_thumb(request, response);
 });
 
@@ -672,23 +660,6 @@ Parse.Cloud.afterSave("PaymentPaypal", function (request) {
     });
 })
 
-Parse.Cloud.define("removeRedundantHistory", function(request, response) {
-    var allHistory = new Parse.Query("VampireChange");
-    var redundant = [];
-    allHistory.each(function (vc) {
-        if (!isMeaningfulChange(vc)) {
-            vc.set("marked_redundant", true);
-            redundant.push(vc);
-        }
-    }).then(function() {
-        return Parse.Object.destroyAll(redundant);
-    }).then(function () {
-        response.success();
-    }, function(error) {
-        response.error(error);
-    });
-})
-
 
 var fix_all_vampire_change_acl_for_character = function(v) {
     var acl = get_vampire_change_acl(v);
@@ -715,33 +686,6 @@ Parse.Cloud.define("update_vampire_change_permissions_for", function(request, re
             }
         } else {
             response.error("Update permissions because of " + error.message);
-        }
-        console.log(pretty(error));
-    });
-});
-
-
-Parse.Cloud.define("update_indv_vc_permissions_for", function(request, response) {
-    var character_id = request.params.character;
-    var vc_id = request.params.change;
-    var acl;
-    (new Parse.Query("Vampire").get(character_id, {useMasterKey: true})).then(function (v) {
-        console.log("Got vamp. Getting the ACL");
-        acl = get_vampire_change_acl(v);
-        var q = new Parse.Query("VampireChange");
-        return q.get(vc_id);
-    }).then(function(vc) {
-        vc.setACL(acl);
-        return vc.save();
-    }).then(function() {
-        response.success("Successfully updated acl on " + vc_id + " for " + character_id);
-    }, function(error) {
-        if (error.code === Parse.Error.AGGREGATE_ERROR) {
-            for (var i = 0; i < error.errors.length; i++) {
-                response.error("Couldn't fix " + error.errors[i].object.id + "due to " + error.errors[i].message);
-            }
-        } else {
-            response.error("Update acl because of " + error.message);
         }
         console.log(pretty(error));
     });
@@ -1214,25 +1158,4 @@ Parse.Cloud.define("change_troupe_staff", function(request, response) {
         console.log(JSON.stringify(error));
         response.error(error);
     });
-    return;
-    var markHasNecessaryOnRole = function (role) {
-        var users_relation = role.getUsers();
-        var uq = users_relation.query();
-        uq.equalTo("objectId", request.id);
-        return uq.each(function (user) {
-            roles.add(role);
-        }).fail(function (error) {
-            console.log("Failed in promise for " + role.get("name"));
-        });
-    };
-    q.each(function (role) {
-        var users_relation = role.getUsers();
-        var uq = users_relation.query();
-        uq.equalTo("objectId", request.id);
-        return uq.each(function (user) {
-            roles.add(role);
-        }).fail(function (error) {
-            console.log("Failed in promise for " + role.get("name"));
-        });
-    }).fail(PromiseFailReport);
 });
