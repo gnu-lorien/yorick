@@ -42,7 +42,12 @@ function ensureFixtureDir() {
 
 /**
  * Write a solid-colour PNG fixture and return its absolute path.
- * Existing files are reused so repeated runs don't rewrite identical bytes.
+ *
+ * Existing files are reused, and the committed ones were written by jimp 0.2.28.
+ * A regenerated fixture is not byte-identical to those: 0.22.x emits the same
+ * deflate stream in one IDAT chunk where 0.2.28 split it across two, so the file
+ * is 12 bytes shorter. The pixels, and therefore every assertion below, are
+ * unchanged - measured on all three fixtures during the 0.2.28 -> 0.22.12 bump.
  */
 async function makeFixturePng(fileName, color, width, height) {
   ensureFixtureDir();

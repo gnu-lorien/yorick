@@ -53,8 +53,9 @@ original reasoning stays legible next to what measurement did to it.
 | 9. Explicit options | **done** (`fbccc99`) | gate 0 |
 | 10. Seeder/driver decoupling | **done** (`c666b31`) | gate 0 |
 | 11. Lockfile | **done** | gate 0; lock v2 → v3, 0 moved / 0 added / 43 removed; `cors` kept — see below |
+| 12. jimp | **done** | gate 0, `runs/s10-step12-jimp.json`; 0 NEW-FAIL, both quarantined tests passed inline so nothing stranded; hook counts 19 steady, 0 vanished — see below |
 
-Not done: **12** (jimp), **13** (the bump).
+Not done: **13** (the bump).
 
 **Step 5 is closed, and §5's premise below is wrong.** MongoDB is not a
 separable variable: under `MONGODB_BINARY_VERSION=8.2.6` the backend never
@@ -440,6 +441,75 @@ present and report as `extraneous` in `npm ls` until someone reinstalls. Nothing
 requires them and the working install was verified intact afterwards. And
 `ip-address@10.5.0 extraneous` predates this step, appears identically in a
 clean `npm ci` of the *old* lock, and is unrelated to it.
+
+### Step 12 is done, and its stated complication was empty
+
+`jimp@0.2.28` → `jimp@0.22.12`, gate **0**. Full record, including the §1 probe
+re-measured against the installed version and a scoring of every prediction that
+document made: **`portrait-pipeline-jimp.md` §7**.
+
+**§12's complication does not apply, and it was cheap to prove that.** The plan
+says jimp is shared between the code under migration and the harness that
+verifies it, so moving both together leaves the portrait diff without an
+independent oracle — "either pin the harness to old jimp, or move both and accept
+that". Neither was necessary. Before the repo was touched, both versions were
+installed side by side in a scratch tree and the harness's own operations
+(`e2e/helpers/images.js`) and the server's own pipeline (`cloud/main.js`) were run
+against the three real fixtures under each:
+
+- the **decode path that every assertion rests on** — `Jimp.read` → `bitmap.data`
+  → dominant colour — is **identical, bit for bit**, down to the SHA-256 of the
+  raw bitmap;
+- **every thumbnail is byte-identical** at 32/64/128/256 across all three
+  fixtures, both sequentially and with all four started concurrently the way
+  `crop_and_thumb` actually does it;
+- only fixture *generation* differs, and only in PNG chunking: 0.22.x writes one
+  IDAT where 0.2.28 wrote two, same inflated scanlines, 12 bytes shorter. The
+  fixtures are committed and reused when present, so nothing regenerates them.
+
+There was nothing for the two halves to break in the same direction, because
+neither half changed its output. **Take the same measurement before accepting a
+shared-dependency argument at Step 13** — this one cost about twenty minutes and
+removed a listed risk outright.
+
+**No call site needed changing.** 0.22.x kept every signature this repo uses:
+`Jimp.read(url|buffer)`, `getBuffer(MIME_JPEG, cb)`, `scaleToFit(w, h, cb)`,
+`crop(x, y, w, h)`, `write(path, cb)`, `rgbaToInt`, `new Jimp(w, h, int, cb)`,
+`MIME_JPEG`. The edits in this commit are the comments that described 0.2.28's
+behaviour, plus one real change: 0.22.x rejects properly but drops the URL from
+the message for an unsniffable body (`Could not find MIME for Buffer <null>`), so
+the read is now wrapped to re-attach it. Confirmed in the run log — the
+`reading 'bitmap'` TypeError appears **zero** times, and test 124's single
+expected error now names `…_portraittxt.txt`.
+
+**The oracle behaved.** `assets-rename-portrait.spec.js`: 28 passed, 2 expected
+`test.fail` (106, 118), and **quarantined 114 passed inline**, so its serial tail
+never stranded and there was no exit 3 to clear. `hook-counts.js --diff` against
+Step 11: **19 steady, 0 vanished, 0 dropped, 0 new-fail**;
+`CharacterPortrait/beforeSave` 2 ok / 1 failed and `TroupePortrait/beforeSave`
+2 ok / 0 failed in **both** runs — the failed one is test 124 rejecting the .txt,
+by design. (`Vampire/beforeSave` reads 987 → 986, one call, below any threshold
+and not attributable to this change.)
+
+**One §12 sentence is wrong for the record:** it calls `cloud/main.js:84` "the
+dangerous one … which `jimp@0.2.28` implements using the `request` package", and
+`portrait-pipeline-jimp.md` §6 predicted that transitive `request` would leave
+when jimp moved. jimp 0.22.12 fetches over `phin`/`centra` and no longer pulls
+it, but **`request` is still in the tree**, twice, straight from
+`parse-server@2.8.4` (`request@2.85.0`) and `@parse/node-gcm` (`request@2.88.0`).
+It goes at Step 13 or not at all. §12's line numbers are also stale, though its
+counts are right: six API calls in `cloud/main.js` — now `:22, :26, :34, :44,
+:83, :130`, plus the `require` at `:7` — and five in the harness,
+`e2e/helpers/images.js:16, 34, 59, 62, 103`.
+
+Two things Step 13 inherits. `npm install` finally reconciled disk to the Step 11
+lock, so the `extraneous` subtrees that step left behind are physically gone —
+but so is `node_modules/bcrypt@3.0.0`. That is inert: it is an **optional**
+parse-server dependency, unchanged in the lock before and after, and it cannot
+build or load on node 24 at all, so `parse-server/lib/password.js` has been
+falling through to its `bcryptjs` default all along. And `socks@2.3.3 invalid`
+now joins `ip-address@10.5.0 extraneous` in `npm ls` output; both are identical
+in the lock before and after this step and neither is from it.
 
 ### Blocker H — `allowClientClassCreation` and production's 29th class
 

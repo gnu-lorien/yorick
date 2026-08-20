@@ -13,6 +13,13 @@ The attribution was wrong, and the reason it was wrong is the useful part.
 treat it as a symptom. It is now guarded (`cloud/main.js`), so what you will see
 instead is a message naming the portrait's URL.
 
+> **Superseded in part by Step 12 — read [§7](#7-step-12-happened-which-of-the-above-held)
+> before acting on anything above.** The jimp bump landed, and the TypeError this
+> document is named after is gone. Sections 1–6 describe jimp **0.2.28**, which
+> the repo no longer ships. They are kept because the old shape is still what you
+> will find in any run log older than 2026-08-20, and because §3's reasoning
+> about misattribution is version-independent and still worth having.
+
 ---
 
 ## 1. What actually happens
@@ -131,3 +138,124 @@ so it is not scaffolding to remove later.
 - **`request` is deprecated and reaches the network.** jimp 0.2.28's URL branch
   is `require('request').defaults({ encoding: null })`. Step 7 deletes the app's
   own unused `request` dependency; this transitive one only goes when jimp moves.
+
+---
+
+## 7. Step 12 happened: which of the above held
+
+`jimp@0.2.28` → `jimp@0.22.12`, 2026-08-20. Everything below is measured against
+the version actually installed in this repo, not against release notes.
+
+### The predictions in §5, scored
+
+| §5 said | Outcome |
+|---|---|
+| "The upgrade fixes this class outright — 0.22.x rejects with a real `Error` for all four failure shapes" | **Held.** Re-probed against the installed 0.22.12; table below. |
+| "Test 124 survives the change" | **Held.** It asserts on `uploadCharacterPortrait`'s own `portrait upload was rejected: …` (`e2e/helpers/portraits.js:81`), never on the server's text. |
+| "Expect the log to go quiet" | **Half wrong, and the useful half is the wrong one.** The TypeError is gone, but test 124 still writes exactly one expected error per run — the rejection, now carrying a real message. The log does not go quiet; it changes shape. |
+| "The self-fetch is the real fragility, and it is untouched" | **Held.** `crop_and_thumb` still fetches the portrait back over HTTP from `publicServerURL` inside a `beforeSave`. Nothing in this step went near it. |
+| §4: "the guard is correct under both versions … under 0.22.x it never fires, so it is not scaffolding to remove later" | **Held, and now demonstrated.** The `!image` branch is unreachable on 0.22.12. It was kept anyway — see below. |
+| §6: "this transitive `request` only goes when jimp moves" | **Wrong.** jimp moved and `request` stayed. |
+
+### The §1 table, re-measured on 0.22.12
+
+Same probe, same five shapes, plus the `text/plain` case that is what test 124
+actually sends:
+
+| response | jimp 0.22.12 |
+|---|---|
+| 404 + HTML | rejects `Error: HTTP Status 404 for url <url>` |
+| 200, empty body | rejects `Error: Could not find MIME for Buffer <null>` |
+| 200, JSON body | rejects `Error: Could not find MIME for Buffer <null>` |
+| 200, `text/plain` (test 124) | rejects `Error: Could not find MIME for Buffer <null>` |
+| 200, truncated JPEG | rejects `Error: unknown JPEG marker 0` |
+| 200, real image | resolves an image |
+
+Every one is a real `Error`. On 0.2.28 the first three **resolved `undefined`**
+and the truncated JPEG rejected with a bare **String** (`typeof e === 'string'`,
+re-confirmed here before the bump). The whole throwError-eats-strings class is
+closed.
+
+**But one thing got worse, and `cloud/main.js` now compensates for it.** Note
+what the middle rows lost: the **URL**. 0.2.28 at least printed
+`Could not find MIME for Buffer <http://…/x_portraittxt.txt> (HTTP: 200)` to the
+log before discarding the error; 0.22.12's message is `<null>` and names nothing.
+That is precisely the property §4 added the guard to get back. So the read is now
+wrapped in a `.catch` that re-throws with `original_url` prepended, and the
+`!image` guard stays behind it as a contract check with a message that says it
+should be unreachable.
+
+### What did *not* change, and how that was proven
+
+jimp is shared between `cloud/` (the code under migration) and
+`e2e/helpers/images.js` (the harness that verifies it), so moving both together
+leaves the portrait diff without an independent oracle. That was settled before
+the repo was touched, by running the harness's own operations and the server's
+own pipeline under both versions side by side against the three real fixtures:
+
+- **Decode path — identical, bit for bit.** `Jimp.read` → `bitmap.data` →
+  dominant colour: same width, height, opaque-pixel count, mean RGB, and the
+  same SHA-256 of the raw bitmap, on all three fixtures. Every assertion in
+  `assertImageColor` is therefore version-independent.
+- **Thumbnails — identical, bit for bit.** The full `crop_and_thumb` /
+  `create_thumbnail` chain (center crop → `getBuffer(MIME_JPEG)` → re-read →
+  `scaleToFit` → `getBuffer(MIME_JPEG)`) produced byte-identical JPEGs at 32, 64,
+  128 and 256 for all three fixtures — run both sequentially and, as
+  `cloud/main.js` actually does it, with all four sizes started concurrently
+  against one shared cropped image.
+- **Fixture generation — same pixels, different container.** `new Jimp(w,h,c)` +
+  `write()` yields a PNG 12 bytes shorter under 0.22.12: it emits the deflate
+  stream as one IDAT chunk where 0.2.28 split it across two. The inflated
+  scanlines are byte-identical. The three fixtures are committed and reused when
+  present, so nothing regenerates them in a normal run; noted in
+  `e2e/helpers/images.js` for whoever deletes one.
+
+So the shared-dependency problem was real in principle and empty in fact: there
+was nothing for both halves to break in the same direction, because neither half
+changed its output.
+
+### Two API details worth knowing before Step 13
+
+- **`crop` used to leave the buffer oversized.** On 0.2.28, cropping 320×240 to
+  240×240 set `bitmap.width/height` correctly but left `bitmap.data` at the
+  original 307,200 bytes — 76,800 bytes of stale tail past the image. 0.22.12
+  reallocates to exactly `w*h*4`. The first `w*h*4` bytes are identical in both,
+  which is why the encoders never noticed and the thumbnails match. Anything that
+  reads `bitmap.data.length` after a crop was quietly wrong before and is right
+  now; nothing in this repo does.
+- **`getBuffer` is a per-instance own property on 0.22.x**, not a prototype
+  method — `typeof Jimp.prototype.getBuffer === 'undefined'` while
+  `typeof image.getBuffer === 'function'`. Every call site here calls it on an
+  instance, so this is inert, but it will surprise anyone who probes the class.
+
+### `request` did not leave
+
+§6 predicted the deprecated transitive `request` would go when jimp moved. It
+did not. jimp 0.22.12 fetches over `phin`/`centra` and no longer contributes it —
+but `request` is still in the tree, twice, from `parse-server@2.8.4` itself:
+
+```
+parse-server@2.8.4
+├─ request@2.85.0
+└─ @parse/push-adapter → @parse/node-gcm → request@2.88.0
+```
+
+It goes at Step 13 or not at all.
+
+### Non-jimp collateral, checked
+
+`npm install jimp@0.22.12` also removed `node_modules/bcrypt@3.0.0` from disk.
+It is an **optional** dependency of parse-server, unchanged in the lock before
+and after; npm was reconciling disk to the lock, not resolving differently.
+It was already dead weight: `bcrypt@3.0.0` cannot build or load on node 24
+(node-pre-gyp fails, `require` throws), so `parse-server/lib/password.js` — which
+is `var bcrypt = require('bcryptjs')` with a `try { require('bcrypt') }` upgrade —
+has been on `bcryptjs` all along. Hashes are unaffected either way; the two are
+format-compatible, and Step 10 already pointed the seeder at `bcryptjs` directly.
+
+The 18 other version moves in the lock are all inside jimp's own closure
+(`jpeg-js`, `pngjs`, `bmp-js`, `file-type`, `phin`, `load-bmfont`, `xml2js`,
+`sax`, …). `aws-sdk` keeps its own nested `xml2js@0.4.19` and `sax@1.2.1`, so the
+root moves reach nothing outside jimp. Pre-existing `npm ls` complaints
+(`ip-address@10.5.0 extraneous`, `socks@2.3.3 invalid`) are byte-identical in the
+lock before and after and are not from this step.

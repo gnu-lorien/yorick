@@ -759,13 +759,18 @@ test.describe('Task 6 - Rename And Portraits, Verified Everywhere They Appear', 
     // browser happily attaches the .txt file, and the beforeSave failure aborts
     // the whole save - the previously-saved thumb_* values are never touched.
     //
-    // Note what actually rejects it, because it is not what it looks like: under
-    // jimp 0.2.28 `Image.read` does NOT reject on a non-image. It resolves with
-    // undefined - its throwError discards string errors - and crop_and_thumb's
-    // explicit guard is what turns that into a real error. So the server log for
-    // THIS test carries a "Could not find MIME for Buffer <...portraittxt.txt>"
-    // line on every single run. That line is expected here, and is not a symptom
-    // of anything.
+    // What rejects it is jimp failing to sniff a MIME for the .txt body, which
+    // on jimp 0.22.x is a plain promise rejection out of `Image.read` -
+    // "Could not find MIME for Buffer <null>", re-thrown by crop_and_thumb with
+    // the portrait URL attached. So this test still puts one expected error in
+    // the server log on every single run; it is the assertion passing.
+    //
+    // It used to be worse and it is worth knowing why, because the old shape has
+    // been misread before: jimp 0.2.28 did NOT reject on a non-image. Its
+    // throwError discarded string errors, `Image.read` resolved with undefined,
+    // and what reached the log was a bare "Cannot read properties of undefined
+    // (reading 'bitmap')". If you are reading an old run, that TypeError is this
+    // test, not a failure. See docs/runbooks/portrait-pipeline-jimp.md.
     await hardReload(memberPage);
     await navigateToHash(memberPage, `character?${state.primary.id}`, '#character');
     await expectPortraitMatches(memberPage, CHARACTER_PORTRAIT_SELECTORS.sheet, fixtures.characterBlue.color, 'sheet still blue after rejected upload');

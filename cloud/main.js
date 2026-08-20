@@ -80,34 +80,48 @@ var crop_and_thumb = function(req) {
 
     var original_url = portrait.get("original").url();
 
-    return Image.read(original_url).then(function (image) {
-        // jimp 0.2.28 can settle this promise with NOTHING, and call it success.
+    return Image.read(original_url).catch(function (err) {
+        // 0.22.x rejects properly. It does not always reject legibly: a body
+        // whose type cannot be sniffed - the .txt of test 124, a JSON error
+        // page, an empty response - rejects with "Could not find MIME for
+        // Buffer <null>" and no URL in it at all. Only the non-200 shape names
+        // the URL ("HTTP Status 404 for url ..."). Re-attach it here so every
+        // failure of this fetch says which portrait it was reading, which is
+        // the property that made the previous version's TypeError diagnosable.
+        var reason = (err && err.message) || String(err);
+        throw new Error(
+            "could not read the uploaded image back from " + original_url +
+            " - " + reason
+        );
+    }).then(function (image) {
+        // Kept, and now expected never to fire.
         //
-        // Its throwError does `if ("string" == typeof error) error = console.error(error)`
-        // (node_modules/jimp/index.js), and console.error returns undefined - so a
-        // string-valued failure reaches Jimp.read's
-        // `if (err) reject(err); else resolve(image)` with err undefined and image
-        // never passed. It resolves, empty. Every string failure in jimp's URL
-        // branch goes this way: a non-200 response, an empty body, a JSON error
-        // page, anything whose MIME cannot be sniffed. Measured against a local
-        // server: 404, an empty 200 and a JSON 200 all resolve undefined; only a
-        // truncated JPEG rejects.
+        // jimp 0.2.28 could settle this promise with NOTHING and call it success:
+        // its throwError did `if ("string" == typeof error) error = console.error(error)`,
+        // console.error returns undefined, and so a string-valued failure reached
+        // Jimp.read's `if (err) reject(err); else resolve(image)` with err falsy
+        // and image never passed. The next line then read .bitmap off undefined
+        // and produced "Cannot read properties of undefined (reading 'bitmap')" -
+        // an error naming neither the portrait, nor the URL, nor the reason,
+        // which was misread once as a failure of an unrelated test in
+        // assets-rename-portrait.spec.js.
         //
-        // Without this guard the next line reads .bitmap off undefined, and what
-        // surfaces is "Cannot read properties of undefined (reading 'bitmap')" -
-        // naming neither this portrait, nor the URL, nor the reason. jimp printed
-        // the real message to the server log and discarded it everywhere else.
-        // That error has already been misread once as a failure of an unrelated
-        // test in assets-rename-portrait.spec.js.
+        // 0.22.12 rejects with a real Error for every one of those shapes -
+        // measured against a local server: a 404, an empty 200, a JSON 200, a
+        // text/plain 200 and a truncated JPEG all reject. So this branch is
+        // unreachable on the version we now ship, and the .catch above is what
+        // handles the failures that used to land here.
         //
-        // Correct under the newer jimp too, where it simply never fires: 0.22.x
-        // rejects with a real Error for all four of those cases.
+        // It stays because it is cheap and because the failure it describes is a
+        // property of the promise contract, not of one library: anything that
+        // resolves this chain without an image lands on the next line otherwise.
+        // If it ever does fire, that is news, and the message says so.
         if (!image) {
             throw new Error(
                 "could not read the uploaded image back from " + original_url +
-                " - jimp resolved without one, and discards the reason. Look for " +
-                "'Could not find MIME for Buffer' or 'Could not load Buffer from " +
-                "URL' in the server log; it carries the HTTP status."
+                " - jimp resolved without one. This should be unreachable on " +
+                "jimp 0.22.x, which rejects instead; if you are seeing it, the " +
+                "read path is not the one this guard was written against."
             );
         }
 
