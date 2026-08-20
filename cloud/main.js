@@ -572,8 +572,16 @@ var save_experience_notation_change = function (notation, vc) {
 //
 // An audit trail must not be able to break the thing it observes, so the
 // decision is made here - `dirtyKeys()` is only available in `beforeSave` -
-// and the write is dispatched behind the response. A failed record is logged
-// and nothing else; the operation still stands.
+// and the write is dispatched but deliberately NOT awaited: the promise the
+// hook returns must not contain it. A failed record is logged and nothing else;
+// the operation still stands.
+//
+// That wording used to be "dispatched behind the response", which was literally
+// true when the hooks called `response.success()` on the line above the
+// dispatch. Since the Step 6 conversion there is no response to be behind, and
+// the property that mattered was never the ordering of those two lines - it was
+// that the hook does not wait. Both hooks call this and then return undefined,
+// so the seam settles them without ever seeing this promise.
 var record_experience_notation = function (notation, type, user) {
     save_experience_notation_change(
         notation,
@@ -584,13 +592,39 @@ var record_experience_notation = function (notation, type, user) {
     });
 };
 
+// The dispatch cannot refuse an operation it has already allowed.
+//
+// This restores, for one line, a guarantee the old shape got for free.
+// `response.success()` used to have settled the trigger before the dispatch ran,
+// so a SYNCHRONOUS throw out of `record_experience_notation` was swallowed - the
+// executor's promise was already resolved and the reject was a no-op. Now the
+// dispatch happens before the hook returns, so an unguarded throw would
+// propagate out of the hook and refuse the save or delete.
+//
+// Nothing throws synchronously today: `save_experience_notation_change` guards
+// `!owner || !owner.id` before touching anything, and `Parse.Query#get` does not
+// throw synchronously. This is not for today. It is for the next two steps -
+// under parse 8 both `Parse.Promise.as(null)` in that guard and the `.fail`
+// above it stop existing, and whatever replaces them is exactly the kind of edit
+// that turns a fire-and-forget into a synchronous throw. An audit trail must not
+// be able to break the thing it observes; that has to keep being true while the
+// code underneath it is being replaced.
+var dispatch_experience_notation_record = function (notation, type, user) {
+    try {
+        record_experience_notation(notation, type, user);
+    } catch (error) {
+        console.log("Failed to dispatch an ExperienceNotation " + type + ": " +
+            ((error && error.message) ? error.message : JSON.stringify(error)));
+    }
+};
+
 // ExperienceNotation is the one with teeth among the character's child rows:
 // an anonymous write to it was measured landing 99999 earned XP on another
 // player's character, visible to that player on their own sheet. The guard runs
 // first, ahead of the audit record - refusing the write and then recording it
 // would be worse than not recording it at all.
-Parse.Cloud.beforeSave("ExperienceNotation", function(request, response) {
-    if (!require_a_user_legacy(request, response, "Experience entries")) { return; }
+compat.beforeSave("ExperienceNotation", function(request) {
+    require_a_user(request, "Experience entries");
 
     var notation = request.object;
     var is_new = _.isUndefined(notation.id);
@@ -599,21 +633,19 @@ Parse.Cloud.beforeSave("ExperienceNotation", function(request, response) {
     // running balance; only `earned`/`spent` change there. Recording those
     // would bury the operation that caused them under its own bookkeeping.
     if (!is_new && 0 === _.intersection(EXPERIENCE_NOTATION_TRACKED, notation.dirtyKeys()).length) {
-        return response.success();
+        return;
     }
 
-    response.success();
-    record_experience_notation(notation, is_new ? "define" : "update", request.user);
+    dispatch_experience_notation_record(notation, is_new ? "define" : "update", request.user);
 });
 
-Parse.Cloud.beforeDelete("ExperienceNotation", function(request, response) {
+compat.beforeDelete("ExperienceNotation", function(request) {
     // A delete is a write. The incoming security work guarded the save; the
     // same argument applies here, and this hook did not exist to guard when it
     // was written.
-    if (!require_a_user_legacy(request, response, "Experience entries")) { return; }
+    require_a_user(request, "Experience entries");
 
-    response.success();
-    record_experience_notation(request.object, "remove", request.user);
+    dispatch_experience_notation_record(request.object, "remove", request.user);
 });
 
 // The remaining character child rows. Each is created client-side by the
