@@ -51,6 +51,9 @@
     "type": "git",
     "url": "https://github.com/gnu-lorien/yorick.git"
   },
+  "engines": {
+    "node": ">=20.19"
+  },
   "scripts": {
     "start": "node index.js",
     "seed": "node -e \"require('./seed_db').seedDatabase(process.env.MONGODB_URI || 'mongodb://localhost:27017/anotherstore', { force: true }).then(() => console.log('Database seeded successfully')).catch(console.error)\"",

@@ -123,24 +123,28 @@ async function startServer() {
     // All 30 classes the app persists are declared in
     // database_seed/_SCHEMA.json, so a seeded database never needs it.
     //
-    // The default here is the modern value, and the E2E gate proves the app
-    // never needs the permissive one: 448 same-pass with it off.
+    // Pinned PERMISSIVE, which is 2.8.4's default and not the modern one.
     //
-    // It is an env var rather than a literal because this option gates READS,
-    // not just writes, and the seeded schema is not the deployed one.
-    // RestWrite.js:139 is the write check everyone expects; RestQuery.js:234
-    // is the other one, reached from buildRestWhere at :180 on EVERY query,
-    // and it throws OPERATION_FORBIDDEN (119) "not allowed to access
-    // non-existent class" rather than returning an empty result. The plan's
-    // section 7 records production's _SCHEMA as 29 entries against this
-    // seed's 30, and which class is missing is unknown -- so on the deployed
-    // database some query that returns [] today would start throwing, on a
-    // read path nobody changed, and no test in this repo can see it.
+    // Owner decision, 2026-08-20: client code is expected to extend the schema
+    // in future -- new venues and the classes that come with them -- so the
+    // ability to create a class from the client is kept deliberately rather
+    // than lost to a default that changed underneath us.
     //
-    // So: ship the modern value, and leave production one release where it
-    // can set ALLOW_CLIENT_CLASS_CREATION=1 while the missing class is
-    // identified. Delete the escape hatch once it is.
-    "allowClientClassCreation": process.env.ALLOW_CLIENT_CLASS_CREATION === "1",
+    // Pinning it matters more than which way it points. Left implicit it
+    // would flip from true to false at the bump, and that flip is not the
+    // write-only change it looks like: RestWrite.js:139 is the check everyone
+    // expects, but RestQuery.js:234 is reached from buildRestWhere at :180 on
+    // EVERY query, and throws OPERATION_FORBIDDEN (119) "not allowed to
+    // access non-existent class" where the query used to return []. Any class
+    // present in one deployment's _SCHEMA and absent from another's would
+    // start throwing on read, on a path nobody touched, invisible to every
+    // test here.
+    //
+    // The env var turns it OFF, for whenever the schema is settled enough to
+    // want that. Note the separate lever: adding a FIELD to an existing class
+    // is each class's own addField CLP in database_seed/_SCHEMA.json, not this
+    // option -- currently open to "*" on 13 classes and Administrator on 8.
+    "allowClientClassCreation": process.env.ALLOW_CLIENT_CLASS_CREATION !== "0",
     // Every request and response body is logged at this level. One local day
     // of E2E runs produced a 3.9 GB log, and on a dyno all of it goes to the
     // platform log drain -- character sheet bodies included. VERBOSE is
