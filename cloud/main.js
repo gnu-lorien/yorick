@@ -349,12 +349,12 @@ var isMeaningfulChange = function (vc) {
     return changed;
 }
 
-Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
+compat.beforeSave("SimpleTrait", function(request) {
     // Ahead of everything else: this hook copies the trait into a
     // VampireChange audit row, so an unguarded anonymous write did not merely
     // land a trait on somebody's sheet, it also wrote itself into the log the
     // approvals workflow reads.
-    if (!require_a_user_legacy(request, response, "Traits")) { return; }
+    require_a_user(request, "Traits");
 
     console.log("beforeSave SimpleTrait");
     var vc = new Parse.Object("VampireChange");
@@ -369,7 +369,7 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
         });
         console.log("beforeSave simpleTrait Setting fetch flow promise");
     }
-    flow_promise.then(function(serverData) {
+    return flow_promise.then(function(serverData) {
         console.log("beforeSave simpleTrait Starting with serverdata response " + JSON.stringify(modified_trait));
         console.log(JSON.stringify(serverData));
         vc.set({
@@ -390,12 +390,12 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
 
         if (!isMeaningfulChange(vc)) {
             console.log("Update does not actually encode a change for trait " + (modified_trait.id ? modified_trait.get("name") : modified_trait.id));
-            response.success();
-            // `return` ends this callback only, not the chain - the
-            // remaining `.then()`s still run. Hand them `undefined` and let
-            // them short-circuit explicitly, rather than letting
-            // `vampire.id` throw into the error handler and call
-            // `response.error()` after we have already succeeded.
+            // `return` ends this callback only, not the chain - the remaining
+            // `.then()`s still run, and they must: the promise this hook
+            // returns is what allows the save, so it has to be the promise for
+            // the whole chain. Hand them `undefined` and let them short-circuit
+            // explicitly, rather than letting `vampire.id` throw and turn a
+            // no-op into a refusal.
             return;
         }
 
@@ -403,7 +403,9 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
         return new Parse.Query("Vampire").get(vc.get("owner").id, {useMasterKey: true});
     }).then(function(vampire) {
         if (_.isUndefined(vampire)) {
-            // Already responded above; nothing left to record.
+            // The change was not meaningful; nothing left to record. Keep
+            // resolving - reaching the end of this chain is what allows the
+            // save now that nothing settles early.
             return;
         }
         console.log("beforeSave SimpleTrait Getting acl vampire " + vampire.id);
@@ -417,7 +419,6 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
             return;
         }
         request.object.set("definition_change", vc);
-        response.success();
         if (!request.object.id) {
             console.log("Successfully beforeSave new SimpleTrait " + modified_trait.get("name") + " for " + modified_trait.get("owner").id + " with vc id " + vc.id);
         } else {
@@ -432,7 +433,10 @@ Parse.Cloud.beforeSave("SimpleTrait", function(request, response) {
         }
         console.log(failStr);
         error.message = failStr;
-        response.error(error);
+        // See beforeDelete("SimpleTrait"): returning normally from a rejection
+        // handler recovers the chain, which would allow a save this hook has
+        // just decided to refuse.
+        throw error;
     });
 });
 
