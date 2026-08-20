@@ -44,15 +44,16 @@ original reasoning stays legible next to what measurement did to it.
 |---|---|---|
 | 1. Gate wrapper | **done** | `gate.js`, `test/gate.test.js`, 27 self-tests |
 | 2. S10 baseline | **done** | `runs/s10-baseA.json` — 451 discovered, 448 passed, 3 skipped, committed |
+| 3. Log oracle | **done** (`9389ad1`) | `hook-counts.js`, 19 self-tests |
 | 4. PaymentPaypal | **decided — see below** | owner, 2026-08-20 |
 | 5. MongoDB 8.2.6 alone | **answered — the experiment is impossible** | gate **2**; `mongodb-8-op-query.md` |
+| 6. Before-trigger seam + conversions | **done** (`9d374af`..`10279f2`) | seven gates, all 0 |
 | 7. Deletions | **done** (`5347818`) | gate 0 |
 | 8. Master-key role reads | **done** (`dcdff91`) | gate 0 |
 | 9. Explicit options | **done** (`fbccc99`) | gate 0 |
 | 10. Seeder/driver decoupling | **done** (`c666b31`) | gate 0 |
 
-Not done: **3** (log oracle), **6** (adapter + conversions), **11** (lockfile),
-**12** (jimp), **13** (the bump).
+Not done: **11** (lockfile), **12** (jimp), **13** (the bump).
 
 **Step 5 is closed, and §5's premise below is wrong.** MongoDB is not a
 separable variable: under `MONGODB_BINARY_VERSION=8.2.6` the backend never
@@ -84,7 +85,9 @@ some of them fatally.**
   `if (theFunction.length >= 2) return theFunction(request, responseObject);`.
   Verified live: `response.success(v)` resolves, `response.error(m)` rejects
   with code 141 and the verbatim message.
-- **The 11 before-triggers break.** `triggers.js:838` is a bare
+- **The 10 before-triggers break** — 8 `beforeSave` + 2 `beforeDelete`; this said
+  11, and the arithmetic in the paragraph below it ("9 beforeSaves → 8", plus the
+  two beforeDeletes) always said 10. `triggers.js:838` is a bare
   `trigger(request)`; there is no arity branch anywhere in that file.
   - settling **synchronously** → save rejected, code 141,
     `"Cannot read properties of undefined (reading 'success')"`.
@@ -92,10 +95,12 @@ some of them fatally.**
     parse-server's own `uncaughtException` handler (`ParseServer.js:352`) →
     **`process.exit(1)`. The backend dies.**
 
-  The async kind includes all three portrait hooks (`crop_and_thumb` settles in
-  a `.then`), and by inspection `beforeSave("Vampire")`,
+  The async kind includes both portrait hooks — there are **two** registrations,
+  `TroupePortrait` and `CharacterPortrait`, sharing one `crop_and_thumb`, which
+  settles in a `.then`; `create_thumbnail` is the third function and is not a
+  registration — and by inspection `beforeSave("Vampire")`,
   `beforeSave("SimpleTrait")`, `beforeDelete("SimpleTrait")` and
-  `beforeSave("VampireApproval")`.
+  `beforeSave("VampireApproval")`. Six of the ten.
 
   **Operationally:** flip the bump before the Step 6 adapter and the first
   portrait or character save kills that worker's backend. Across 8 Playwright
@@ -109,6 +114,55 @@ So Step 6 shrinks: the adapter only has to cover **before-triggers**, and after
 Step 7's deletions the conversion count is **20, not 24** (13 defines → 10,
 9 beforeSaves → 8). The defines can convert later, or never, on their own
 schedule — they are no longer coupled to the bump.
+
+### Step 6 is done, and it is smaller than the plan below describes
+
+Seven slices, `9d374af`..`10279f2`, each with its own full gate. All ten
+before-triggers now register through **`cloud/trigger-compat.js`** as
+`compat.beforeSave(...)` / `compat.beforeDelete(...)`; no `Parse.Cloud.before*`
+call remains in `cloud/`. The 10 `Parse.Cloud.define` handlers and the 3
+`afterSave` handlers are deliberately **unchanged** — neither is coupled to the
+bump, and touching them would have spent gate cycles for no change in behaviour.
+
+**There is no `LEGACY` flag, and Step 13 has nothing to flip.** The seam detects
+at invocation: 2.8.4 calls a before-trigger as `trigger(request, response)`
+(`triggers.js:447`) and honours the returned promise only for afterSave and
+afterDelete (`:448`); parse-server 9 calls `trigger(request)`. So
+`response === undefined` **is** the version test, read from the server actually
+running. A flag would have had to be flipped by hand, and the cost of forgetting
+is not a red test — six of these hooks settle inside a `.then`, which is the
+`process.exit(1)` cascade described above, created by missing one line.
+
+Two hazards found in the conversion, both of which would have been silent:
+
+1. **Every async rejection handler needed an explicit `throw`.** A `.fail`/
+   rejection handler that returns normally *recovers* the chain — node-side
+   `parse@1.11.1` is A+ compliant (`ParsePromise.js:39`, branch at `:171-198`) —
+   so deleting `response.error(error)` and leaving the handler otherwise empty
+   makes the hook's promise **resolve**, allowing a write it had just decided to
+   refuse. Five sites; all five carry the `throw` now, and a comment saying why.
+2. **`beforeSave("SimpleTrait")`'s mid-chain success.** Success used to be
+   signalled at the `isMeaningfulChange` short-circuit with two `.then()`s still
+   to run. Now the chain's completion *is* the success signal, so the
+   `_.isUndefined` sentinels must stay and the chain must keep running.
+
+`record_experience_notation`'s answer-then-dispatch survives, and its own commit
+(`84462f6`) records why: the property that mattered was never "success is called
+on the line above", it was that the hook does not await the audit write. Both
+hooks return `undefined` and the write is never inside the returned promise.
+`dispatch_experience_notation_record` wraps it so a *synchronous* throw out of
+the dispatch cannot refuse an operation already allowed — a guarantee the old
+shape got for free, and one that Steps 12 and 13 could easily take away.
+
+Measured after the last slice, windowed to `runs/s10-step6-7.json`: all twelve
+logged trigger tallies **identical to `runs/hooks-s10-baseA.json`, `failed`
+columns included** — `Vampire/beforeSave` 987/1, `VampireApproval/beforeSave`
+12/4, `CharacterPortrait/beforeSave` 2/1. The hooks that reject still reject, in
+the same places, the same number of times. Saved at
+`runs/hooks-s10-step6-7.json`; **use that, not `hooks-s10-baseA.json`, as Step
+13's before-picture** — the baseline was recorded before four server-config
+commits and its `get_expected_vampire_ids` tally (89, against 58-60 now) is stale
+for reasons that have nothing to do with cloud code.
 
 ### §7's unknowns, now answered
 
@@ -338,10 +392,13 @@ proved is unaffordable.
 
 **Use an adapter**, the same seam that made the browser phase reviewable. See
 Step 6. One fact makes it safe: **every hook `success()` in this codebase is
-zero-argument** (`cloud/main.js:80, 100, 238, 244, 282, 351, 378, 447, 550, 553,
-563, 575, 580, 881`), so parse-server 3.0's "a value returned from beforeSave
-replaces the object" semantic cannot bite. `return;` is the modern form
-everywhere.
+zero-argument**, so parse-server 3.0's "a value returned from beforeSave replaces
+the object" semantic cannot bite. `return;` is the modern form everywhere. (The
+line list that stood here — `:80, 100, 238, …` — was stale by Step 7's deletions
+and is now history: there are no hook `success()` calls left at all. The claim
+itself held, and `cloud/trigger-compat.js` relies on it: the seam always calls
+`response.success()` with no argument and discards whatever a handler returns, so
+a stray `return x` is harmless on both versions.)
 
 ---
 
@@ -452,6 +509,13 @@ in their serial tails, would be invisible.
 
 **Step 3. Add the log-marker oracle. ~2-3h, rides along on runs you do anyway.**
 
+> **DONE, and this section is superseded — see §0.** Cloud `console.log` never
+> reaches that file at any level, so the markers below would have counted zero.
+> `hook-counts.js` counts parse-server's *own* trigger log instead, needs no
+> change to `cloud/`, and covers the defines for free. **Do not add cloud
+> markers. Do not set VERBOSE=1.** ("the three portrait hooks" below is also
+> wrong; there are two.)
+
 `index.js:120` sets `verbose: true`, and cloud code already emits unique hook
 entry markers (`cloud/main.js:317, 398, 420, 586, 610`). Add matching markers to
 `beforeSave("Vampire")`, the three portrait hooks, `LongText` and
@@ -506,6 +570,11 @@ item makes the eventual bump diff smaller. Order within the phase is flexible.
 
 **Step 6. The Cloud Code adapter, and all 24 conversions. 1.5-2 days, 6-8 runs.**
 
+> **DONE, and this section is superseded — read §0's "Step 6 is done" first.**
+> It was 10 before-triggers, not 24 handlers; there is no `LEGACY` flag; the
+> defines never moved. The sketch below is kept because the reasoning around it
+> is still worth reading, not because it describes what shipped.
+
 Add a seam in `cloud/` — sketch, not final:
 
 ```js
@@ -526,9 +595,10 @@ function defineFn(name, fn) {
 
 Then rewrite each handler into modern form: `response.success()` → `return;`,
 `response.success(x)` → `return x;`, `response.error(x)` → `throw x;`.
-`require_a_user` becomes a `throw` and its 10 call sites lose their
-`if (!require_a_user(...)) { return; }` guard. `crop_and_thumb` becomes
-promise-returning and its 3 callers `return crop_and_thumb(request)`.
+`require_a_user` becomes a `throw` and its call sites lose their
+`if (!require_a_user(...)) { return; }` guard — **9 sites, not 10; Step 7's
+deletions took one**. `crop_and_thumb` becomes promise-returning and its callers
+`return crop_and_thumb(request)` — **2 callers, not 3**.
 
 Why this shape:
 
@@ -536,21 +606,35 @@ Why this shape:
   suite covers the conversion** — including the audit-row hooks, which assert
   the exact `VampireChange` shape rather than just that a save succeeded.
 - At bump time, flipping `LEGACY` is one line and the 24 handlers do not move
-  again. The bump commit stays reviewable.
-- Hook rejection *messages* must survive verbatim at `cloud/main.js:853` and
-  `:867` — asserted with `toContain` at `e2e/approvals.spec.js:1007, 1019, 1058,
-  1106`. The suite asserts Parse error *codes* only for CLP/ACL cases (119,
-  101), never for hook rejections, so parse-server 3.0's change in how hook
-  rejections are coded cannot break it.
+  again. The bump commit stays reviewable. — **Superseded.** There is no flag;
+  the shipped seam detects `response === undefined` at call time, so the bump
+  commit does not touch `cloud/` at all. See §0.
+- Hook rejection *messages* must survive verbatim — asserted with `toContain` at
+  `e2e/approvals.spec.js:1007, 1019, 1058, 1106`. The plan put them at
+  `cloud/main.js:853`/`:867`; they are now **`:874`** and **`:888`**, and they
+  move whenever anything above them does, so find them by text. The suite asserts
+  Parse error *codes* only for CLP/ACL cases (119, 101), never for hook
+  rejections, so parse-server 3.0's change in how hook rejections are coded
+  cannot break it.
 
 Land in slices, gating after each: helpers first (11 registrations), then the
 audit-row hooks (best oracle), then the covered Cloud functions, then the rest.
+— **What shipped:** seven slices, and the ordering that worked was seam-first on
+the two hooks that are *only* a guard (nothing in the conversion can be blamed
+for a failure, only the seam), then the exact-shape audit-row oracles, then the
+verbatim-message hook, then the portraits. The "covered Cloud functions" clause
+is moot: the defines never moved.
 
 *Check by hand, not by diff:* `record_experience_notation`
 (`cloud/main.js:550-554`, `:563-565`) deliberately answers the request and
 *then* dispatches an async write. Whether that fire-and-forget still completes
 under a promise-returning parse-server 9 is unverified. Watch
-`e2e/xp-history.spec.js` after the bump.
+`e2e/xp-history.spec.js` after the bump. — **Half-answered.** The hook no longer
+awaits it and cannot: both ExperienceNotation hooks return `undefined`, so the
+write is never inside the promise parse-server waits on. What remains genuinely
+unverified at the bump is whether parse-server 9 lets the process live long
+enough for a detached write to land after the response is sent. Still watch
+`xp-history.spec.js` 54-75.
 
 **Step 7. Delete what does not need porting. 2-3h, 2 runs.**
 
@@ -671,8 +755,17 @@ Edits in this commit:
    `listen()` — and therefore when the Playwright `webServer` URL answers. A
    boot regression appears as a wall of `webServer` timeouts across 8 workers,
    not as a test failure. **Run `node index.js` by hand first.**
-2. Flip `LEGACY` in the Step 6 adapter.
+2. ~~Flip `LEGACY` in the Step 6 adapter.~~ **Delete this step — there is no
+   flag.** `cloud/trigger-compat.js` reads `response === undefined` at call time
+   and needs no edit at bump. Do not go looking for a constant; there isn't one,
+   and adding one would reintroduce exactly the half-bumped window it avoids.
 3. `Parse.Promise` → native; `.fail(` → `.catch(` (faithful, per §1.1).
+   **Read `cloud/trigger-compat.js` before doing this.** Its async branch calls
+   `.then` on whatever the handler returns, which is a `Parse.Promise` today and
+   a native one after; both are fine. What is not fine is dropping any of the
+   five `throw error` lines in the rejection handlers — see §0's hazard 1. They
+   look like they do nothing and they are the difference between refusing a write
+   and allowing it.
 4. `cloud/main.js:755-768` — the `{success, error}` options object on
    `Parse.User.logIn`, dropped at SDK 2.0. Under parse 8 the third argument is
    an options bag, so neither callback fires and `check_user_password` **hangs
