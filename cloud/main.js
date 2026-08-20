@@ -454,13 +454,13 @@ Parse.Cloud.afterSave("SimpleTrait", function(request) {
     });
 });
 
-Parse.Cloud.beforeDelete("SimpleTrait", function(request, response) {
-    if (!require_a_user_legacy(request, response, "Traits")) { return; }
+compat.beforeDelete("SimpleTrait", function(request) {
+    require_a_user(request, "Traits");
 
     var vc = new Parse.Object("VampireChange");
     var trait = request.object;
     console.log("beforeDelete SimpleTrait Getting the server trait data " + trait.id);
-    (new Parse.Query("SimpleTrait").get(trait.id, {useMasterKey: true})).then(function(st) {
+    return (new Parse.Query("SimpleTrait").get(trait.id, {useMasterKey: true})).then(function(st) {
         return st._getServerData();
     }).then(function(serverData) {
         console.log(pretty(serverData));
@@ -486,12 +486,17 @@ Parse.Cloud.beforeDelete("SimpleTrait", function(request, response) {
         return vc.save({}, {useMasterKey: true});
     }).then(function () {
         console.log("beforeDelete SimpleTrait saved trait " + trait.id + " for " + vc.get("owner").id);
-        response.success();
     }, function (error) {
         var failStr = "beforeDelete SimpleTrait Failed to delete for trait " + request.object.id + " because of " + pretty(error);
         console.log(failStr);
         error.message = failStr;
-        response.error(error);
+        // The `throw` is load-bearing, not decoration. A rejection handler that
+        // returns normally RECOVERS the chain (parse@1.11.1 is A+ compliant;
+        // node_modules/parse/lib/node/ParsePromise.js:171-190), so deleting the
+        // old `response.error(error)` and leaving this handler otherwise empty
+        // would resolve the promise this hook returns - and allow a delete that
+        // today is refused. Silently, and it inverts a security decision.
+        throw error;
     });
 });
 
