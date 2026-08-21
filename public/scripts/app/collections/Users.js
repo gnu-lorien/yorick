@@ -9,8 +9,9 @@ define([
         model: Parse.User,
         
         initialize: function() {
-            var self = this;
-            self.query = new Parse.Query(self.model);
+            // No `self.query` here. Nothing read it, and leaving a _User query
+            // lying around invites Parse.Collection.prototype.fetch to sweep
+            // the table again -- the thing this collection stopped doing.
         },
         
         comparator: function (left, right) {
@@ -31,33 +32,36 @@ define([
             return 0;
         },
         
+        /**
+         * The account directory, from the server rather than from a _User sweep.
+         *
+         * A client-side query cannot do this any more: under enforcePrivateUsers
+         * a new signup has no public read, so the sweep silently returned fewer
+         * people every week and nothing anywhere said so.
+         *
+         * The `createdAt` watermark went with it, deliberately. It took its
+         * high-water mark from rows ALREADY LOADED, so the moment new accounts
+         * became invisible it froze at the newest visible one and re-scanned an
+         * empty window forever -- it could not even notice it was missing
+         * anyone. It was broken by the same change it was meant to survive.
+         *
+         * `self.scope` records which tier the server was willing to serve, so a
+         * caller can say WHY a list is short instead of rendering a mystery.
+         */
         fetch: function (options) {
             var self = this;
-            var options = options || {};
-            _.defaults(options, {
-                add: true,
-                update: true,
-                select: ["id", "username", "realname", "email"],
-            });
-            var q = new Parse.Query(self.model);
-            if (options.update && 0 != self.models.length) {
-                var allCreateds = _.map(self.models, "createdAt");
-                allCreateds = _.sortBy(allCreateds);
-                q.greaterThan("createdAt", _.last(allCreateds));
-            }
-            q.select.apply(q, options.select);
-            var latest = [];
-            return q.each(function (patronage) {
-                latest.push(patronage);
-            }).then(function () {
+            options = options || {};
+            _.defaults(options, {add: true});
+            return Parse.Cloud.run("list_users").then(function (payload) {
+                self.scope = payload.scope;
                 if (options.add) {
-                    _.each(latest, function(l) {
-                        self.add(l);
+                    _.each(payload.users, function (u) {
+                        self.add(u);
                     })
                 } else {
-                    self.reset(latest);
+                    self.reset(payload.users);
                 }
-                
+
                 return Parse.Promise.as(self);
             })
         }
