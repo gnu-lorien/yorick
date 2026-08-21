@@ -36,13 +36,54 @@ function parseEJSON(val) {
  * `sampstranger` shares no troupe with any test character and exists purely so
  * the access-control specs have a genuine outsider to assert against; the other
  * three all end up inside some troupe or role.
+ *
+ * `sampprivate` is different in kind and is the ONLY oracle the
+ * `enforcePrivateUsers` work has. See `private` below.
  */
 var TEST_USERS = [
   { id: 'm91umkbuQq',       username: 'devuser',      password: 'thedumbness', admin: true,  storyteller: true },
   { id: 'user_sampmem',     username: 'sampmem',      password: 'sampmem',     admin: false, storyteller: false },
   { id: 'user_sampast',     username: 'sampast',      password: 'sampast',     admin: false, storyteller: true },
-  { id: 'user_sampstranger', username: 'sampstranger', password: 'sampstranger', admin: false, storyteller: false }
+  { id: 'user_sampstranger', username: 'sampstranger', password: 'sampstranger', admin: false, storyteller: false },
+  // The account that is NOT publicly readable, standing in for everyone who
+  // signs up from now on.
+  //
+  // parse-server 9 defaults `enforcePrivateUsers` true, so a real signup gets
+  // no public read -- but nothing in either suite can observe that, because no
+  // spec completes a signup and because the four rows above are written
+  // straight into Mongo with `_rperm: ['*', id]`, bypassing the layer where the
+  // option is read. Every seeded account is therefore publicly readable no
+  // matter which way the option is set, and a green run proves nothing about
+  // it. This entry fabricates the same end state by writing the restrictive
+  // ACL directly, which is why it reproduces the whole failure class WITH THE
+  // OPTION OFF and on any parse-server version.
+  //
+  // It carries `realname` and `email` because the other four carry neither, so
+  // without them no spec could tell "the field was withheld" from "the field
+  // was never set".
+  {
+    id: 'user_sampprivate', username: 'sampprivate', password: 'sampprivate',
+    admin: false, storyteller: false,
+    private: true,
+    realname: 'Pat Privatelli',
+    email: 'sampprivate@example.invalid'
+  }
 ];
+
+/** The troupe every fixture below hangs off. Created in the cold-start block. */
+var SAMPLE_TROUPE_ID = 'WOad4CBTsG';
+
+/**
+ * The character owned by `sampprivate`, and what it is for.
+ *
+ * `mobileRouter.js`'s `get_troupe_characters` calls `q.include("owner")` and
+ * then drops any row where `!character.has("owner")`. Under a private owner,
+ * parse-server does not hand back an unfetched pointer -- `replacePointers`
+ * removes the key outright -- so the row is SILENTLY ABSENT from the roster
+ * rather than merely missing a name. This character is the thing that
+ * disappears, and its reappearance is how the fix is proved.
+ */
+var PRIVATE_FIXTURE_CHARACTER_ID = 'char_sampprivate';
 
 /**
  * Upsert the test accounts. Kept separate from the bulk import and run on every
@@ -54,24 +95,35 @@ async function seedTestUsers(db) {
   for (var i = 0; i < TEST_USERS.length; i++) {
     var u = TEST_USERS[i];
     var hashed = await bcrypt.hash(u.password, 10);
+    // `private` accounts get NO '*' entry, in either _rperm or _acl -- which is
+    // exactly the shape RestWrite produces for a signup under
+    // `enforcePrivateUsers`. Everyone else keeps public read, so the four
+    // original accounts behave exactly as they always have and no existing
+    // spec changes meaning.
+    var rperm = u.private ? [u.id] : ['*', u.id];
+    var acl = {};
+    acl[u.id] = { w: true, r: true };
+    if (!u.private) {
+      acl['*'] = { r: true };
+    }
+    var fields = {
+      username: u.username,
+      _hashed_password: hashed,
+      _wperm: [u.id],
+      _rperm: rperm,
+      _acl: acl,
+      _updated_at: new Date(),
+      admininterface: u.admin,
+      storytellerinterface: u.storyteller
+    };
+    // Only set when present, so the four accounts that have never carried these
+    // fields keep not carrying them.
+    if (u.realname) { fields.realname = u.realname; }
+    if (u.email) { fields.email = u.email; }
     await db.collection('_User').updateOne(
       { username: u.username },
       {
-        $set: {
-          username: u.username,
-          _hashed_password: hashed,
-          _wperm: [u.id],
-          _rperm: ['*', u.id],
-          _acl: (function () {
-            var acl = {};
-            acl[u.id] = { w: true, r: true };
-            acl['*'] = { r: true };
-            return acl;
-          })(),
-          _updated_at: new Date(),
-          admininterface: u.admin,
-          storytellerinterface: u.storyteller
-        },
+        $set: fields,
         $setOnInsert: {
           _id: u.id,
           _created_at: new Date()
@@ -80,6 +132,62 @@ async function seedTestUsers(db) {
       { upsert: true }
     );
   }
+}
+
+/**
+ * One character owned by the private account, inside the sample troupe.
+ *
+ * Runs on every boot rather than only on a cold database, for the same reason
+ * `seedTestUsers` does: a fixture that only reaches new databases is a fixture
+ * nobody's existing working copy ever gets.
+ *
+ * The ACL mirrors what `Character.get_me_acl` would have produced -- owner and
+ * Administrator read/write, plus the troupe's LST and AST roles, and no public
+ * access. Writing it by hand matters: `get_me_acl` is itself one of the things
+ * the private owner breaks, so deriving the fixture's ACL from it would make
+ * the fixture agree with the bug.
+ */
+async function seedPrivateFixtureCharacter(db) {
+  var ownerId = 'user_sampprivate';
+  var readers = [
+    ownerId,
+    'role:Administrator',
+    'role:LST_' + SAMPLE_TROUPE_ID,
+    'role:AST_' + SAMPLE_TROUPE_ID
+  ];
+  var acl = {};
+  readers.forEach(function (who) { acl[who] = { r: true, w: true }; });
+
+  await db.collection('Vampire').updateOne(
+    { _id: PRIVATE_FIXTURE_CHARACTER_ID },
+    {
+      $set: {
+        name: 'Private Owner Test Character',
+        player_name: 'Pat Privatelli',
+        type: 'Vampire',
+        // Parse stores a pointer as `_p_<field>` = "<className>$<objectId>".
+        _p_owner: '_User$' + ownerId,
+        _rperm: readers,
+        _wperm: readers,
+        _acl: acl,
+        _updated_at: new Date()
+      },
+      $setOnInsert: {
+        _id: PRIVATE_FIXTURE_CHARACTER_ID,
+        _created_at: new Date()
+      }
+    },
+    { upsert: true }
+  );
+
+  // `troupes` is a relation, so membership lives in a join collection rather
+  // than on the row. Without this the character exists but is in no troupe,
+  // and the roster query it is meant to appear in never selects it.
+  await db.collection('_Join:troupes:Vampire').updateOne(
+    { owningId: PRIVATE_FIXTURE_CHARACTER_ID, relatedId: SAMPLE_TROUPE_ID },
+    { $set: { owningId: PRIVATE_FIXTURE_CHARACTER_ID, relatedId: SAMPLE_TROUPE_ID } },
+    { upsert: true }
+  );
 }
 
 /**
@@ -315,6 +423,7 @@ async function seedDatabase(databaseURI, options) {
     // lets a new test account or a new description category reach a database
     // that was seeded before they existed.
     await seedTestUsers(db);
+    await seedPrivateFixtureCharacter(db);
 
     var descResult = await seedExtra.seedDescriptions(db);
     if (descResult.inserted > 0) {
@@ -336,6 +445,10 @@ async function seedDatabase(databaseURI, options) {
 module.exports = {
   seedDatabase: seedDatabase,
   seedTestUsers: seedTestUsers,
+  seedPrivateFixtureCharacter: seedPrivateFixtureCharacter,
+  TEST_USERS: TEST_USERS,
+  PRIVATE_FIXTURE_CHARACTER_ID: PRIVATE_FIXTURE_CHARACTER_ID,
+  SAMPLE_TROUPE_ID: SAMPLE_TROUPE_ID,
   verifyTestUsers: verifyTestUsers,
   seedingAllowed: seedingAllowed,
   TEST_USERS: TEST_USERS
