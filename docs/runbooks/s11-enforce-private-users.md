@@ -1039,14 +1039,27 @@ live in every environment running 9.10.0 since the bump landed, so **C1-C7 are
 urgent rather than preparatory**. `index.js` now pins it explicitly at `214f962`,
 which writes the behaviour down without changing it.
 
-**D2. Email in the exports — RESTORE IT.** Owner decision: set
-`IDENTITY_INCLUDES_EMAIL = true`. The admin patronage list, the patronage CSV,
-the ballot dump and the character-summarize CSVs carry a `massmailauthorization`
-column, so those files are mailed from and an export with a blank email column is
-quietly useless. Restored **only for callers already entitled to the row** under
-clause 4 — never widened to ordinary players. Hand-test 5.3(1) is still worth
-doing, but only to learn whether this restores something currently blank or
-preserves something currently working; it no longer gates C2.
+**D2. Email in the exports — NO. `IDENTITY_INCLUDES_EMAIL` stays FALSE.**
+
+Answered "restore them" first, then corrected by the owner once the mechanism
+was clear: *"I did not mean to create any new capabilities around email that do
+not exist today."* The correction is the decision.
+
+The premise of the first answer was that these exports used to carry addresses
+and had lost them. They did not. parse-server withholds `email` from every
+non-owner read on its own — `protectedFields` defaults to
+`{_User: {'*': ['email']}}` and is computed only for non-master callers — so no
+browser caller can see another member's address today, and none could before the
+migration either. The Cloud functions read under the master key, which bypasses
+that filter, so returning `email` would have handed out addresses no route in
+the app currently exposes. An expansion, not a restoration.
+
+A member's own address is unaffected and always was: the caller's own row comes
+from `Parse.User.current()`, never through these functions.
+
+If an admin export is ever meant to carry addresses, that is a deliberate
+product change, and `IDENTITY_INCLUDES_EMAIL` is the one line — but it wants
+deciding on its own terms.
 
 **D3. Who sees the account directory — ANY STORYTELLER, not just leads.**
 Owner decision, and it **overrides clause 3 and clause 6 as written above.**

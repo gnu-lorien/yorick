@@ -81,9 +81,11 @@ test('identity_of returns exactly the allowlisted keys and nothing else', () => 
     const out = main.identity_of(poisonedUser());
     const keys = Object.keys(out.attributes).sort();
 
-    // email is included by owner decision (IDENTITY_INCLUDES_EMAIL).
+    // No `email`. parse-server withholds it from every non-owner read already,
+    // so returning it from a master-keyed read would be a new capability rather
+    // than a preserved one. Owner decision, 2026-08-20.
     assert.deepStrictEqual(keys,
-        ['acceptedtos', 'email', 'massmailauthorization', 'realname', 'username']);
+        ['acceptedtos', 'massmailauthorization', 'realname', 'username']);
 });
 
 test('identity_of never carries credentials, tokens or ACLs', () => {
@@ -91,7 +93,7 @@ test('identity_of never carries credentials, tokens or ACLs', () => {
     // IDENTITY_FIELDS cannot quietly take this guarantee with it.
     const out = main.identity_of(poisonedUser());
     for (const forbidden of ['authData', 'sessionToken', 'password',
-                             '_hashed_password', 'ACL', 'emailVerified']) {
+                             '_hashed_password', 'ACL', 'emailVerified', 'email']) {
         assert.strictEqual(out.get(forbidden), undefined,
             forbidden + ' escaped through identity_of');
     }

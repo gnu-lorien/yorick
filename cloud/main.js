@@ -1141,29 +1141,30 @@ var require_administrator = function (request) {
 var IDENTITY_FIELDS = ["username", "realname", "massmailauthorization", "acceptedtos"];
 
 /**
- * Whether `email` may be returned. TRUE, by owner decision, 2026-08-20.
+ * Whether `email` may be returned. FALSE, and it must stay false unless
+ * somebody deliberately decides to widen what the app exposes.
  *
- * Read this before changing it, because the default is not the safe-looking
- * one. parse-server already withholds `email` from every non-owner read
- * (`protectedFields` defaults to {_User: {'*': ['email']}} and is computed only
- * for non-master callers), so no browser caller can see another user's address
- * today -- which views/AdministrationUserView.js and the R51 note below both
- * record discovering the hard way. A master-key read bypasses that filter, so
- * setting this true is an EXPANSION of exposure relative to current behaviour,
- * not a restoration of something that recently worked.
+ * The reasoning is easy to get backwards, so it is written out. parse-server
+ * withholds `email` from every non-owner read on its own: `protectedFields`
+ * defaults to {_User: {'*': ['email']}} and is computed only for non-master
+ * callers. So no browser caller can see another member's address TODAY, and
+ * none could before the migration either -- views/AdministrationUserView.js and
+ * the R51 note below both record discovering that the hard way.
  *
- * It was chosen deliberately: the admin patronage list, the patronage CSV, the
- * ballot dump and the character-summarize CSVs all carry a
- * `massmailauthorization` column, so those exports are mailed from, and an
- * export whose address column is blank is quietly useless.
+ * These functions read under the MASTER KEY, which bypasses that filter
+ * entirely. Setting this true would therefore hand out addresses that are not
+ * available through any route the app has now: an EXPANSION dressed as a
+ * migration. Owner decision, 2026-08-20, stated plainly: no new capabilities
+ * around email that do not exist today.
  *
- * NOTE THE INTERACTION, because no single decision contains it: the directory
- * clause below admits any troupe-role holder, so with this true a Narrator can
- * read every member's address. If that is too wide, the narrower fix is to keep
- * this true and drop `email` from the `list_users` sweep only -- entitled
- * per-record lookups keep it, bulk enumeration does not.
+ * A member's own address is unaffected and always was -- the caller's own row
+ * is read from Parse.User.current(), never through here.
+ *
+ * If an admin export is ever meant to carry addresses, that is a deliberate
+ * product change and this is the line, but it needs deciding on its own terms
+ * and not to make a template look tidier.
  */
-var IDENTITY_INCLUDES_EMAIL = true;
+var IDENTITY_INCLUDES_EMAIL = false;
 
 /** Nobody may ask about more accounts than this in one call. */
 var MAX_IDENTITY_IDS = 200;
