@@ -53,6 +53,13 @@ requirejs.config( {
 		"url-search-params": "url-search-params.max.amd",
 		papaparse: "papaparse-4.1.2",
 
+		// Vue 3, vendored like Backbone and lodash rather than fetched from a
+		// CDN, and the full build rather than the runtime-only one: components
+		// here declare `template:` strings and are compiled in the browser, so
+		// nothing has to be built before the app will run. That is the point of
+		// using it this way - the port needs no bundler until it is worth one.
+		vue: "vue.global-3.5.41",
+
 		app: "../app"
 	},
 
@@ -67,6 +74,12 @@ requirejs.config( {
 		"backform": {
 			"deps": [ "backbone" ],
 			"exports": "Backform",
+		},
+
+		// The global build is a bare IIFE that assigns `var Vue`; it carries no
+		// `define()`, so a shim is the right way to pick it up.
+		"vue": {
+			"exports": "Vue"
 		},
 
 	}
