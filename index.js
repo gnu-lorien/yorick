@@ -265,7 +265,34 @@ async function startServer() {
     // what it may not do to them -- and it is a two-line change here plus
     // those two assertions. It wants its own commit and its own gate, not a
     // default silently changing underneath this one.
-    "enableSanitizedErrorResponse": false
+    "enableSanitizedErrorResponse": false,
+    // Pinned to 9.10.0's own default, which means this line changes NOTHING
+    // about how the server behaves. It is here because the option was
+    // previously absent, and an absent option is a behaviour nobody chose:
+    // 2.8.4 had no such setting at all, so the bump silently adopted 9.x's
+    // answer to a question this app had never been asked.
+    //
+    // What it does: a _User created without an explicit ACL gets no public
+    // read. Only on CREATE, and only when the write supplies no ACL
+    // (RestWrite.js, the _User branch). Nothing rewrites a row that already
+    // exists -- which is why this degrades gradually rather than breaking on
+    // day one, and why turning it OFF would not restore anyone created while
+    // it was on.
+    //
+    // Owner decision, 2026-08-20: keep the modern default and move the
+    // browser's reads of OTHER people's _User rows behind Cloud functions.
+    // docs/runbooks/s11-enforce-private-users.md is that work, specified and
+    // verified; none of it has landed yet. Until it does, a browser read of
+    // another user's row returns nothing for anyone who signed up after the
+    // bump, and an include() of a user-valued pointer drops the pointer
+    // entirely rather than leaving it unfetched.
+    //
+    // Note for anyone reading a green suite as reassurance: it is not.
+    // seed_db.js writes _rperm: ['*', u.id] straight into Mongo, bypassing the
+    // layer this option lives in, so every seeded account is publicly readable
+    // no matter what this says -- and no spec completes a signup. Neither
+    // suite can observe this option at all, in either position.
+    "enforcePrivateUsers": true
   };
 
   // R51. Password reset needs an `emailAdapter` as well as the `appName` and
