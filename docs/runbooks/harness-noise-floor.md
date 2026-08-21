@@ -141,6 +141,72 @@
 > re-runs instead, and the plan's 25–36 run budget does not include them.
 
 
+> **Fourth correction, 2026-08-21. Both quarantined tests retired.**
+>
+> `gate.js`'s QUARANTINE is now empty. Tests 49 (`admin-referendums`) and 114
+> (`assets-rename-portrait`) are no longer forgiven, and a failure of either is
+> once again a plain FAIL.
+>
+> **The evidence.** 22 consecutive full eight-worker runs, spanning the last
+> recorded failure of either test (`s10-baseB`, 2026-08-20T01:00Z) to
+> 2026-08-21T18:37Z, with both tests passing **on the first attempt** in every
+> one — 44 test-instances, zero retries:
+>
+> | when | runs |
+> |---|---|
+> | 2026-08-20, post-fix | `s10-postfixC`, `s10-postfixD`, `s10-step13e-3`, `verify-bump-independent` |
+> | 2026-08-21, before this work | `s11-verify-2`, `before-my-changes` |
+> | 2026-08-21, during this work | `evidence-1`, `evidence-2`, `q09`, `q10r2`, `q11`, `q12`, `r01`–`r10` |
+> | 2026-08-21, quarantine removed | `no-quarantine-1` — PASS, exit 0, nothing forgiven |
+>
+> **"First attempt" is the load-bearing part of that sentence.** A test that
+> fails and passes on retry reports `flaky`, and both `diff-runs.js` and the
+> gate treat that as a pass — so counting collapsed outcomes understates the
+> rate. The corrections above did exactly that. Re-reading the per-attempt
+> results in the recorded reports: `m18` is tabled here as clean, but its test
+> 114 failed its first attempt; `m19` is tabled as "114 only", but its test 49
+> failed its first attempt too. The 22 above is a count of runs where neither
+> test needed a retry at all, which is a stricter bar than anything previously
+> claimed on this page.
+>
+> At the one-in-seven quiet-machine rate this document settled on, 22
+> consecutive clean runs happen by luck about **3.4%** of the time; at the
+> one-in-three loaded rate, about **0.013%**. Combined with the mechanism having
+> been found and fixed in `6b790dc` rather than merely observed to stop, that is
+> enough to stop forgiving them.
+>
+> **What removal cost.** Deleting the two entries from `gate.js` broke six of
+> the 42 self-tests in `test/gate.test.js`, which pinned QUARANTINE to exactly
+> two entries and named both tests — two of the six failed as TypeErrors rather
+> than as assertions. The runbook that asked for the removal did not mention
+> this, and anyone deleting the entries alone would have left the unit suite
+> red. The entries were therefore moved into `test/gate.test.js` as
+> `RETIRED_QUARANTINE`, and the tests that judge the real recorded `m18`/`m19`
+> pair now use that — so the forgiveness machinery is still exercised against a
+> real failure with a real signature, a real foreign-worktree `errorLocation`
+> and a real 14-test serial tail, rather than only against a synthetic entry
+> matched by a fixture built to match it. What was given up is the pin on the
+> live list; what was kept is every assertion about how forgiveness behaves.
+>
+> **A measurement hazard found while collecting this, worth more than the
+> evidence itself.** Several runs were destroyed by two gate loops running at
+> once. The second loop had been told to stop and its supervising shell did
+> stop — but the `node gate.js` children it had already spawned did not, and
+> went on starting and sweeping backends on 1337-1344 underneath the new loop.
+> One run recorded 4 NEW-FAIL across four unrelated spec files plus 61 LOST;
+> eight more recorded nothing at all.
+>
+> Neither is a software signal, and the gate said so correctly — the empty ones
+> exited 2 (DID NOT RUN), never 0. The corrupted one exited 1, and the only
+> thing that identifies it as contention rather than regression is the recorded
+> `stats.startTime`: it began **one second** after another full run.
+> **Two concurrent gate runs cannot both be measuring anything**, because
+> `e2e/ports.js` hands every worker a fixed port and the second run's sweep
+> kills the first run's servers mid-test. If you script repeated runs, serialise
+> them; if you kill a loop, kill its children too; and check `startTime` before
+> believing a failure.
+
+
 **Measured 2026-08-18 on `claude/office-hours-upgrade-plan-092d60`.**
 
 Two consecutive double-runs of the full suite, each diffed against its own pair
