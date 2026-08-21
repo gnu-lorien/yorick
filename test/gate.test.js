@@ -92,6 +92,51 @@ const SYNTH_QUARANTINE = {
   }
 };
 
+/**
+ * The two entries `gate.QUARANTINE` carried until 2026-08-21, kept here after
+ * they were retired.
+ *
+ * They are not decoration and this is not sentiment. Several tests below judge
+ * the REAL recorded `m18` -> `m19` pair, where test 114's failure is the thing
+ * being forgiven; that is the only place the forgiveness machinery is ever
+ * exercised against a real Playwright failure with a real signature, real
+ * `errorLocation` paths from a foreign worktree, and a real 14-test serial
+ * tail. `SYNTH_QUARANTINE` cannot stand in for that -- it is a hand-written
+ * object matched against a fixture built to match it.
+ *
+ * So when the live list was emptied, these moved here rather than being
+ * deleted, and the tests that need real data now name `RETIRED_QUARANTINE`.
+ * What is deliberately NOT asserted any more is that these two keys are the
+ * live ones. What is still asserted is every behaviour: that a forgiven
+ * NEW-FAIL never reads green, that the tail is counted and named, that the
+ * blast radius cannot grow unnoticed, that a quarantined test cannot be
+ * renamed away, and that `--filter` scopes forgiveness.
+ *
+ * If a flake ever earns quarantine again, put it in `gate.js` -- not here.
+ *
+ * Evidence for the retirement: 22 consecutive full eight-worker runs with both
+ * passing on the first attempt. See docs/runbooks/harness-noise-floor.md.
+ */
+const RETIRED_QUARANTINE = {
+  ['admin-referendums.spec.js :: Task 3 - Referendums: Creation And Voting :: ' +
+  '49 A third user votes for the same option as the first; that tally reaches 2']: {
+    why: 'harness noise; byte-identical signature on the legacy stack (candidate/vendor/w4a)',
+    doc: 'docs/runbooks/harness-noise-floor.md',
+    messageRe: /^Error: expect\(received\)\.toBe\(expected\)[\s\S]*Expected: 2[\s\S]*Received: undefined/,
+    errorLocation: { file: 'e2e/admin-referendums.spec.js', line: 452, column: 45 },
+    tail: 4
+  },
+
+  ['assets-rename-portrait.spec.js :: Task 6 - Rename And Portraits, Verified Everywhere They Appear :: ' +
+  '114 Renaming to collide with an existing character name succeeds - names are deliberately not unique']: {
+    why: 'jQuery Mobile transition-lock flake; pre-existing, root-caused, partially healed',
+    doc: 'docs/runbooks/harness-noise-floor.md',
+    messageRe: /^Error: expected jQuery Mobile page "#character-rename" to become active within 20000ms/,
+    errorLocation: { file: 'e2e/helpers/jqm-helpers.js', line: 68, column: 11 },
+    tail: 14
+  }
+};
+
 // ---------------------------------------------------------------------------
 // Hole A -- the run that did not happen
 // ---------------------------------------------------------------------------
@@ -365,7 +410,7 @@ test('quarantine cannot launder a real regression: m18 vs m19 still fails', (t) 
   // Test 114 is quarantined in gate.js and its failure here matches the pinned
   // signature exactly, so the NEW-FAIL is forgiven -- and the run is still not
   // green, because the 14 tests behind it never ran.
-  const r = judge(run('m18.json'), run('m19.json'), { quarantine: gate.QUARANTINE });
+  const r = judge(run('m18.json'), run('m19.json'), { quarantine: RETIRED_QUARANTINE });
 
   assert.notStrictEqual(r.exitCode, gate.EXIT_PASS, 'a forgiven failure must never be green');
   assert.strictEqual(r.verdict, 'INCONCLUSIVE');
@@ -384,7 +429,7 @@ test('quarantine cannot launder a real regression: m18 vs m19 still fails', (t) 
 
 test('the quarantine section prints even when the quarantined tests passed', (t) => {
   if (needRuns(t, ['baseline.json', 'm18.json'])) return;
-  const r = judge(run('baseline.json'), run('m18.json'), { quarantine: gate.QUARANTINE });
+  const r = judge(run('baseline.json'), run('m18.json'), { quarantine: RETIRED_QUARANTINE });
   assert.strictEqual(r.verdict, 'PASS');
   const text = r.lines.join('\n');
   assert.ok(text.includes('QUARANTINE'), 'nobody should be able to forget these exist');
@@ -396,30 +441,67 @@ test('the quarantine section prints even when the quarantined tests passed', (t)
   );
 });
 
-test('the two quarantined names are the ones the runbook names', (t) => {
-  // Transcription guard. The keys are 150 and 200 characters and the file
-  // segment is the BARE basename -- writing `e2e/admin-referendums.spec.js`
-  // would produce a quarantine that looks configured and matches nothing.
+test('every live quarantine key is well-formed and matches a real test', (t) => {
+  // Transcription guard, and it applies to whatever is in the live list --
+  // which since 2026-08-21 is nothing. It used to pin the list to exactly the
+  // two retired entries by name; that pin is gone, because the point of it was
+  // to make an ADDITION visible in the diff, and against an empty list any
+  // addition is visible in the diff by definition.
+  //
+  // What has to keep holding is the shape. The keys are 150 and 200 characters
+  // and the file segment is the BARE basename -- writing
+  // `e2e/admin-referendums.spec.js` would produce a quarantine that looks
+  // configured, prints its section every run, and matches nothing. This is
+  // vacuous while the list is empty and becomes load-bearing the moment it is
+  // not, which is exactly when somebody is hand-transcribing a 200-character
+  // key out of a Playwright report.
   const keys = Object.keys(gate.QUARANTINE);
-  assert.strictEqual(keys.length, 2, 'a third entry needs a human edit visible in the diff');
-  assert.ok(keys.some((k) => k.startsWith('admin-referendums.spec.js :: ')));
-  assert.ok(keys.some((k) => k.startsWith('assets-rename-portrait.spec.js :: ')));
   assert.ok(keys.every((k) => !k.startsWith('e2e/')), 'keys carry the basename, not the path');
+  assert.ok(
+    keys.every((k) => k.includes('.spec.js :: ')),
+    'a key is "<basename>.spec.js :: <suite path> :: <title>"'
+  );
+  for (const k of keys) {
+    const e = gate.QUARANTINE[k];
+    assert.ok(e.why && e.doc, 'every entry says why, and where the evidence is: ' + k);
+    assert.ok(e.messageRe instanceof RegExp, 'forgiveness is by signature, never by name: ' + k);
+    assert.ok(e.errorLocation && e.errorLocation.file, 'and by location: ' + k);
+    assert.strictEqual(typeof e.tail, 'number', 'the stranded-test cost must be measured: ' + k);
+  }
 
-  // One run from each side of the migration. m19 is where the pinned failure
-  // was actually recorded, so it proves the key matches the test the signature
-  // was taken from; s10-step13e-3 proves the same key still matches after the
-  // stack moved. A key that quietly stopped matching would leave a quarantine
-  // that looks configured, prints its section every run, and forgives nothing.
+  // The same check against the retired pair, on real recorded runs, so the
+  // lesson those keys taught is still enforced somewhere. m19 is where test
+  // 114's pinned failure was actually recorded, so it proves the key matches
+  // the test the signature was taken from; s10-step13e-3 proves the same key
+  // still matches after the stack moved.
   if (needRuns(t, ['m19.json', 's10-step13e-3.json'])) return;
   const inLegacy = flatten(JSON.parse(fs.readFileSync(run('m19.json'), 'utf8')));
   const inMigrated = flatten(JSON.parse(fs.readFileSync(run('s10-step13e-3.json'), 'utf8')));
-  for (const k of keys) {
+  const retired = Object.keys(RETIRED_QUARANTINE);
+  assert.strictEqual(retired.length, 2);
+  for (const k of retired) {
     assert.ok(
       inLegacy.has(k) && inMigrated.has(k),
-      'quarantined key matches no real test: ' + k
+      'retired quarantine key matches no real test: ' + k
     );
   }
+});
+
+test('the quarantine is empty, and that is a decision with evidence behind it', () => {
+  // Not a style assertion. While test 114 was forgiven, a run in which it
+  // failed was INCONCLUSIVE rather than FAIL, and the 14 tests behind it -- the
+  // whole Parse File surface -- went unmeasured. Emptying the list is what puts
+  // those back under the gate.
+  //
+  // If you are re-adding an entry, this test is the one that will stop you, and
+  // it should: say so out loud in the diff, and record the evidence in
+  // docs/runbooks/harness-noise-floor.md the way the retirement of these two
+  // was recorded (22 consecutive full runs, both passing on first attempt).
+  assert.deepStrictEqual(
+    Object.keys(gate.QUARANTINE),
+    [],
+    'nothing is forgiven; if you added an entry, document it and update this test'
+  );
 });
 
 test('an unrecognised error on a quarantined test is NOT forgiven', () => {
@@ -570,9 +652,9 @@ test('a forgiven flake may not grow its blast radius past the recorded tail', ()
 test('the real quarantine tails match what the recorded runs actually strand', (t) => {
   // The pin is only worth asserting if the recorded numbers are the true ones.
   if (needRuns(t, ['m18.json', 'm19.json'])) return;
-  const r = judge(run('m18.json'), run('m19.json'), { quarantine: gate.QUARANTINE });
-  const entry = gate.QUARANTINE[
-    Object.keys(gate.QUARANTINE).find((k) => k.startsWith('assets-rename-portrait'))
+  const r = judge(run('m18.json'), run('m19.json'), { quarantine: RETIRED_QUARANTINE });
+  const entry = RETIRED_QUARANTINE[
+    Object.keys(RETIRED_QUARANTINE).find((k) => k.startsWith('assets-rename-portrait'))
   ];
   assert.strictEqual(entry.tail, 14, 'the recorded cost of forgiving test 114');
   assert.strictEqual(r.numbers.lostBehindQuarantine, 14, 'and what it actually strands');
@@ -613,7 +695,7 @@ test('--filter scopes quarantine too, so the healing re-run is possible', (t) =>
 
   if (needRuns(t, ['m18.json', 'm19.json'])) return;
   const real = judge(run('m18.json'), run('m19.json'), {
-    quarantine: gate.QUARANTINE,
+    quarantine: RETIRED_QUARANTINE,
     filter: 'assets-rename-portrait.spec.js'
   });
   assert.strictEqual(real.quarantineStatus.length, 1, 'the referendums entry is out of scope');
@@ -681,8 +763,8 @@ test('signatureMatches ignores ANSI colour and the recording worktree path', () 
   // Playwright's expect() output is full of SGR codes and errorLocation.file is
   // an absolute path embedding whichever worktree recorded the run, so an exact
   // string comparison on either would never match anywhere but this machine.
-  const entry = gate.QUARANTINE[
-    Object.keys(gate.QUARANTINE).find((k) => k.startsWith('admin-referendums'))
+  const entry = RETIRED_QUARANTINE[
+    Object.keys(RETIRED_QUARANTINE).find((k) => k.startsWith('admin-referendums'))
   ];
   const coloured =
     'Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22m' +
