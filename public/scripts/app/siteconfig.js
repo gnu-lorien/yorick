@@ -74,7 +74,23 @@ define([
     // test in this repo can catch any of the deployed values being wrong.
     // Deliberately not a count -- adding a config would silently falsify one.
     if (typeof window !== 'undefined' && window.location) {
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        var host = window.location.hostname;
+        // Tailscale hosts are same-origin too.
+        //
+        // Anything that is not localhost falls through to ConfigGnuLorienDev at
+        // the bottom of this file, which is the dead c9users.io host -- so a
+        // phone opening this app over the tailnet would load the UI fine and
+        // then fail every API call, with nothing on screen to say why.
+        //
+        // Two forms, because a tailnet peer is reachable by either: the MagicDNS
+        // name (<machine>.<tailnet>.ts.net) and the raw address out of the
+        // 100.64.0.0/10 CGNAT range Tailscale allocates from. Both are private
+        // by construction -- .ts.net names resolve only through the tailnet's
+        // own DNS, and 100.64/10 is not routable on the public internet -- so
+        // neither can match a deployed host. The configs above are untouched.
+        var isTailscale = /\.ts\.net$/.test(host) ||
+            /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(host);
+        if (host === 'localhost' || host === '127.0.0.1' || isTailscale) {
             ConfigLocalhost.serverURL = window.location.origin + "/parse/1";
             return ConfigLocalhost;
         }
