@@ -115,32 +115,53 @@ fails loudly at deploy instead of quietly at the first upload.
 
 ---
 
-## 3. Check how the front end is built
+## 3. Set the Netlify Node version — this one WILL break the build
 
-**This is a genuine unknown and only you can answer it.**
+**Build command: confirmed as `gulp greensboro`.** That target now exists on
+this branch and produces correct output; verified locally, exits 0.
 
-The front end is a static site, built by `gulp` and published separately from
-the server. This branch now has a `greensboro` build target that produces the
-correct output, verified locally:
+**But the Node version is a problem, and it is not the cosmetic warning it
+looks like.**
 
-```bash
-npx gulp greensboro
-```
+Netlify currently reports the project as using **Node.js 10**. Deploying this
+branch onto that unchanged does not warn — it fails, for a reason that has
+nothing to do with the app code:
 
-What nobody can determine from the repository is **what Netlify actually runs.**
-There is no `netlify.toml`, no build script in `package.json`, and no workflow
-file that names a build command. "Netlify runs `gulp greensboro`" is an
-assumption inherited from the other branch.
+| | greensboro (today) | this branch |
+|---|---|---|
+| lockfile | **none** | `package-lock.json`, format version **3** |
+| `engines` | `node 14.x` | `node >=20.19` |
+| `.nvmrc` | `14.18.0` | `22` (added now) |
 
-Open the Netlify site's Build & deploy settings and confirm the build command.
-If it is something else, that something else needs to exist on this branch.
+Format-3 lockfiles need npm 7 or newer. Node 10 ships npm 6, which cannot read
+one. greensboro gets away with Node 10 only because it has no lockfile at
+all — `npm install` just resolves fresh against dependencies old enough not to
+care. This branch has a lockfile, deliberately, because reproducible installs
+were the whole point of that step.
 
-Note also that the `dist/` directory committed in this repository is a build
-from **August 2021**. It cannot run the migrated app — it still bundles the
-2015 version of the Parse client library. Do not treat it as a fallback, and be
-careful not to commit a rebuilt one by accident, because that directory is what
-gets published and rebuilding it points the live site at whichever target the
-rebuild used.
+So: **the migration does not resolve the Node 10 warning. It converts it from a
+warning into a failed build.**
+
+`.nvmrc` pinning `22` is now on this branch, which is the repository's half of
+the fix. 22 is inside the `engines` range, is what CI already tests, and is what
+Netlify's own message asks for.
+
+**Check the Netlify UI as well, because the file may not be the deciding
+factor.** greensboro already carries `.nvmrc` = `14.18.0` and Netlify still
+reports 10 — which suggests a `NODE_VERSION` environment variable set in the
+site settings, and that takes precedence over the file. If one is set, change it
+to `22` or delete it so `.nvmrc` wins.
+
+Heroku is unaffected either way: its Node buildpack reads `engines` from
+`package.json` and ignores `.nvmrc`.
+
+### The committed `dist/` directory
+
+Separately: the `dist/` directory in this repository is a build from **August
+2021**. It cannot run the migrated app — it still bundles the 2015 version of
+the Parse client library. Do not treat it as a fallback, and take care not to
+commit a rebuilt one by accident, because that directory is what gets published
+and rebuilding it points the live site at whichever target the rebuild used.
 
 ---
 
