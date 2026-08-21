@@ -31,7 +31,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 
-const { getDatabaseURI } = require('../index');
+const { getDatabaseURI, resolvePublicServerURL } = require('../index');
 
 /**
  * Every variable getDatabaseURI() reads before the probe.
@@ -41,7 +41,7 @@ const { getDatabaseURI } = require('../index');
  * alone is honoured" into a test that passes without testing anything, and a CI
  * box with NODE_ENV=production would turn the fallback cases inside out.
  */
-const TOUCHED = ['MONGODB_URI', 'DB_URI', 'NODE_ENV', 'DYNO'];
+const TOUCHED = ['MONGODB_URI', 'DB_URI', 'NODE_ENV', 'DYNO', 'PUBLIC_SERVER_URL'];
 
 /**
  * Run `fn` with exactly `vars` set among TOUCHED, then put process.env back.
@@ -139,4 +139,65 @@ test('the refusal names both variables, so the fix is in the message', async () 
       return true;
     }
   );
+});
+
+// ---------------------------------------------------------------------------
+// publicServerURL
+//
+// Same shape of hazard as the database URI above, and the same two-signal
+// guard, which is why it lives in this file. parse-server bakes this origin
+// into password-reset links and every Parse.File URL, and cloud/main.js fetches
+// each uploaded portrait back over HTTP from it -- so a wrong value does not
+// degrade, it REFUSES every portrait save and orphans a GridFS blob each time.
+//
+// The old default was a Cloud9 host that stopped existing years ago, which made
+// that failure the out-of-the-box behaviour for anyone running this locally.
+// ---------------------------------------------------------------------------
+
+test('an explicit PUBLIC_SERVER_URL is used verbatim', async () => {
+  await withEnv({ PUBLIC_SERVER_URL: 'https://example.test/parse/1' }, () => {
+    assert.strictEqual(
+      resolvePublicServerURL(1337, '/parse/1'),
+      'https://example.test/parse/1');
+  });
+});
+
+test('locally it points at this process, not at a dead host', async () => {
+  // The value has to be reachable, because the server dials it itself.
+  await withEnv({}, () => {
+    assert.strictEqual(
+      resolvePublicServerURL(1337, '/parse/1'),
+      'http://127.0.0.1:1337/parse/1');
+  });
+});
+
+test('the local default follows the mount path rather than duplicating it', async () => {
+  // Two places must not be able to disagree about where the API is mounted.
+  await withEnv({}, () => {
+    assert.match(resolvePublicServerURL(9999, '/parse'), /:9999\/parse$/);
+  });
+});
+
+test('a deployed host with nothing set is refused, not guessed', async () => {
+  for (const deployed of [{ NODE_ENV: 'production' }, { DYNO: 'web.1' }]) {
+    await withEnv(deployed, () => {
+      assert.throws(() => resolvePublicServerURL(1337, '/parse/1'), /PUBLIC_SERVER_URL/);
+    });
+  }
+});
+
+test('a deployed host WITH the value set is fine', async () => {
+  // The refusal is about the fallback, never about the explicit value.
+  await withEnv({ DYNO: 'web.1', PUBLIC_SERVER_URL: 'https://live.test/parse/1' }, () => {
+    assert.strictEqual(
+      resolvePublicServerURL(1337, '/parse/1'),
+      'https://live.test/parse/1');
+  });
+});
+
+test('no code path can reach the dead Cloud9 host', async () => {
+  // The literal is gone; this fails loudly if anyone reinstates it as a default.
+  const source = require('fs').readFileSync(require('path').join(__dirname, '..', 'index.js'), 'utf8');
+  assert.ok(!source.includes('c9users.io'),
+    'index.js still references the dead Cloud9 host');
 });

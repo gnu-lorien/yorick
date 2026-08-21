@@ -34,6 +34,68 @@ function databaseName() {
 }
 
 /**
+ * Is this a deployed host rather than somebody's machine or a test run?
+ *
+ * TWO signals, because neither is trustworthy alone. NODE_ENV=production is
+ * conventionally set by Heroku's Node buildpack, but it is an ordinary config
+ * var that can be unset by hand, and nothing else in this repo branches on it,
+ * so nothing else would notice if it went missing. DYNO is set by the Heroku
+ * platform itself rather than by configuration.
+ *
+ * Neither is set anywhere in this repo's own tooling -- not by
+ * playwright.config.js's webServer env, not by test_runner.js, not by any npm
+ * script -- so a local run cannot trip either of the refusals that call this.
+ *
+ * Both callers refuse a FALLBACK, never an explicit value. The pattern is the
+ * same in each: a default that is merely wrong on a developer's machine becomes
+ * silent damage on a dyno, so the dyno is made to say so instead.
+ */
+function looksDeployed() {
+  return process.env.NODE_ENV === 'production' || !!process.env.DYNO;
+}
+
+/**
+ * The origin this server tells the outside world to reach it on.
+ *
+ * parse-server bakes this into password-reset and verification links, and it is
+ * what `Parse.File#url()` resolves against -- so it is not only a link-building
+ * nicety. `crop_and_thumb` in cloud/main.js reads the just-uploaded file BACK
+ * over HTTP from this origin, and it is the whole body of the beforeSave for
+ * both CharacterPortrait and TroupePortrait. Point this at a host that does not
+ * answer and every portrait save is REFUSED -- not a broken thumbnail, no row
+ * at all -- while each attempt still leaves an orphaned blob in GridFS, because
+ * the browser uploads the file in one request and saves the row in another.
+ *
+ * The default used to be a Cloud9 host that stopped existing years ago, which
+ * meant portrait uploads were broken for anyone running this locally and would
+ * have been broken in production the moment PUBLIC_SERVER_URL was left unset.
+ * Locally it now points at this process, which is both correct and testable;
+ * on a deployed host there is no sensible guess, so it refuses.
+ *
+ * Note that parse-server will NOT catch a bad value for us. verifyServerUrl()
+ * is reached only from startApp(), and this file calls start(), so a
+ * publicServerURL pointing nowhere produces no boot warning at all.
+ */
+function resolvePublicServerURL(port, mountPath) {
+  if (process.env.PUBLIC_SERVER_URL) {
+    return process.env.PUBLIC_SERVER_URL;
+  }
+  if (looksDeployed()) {
+    throw new Error(
+      'PUBLIC_SERVER_URL is not set, and this looks like a deployed ' +
+      'environment (NODE_ENV=production and/or DYNO). Refusing to guess it. ' +
+      'parse-server bakes this origin into password-reset links and into ' +
+      'every Parse.File URL, and cloud/main.js fetches each uploaded portrait ' +
+      'back over HTTP from it -- so a wrong value does not degrade, it refuses ' +
+      'every portrait save and leaves an orphaned file behind each time. Set ' +
+      'PUBLIC_SERVER_URL to this deployment origin plus the mount path, e.g. ' +
+      'https://<app>.herokuapp.com' + mountPath + '.'
+    );
+  }
+  return 'http://127.0.0.1:' + port + mountPath;
+}
+
+/**
  * Resolve the database to run against.
  *
  * Returns `{ uri, ephemeral }`. `ephemeral` is true only when THIS process
@@ -80,14 +142,8 @@ async function getDatabaseURI() {
   // timeout looking for a mongod it was never going to have, and a test can
   // then exercise this branch without touching the network or the filesystem.
   //
-  // TWO signals, because neither is trustworthy alone. NODE_ENV=production is
-  // conventionally set by Heroku's Node buildpack, but it is an ordinary config
-  // var that can be unset by hand and nothing else in this repo branches on it,
-  // so nothing else would notice if it went missing. DYNO is set by the Heroku
-  // platform itself rather than by configuration. Neither is set anywhere in
-  // this repo's own tooling -- not by playwright.config.js's webServer env, not
-  // by test_runner.js, not by any npm script -- so a local run cannot trip this.
-  if (process.env.NODE_ENV === 'production' || process.env.DYNO) {
+  // See looksDeployed().
+  if (looksDeployed()) {
     throw new Error(
       'No database configured: neither MONGODB_URI nor DB_URI is set, and this ' +
       'looks like a deployed environment (NODE_ENV=production and/or DYNO). ' +
@@ -209,7 +265,7 @@ async function startServer() {
     // parse-server.err stays at level "error" regardless
     // (Adapters/Logger/WinstonLogger.js:56), so the error log is unaffected.
     "verbose": process.env.VERBOSE ? true : false,
-    "publicServerURL": process.env.PUBLIC_SERVER_URL || "https://yorick-latest-parse-server-gnu-lorien.c9users.io/parse/1",
+    "publicServerURL": resolvePublicServerURL(port, mountPath),
     // 127.0.0.1, not 0.0.0.0. `0.0.0.0` is a bind address, not a destination,
     // so anything that dials serverURL needs a real host. The path follows
     // mountPath rather than duplicating the literal it is mounted at, so the
@@ -378,5 +434,7 @@ if (require.main === module) {
 // deploy's database wiring and its dangerous failure mode is a silent success,
 // so it has to be reachable without booting a server to assert on.
 module.exports = {
-  getDatabaseURI: getDatabaseURI
+  getDatabaseURI: getDatabaseURI,
+  resolvePublicServerURL: resolvePublicServerURL,
+  looksDeployed: looksDeployed
 };
