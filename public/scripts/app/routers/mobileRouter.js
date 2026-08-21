@@ -903,7 +903,12 @@ define([
             require(["../views/AdministrationUserView"], function (AdministrationUserView) {
                 self.enforce_logged_in().then(function () {
                     return Parse.Promise.when(
-                        new Parse.Query("User").get(id),
+                        // A client `get` on _User returns 101 for anyone
+                        // private, which rejected the whole `when` and took the
+                        // page down rather than degrading. The Cloud function
+                        // decides entitlement server-side and rejects with a
+                        // sentence a human can act on.
+                        UserChannel.get_user(id),
                         self.get_patronages(),
                         UserChannel.get_users());
                 }).then(function (user, patronages, users) {
@@ -937,7 +942,7 @@ define([
             require(["../views/PatronagesView"], function (PatronagesView) {
                 var user;
                 self.enforce_admin().then(function () {
-                    return new Parse.Query("User").get(id);
+                    return UserChannel.get_user(id);
                 }).then(function (found) {
                     user = found;
                     return self.get_patronages();
@@ -1075,7 +1080,18 @@ define([
                     if (self.administrationPatronageView) {
                         self.administrationPatronageView.remove();
                     }
-                    patronage.set("owner", users.get(userid));
+                    // The owner comes from the ROUTE, as a bare pointer, not
+                    // from the registry. `users.get(userid)` returned undefined
+                    // for anyone the directory did not happen to hold -- which
+                    // is now every private account -- and set(undefined) creates
+                    // the patronage with NO owner at all, silently, which is a
+                    // paid subscription attached to nobody.
+                    //
+                    // A pointer also avoids a deep-save: setting a fetched
+                    // _User makes the next patronage.save() try to save that
+                    // row too, and take a 403 on it. Same idiom PatronageView
+                    // already uses.
+                    patronage.set("owner", new Parse.User({id: userid}));
                     self.administrationPatronageView = new PatronageView({ model: patronage });
                     self.administrationPatronageView.render();
                     $("#administration-patronage-view").find("div[role='main']").append(self.administrationPatronageView.el);
@@ -2128,7 +2144,7 @@ define([
             self.enforce_logged_in().then(function () {
                 self.set_back_button("#troupe/" + id);
                 var get_troupe = new Parse.Query("Troupe").include("portrait").get(id);
-                var get_user = new Parse.Query("User").get(uid);
+                var get_user = UserChannel.get_user(uid);
                 return Parse.Promise.when(get_troupe, get_user);
             }).then(function (troupe, user) {
                 self.troupeEditStaffView = self.troupeEditStaffView || new TroupeEditStaffView({ el: "#troupe-edit-staff" });
