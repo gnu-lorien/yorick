@@ -42,11 +42,63 @@ function databaseName() {
  * That is a stronger guarantee than "the URI looks like localhost", and it is
  * what lets seeding auto-enable for local development without weakening the
  * guard against seeding a real database. See `seedingAllowed` in seed_db.js.
+ *
+ * A deployed environment gets no fallback at all -- see the refusal below.
  */
 async function getDatabaseURI() {
-  if (process.env.MONGODB_URI) {
-    return { uri: process.env.MONGODB_URI, ephemeral: false };
+  // Two names, because the two lineages of this app disagree about which one
+  // it is: the deployed dyno's config var is DB_URI, while the two things in
+  // this tree that read a database URI at all -- `npm run seed` and
+  // audit_db_permissions.js -- both say MONGODB_URI. (The E2E harness sets
+  // neither: playwright.config.js sets MONGODB_DB, a database NAME, and lets
+  // the fallback below choose the server.) Reading only one of them would
+  // make the deploy depend on a hand rename of a config var -- and the day
+  // that rename is forgotten is not the day the server fails to boot, it is
+  // the day it boots wrong. See the refusal below for what that silence costs.
+  //
+  // MONGODB_URI wins when both are set, so a deployment can be moved onto the
+  // name this tree uses by adding it, and moved back off by removing it,
+  // without either step passing through a moment with no database configured.
+  var explicitURI = process.env.MONGODB_URI || process.env.DB_URI;
+  if (explicitURI) {
+    return { uri: explicitURI, ephemeral: false };
   }
+
+  // Refuse here, BEFORE the probe below, when this looks like a deployed
+  // environment and nothing explicit was given.
+  //
+  // What is being refused is not a crash -- it is a success. On a host with no
+  // mongod on 27017 the fallback chain below starts an IN-MEMORY MongoDB and
+  // reports `ephemeral: true`, which seed_db.js reads as permission to seed, so
+  // the process comes up listening and healthy, serving an empty database
+  // holding `devuser` at a password published in this repository, while every
+  // real record is simply absent. Nothing logs an error and the health check
+  // passes. That is the worst outcome available here, and it is the one an
+  // unset config var produces, so it gets an explicit stop.
+  //
+  // Ahead of the probe for two reasons: a dyno should not spend a socket
+  // timeout looking for a mongod it was never going to have, and a test can
+  // then exercise this branch without touching the network or the filesystem.
+  //
+  // TWO signals, because neither is trustworthy alone. NODE_ENV=production is
+  // conventionally set by Heroku's Node buildpack, but it is an ordinary config
+  // var that can be unset by hand and nothing else in this repo branches on it,
+  // so nothing else would notice if it went missing. DYNO is set by the Heroku
+  // platform itself rather than by configuration. Neither is set anywhere in
+  // this repo's own tooling -- not by playwright.config.js's webServer env, not
+  // by test_runner.js, not by any npm script -- so a local run cannot trip this.
+  if (process.env.NODE_ENV === 'production' || process.env.DYNO) {
+    throw new Error(
+      'No database configured: neither MONGODB_URI nor DB_URI is set, and this ' +
+      'looks like a deployed environment (NODE_ENV=production and/or DYNO). ' +
+      'Refusing to fall back to a local or in-memory MongoDB, because that ' +
+      'fallback does not fail here -- it succeeds: the server would come up ' +
+      'healthy on an empty in-memory database seeded with the test accounts, ' +
+      'and every real record would be absent with nothing logged. Set ' +
+      'MONGODB_URI (or DB_URI) to the database this deployment should use.'
+    );
+  }
+
   // Check if local MongoDB is reachable on 27017
   const isMongoRunning = await new Promise(function(resolve) {
     var net = require('net');
@@ -281,7 +333,23 @@ async function startServer() {
   });
 }
 
-startServer().catch(function(err) {
-  console.error("Failed to start server:", err);
-  process.exit(1);
-});
+// Guarded so this file can be `require`d for its exports without standing a
+// server up. Every real boot runs it as the main module and is unaffected: the
+// Procfile is `web: npm start`, package.json's "start" is `node index.js`, and
+// both harnesses that need a backend run the same file the same way
+// (playwright.config.js's webServer `command`, and test_runner.js's spawn of
+// process.execPath with 'index.js'). Remove the guard and merely importing
+// getDatabaseURI in a unit test would boot Parse Server, bind a port, and seed.
+if (require.main === module) {
+  startServer().catch(function(err) {
+    console.error("Failed to start server:", err);
+    process.exit(1);
+  });
+}
+
+// Exported for test/database-uri.test.js. `getDatabaseURI` is the whole of the
+// deploy's database wiring and its dangerous failure mode is a silent success,
+// so it has to be reachable without booting a server to assert on.
+module.exports = {
+  getDatabaseURI: getDatabaseURI
+};
