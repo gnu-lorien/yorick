@@ -19,9 +19,12 @@
  *     baseline, valid-JSON-but-not-a-report) and they run on a fresh clone.
  *
  *   runs/*.json -- the real recorded artifacts, which are what the numbers in
- *     gate.js's header were measured on. `runs/` is GITIGNORED, so every test
- *     that touches it skips with a clear message when the file is absent
- *     rather than failing on a machine that never recorded a run.
+ *     gate.js's header were measured on. `runs/` is gitignored wholesale, but
+ *     the records named below were force-added past that rule exactly so these
+ *     tests run on a fresh clone; every test that touches runs/ still asks
+ *     needRuns() first, and the names it asks for must be ones `git ls-files
+ *     runs/` returns. Name an untracked record and the test stops being a test
+ *     for everyone but the machine that happens to have the file.
  *
  * Run: npm run test:node
  */
@@ -46,17 +49,23 @@ const run = (n) => path.join(RUNS, n);
 /**
  * Guard for the recorded-run fixtures.
  *
- * `runs/` is gitignored and unrecoverable, so a fresh clone has none of it. A
- * test that silently passes in that case would be worse than useless, and one
- * that fails would make the suite red for a reason nobody can fix, so it skips
- * and says exactly which file it wanted.
+ * A recorded run is unrecoverable -- each one measured a stack that no longer
+ * exists -- so a machine may legitimately be missing one. A test that silently
+ * passed in that case would be worse than useless, and one that failed would
+ * make the suite red for a reason nobody can fix, so it skips and says exactly
+ * which file it wanted.
+ *
+ * The guard is therefore silent by design, which is how two tests here spent a
+ * whole migration pointed at runs/m20.json -- a file never committed on any
+ * branch -- reporting "skipped" rather than "wrong file". Keep every name a
+ * caller passes in tracked: the guard is cover for a record dropped in by
+ * hand, never cover for a name that no longer exists anywhere.
  */
 function needRuns(t, names) {
   const missing = names.filter((n) => !fs.existsSync(run(n)));
   if (!missing.length) return false;
   t.skip(
-    'needs recorded runs that are not present (runs/ is gitignored): ' +
-    missing.join(', ')
+    'needs recorded runs that are not present in runs/: ' + missing.join(', ')
   );
   return true;
 }
@@ -278,13 +287,26 @@ test('a candidate FAILURE that was SKIPPED in the baseline cannot hide from the 
 test('the unnamed-failure assertion fires on no recorded pair', (t) => {
   // A check that blocks the migration must not fire on a good run. Measured at
   // zero across every recorded pair the gate is expected to judge.
-  const names = ['baseline.json', 'm18.json', 'm19.json', 'm20.json'];
+  const names = [
+    'baseline.json', 'm18.json', 'm19.json', 's10-baseA.json', 's10-step13e-3.json'
+  ];
   if (needRuns(t, names)) return;
   const pairs = [
     ['baseline.json', 'm18.json'],
     ['m18.json', 'm19.json'],
     ['baseline.json', 'm19.json'],
-    ['m19.json', 'm20.json']
+    // The S10 migration's own before/after: the legacy stack against the
+    // first clean run on the migrated one, the widest change any recorded
+    // pair spans.
+    //
+    // Note what this pair does and does not add. Both sides recorded
+    // unexpected 0 and flaky 0, so there is no failure here for the check to
+    // misname and the zero is not hard-won -- what it pins is that swapping
+    // parse-server, parse and mongo underneath the suite does not by itself
+    // manufacture an unnamed failure. The pairs above are the ones with real
+    // failures in them (m19 recorded unexpected 1), and they are what prove
+    // the check names a failure rather than merely counting it.
+    ['s10-baseA.json', 's10-step13e-3.json']
   ];
   for (const [b, c] of pairs) {
     const r = judge(run(b), run(c));
@@ -384,11 +406,19 @@ test('the two quarantined names are the ones the runbook names', (t) => {
   assert.ok(keys.some((k) => k.startsWith('assets-rename-portrait.spec.js :: ')));
   assert.ok(keys.every((k) => !k.startsWith('e2e/')), 'keys carry the basename, not the path');
 
-  if (needRuns(t, ['m19.json', 'm20.json'])) return;
-  const inM19 = flatten(JSON.parse(fs.readFileSync(run('m19.json'), 'utf8')));
-  const inM20 = flatten(JSON.parse(fs.readFileSync(run('m20.json'), 'utf8')));
+  // One run from each side of the migration. m19 is where the pinned failure
+  // was actually recorded, so it proves the key matches the test the signature
+  // was taken from; s10-step13e-3 proves the same key still matches after the
+  // stack moved. A key that quietly stopped matching would leave a quarantine
+  // that looks configured, prints its section every run, and forgives nothing.
+  if (needRuns(t, ['m19.json', 's10-step13e-3.json'])) return;
+  const inLegacy = flatten(JSON.parse(fs.readFileSync(run('m19.json'), 'utf8')));
+  const inMigrated = flatten(JSON.parse(fs.readFileSync(run('s10-step13e-3.json'), 'utf8')));
   for (const k of keys) {
-    assert.ok(inM19.has(k) && inM20.has(k), 'quarantined key matches no real test: ' + k);
+    assert.ok(
+      inLegacy.has(k) && inMigrated.has(k),
+      'quarantined key matches no real test: ' + k
+    );
   }
 });
 
