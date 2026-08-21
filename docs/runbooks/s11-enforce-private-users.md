@@ -7,8 +7,14 @@ functions, rather than pinning the option false for a release and deferring.
 That decision was taken twice -- once on a two-site estimate, and again after
 the real surface was measured and reported back.
 
-`index.js` now pins the option explicitly. NOTHING ELSE IN THIS DOCUMENT HAS
-LANDED. It is a specification, produced by three independent designs scored by
+IT HAS SINCE BEEN IMPLEMENTED. C0 through C9 are landed on
+topic/parse8-migration; only C10 remains, and C10 is an operations step against
+production that cannot be done from a repository. See "What landed" below §4.
+Where the built code and this specification disagree, THE CODE IS RIGHT and the
+prose above was left as drafted -- section 6 records the decisions that changed
+it.
+
+It began as a specification, produced by three independent designs scored by
 three independent judges and then synthesised, with every load-bearing claim
 re-verified against the installed parse-server 9.10.0 and parse 8.6.0 and
 against the tree. Section 0 reframes the problem and should be read before
@@ -961,6 +967,45 @@ Eleven commits. C1–C7 are the refactor; C8–C10 are the closure and need sepa
 **C9 in detail — the irreversible one.** For every `_User` row: snapshot `{_id, _rperm, _wperm, _acl}` into `_yorick_user_acl_backup` **first**, then remove `'*'` from `_rperm` and from `_acl`, ensuring `_rperm` still contains the row's own objectId (matching `RestWrite.js:1387-1390`). Idempotent; `--dry-run` prints counts and changes nothing, and its output goes in the runbook before the real run. **The failure mode if the rewrite drops the row's own id is total and silent, and I traced it:** login's sanitizing re-fetch goes through `rest.get` under a non-master auth built from that user (`UsersRouter.js:303-315`); the ACL denies it; `:321-333` falls through to `filteredUser = { objectId: user.objectId }` and attaches the session token anyway — the source comment says *"The session token is still attached below so login succeeds."* Every account is then simultaneously logged in with an attribute-less current user: `Parse.User.current().get("admininterface")` is undefined, every gate closes, and it presents as a client bug. **The snapshot is not optional.**
 
 **C8 in detail — what stays open.** Set `"find": {}` and `"count": {}`. Leave `get`, `create`, `update`, `delete`, `addField` **exactly as they are.** Verified safe: login's user lookup runs under `Auth.maintenance` (`UsersRouter.js:116`) and its re-fetch through `rest.get`, i.e. the `get` CLP — **closing `get` triggers the objectId-only-login catastrophe above**; signup POSTs to `users` (create); own-row saves PUT to `classes/_User/:id` (update); `Parse.User.current().fetch()` is a `get`; Facebook/authData login calls `config.database.find('_User', …)` with no auth argument (`Auth.js:494-498`), which `DatabaseController` treats as master; and master-keyed Cloud code bypasses CLP entirely (`DatabaseController.js:1215`).
+
+---
+
+### What landed
+
+| # | commit | note |
+|---|---|---|
+| C11 | `214f962` | the pin. Done FIRST, not last, because the option was already at its default and pinning it changed nothing. |
+| C0 | `c53ed75` | the private fixture, plus a character it owns. |
+| C1 | `178c285` | the three Cloud functions, corrected by `aeae253`. |
+| — | `aeae253` | `IDENTITY_INCLUDES_EMAIL` back to false. Owner: *"I did not mean to create any new capabilities around email that do not exist today."* |
+| C3 | `9602b84` | the nine `include("owner")` deletions and the hydrator. The load-bearing one. |
+| C2 | `a85e943` | the two directory sweeps. |
+| C4 + C7 | `ff95997` | the three by-id reads, and the ownerless-patronage write. |
+| C5 + C6 | `bb9e35f` | role membership and the ballot caster. |
+| C8 | `67f4a50` | `_User` find and count closed in the seed schema. |
+| C9 | `d83877d` | the backfill script. **Written, never run.** |
+| C10 | — | **OPEN.** Reconcile the C8 CLP into production. `seed_db` imports `database_seed/` only into an EMPTY `_User`, so C8 does not reach a live deployment by itself. |
+
+Order differs from the table above: C3 landed before C2 because it depends only
+on C1, and doing the risky one while the reasoning was fresh was worth more than
+following the list.
+
+**The end-to-end proof, on a real signup rather than the fixture.** Created
+through `POST /users` against a cold database carrying C8's schema:
+
+```
+stored ACL              _rperm ["SdXZgHfniU"], _acl {"SdXZgHfniU":{w,r}}
+                        no "*" entry anywhere
+admin reads it directly {"code":101,"error":"Object not found."}
+list_users sees it      yes
+client GET _User        119 "Permission denied for action find on class _User."
+own-row GET             still works
+login                   8 attributes, session token -- NOT the objectId-only
+                        degradation that closing `get` would have caused
+```
+
+So the premise holds, an administrator really is not exempt, and the Cloud
+functions really are the only remaining route.
 
 ---
 
