@@ -1,0 +1,219 @@
+/*
+ * Styles for the Vue character history page.
+ *
+ * Everything is namespaced under `yv-` and applies only inside the Vue page.
+ * The sheet itself reuses jQuery Mobile's own classes (ui-bar, ui-grid-b,
+ * ui-block-a) so it matches the Marionette sheet without this file having to
+ * restate the theme.
+ */
+
+.yv-page {
+    outline: none;
+}
+
+.yv-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5em;
+    margin-bottom: 0.75em;
+}
+
+.yv-title {
+    font-size: 1.25em;
+    font-weight: bold;
+}
+
+.yv-badge {
+    display: inline-block;
+    margin-left: 0.5em;
+    padding: 0.1em 0.5em;
+    border-radius: 0.75em;
+    background: #42b883;
+    color: #fff;
+    font-size: 0.7em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    vertical-align: middle;
+}
+
+.yv-bar-links a {
+    margin-left: 1em;
+    font-size: 0.9em;
+}
+
+.yv-status {
+    padding: 1em 0;
+    font-style: italic;
+}
+
+.yv-failure {
+    color: #b00;
+    font-style: normal;
+}
+
+/* Timeline ---------------------------------------------------------------- */
+
+.yv-timeline {
+    margin: 0.5em 0 1em;
+}
+
+.yv-timeline-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+}
+
+.yv-timeline-row label {
+    white-space: nowrap;
+}
+
+.yv-timeline-row input[type="range"] {
+    flex: 1 1 auto;
+    min-width: 8em;
+}
+
+.yv-step {
+    padding: 0.15em 0.6em;
+    line-height: 1.4;
+    cursor: pointer;
+}
+
+.yv-step[disabled] {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.yv-position {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.yv-timeline-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1em;
+    margin-top: 0.35em;
+    font-size: 0.85em;
+    opacity: 0.85;
+}
+
+.yv-replaying {
+    font-style: italic;
+}
+
+.yv-print-settings {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1.25em;
+    margin: 0.5em 0 1em;
+    font-size: 0.9em;
+}
+
+.yv-print-settings label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    cursor: pointer;
+}
+
+/* Change tables ----------------------------------------------------------- */
+
+.yv-change {
+    margin-bottom: 1em;
+}
+
+.yv-change-title {
+    display: inline-block;
+    margin-bottom: 0.25em;
+    font-weight: bold;
+}
+
+.yv-change-reversed .yv-change-title {
+    color: #b04a4a;
+}
+
+.yv-change-applied .yv-change-title {
+    color: #3d7a52;
+}
+
+/*
+ * The original table is `ui-responsive`, which in jQuery Mobile means columns
+ * are toggled away by a widget the page must enhance to get. Twelve columns of
+ * change data want a scroll container more than they want a column chooser.
+ */
+.yv-table-scroll {
+    overflow-x: auto;
+    max-width: 100%;
+}
+
+.yv-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85em;
+}
+
+.yv-table th,
+.yv-table td {
+    padding: 0.35em 0.6em;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.35);
+    text-align: left;
+    white-space: nowrap;
+}
+
+.yv-table th {
+    font-weight: bold;
+    opacity: 0.75;
+}
+
+.yv-empty {
+    font-style: italic;
+    opacity: 0.7;
+}
+
+/* Sheet ------------------------------------------------------------------- */
+
+.yv-sheet {
+    padding: 0;
+}
+
+.yv-block-body,
+.yv-section-entry,
+.yv-skill {
+    line-height: 1.5;
+}
+
+.yv-skill {
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.yv-section {
+    margin-bottom: 0.75em;
+}
+
+.yv-focus + .yv-focus::before {
+    content: " ";
+}
+
+.yv-dots i {
+    margin-right: 1px;
+}
+
+.yv-segments .yv-seg + .yv-seg {
+    margin-left: 0.35em;
+}
+
+.yv-removed {
+    color: indianred;
+}
+
+.yv-added {
+    color: darkseagreen;
+}
+
+.yv-seg i {
+    margin-right: 0.15em;
+}

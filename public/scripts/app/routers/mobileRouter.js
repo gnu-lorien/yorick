@@ -248,6 +248,7 @@ define([
             "character/:cid/costs": "charactercosts",
             "character/:cid/log/:start/:changeBy": "characterlog",
             "character/:cid/history/:id": "characterhistory",
+            "character/:cid/vue-history/:id": "charactervuehistory",
             "character/:cid/portrait": "characterportrait",
             "character/:cid/delete": "characterdelete",
             "character/:cid/troupes": "character_list_troupes",
@@ -466,6 +467,33 @@ define([
                     var r = $.mobile.changePage("#character-history", { reverse: false, changeHash: false });
                     $.mobile.loading("hide");
                 }).fail(PromiseFailReport);
+            });
+        },
+
+        /**
+         * The same page as `characterhistory`, rendered by Vue.
+         *
+         * Deliberately a second route rather than a replacement, so the two
+         * implementations can be opened side by side against the same
+         * character and the same data. The shape of this handler is identical
+         * to the one above it: that is the point - the router does not know
+         * which framework renders a page.
+         */
+        charactervuehistory: function (cid, id) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            require(["../views/CharacterHistoryVueView"], function (CharacterHistoryVueView) {
+                self.get_character(cid, "all").then(function (character) {
+                    self.characterHistoryVueView = self.characterHistoryVueView ||
+                        new CharacterHistoryVueView({ el: "#character-vue-history > div[role='main']" });
+                    return self.characterHistoryVueView.register(character, id);
+                }).then(function () {
+                    $.mobile.changePage("#character-vue-history", { reverse: false, changeHash: false });
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport).fail(function () {
+                    $.mobile.loading("hide");
+                });
             });
         },
 
