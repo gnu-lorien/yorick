@@ -53,6 +53,7 @@
   },
   "scripts": {
     "start": "node index.js",
+    "dev:tailnet": "node .claude/dev-with-mongo.js",
     "seed": "node -e \"require('./seed_db').seedDatabase(process.env.MONGODB_URI || 'mongodb://localhost:27017/anotherstore', { force: true }).then(() => console.log('Database seeded successfully')).catch(console.error)\"",
     "audit-permissions": "node audit_db_permissions.js",
     "test:node": "node --test test/*.test.js",
