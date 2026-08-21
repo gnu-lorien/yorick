@@ -12,8 +12,15 @@ LANDED. It is a specification, produced by three independent designs scored by
 three independent judges and then synthesised, with every load-bearing claim
 re-verified against the installed parse-server 9.10.0 and parse 8.6.0 and
 against the tree. Section 0 reframes the problem and should be read before
-anything is scheduled; section 6 is six decisions that are the owner's, three
-of which change what a real user can see or do.
+anything is scheduled.
+
+Section 6 was six open decisions when this was drafted. ALL SIX ARE NOW
+SETTLED - D1 by inspection, D2 through D5 by the owner on 2026-08-20, D6
+deliberately deferred. Where an answer changes the design, section 6 says so and
+the body above was left as drafted: READ SECTION 6 AS THE AUTHORITY. In
+particular D3 withdraws clause 6, so no real user loses a capability, and D5
+records why parse-dashboard is unaffected plus a dashboard deployment gap that
+nothing else in the repo owns.
 
 No suite run and no gate run was performed while writing this.
 -->
@@ -1018,23 +1025,84 @@ These are the only evidence for the parts nothing here can reach. Do them in thi
 
 ---
 
-## 6. Open decisions for the owner
+## 6. Owner decisions — SETTLED 2026-08-20
 
-**D1. Is `enforcePrivateUsers` already on? — SETTLED, and the answer is yes.**
-Checked after this spec was written: the option appears nowhere in the repo
-outside `docs/`, and the installed server defaults it `true`
-(`node_modules/parse-server/lib/Options/Definitions.js:265-270`). So the
-degradation has been live in every environment running 9.10.0 since the bump
-landed, and **C1-C7 are urgent rather than preparatory**. `index.js` now pins
-it explicitly, which writes the behaviour down without changing it. Nothing
-else in this document is affected by the answer.
+All six are answered. D1 was settled by inspection; D2 through D5 by the owner;
+D6 is deferred and named. Where an answer changes the design above, the change
+is stated here and the section above has NOT been rewritten to match — read this
+section as the authority.
 
-**D2. Does the running server override `protectedFields`?** Settle with hand-test 5.3(1) **before C2 lands**. If it does, clause 5 flips from a no-op to a visible removal of `email` from the admin patronage list, the patronage CSV, the ballot dump and the character-summarize CSVs — all of which plausibly feed real mailing work, given the `massmailauthorization` column and its label at `forms/UserForm.js:11`. `IDENTITY_INCLUDES_EMAIL = true` restores it in one line, for every caller entitled to the row.
+**D1. Is `enforcePrivateUsers` already on? — YES, settled by inspection.**
+The option appears nowhere in the repo outside `docs/`, and the installed server
+defaults it `true` (`Options/Definitions.js:265-270`). The degradation has been
+live in every environment running 9.10.0 since the bump landed, so **C1-C7 are
+urgent rather than preparatory**. `index.js` now pins it explicitly at `214f962`,
+which writes the behaviour down without changing it.
 
-**D3. Approve clause 6 — removing the account directory from players, ASTs and Narrators.** This is the only capability a real user loses. The picker becomes a one-entry list with an explanatory note. A lead storyteller who does not know the exact username of someone they want to add is unaffected (they still get the full directory); an **AST** who was using the picker to browse toward an action `change_troupe_staff` would refuse anyway, is. Alternative if you decline: change `is_lead` to `is_admin || is_lead || <any role>` in `caller_scope` and the directory reopens to every storyteller — one line, still better than today because it is at least a server-side decision.
+**D2. Email in the exports — RESTORE IT.** Owner decision: set
+`IDENTITY_INCLUDES_EMAIL = true`. The admin patronage list, the patronage CSV,
+the ballot dump and the character-summarize CSVs carry a `massmailauthorization`
+column, so those files are mailed from and an export with a blank email column is
+quietly useless. Restored **only for callers already entitled to the row** under
+clause 4 — never widened to ordinary players. Hand-test 5.3(1) is still worth
+doing, but only to learn whether this restores something currently blank or
+preserves something currently working; it no longer gates C2.
 
-**D4. Approve C9, the production ACL backfill.** It is the only step that closes the exposure for the 382 existing accounts, and the only irreversible one. It is also what makes the population uniform, so a bug reproduces for everyone or no one instead of degrading person by person. Approving it means approving the snapshot-first, dry-run-first discipline in §4.
+**D3. Who sees the account directory — ANY STORYTELLER, not just leads.**
+Owner decision, and it **overrides clause 3 and clause 6 as written above.**
+Take the alternative §6 offered: in `caller_scope`, `is_lead` becomes
+`is_admin || <holder of any troupe role>` — Administrator, SiteAdministrator,
+`LST_*`, `AST_*` and `Narrator_*` all get the full directory.
 
-**D5. Approve C8, the `_User` CLP closure.** It makes the ban structural — no future client code can re-open enumeration — but a `_User` query I failed to find would fail afterwards as a sanitized "Permission denied" naming neither class nor reason. I inventoried every `_User` read by grep and by reading the two files that build the query from a variable, and every `.include(` in the app; I believe the list in §3 is complete, and C8 lands last specifically so a miss is discoverable in staging. Anything **outside** this worktree that reads `_User` with only the app key — a report script, an export, greensboro's own tooling — stops working, and I was not able to enumerate those.
+What this means for the rest of the design:
 
-**D6. Is `#patronage/:id` meant to be player-visible?** It stays login-only in this plan (R46 deliberately pointed profile rows there), but `views/PatronageView.js` is an owner-select-plus-save editor a player can never save, since `Patronage` `update` is `role:Administrator`. Making it admin-only is one line; giving players a read-only view is a separate piece of work. Not decided here.
+- **Clause 6 is withdrawn.** No real user loses the account picker. The one
+  capability removal in the whole plan is gone, which also removes the need for
+  the explanatory note on a one-entry picker.
+- **Only plain players lose the directory**, and they never had a legitimate use
+  for it — today any logged-in player can pull all 382 members with real names,
+  gated only in the browser (`helpers/UserWreqr.js`).
+- **Still match on the `_` prefix**, never the bare generic roles. `LST`, `AST`
+  and `Narrator` without a troupe suffix are held by every current AND FORMER
+  storyteller org-wide (`cloud/main.js` adds them via `get_generic_roles()`), so
+  matching them would hand the directory to people who have not staffed a troupe
+  in years. `LST_*` / `AST_*` / `Narrator_*` is the test.
+- Clause 4 is unaffected: who may be told a character's owner is still derived
+  from who may read the character, by re-running the query as the caller.
+
+**D4. The production ACL backfill (C9) — APPROVED.** Close public read on the
+existing 382 rows, so the population ends up uniform and a bug reproduces for
+everyone or for no one, rather than the table slowly splitting into old-public
+and new-private. Approved **with the discipline in §4 intact and not optional**:
+snapshot `{_id, _rperm, _wperm, _acl}` into `_yorick_user_acl_backup` first,
+`--dry-run` before that with its output pasted into the runbook, and the rewrite
+must leave each row's own objectId in `_rperm`. §4's C9 note traces what happens
+if it does not: login still succeeds and hands back an attribute-less user, every
+gate closes, and it presents as a client bug.
+
+**D5. The `_User` CLP closure (C8) — APPROVED.** Owner asked the right question
+first: *does parse-dashboard still work?* **Yes, and it is unaffected by C8, C9
+and D2 alike.** parse-dashboard authenticates with the master key, and in the
+installed server the master key skips all three gates on the same `find` path in
+`DatabaseController.js`:
+
+- the CLP check - `isMaster ? Promise.resolve() : schemaController.validatePermission(className, aclGroup, op)`
+- the ACL filter - `if (!isMaster) { query = addReadACL(query, aclGroup); }`, so no `_rperm` term is added
+- the `email` strip - `filterSensitiveData` returns early: `if (!isUserClass || isMaster) { return object; }`
+
+`isMaster` is `acl === undefined`, which is what a master-key request produces.
+`/serverInfo`, which the dashboard probes on connect, is still routed in 9.10.0
+(`Routers/FeaturesRouter.js`) behind `promiseEnforceMasterKeyAccess`.
+
+The dashboard is being updated separately, on its own track — it deploys as
+`greensboro-dashboard`, a second Heroku app running from `ProcfileDashboard`
+(`web: npm run dashboard`), and that upgrade is not a prerequisite for anything
+in this document. Recorded only so the next reader knows the master-key answer
+above was checked against a dashboard that is in live use, not a hypothetical
+one.
+
+**D6. Is `#patronage/:id` meant to be player-visible? — DEFERRED, not decided.**
+It stays login-only in this plan. `views/PatronageView.js` is an
+owner-select-plus-save editor a player can never save, since `Patronage` `update`
+is `role:Administrator`. Making it admin-only is one line; giving players a
+read-only view is separate work. Neither is a prerequisite for C1-C11.
