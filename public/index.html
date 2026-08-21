@@ -895,6 +895,22 @@
         </div>
     </div>
 
+    <div id="character-history-react" data-role="page" data-title="Character History (React)">
+        <div role="main" class="ui-content">
+            <!--
+                One container, one React root. The Marionette page next door
+                needs three (#history-main, #history-viewing, #history-sheet)
+                because a Marionette region is a DOM element another view is
+                allowed to own; React composes instead, so there is nothing to
+                carve the page up for.
+
+                Nothing calls enhanceWithin() on this subtree - see
+                react/CharacterHistoryReactView.js for why that matters.
+            -->
+            <div id="character-history-react-root"></div>
+        </div>
+    </div>
+
     <div id="character-approval" data-role="page" data-title="Character Approval">
         <div role="main" class="ui-content">
             <div id="approval-changes"></div>

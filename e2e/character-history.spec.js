@@ -119,6 +119,53 @@ test.describe('Character History & XP Views E2E Suite', () => {
     await expect(page.locator('#history-sheet')).toBeVisible();
   });
 
+  /**
+   * The React implementation of the same page, at #character/:cid/historyreact/:id.
+   *
+   * It renders into one root rather than the three regions the Marionette page
+   * uses, and nothing calls jQuery Mobile's enhanceWithin() on it - so the
+   * assertions here are on content, not on jQM's generated widget markup.
+   */
+  test('React Character History page renders the timeline and the sheet', async ({ page }) => {
+    await navigateToHash(page, `character/${characterId}/historyreact/0`, '#character-history-react');
+
+    const root = page.locator('#character-history-react-root');
+    await expect(root).toBeVisible();
+    await expect(root).toContainText(characterName);
+
+    // The picker starts at the newest change.
+    const slider = root.locator('#chr-slider');
+    await expect(slider).toBeVisible();
+    const max = await slider.getAttribute('max');
+    await expect(slider).toHaveValue(max);
+
+    // Newest position: the reversed-change table is absent, so exactly one
+    // change table is on screen.
+    await expect(root).toContainText('Most Recent Change Applied');
+    await expect(root).not.toContainText('Reversed Change');
+    await expect(root.locator('table')).toHaveCount(1);
+  });
+
+  test('React Character History slider rewinds the sheet to an earlier state', async ({ page }) => {
+    await navigateToHash(page, `character/${characterId}/historyreact/0`, '#character-history-react');
+
+    const root = page.locator('#character-history-react-root');
+    const slider = root.locator('#chr-slider');
+    const max = parseInt(await slider.getAttribute('max'), 10);
+    test.skip(max < 1, 'needs at least two recorded changes to rewind');
+
+    await slider.fill('0');
+
+    // Stepping back off the newest position brings in the reversed-change
+    // table, so both tables are now on screen.
+    await expect(root).toContainText('Reversed Change');
+    await expect(root.locator('table')).toHaveCount(2);
+    await expect(root.locator('.chr-slider-caption')).toContainText(`of ${max + 1}`);
+
+    // The sheet is still rendered, from the reconstructed character.
+    await expect(root).toContainText(characterName);
+  });
+
   test('Character Log View renders chronological changes table', async ({ page }) => {
     await navigateToHash(page, `character/${characterId}/log/0/10`, '#character-log');
 

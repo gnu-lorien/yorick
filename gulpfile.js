@@ -56,8 +56,17 @@ gulp.task('minify-css', function () {
 // arrow functions; uglify throws a SyntaxError on it, and that throw rejects
 // the stream and aborts the whole gulp.series. Drop the exclusion and every
 // build target dies here, before it ever reaches its siteconfig task.
+//
+// scripts/app/react/ is excluded for the same reason, one step further along:
+// those modules use htm, so every component body is a tagged template literal,
+// and ES5-only uglify does not have a token for a backtick. They are shipped
+// verbatim by 'copy-react-modules'.
+//
+// Both exclusions are the same finding, which is worth stating plainly: this
+// build pipeline cannot process anything newer than ES5. Any real move to
+// React - which means JSX and a bundler - replaces it rather than extends it.
 gulp.task('minify-js', function () {
-    return gulp.src(['./public/**/*.js', '!./public/scripts/app/siteconfig.js', '!./public/**/*.min.js', '!./public/scripts/lib/parse-8.6.0.js']) // path to your files
+    return gulp.src(['./public/**/*.js', '!./public/scripts/app/siteconfig.js', '!./public/**/*.min.js', '!./public/scripts/lib/parse-8.6.0.js', '!./public/scripts/app/react/**/*.js']) // path to your files
         .pipe(debug({title: 'minifying:'}))
         .pipe(uglify({outSourceMap: true}))
         .pipe(gulp.dest('dist'));
@@ -70,6 +79,15 @@ gulp.task('minify-js', function () {
 gulp.task('copy-parse-sdk', function () {
     return gulp.src('./public/scripts/lib/parse-8.6.0.js')
         .pipe(gulp.dest('dist/scripts/lib'));
+});
+
+// Ships the React page's modules, which 'minify-js' cannot parse. Same
+// arrangement as 'copy-parse-sdk', and the same rule: keep it in every
+// composite that runs 'minify-js', or the built app 404s on the first
+// require of a react/ module and the page never renders.
+gulp.task('copy-react-modules', function () {
+    return gulp.src('./public/scripts/app/react/*.js')
+        .pipe(gulp.dest('dist/scripts/app/react'));
 });
 
 gulp.task('images', function () {
@@ -120,10 +138,10 @@ gulp.task('indexbust', function () {
         .pipe(gulp.dest('dist'));
 })
 
-gulp.task('pubstorm', gulp.series('clean', 'minify-html', 'copy-print-templates', 'copy-referendum-templates', 'copy-html-templates', 'copy-create-templates', 'minify-css', 'images', 'minify-js', 'copy-parse-sdk', 'siteconfig-pubstorm', 'appbust', 'indexbust'));
+gulp.task('pubstorm', gulp.series('clean', 'minify-html', 'copy-print-templates', 'copy-referendum-templates', 'copy-html-templates', 'copy-create-templates', 'minify-css', 'images', 'minify-js', 'copy-parse-sdk', 'copy-react-modules', 'siteconfig-pubstorm', 'appbust', 'indexbust'));
 
-gulp.task('patron', gulp.series('clean', 'minify-html', 'copy-print-templates', 'copy-referendum-templates', 'copy-html-templates', 'copy-create-templates', 'minify-css', 'images', 'minify-js', 'copy-parse-sdk', 'siteconfig-patron', 'appbust', 'indexbust'));
+gulp.task('patron', gulp.series('clean', 'minify-html', 'copy-print-templates', 'copy-referendum-templates', 'copy-html-templates', 'copy-create-templates', 'minify-css', 'images', 'minify-js', 'copy-parse-sdk', 'copy-react-modules', 'siteconfig-patron', 'appbust', 'indexbust'));
 
-gulp.task('heroku', gulp.series('clean', 'minify-html', 'copy-print-templates', 'copy-referendum-templates', 'copy-html-templates', 'copy-create-templates', 'minify-css', 'images', 'minify-js', 'copy-parse-sdk', 'siteconfig-heroku', 'appbust', 'indexbust'));
+gulp.task('heroku', gulp.series('clean', 'minify-html', 'copy-print-templates', 'copy-referendum-templates', 'copy-html-templates', 'copy-create-templates', 'minify-css', 'images', 'minify-js', 'copy-parse-sdk', 'copy-react-modules', 'siteconfig-heroku', 'appbust', 'indexbust'));
 
-gulp.task('greensboro', gulp.series('clean', 'minify-html', 'copy-print-templates', 'copy-referendum-templates', 'copy-html-templates', 'copy-create-templates', 'minify-css', 'images', 'minify-js', 'copy-parse-sdk', 'siteconfig-greensboro', 'appbust', 'indexbust'));
+gulp.task('greensboro', gulp.series('clean', 'minify-html', 'copy-print-templates', 'copy-referendum-templates', 'copy-html-templates', 'copy-create-templates', 'minify-css', 'images', 'minify-js', 'copy-parse-sdk', 'copy-react-modules', 'siteconfig-greensboro', 'appbust', 'indexbust'));

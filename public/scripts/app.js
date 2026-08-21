@@ -53,6 +53,19 @@ requirejs.config( {
 		"url-search-params": "url-search-params.max.amd",
 		papaparse: "papaparse-4.1.2",
 
+		// React 18 + htm, vendored as UMD bundles. Both register themselves as
+		// AMD modules, so they load through require.js like everything else and
+		// the app keeps its no-build-step property.
+		//
+		// htm is what stands in for JSX here: it is a tagged template literal
+		// that compiles to React.createElement calls at runtime, so the React
+		// modules below read like JSX without adding a compiler to the tree. A
+		// real port would swap htm for JSX and a bundler; the component code
+		// itself would not change shape.
+		react: "react",
+		"react-dom": "react-dom",
+		htm: "htm",
+
 		app: "../app"
 	},
 

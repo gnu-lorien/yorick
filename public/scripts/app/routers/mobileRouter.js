@@ -248,6 +248,10 @@ define([
             "character/:cid/costs": "charactercosts",
             "character/:cid/log/:start/:changeBy": "characterlog",
             "character/:cid/history/:id": "characterhistory",
+            // The same page, rendered by React instead of Marionette.
+            // Kept alongside rather than replacing it so the two can be
+            // opened on the same character and compared.
+            "character/:cid/historyreact/:id": "characterhistoryreact",
             "character/:cid/portrait": "characterportrait",
             "character/:cid/delete": "characterdelete",
             "character/:cid/troupes": "character_list_troupes",
@@ -464,6 +468,22 @@ define([
                 }).then(function () {
                     var activePage = $(".ui-page-active").attr("id");
                     var r = $.mobile.changePage("#character-history", { reverse: false, changeHash: false });
+                    $.mobile.loading("hide");
+                }).fail(PromiseFailReport);
+            });
+        },
+
+        characterhistoryreact: function (cid, id) {
+            var self = this;
+            $.mobile.loading("show");
+            self.set_back_button("#character?" + cid);
+            require(["../react/CharacterHistoryReactView"], function (CharacterHistoryReactView) {
+                self.get_character(cid, "all").then(function (character) {
+                    self.characterHistoryReactView = self.characterHistoryReactView ||
+                        new CharacterHistoryReactView({ el: "#character-history-react-root" });
+                    return self.characterHistoryReactView.register(character, id);
+                }).then(function () {
+                    $.mobile.changePage("#character-history-react", { reverse: false, changeHash: false });
                     $.mobile.loading("hide");
                 }).fail(PromiseFailReport);
             });
