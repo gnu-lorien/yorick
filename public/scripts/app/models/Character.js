@@ -19,14 +19,70 @@ define([
     "../models/FauxSimpleTrait",
     "../collections/Approvals",
     "../models/Approval",
-    "../models/LongText"
-], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSMETV1_VampireCosts, PromiseFailReport, ExpirationMixin, UserChannel, FauxSimpleTrait, Approvals, Approval, LongText ) {
+    "../models/LongText",
+    "../helpers/ReportError"
+], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSMETV1_VampireCosts, PromiseFailReport, ExpirationMixin, UserChannel, FauxSimpleTrait, Approvals, Approval, LongText, ReportError ) {
 
     // The Model constructor
     var instance_methods = _.extend({
+        /**
+         * Hand a creation pool slot back if this trait is holding one.
+         *
+         * `unpick_from_creation` does this for the wizard's own unpick link,
+         * which knows the slot index it is releasing. Nothing did it for a
+         * plain removal, so removing a creation-picked trait destroyed the
+         * trait, refunded its cost, and left `<category>_<i>_remaining`
+         * permanently one short - and once creation is complete there is no
+         * route back to reclaim the slot.
+         *
+         * The slot is found by searching the pick lists for the trait rather
+         * than trusting its `free_value`, because the trait's free value can
+         * be edited after it was picked.
+         */
+        release_creation_pick_for_trait: function (trait) {
+            var self = this;
+            if (!self.has("creation")) {
+                return Parse.Promise.as(self);
+            }
+            return self.fetch_all_creation_elements().then(function () {
+                var creation = self.get("creation");
+                if (!creation) {
+                    return Parse.Promise.as(self);
+                }
+                var category = trait.get("category");
+                var released = false;
+                _.each(_.range(-1, 10), function (i) {
+                    var picks_name = category + "_" + i + "_picks";
+                    var remaining_name = category + "_" + i + "_remaining";
+                    var holds = _.some(creation.get(picks_name), function (pick) {
+                        return pick && (pick === trait || (trait.id && pick.id === trait.id));
+                    });
+                    if (!holds) {
+                        return;
+                    }
+                    creation.remove(picks_name, trait);
+                    if (_.contains(self.get_sum_creation_categories(), category)) {
+                        var sum = _.sum(creation.get(picks_name), "attributes.value");
+                        creation.set(remaining_name, 7 - sum);
+                    } else {
+                        creation.increment(remaining_name, 1);
+                    }
+                    released = true;
+                });
+                if (!released) {
+                    return Parse.Promise.as(self);
+                }
+                return creation.save().then(function () {
+                    return Parse.Promise.as(self);
+                });
+            });
+        },
+
         remove_trait: function (trait) {
             var self = this;
-            return trait.destroy().then(function () {
+            return self.release_creation_pick_for_trait(trait).then(function () {
+                return trait.destroy();
+            }).then(function () {
                 var en_options = {
                     alteration_spent: (trait.get("cost") || 0) * -1,
                     reason: "Removed " + trait.get("name"),
@@ -154,16 +210,127 @@ define([
                     }
                     var cost = self.calculate_trait_cost(modified_trait);
                     var spend = self.calculate_trait_to_spend(modified_trait);
-                    if (!_.isFinite(spend)) {
-                        spend = 0;
+                    if (!_.isFinite(cost) || !_.isFinite(spend)) {
+                        // A category with no branch in the venue's cost engine
+                        // used to land here and be quietly zeroed, which made
+                        // the whole category free - that is how `wta_rites`
+                        // and `ctdbs_backgrounds` went unnoticed. Each engine
+                        // now returns 0 for categories that are *meant* to be
+                        // free and `undefined` only when no rule exists, so
+                        // reaching this point is a real gap and is refused out
+                        // loud rather than granted for nothing.
+                        var message = "No experience cost rule for category \"" + category + "\"";
+                        console.log("update_trait refusing " + modified_trait.get("name") + ": " + message);
+                        ReportError(message, "Couldn't update " + modified_trait.get("name"));
+                        return Parse.Promise.error({code: 3, message: message});
                     }
                     modified_trait.set("cost", cost);
                     self.increment("change_count");
-                    self.addUnique(category, modified_trait, {silent: true});
+                    // Only when it is not already there. Adding an object to an
+                    // array it is already in is a no-op by definition, so this
+                    // guard changes no behaviour on any server -- but leaving
+                    // the redundant op pending silently DESTROYED the category
+                    // on parse-server 9, and that is worth writing down.
+                    //
+                    // Measured. parse-server returns an array field in the save
+                    // response only when the op actually changed it. A rename or
+                    // a value change re-adds a trait the array already holds, so
+                    // the array does not change and `backgrounds` is absent from
+                    // the response -- while `change_count`'s Increment, which
+                    // did change, comes back. parse@8 then reaches
+                    // `else if (!(attr in response)) changes[attr] =
+                    // pending[attr].applyTo(void 0)` (parse-8.6.0.js:43309) and
+                    // applies AddUnique to UNDEFINED rather than to the stored
+                    // array, so the client's category collapses to the single
+                    // trait just touched. The database stays correct; only the
+                    // in-memory character is wrong, which is what made it so
+                    // hard to see.
+                    //
+                    // Downstream that is not a display glitch. `update_trait`'s
+                    // own duplicate-name check reads `self.get(category)`, so
+                    // with one element left there is nothing to collide with and
+                    // a colliding rename is accepted (traits-lifecycle 246); the
+                    // category listing renders one row (approvals 79,
+                    // creation-changeling 238).
+                    //
+                    // parse-server 2.8.4 hid all of it by echoing the whole
+                    // object back on every save of a class carrying a beforeSave
+                    // trigger, so `backgrounds` was always in the response and
+                    // the pending op was always overwritten by the server's own
+                    // array.
+                    if (!_.contains(self.get(category), modified_trait)) {
+                        self.addUnique(category, modified_trait, {silent: true});
+                    }
                     self.progress("Updating trait " + modified_trait.get("name"));
     
+                    // saveAll, not save: this graph is two levels deep.
+                    //
+                    // `update_creation_rules_for_changed_trait` does
+                    // `creation.addUnique(<pool>_picks, modified_trait)` (e.g.
+                    // Vampire.js:333), so an id-less trait sits two levels below
+                    // the character: character -> creation -> trait.
+                    //
+                    // Parse 1.5's `save` walked all of that: `_deepSaveAsync`
+                    // (via `Parse.Object._findUnsavedChildren`,
+                    // parse-1.5.0.js:6171) collected every dirty descendant and
+                    // batched them in dependency order, re-testing each round
+                    // with `_canBeSerializedAsValue`.
+                    //
+                    // parse@8 kept that algorithm -- but only on the ARRAY path.
+                    // `save()` on a single object cascades exactly one level,
+                    // `unsavedChildren(this)` with allowDeepUnsaved=false
+                    // (parse-8.6.0.js:43931), and its `traverse` THROWS
+                    // "Cannot create a pointer to an unsaved Object." as soon as
+                    // it recurses into a dirty child and finds an id-less
+                    // grandchild. `saveAll` passes allowDeepUnsaved=true (:44772)
+                    // and then does the same batch-until-serializable loop 1.5
+                    // did.
+                    //
+                    // Measured: with a creation pool pick (free_value >= 1) the
+                    // save rejected with exactly that message; with free_value 0,
+                    // where every venue's update_creation_rules_for_changed_trait
+                    // short-circuits before touching `creation`, the same call
+                    // succeeded. Nothing surfaced, because the `.fail` below
+                    // reports and then resolves -- so the wizard's hash never
+                    // moved and seven specs died on `waitForHashToLeave`.
+                    //
+                    // Saving the child on its own INSTEAD was tried and does not
+                    // work: it leaves the character's own AddUnique unsaved, and
+                    // while single-instance state was still on it also hit the
+                    // identical throw, because `new TempVampire({id: self.id})`
+                    // (line 199) shared state with the dirty character. That
+                    // second hazard is gone now the compat layer runs with unique
+                    // instances, but the first one stands.
                     var minimumPromise = self.update_creation_rules_for_changed_trait(category, modified_trait, free_value).then(function() {
-                        return self.save();
+                        // The trait is named explicitly, not left to the parent's
+                        // cascade.
+                        //
+                        // parse@8's `unsavedChildren` indexes what it has walked by
+                        // `className + ":" + id` and skips anything already seen --
+                        // `if (!encountered.objects[identifier])`
+                        // (parse-8.6.0.js:43065). The character's `creation` is
+                        // walked before its trait arrays, and the creation record's
+                        // `<pool>_picks` hold their OWN instances of the same
+                        // SimpleTrait rows -- clean ones -- so by the time the walk
+                        // reaches the dirty trait its identifier is already recorded
+                        // as seen-and-not-dirty, and the save drops it.
+                        //
+                        // Parse 1.5 could not hit that: `_findUnsavedChildren` went
+                        // through `Parse._traverse`, which de-duplicates by object
+                        // IDENTITY (parse-1.5.0.js:6171), so every distinct instance
+                        // was judged on its own merits.
+                        //
+                        // Measured: raising Physical 5 -> 6 produced a batch holding
+                        // only the character's own PUT. The trait's new value never
+                        // reached the server, and the edit reported success.
+                        //
+                        // Naming it in the array is enough, because the array path
+                        // seeds `pending` from `target` itself. Ordering stays the
+                        // SDK's job: a brand-new trait has no id, so
+                        // `canBeSerialized(self)` is false on the first round and the
+                        // character is deferred to the next -- the same
+                        // children-then-parent order 1.5's `_deepSaveAsync` produced.
+                        return Parse.Object.saveAll([modified_trait, self]);
                     }).then(function() {
                         if (0 != spend) {
                             return self.add_experience_notation({
@@ -390,12 +557,26 @@ define([
         on_update_experience_notation: function(en, changes, options) {
             var self = this;
             var propagate = false, changed = false;
-            var altered_ens, changed_index;
+            var altered_ens, changed_index, previous_index;
             var return_promise = Parse.Promise.as([]);
             options = options || {};
             var c = changes.changes;
             if (c.entered) {
                 changed = true;
+                // Capture the row's position *before* the re-sort.
+                //
+                // The list is newest-first and each row's running total is the
+                // sum of itself and every older row.
+                // `_propagate_experience_notation_change` recomputes
+                // `[0..index]` seeded from `index + 1`, which is only enough
+                // when a notation moves *down* (older): the rows it passed then
+                // sit inside that window. Moving *up* (newer) leaves the rows it
+                // passed below the new index - outside the window - still
+                // counting it, and the moved row is then recomputed on top of
+                // one of them, so its earned and spent land in the totals twice.
+                // Widening the window to the further of the two positions covers
+                // every row between them in both directions.
+                previous_index = self.experience_notations.indexOf(en);
                 self.experience_notations.sort();
             }
             if (c.alteration_earned || c.alteration_spent) {
@@ -405,6 +586,9 @@ define([
                 return Parse.Promise.as([]);
             }
             changed_index = self.experience_notations.indexOf(en);
+            if (!_.isUndefined(previous_index) && previous_index > changed_index) {
+                changed_index = previous_index;
+            }
             return self._finalize_triggered_experience_notation_changes(changed_index, self.experience_notations);
         },
 
@@ -517,6 +701,30 @@ define([
             return self.fetch_recorded_changes();
         },
 
+        /**
+         * `recorded_changes` is the approval and history *timeline*, not the
+         * whole audit log.
+         *
+         * Every row in it is replayed by `get_transformed`, which assumes a
+         * row describes either a trait (any category but "core") or a text
+         * attribute ("core"). R47b added `experience` rows for XP notations,
+         * and those are neither: replaying one manufactures a FauxSimpleTrait
+         * in a category no venue has, and the approval view - which
+         * reconstructs the character at every step - never finishes rendering.
+         *
+         * They belong in the log, which queries VampireChange directly, and
+         * not in a timeline of approvable states: "approve up to this XP
+         * award" is not a thing a storyteller can act on.
+         */
+        _recorded_changes_query: function () {
+            var self = this;
+            return new Parse.Query(VampireChange)
+                .equalTo("owner", self)
+                .notEqualTo("category", "experience")
+                .addAscending("createdAt")
+                .limit(1000);
+        },
+
         update_recorded_changes: function() {
             var self = this;
             if (0 == self.recorded_changes.models.length) {
@@ -525,8 +733,7 @@ define([
             self._recordedChangesFetch = self._recordedChangesFetch || Parse.Promise.as();
             self._recordedChangesFetch = self._recordedChangesFetch.always(function () {
                 var lastCreated = _.last(self.recorded_changes.models).createdAt;
-                var q = new Parse.Query(VampireChange);
-                q.equalTo("owner", self).addAscending("createdAt").limit(1000);
+                var q = self._recorded_changes_query();
                 q.greaterThan("createdAt", lastCreated);
                 self.recorded_changes.query = q;
                 return self.recorded_changes.fetch({add: true});
@@ -539,9 +746,7 @@ define([
             self._recordedChangesFetch = self._recordedChangesFetch || Parse.Promise.as();
             self._recordedChangesFetch = self._recordedChangesFetch.always(function () {
                 console.log("Resetting recorded changes");
-                var q = new Parse.Query(VampireChange);
-                q.equalTo("owner", self).addAscending("createdAt").limit(1000);
-                self.recorded_changes.query = q;
+                self.recorded_changes.query = self._recorded_changes_query();
 
                 return self.recorded_changes.fetch({reset: true});
             });
@@ -603,6 +808,12 @@ define([
             var description = [];
 
             _.each(changes, function(change) {
+                if (change.get("category") == "experience") {
+                    // Belt and braces with `_recorded_changes_query`: an XP
+                    // notation is not a trait and not a text attribute, so
+                    // there is nothing here to replay onto the character.
+                    return;
+                }
                 if (change.get("category") != "core") {
                     // Find current
                     var category = change.get("category");
@@ -1089,6 +1300,34 @@ define([
     }, ExpirationMixin );
 
     var Model = Parse.Object.extend("Vampire", instance_methods);
+
+    // The base character behaviour, exposed so venue models can inherit it.
+    //
+    // Character is a base, not a peer: Vampire, Werewolf and Changeling are
+    // venues that all persist to the same "Vampire" table and all need these
+    // methods. But `_.extend(instance_methods, Character)` in those modules
+    // copies the CONSTRUCTOR's own enumerable properties -- extend,
+    // createWithoutData, className, get_character, create, ... -- and no
+    // instance methods at all. Measured: `Character.update_text` is undefined
+    // as a static; it only exists on the prototype.
+    //
+    // So the venues never actually inherited anything. They got these methods
+    // because Parse 1.5 turned a repeated className into inheritance
+    // (parse-1.5.0.js:6127 -> `OldClassObject._extend(...)`, with `_extend`
+    // setting `child.__super__ = parent.prototype` at :1327), which quietly
+    // chained the four registrations of "Vampire" together.
+    //
+    // parse@8 cannot do that, and it is not a shimmable difference: `extend`
+    // short-circuits on `if (classMap[adjustedClassName])` BEFORE choosing a
+    // parent prototype, so every registration after the first reuses the one
+    // class and merges into its prototype. There is exactly one class per
+    // className by construction.
+    //
+    // Depending on that was always fragile -- it made base behaviour a
+    // function of RequireJS load order. Exporting the mixin makes the
+    // inheritance explicit, so each venue's method set is complete on its own
+    // and an override can still reach the implementation it replaced.
+    Model.baseMethods = instance_methods;
 
     // Returns the Model class
     return Model;

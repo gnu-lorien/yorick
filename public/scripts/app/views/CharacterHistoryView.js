@@ -9,12 +9,11 @@ define([
     "marionette",
     "parse",
     "moment",
-    "text!../templates/character-print-view.html",
     "text!../templates/character-history-selected-view.html",
     "text!../templates/character-history-view.html",
     "../helpers/VampirePrintHelper",
     "../views/CharacterPrintView"
-], function( _, $, Backbone, Marionette, Parse, moment, character_print_view_html, character_history_selected_view_html, character_history_view_html, VampirePrintHelper, CharacterPrintView ) {
+], function( _, $, Backbone, Marionette, Parse, moment, character_history_selected_view_html, character_history_view_html, VampirePrintHelper, CharacterPrintView ) {
 
     var MainView = Marionette.ItemView.extend({
         template: _.template(character_history_view_html),
@@ -92,8 +91,11 @@ define([
                 console.log("Undefined log");
                 return "Undefined log";
             }
-            if (log.get(entry)) {
-                return log.get(entry);
+            // See CharacterApprovalView.format_entry: a recorded 0 must not
+            // render as an empty cell.
+            if (log.has(entry)) {
+                var v = log.get(entry);
+                return _.isDate(v) ? moment(v).format('lll') : v;
             }
             var attr = log[entry];
             if (_.isDate(attr)) {

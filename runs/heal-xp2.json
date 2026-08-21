@@ -1,0 +1,922 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "e2e/xp-history.spec.js"
+    ],
+    "configFile": "C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\playwright.config.js",
+    "rootDir": "C:/prj/yorick/.claude/worktrees/bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": true,
+    "fullyParallel": false,
+    "globalSetup": "C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\e2e\\global-setup.js",
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/prj/yorick/.claude/worktrees/bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV/test-results",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "admin",
+        "name": "admin",
+        "testDir": "C:/prj/yorick/.claude/worktrees/bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "/admin-patronage\\.spec\\.js/",
+          "/admin-rules\\.spec\\.js/",
+          "/admin-referendums\\.spec\\.js/",
+          "/access-control\\.spec\\.js/"
+        ],
+        "timeout": 120000
+      },
+      {
+        "outputDir": "C:/prj/yorick/.claude/worktrees/bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV/test-results",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/prj/yorick/.claude/worktrees/bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV/e2e",
+        "testIgnore": [
+          "/admin-patronage\\.spec\\.js/",
+          "/admin-rules\\.spec\\.js/",
+          "/admin-referendums\\.spec\\.js/",
+          "/access-control\\.spec\\.js/"
+        ],
+        "testMatch": [
+          "/.*\\.spec\\.js/"
+        ],
+        "timeout": 120000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "html",
+        {
+          "open": "never",
+          "outputFolder": "playwright-report"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": "runs/heal-xp2.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.62.1",
+    "workers": 8,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "xp-history.spec.js",
+      "file": "xp-history.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Task 4 - XP History",
+          "file": "xp-history.spec.js",
+          "line": 381,
+          "column": 6,
+          "specs": [
+            {
+              "title": "54 The character has exactly four XP notations with four distinct dates and reasons",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 79,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[e2e xp-history] self-heal swept: {\"characters\":0,\"children\":0,\"errors\":[]}\n"
+                        },
+                        {
+                          "text": "[e2e xp-history] baseline Vampire row counts: {\"allCharacters\":0,\"fixtureCharacters\":0}\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:10:18.328Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-26f294c15826f4fac965",
+              "file": "xp-history.spec.js",
+              "line": 522,
+              "column": 3
+            },
+            {
+              "title": "55 The experience page renders exactly four rows with Date, Reason, Earned, Spent and Available columns",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 78,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:10:29.772Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-63ff9cd3784b760bc7e9",
+              "file": "xp-history.spec.js",
+              "line": 547,
+              "column": 3
+            },
+            {
+              "title": "56 The header totals equal the column sums of the four rows",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 40,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:10:29.857Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-1a5b67c1c4cf090c1a87",
+              "file": "xp-history.spec.js",
+              "line": 588,
+              "column": 3
+            },
+            {
+              "title": "57 The per-row running Available equals cumulative earned-minus-spent at every one of the four rows",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 23,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:10:29.905Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-bd95b83e69edaa774736",
+              "file": "xp-history.spec.js",
+              "line": 607,
+              "column": 3
+            },
+            {
+              "title": "58 Add a fifth notation; the table shows five rows and the totals update by the added amounts",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 630,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:10:29.935Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-61bbba32bb9d7dd936f7",
+              "file": "xp-history.spec.js",
+              "line": 640,
+              "column": 3
+            },
+            {
+              "title": "59 Edit the Reason on row 2; the new reason persists in the table after a reload",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1378,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:10:30.573Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-e321fa902749ca69b4c2",
+              "file": "xp-history.spec.js",
+              "line": 677,
+              "column": 3
+            },
+            {
+              "title": "60 Edit the Date on row 3; the row re-sorts to the correct chronological position",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 160,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:10:31.958Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-8ef48b48169b7fef9f1d",
+              "file": "xp-history.spec.js",
+              "line": 701,
+              "column": 3
+            },
+            {
+              "title": "60b Re-dating a notation forwards must not double-count it (defect found while implementing 60)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 441,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:10:32.124Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-bc1497a5ced76f218c6b",
+              "file": "xp-history.spec.js",
+              "line": 751,
+              "column": 3
+            },
+            {
+              "title": "61 Edit Earned on row 2 upward by 20; Available increases by exactly 20 and Earned by exactly 20",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 297,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:10:32.572Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-ef1c692ed99c0c0cea7b",
+              "file": "xp-history.spec.js",
+              "line": 806,
+              "column": 3
+            },
+            {
+              "title": "62 Edit Earned on row 2 downward by 15; Available decreases by exactly 15",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 119,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:10:32.876Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-241ce370a365a47a993c",
+              "file": "xp-history.spec.js",
+              "line": 834,
+              "column": 3
+            },
+            {
+              "title": "63 Set Earned on row 2 to 0; Available decreases by exactly that row's prior earned value",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 106,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:10:33.001Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-28f2969a1e15fb91f453",
+              "file": "xp-history.spec.js",
+              "line": 855,
+              "column": 3
+            },
+            {
+              "title": "64 Edit Spent on row 3 upward by 10; Available decreases by exactly 10 and Spent increases by exactly 10",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 299,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:10:33.117Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-a2a8b46f45171222b728",
+              "file": "xp-history.spec.js",
+              "line": 876,
+              "column": 3
+            },
+            {
+              "title": "65 Reset Spent on row 3 to 0; Available returns to exactly its pre-edit balance",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 221,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:10:33.422Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-c5c20e51964261e9ce55",
+              "file": "xp-history.spec.js",
+              "line": 897,
+              "column": 3
+            },
+            {
+              "title": "66 Edit both Earned and Spent on the same row; Available reflects the net of both deltas",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 229,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:10:33.649Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-f8deb7c1a055357384cb",
+              "file": "xp-history.spec.js",
+              "line": 929,
+              "column": 3
+            },
+            {
+              "title": "67 Set Spent higher than the running Available; the negative balance is displayed rather than clamped",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 428,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:10:33.884Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-e6bef7dc400516b41319",
+              "file": "xp-history.spec.js",
+              "line": 959,
+              "column": 3
+            },
+            {
+              "title": "68 Insert a backdated notation; it lands first and every subsequent row's Available re-propagates",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 562,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:10:34.318Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-a3dab397121f7f094e3a",
+              "file": "xp-history.spec.js",
+              "line": 1000,
+              "column": 3
+            },
+            {
+              "title": "69 Delete a middle notation; the remaining rows re-propagate their running Available correctly",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 123,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:10:34.888Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-4a814cbbcc4d8c53f806",
+              "file": "xp-history.spec.js",
+              "line": 1049,
+              "column": 3
+            },
+            {
+              "title": "70 Delete the top-most notation; the totals recalculate correctly",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 77,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:10:35.017Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-668406aa8f1e84f1c9ff",
+              "file": "xp-history.spec.js",
+              "line": 1096,
+              "column": 3
+            },
+            {
+              "title": "71 Four rapid sequential additions produce the correct aggregate totals with no lost updates",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1129,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:10:35.101Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-c853ae5ab836d7e36b27",
+              "file": "xp-history.spec.js",
+              "line": 1127,
+              "column": 3
+            },
+            {
+              "title": "72 The sheet header Available XP matches the XP page Available after all the above edits",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 538,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:10:36.236Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-567313daa030331f1a5c",
+              "file": "xp-history.spec.js",
+              "line": 1182,
+              "column": 3
+            },
+            {
+              "title": "73 The costs view reconciles: total trait cost equals the Spent total from the history",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1512,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:10:36.780Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-446b4bdfcf4967ff6610",
+              "file": "xp-history.spec.js",
+              "line": 1205,
+              "column": 3
+            },
+            {
+              "title": "74 With more than ten entries, /experience/0/10 and /experience/10/10 paginate with no duplicates",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 431,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:10:38.299Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-490ab41bb891a9f649f8",
+              "file": "xp-history.spec.js",
+              "line": 1251,
+              "column": 3
+            },
+            {
+              "title": "75 Every XP notation add, edit and delete produces a corresponding entry in the character log",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3703,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[e2e xp-history] destroyed in teardown: {\"characters\":2,\"children\":28,\"errors\":[],\"historyRowsLeft\":99}\n"
+                        },
+                        {
+                          "text": "[e2e xp-history] final Vampire row counts (should equal baseline {\"allCharacters\":0,\"fixtureCharacters\":0}): {\"allCharacters\":0,\"fixtureCharacters\":0}\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:10:38.735Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-e6fbc774a0c38b922f3e",
+              "file": "xp-history.spec.js",
+              "line": 1305,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-08-20T01:10:02.592Z",
+    "duration": 41265.516,
+    "expected": 23,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

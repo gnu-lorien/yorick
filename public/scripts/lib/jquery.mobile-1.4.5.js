@@ -5352,10 +5352,59 @@ $.widget( "mobile.page", {
 
 		_releaseTransitionLock: function() {
 			//release transition lock so navigation is free again
+			if ( transitionWatchdog ) {
+				clearTimeout( transitionWatchdog );
+				transitionWatchdog = null;
+			}
 			isPageTransitioning = false;
 			if ( pageTransitionQueue.length > 0 ) {
 				$.mobile.changePage.apply( null, pageTransitionQueue.pop() );
 			}
+		},
+
+		// YORICK PATCH: make the transition lock self-healing.
+		//
+		// `transition()` takes the lock and only gives it back from the
+		// `.done()` of the transition promise, which resolves off jQuery
+		// Mobile's CSS animation callbacks. Those callbacks do not fire if the
+		// element being animated is replaced while the animation is in flight —
+		// and in this app that happens whenever a Backbone or Marionette view
+		// re-renders into a page mid-transition. The promise then never
+		// settles, `_releaseTransitionLock` is never reached, and
+		// `isPageTransitioning` stays true for the life of the page. Every
+		// later `changePage` is pushed onto `pageTransitionQueue` and nothing
+		// is ever left to drain it.
+		//
+		// That single stuck flag is what three different test failures were:
+		// a navigation whose hash updates while the active page never changes
+		// (`#character-costs` requested, `#character-history` still on screen),
+		// and a `popup("open")` silently dropped because jQuery Mobile believes
+		// a page change is still in progress.
+		//
+		// Fixing every view that can re-render mid-transition removes the
+		// triggers one at a time; this removes the consequence. If the lock is
+		// still held long after any real transition could still be running,
+		// give it back and drain the queue. The bound is deliberately far above
+		// a real transition (~350ms, and under a second even on a slow device
+		// or a loaded CI box) so this cannot fire on a merely slow animation,
+		// and far below the 20s waits in the E2E suite so a strand shows up as
+		// a hiccup rather than a hang.
+		_armTransitionWatchdog: function() {
+			var self = this;
+			if ( transitionWatchdog ) {
+				clearTimeout( transitionWatchdog );
+			}
+			transitionWatchdog = setTimeout( function() {
+				transitionWatchdog = null;
+				if ( isPageTransitioning ) {
+					if ( $.mobile.debug ) {
+						console.warn( "jqm: transition lock held for " +
+							TRANSITION_WATCHDOG_MS + "ms with " + pageTransitionQueue.length +
+							" queued; releasing so navigation is not stranded" );
+					}
+					self._releaseTransitionLock();
+				}
+			}, TRANSITION_WATCHDOG_MS );
 		},
 
 		_removeActiveLinkClass: function( force ) {
@@ -5505,6 +5554,8 @@ $.widget( "mobile.page", {
 			// entering this method while we are in the midst of loading a page
 			// or transitioning.
 			isPageTransitioning = true;
+			// YORICK PATCH: see _armTransitionWatchdog.
+			this._armTransitionWatchdog();
 
 			// If we are going to the first-page of the application, we need to make
 			// sure settings.dataUrl is set to the application document url. This allows
@@ -5555,6 +5606,22 @@ $.widget( "mobile.page", {
 				if ( settings.fromHashChange ) {
 					$.mobile.navigate.history.direct({ url: url });
 				}
+
+				// YORICK PATCH: every other path out of `transition()` that holds
+				// the lock ends at `_releaseTransitionLock`, which both clears the
+				// flag and drains one entry from `pageTransitionQueue`. This one
+				// only cleared the flag, so anything queued behind a same-page
+				// transition was stranded with nothing left to drain it — and a
+				// same-page transition is exactly what the queue serves up when a
+				// stale `changePage` for the page you are already on gets replayed
+				// ahead of the one you actually asked for (the queue is filled with
+				// `unshift` and drained with `pop`, oldest first). Releasing here
+				// instead of merely unsetting the flag lets the drain cascade
+				// continue to the newest entry, so the navigation that was asked
+				// for last is the one that wins. Deliberately placed after the
+				// events and the history sync above so the original ordering of
+				// this branch's side effects is unchanged.
+				this._releaseTransitionLock();
 
 				return;
 			}
@@ -5728,7 +5795,10 @@ $.widget( "mobile.page", {
 
 	//these variables make all page containers use the same queue and only navigate one at a time
 	// queue to hold simultanious page transitions
-	var pageTransitionQueue = [],
+	// YORICK PATCH: see _armTransitionWatchdog.
+	var TRANSITION_WATCHDOG_MS = 8000,
+		transitionWatchdog = null,
+		pageTransitionQueue = [],
 
 		// indicates whether or not page is in process of transitioning
 		isPageTransitioning = false;
@@ -11064,12 +11134,64 @@ $.widget( "mobile.popup", {
 	},
 
 	_closePopup: function( theEvent, data ) {
-		var parsedDst, toUrl,
+		var parsedDst, toUrl, destination, activePage,
 			currentOptions = this.options,
 			immediate = false;
 
 		if ( ( theEvent && theEvent.isDefaultPrevented() ) || $.mobile.popup.active !== this ) {
 			return;
+		}
+
+		// YORICK PATCH: a "page change" to the page already on screen is not a
+		// departure, and must not take the dialog away from whoever is typing
+		// in it.
+		//
+		// A popup belongs to the page it was opened from, so jQuery Mobile
+		// closes every open popup on `pagebeforechange`. The block further down
+		// is this widget's own version of "am I actually going somewhere
+		// else?", but it asks the question of `this._myUrl` — which is only
+		// ever set when popup history is enabled, and `_create` disables popup
+		// history whenever `$.mobile.hashListeningEnabled` is false. This
+		// application turns hash listening off in `main.js` so that Backbone
+		// owns the URL, so `_myUrl` is `undefined` here and every page change
+		// takes the `immediate` branch, real or not. Enabling popup history
+		// would not help either: the routes change page by element selector
+		// with `changeHash: false`, so the popup's URL and the requested
+		// "`#experience-notations-all`" never compare equal however they are
+		// normalised. Page elements are what `transition()` itself compares
+		// before deciding a change is a no-op, so compare those.
+		//
+		// The routes ask for their page unconditionally —
+		// `$.mobile.changePage("#experience-notations-all", ...)` at
+		// mobileRouter.js:448, and seventy-odd siblings — which is a no-op when
+		// that page is already active: `transition()` returns early at "there
+		// is no page change to be done". But `pagebeforechange` fires in
+		// `change()`, well before `transition()` gets to look, so the dialog is
+		// gone before jQuery Mobile decides nothing was going to happen.
+		//
+		// And a request that arrives while some earlier transition is still
+		// animating is never examined at all. `change()` puts it on
+		// `pageTransitionQueue` verbatim and `_releaseTransitionLock` replays
+		// it when the animation ends, so the no-op fires its popup-closing
+		// event at a moment that has nothing to do with anything the player
+		// did. Measured on the experience history, over three traced failures:
+		// a same-page `changePage` queued 206ms earlier landed 61ms after the
+		// reason dialog opened, and closed it with the player's text still in
+		// the textarea and unsaved.
+		//
+		// `allowSamePageTransition` is the caller saying they mean it — that
+		// one really does re-transition the page, so it still closes.
+		if ( theEvent && theEvent.type === "pagebeforechange" && data &&
+				!( data.options && data.options.allowSamePageTransition ) ) {
+			destination = ( data.toPage && data.toPage.jquery ) ? data.toPage :
+				( ( typeof data.toPage === "string" && /^#[\w\-]+$/.test( data.toPage ) ) ?
+					$( data.toPage ) : null );
+			activePage = $.mobile.activePage;
+			if ( destination && destination.length === 1 &&
+					activePage && activePage.length &&
+					destination[ 0 ] === activePage[ 0 ] ) {
+				return;
+			}
 		}
 
 		// restore location on screen

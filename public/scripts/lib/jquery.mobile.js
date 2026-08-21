@@ -5556,6 +5556,26 @@ $.widget( "mobile.page", {
 					$.mobile.navigate.history.direct({ url: url });
 				}
 
+				// YORICK PATCH: every other path out of `transition()` that holds
+				// the lock ends at `_releaseTransitionLock`, which both clears the
+				// flag and drains one entry from `pageTransitionQueue`. This one
+				// only cleared the flag, so anything queued behind a same-page
+				// transition was stranded with nothing left to drain it — and a
+				// same-page transition is exactly what the queue serves up when a
+				// stale `changePage` for the page you are already on gets replayed
+				// ahead of the one you actually asked for (the queue is filled with
+				// `unshift` and drained with `pop`, oldest first). Releasing here
+				// instead of merely unsetting the flag lets the drain cascade
+				// continue to the newest entry, so the navigation that was asked
+				// for last is the one that wins. Deliberately placed after the
+				// events and the history sync above so the original ordering of
+				// this branch's side effects is unchanged.
+				//
+				// This file is an unreferenced byte-identical copy of
+				// `jquery.mobile-1.4.5.js`, which is the one `app.js` actually
+				// loads. Patched in step with it so the two do not diverge.
+				this._releaseTransitionLock();
+
 				return;
 			}
 

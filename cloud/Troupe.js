@@ -1,5 +1,6 @@
 /* global Parse */
 var _ = require('lodash');
+var Promise = global.Promise;
 
 // The Model constructor
 var Model = Parse.Object.extend( "Troupe", {
@@ -17,18 +18,18 @@ var Model = Parse.Object.extend( "Troupe", {
     get_staff: function() {
         var self = this;
         var users = [];
-        return Parse.Promise.when(self.get_roles()).then(function (roles) {
+        return self.get_roles().then(function (roles) {
             var userqs = _.map(roles, function(role, title) {
                 var u = role.getUsers();
                 var q = u.query();
                 return q.each(function(user) {
                     user.set("role", title);
                     users.push(user);
-                });
+                }, {useMasterKey: true});
             })
-            return Parse.Promise.when(userqs);
+            return Promise.all(userqs);
         }).then(function() {
-            return Parse.Promise.as(users);
+            return Promise.resolve(users);
         });
     },
 
@@ -38,12 +39,12 @@ var Model = Parse.Object.extend( "Troupe", {
         var promises = _.map(self.title_options, function (title) {
             var q = new Parse.Query(Parse.Role);
             q.equalTo("name", title + "_" + self.id);
-            return q.first().then(function (role) {
+            return q.first({useMasterKey: true}).then(function (role) {
                 roles[title] = role;
             });
         })
-        return Parse.Promise.when(promises).then(function () {
-            return Parse.Promise.as(roles);
+        return Promise.all(promises).then(function () {
+            return Promise.resolve(roles);
         });
     },
 
@@ -53,12 +54,12 @@ var Model = Parse.Object.extend( "Troupe", {
         var promises = _.map(self.title_options, function (title) {
             var q = new Parse.Query(Parse.Role);
             q.equalTo("name", title);
-            return q.first().then(function (role) {
+            return q.first({useMasterKey: true}).then(function (role) {
                 roles[title] = role;
             });
         })
-        return Parse.Promise.when(promises).then(function () {
-            return Parse.Promise.as(roles);
+        return Promise.all(promises).then(function () {
+            return Promise.resolve(roles);
         });
     },
 
@@ -68,10 +69,10 @@ var Model = Parse.Object.extend( "Troupe", {
             var portrait = self.get("portrait");
             return portrait.fetch().then(function (portrait) {
                 console.log(self.get_thumbnail_sync(size));
-                return Parse.Promise.as(portrait.get("thumb_" + size).url());
+                return Promise.resolve(portrait.get("thumb_" + size).url());
             });
         } else {
-            return Parse.Promise.as("head_skull.png");
+            return Promise.resolve("head_skull.png");
         }
     },
 

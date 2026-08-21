@@ -9,7 +9,6 @@ define([
     "marionette",
     "parse",
     "moment",
-    "text!../templates/character-print-view.html",
     "text!../templates/character-approval-approvals.html",
     "../collections/Approvals",
     "../models/Approval",
@@ -18,14 +17,14 @@ define([
     "text!../templates/character-approval-edit.html",
     "../views/CharacterPrintView",
     "text!../templates/character-approval-changes.html",
-    "../helpers/PromiseFailReport"
+    "../helpers/PromiseFailReport",
+    "../helpers/ReportError"
 ], function( _,
              $,
              Backbone,
              Marionette,
              Parse,
              moment,
-             character_print_view_html,
              character_approval_approvals_html,
              Approvals,
              Approval,
@@ -34,7 +33,8 @@ define([
              character_approval_edit_html,
              CharacterPrintView,
              character_approval_changes_html,
-             PromiseFailReport
+             PromiseFailReport,
+             ReportError
 ) {
     var EditView = Marionette.ItemView.extend({
         template: _.template(character_approval_edit_html),
@@ -95,6 +95,7 @@ define([
                 owner: self.model
             });
             a.save().then(function (approval) {
+                ReportError.clear();
                 self.approvals.add(approval);
                 self.picked.set({
                     approval: self.approvals.length,
@@ -102,7 +103,12 @@ define([
                     right: self.model.recorded_changes.models.length - 1
                 });
                 self.render();
-            });
+            }).fail(ReportError.on("Couldn't approve this change"));
+            // `beforeSave("VampireApproval")` genuinely refuses some
+            // approvals - a player approving their own character, an
+            // approver with no Storyteller role for the troupe. Without a
+            // failure handler the refusal had nowhere to go: the button
+            // simply did nothing and said nothing.
         },
         onRender: function() {
             this.$el.enhanceWithin();
@@ -275,8 +281,12 @@ define([
                 console.log("Undefined log");
                 return "Undefined log";
             }
-            if (log.get(entry)) {
-                return log.get(entry);
+            // `if (log.get(entry))` renders a recorded value of 0 as an empty
+            // cell, which reads identically to "never recorded". `has()` is
+            // false only for null/undefined, so a real zero survives.
+            if (log.has(entry)) {
+                var v = log.get(entry);
+                return _.isDate(v) ? moment(v).format('lll') : v;
             }
             var attr = log[entry];
             if (_.isDate(attr)) {
@@ -402,7 +412,7 @@ define([
             }
             
             return p.then(function () {
-                Parse.Promise.as(self);
+                return Parse.Promise.as(self);
             });
         },
         onRender: function () {

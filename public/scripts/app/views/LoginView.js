@@ -50,16 +50,20 @@ define([
             var password = this.$("#login-password").val();
             e.preventDefault();
             self.undelegateEvents();
-            Parse.User.logIn(username, password, {
-                success: function(user) {
-                    location.reload();
-                },
-
-                error: function(user, error) {
-                    self.$(".login-form .error").html(_.escape(error.message)).show();
-                    self.$(".login-form button").removeAttr("disabled");
-                    self.delegateEvents();
-                }
+            // Promises, not the Backbone-style {success, error} options.
+            //
+            // Parse SDK 3.0 removed those callbacks. Under parse@8 the third
+            // argument is an options bag (useMasterKey, sessionToken, ...), so
+            // `success` was simply ignored: the credentials were accepted, the
+            // session was created, and `location.reload()` never ran -- the
+            // form just sat there. Nothing threw and nothing was logged, which
+            // is why it presented as "login is broken" rather than as an error.
+            Parse.User.logIn(username, password).then(function (user) {
+                location.reload();
+            }, function (error) {
+                self.$(".login-form .error").html(_.escape(error.message)).show();
+                self.$(".login-form button").removeAttr("disabled");
+                self.delegateEvents();
             });
 
             return false;

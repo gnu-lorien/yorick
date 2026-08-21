@@ -37,13 +37,23 @@ define([
         Parse.serverURL = siteconfig.serverURL;
     }
     
+    // Each venue spells its background category differently, and the
+    // parameterised describes below buy backgrounds. Using the Vampire
+    // spelling for a Werewolf is not a near-miss: the venue cost engines
+    // return a cost only for a category they have a rule for, and
+    // `Character.update_trait` refuses outright when the cost is not finite
+    // ("No experience cost rule for category ..."). That refusal is correct
+    // behaviour -- it is the guard that stopped `wta_rites` being silently
+    // free -- so the spec, not the application, was wrong.
     var character_types = [
         {
             name: "Vampire",
-            template: Vampire
+            template: Vampire,
+            background_category: "backgrounds"
         },{
             name: "Werewolf",
-            template: Werewolf
+            template: Werewolf,
+            background_category: "wta_backgrounds"
         }
     ];
 
@@ -54,26 +64,29 @@ define([
     });
     var ParseStart = function() {
         ParseInit();
-        if (!_.eq(Parse.User.current().get("username"), "devuser")) {
+        var current = Parse.User.current();
+        if (!current || !_.eq(current.get("username"), "devuser")) {
             return Parse.User.logIn("devuser", "thedumbness");
         }
-        return Parse.Promise.as(Parse.User.current());
+        return Parse.Promise.as(current);
     };
 
     var MemberParseStart = function () {
         ParseInit();
-        if (!_.eq(Parse.User.current().get("username"), "sampmem")) {
+        var current = Parse.User.current();
+        if (!current || !_.eq(current.get("username"), "sampmem")) {
             return Parse.User.logIn("sampmem", "sampmem");
         }
-        return Parse.Promise.as(Parse.User.current());
+        return Parse.Promise.as(current);
     };
 
     var ASTParseStart = function () {
         ParseInit();
-        if (!_.eq(Parse.User.current().get("username"), "sampast")) {
+        var current = Parse.User.current();
+        if (!current || !_.eq(current.get("username"), "sampast")) {
             return Parse.User.logIn("sampast", "sampast");
         }
-        return Parse.Promise.as(Parse.User.current());
+        return Parse.Promise.as(current);
     };
 
     describe("Parse", function() {

@@ -9,7 +9,6 @@ define([
     "marionette",
     "parse",
     "moment",
-    "text!../templates/character-print-view.html",
     "text!../templates/character-approval-approvals.html",
     "../collections/Approvals",
     "../models/Approval",
@@ -25,7 +24,6 @@ define([
              Marionette,
              Parse,
              moment,
-             character_print_view_html,
              character_approval_approvals_html,
              Approvals,
              Approval,
@@ -275,8 +273,11 @@ define([
                 console.log("Undefined log");
                 return "Undefined log";
             }
-            if (log.get(entry)) {
-                return log.get(entry);
+            // See CharacterApprovalView.format_entry: a recorded 0 must not
+            // render as an empty cell.
+            if (log.has(entry)) {
+                var v = log.get(entry);
+                return _.isDate(v) ? moment(v).format('lll') : v;
             }
             var attr = log[entry];
             if (_.isDate(attr)) {

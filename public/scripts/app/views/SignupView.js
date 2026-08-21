@@ -47,17 +47,16 @@ define([
             self.$(".signup-form .error").hide();
             this.$(".signup-form button").attr("disabled", "disabled");
 
-            Parse.User.signUp(username, password, { }, {
-                success: function(user) {
-                    location.reload();
-                    self.undelegateEvents();
-                },
-
-                error: function(user, error) {
+            // Promises, not {success, error} -- see the note in LoginView.js.
+            // Parse SDK 3.0 removed those callbacks, so `success` was silently
+            // ignored and the page never reloaded after a successful signup.
+            Parse.User.signUp(username, password, { }).then(function (user) {
+                location.reload();
+                self.undelegateEvents();
+            }, function (error) {
                     self.$(".signup-form .error").html(_.escape(error.message)).show();
                     self.$(".signup-form button").removeAttr("disabled");
                     self.delegateEvents();
-                }
             });
 
             return false;

@@ -1,0 +1,291 @@
+{
+ "config": {
+  "version": "1.62.1",
+  "rootDir": "/repo/e2e",
+  "workers": 8,
+  "projects": [
+   {
+    "name": "chromium"
+   }
+  ],
+  "metadata": {
+   "actualWorkers": 8
+  }
+ },
+ "suites": [
+  {
+   "title": "serial.spec.js",
+   "file": "serial.spec.js",
+   "line": 0,
+   "column": 0,
+   "specs": [],
+   "suites": [
+    {
+     "title": "Serial group",
+     "file": "serial.spec.js",
+     "line": 5,
+     "column": 1,
+     "specs": [
+      {
+       "title": "1 opens the page",
+       "ok": true,
+       "tags": [],
+       "tests": [
+        {
+         "timeout": 120000,
+         "annotations": [],
+         "expectedStatus": "passed",
+         "projectId": "chromium",
+         "projectName": "chromium",
+         "results": [
+          {
+           "workerIndex": 0,
+           "status": "passed",
+           "duration": 100,
+           "errors": [],
+           "stdout": [],
+           "stderr": [],
+           "retry": 0,
+           "startTime": "2026-08-19T04:20:10.000Z",
+           "attachments": []
+          }
+         ],
+         "status": "expected"
+        }
+       ],
+       "id": "id-0",
+       "file": "serial.spec.js",
+       "line": 10,
+       "column": 3
+      },
+      {
+       "title": "2 the noisy one",
+       "ok": true,
+       "tags": [],
+       "tests": [
+        {
+         "timeout": 120000,
+         "annotations": [],
+         "expectedStatus": "passed",
+         "projectId": "chromium",
+         "projectName": "chromium",
+         "results": [
+          {
+           "workerIndex": 0,
+           "status": "passed",
+           "duration": 1500,
+           "errors": [],
+           "stdout": [],
+           "stderr": [],
+           "retry": 0,
+           "startTime": "2026-08-19T04:20:10.000Z",
+           "attachments": []
+          }
+         ],
+         "status": "expected"
+        }
+       ],
+       "id": "id-1",
+       "file": "serial.spec.js",
+       "line": 11,
+       "column": 3
+      },
+      {
+       "title": "3 uploads a file",
+       "ok": false,
+       "tags": [],
+       "tests": [
+        {
+         "timeout": 120000,
+         "annotations": [],
+         "expectedStatus": "passed",
+         "projectId": "chromium",
+         "projectName": "chromium",
+         "results": [
+          {
+           "workerIndex": 0,
+           "status": "failed",
+           "duration": 900,
+           "error": {
+            "message": "Error: MongoServerError: E11000 duplicate key error collection: anotherstore.Character",
+            "stack": "Error: MongoServerError: E11000 duplicate key error collection: anotherstore.Character\n    at e2e/serial.spec.js:40:5"
+           },
+           "errors": [
+            {
+             "message": "Error: MongoServerError: E11000 duplicate key error collection: anotherstore.Character",
+             "stack": "Error: MongoServerError: E11000 duplicate key error collection: anotherstore.Character\n    at e2e/serial.spec.js:40:5"
+            }
+           ],
+           "errorLocation": {
+            "file": "e2e/serial.spec.js",
+            "line": 40,
+            "column": 5
+           },
+           "stdout": [],
+           "stderr": [],
+           "retry": 0,
+           "startTime": "2026-08-19T04:20:12.000Z",
+           "attachments": []
+          }
+         ],
+         "status": "unexpected"
+        }
+       ],
+       "id": "id-2",
+       "file": "serial.spec.js",
+       "line": 12,
+       "column": 3
+      },
+      {
+       "title": "4 checks the render",
+       "ok": false,
+       "tags": [],
+       "tests": [
+        {
+         "timeout": 120000,
+         "annotations": [],
+         "expectedStatus": "passed",
+         "projectId": "chromium",
+         "projectName": "chromium",
+         "results": [
+          {
+           "workerIndex": 0,
+           "status": "failed",
+           "duration": 900,
+           "error": {
+            "message": "Error: MongoServerError: E11000 duplicate key error collection: anotherstore.Character",
+            "stack": "Error: MongoServerError: E11000 duplicate key error collection: anotherstore.Character\n    at e2e/serial.spec.js:40:5"
+           },
+           "errors": [
+            {
+             "message": "Error: MongoServerError: E11000 duplicate key error collection: anotherstore.Character",
+             "stack": "Error: MongoServerError: E11000 duplicate key error collection: anotherstore.Character\n    at e2e/serial.spec.js:40:5"
+            }
+           ],
+           "errorLocation": {
+            "file": "e2e/serial.spec.js",
+            "line": 40,
+            "column": 5
+           },
+           "stdout": [],
+           "stderr": [],
+           "retry": 0,
+           "startTime": "2026-08-19T04:20:12.000Z",
+           "attachments": []
+          }
+         ],
+         "status": "unexpected"
+        }
+       ],
+       "id": "id-3",
+       "file": "serial.spec.js",
+       "line": 13,
+       "column": 3
+      },
+      {
+       "title": "5 replaces it",
+       "ok": false,
+       "tags": [],
+       "tests": [
+        {
+         "timeout": 120000,
+         "annotations": [],
+         "expectedStatus": "passed",
+         "projectId": "chromium",
+         "projectName": "chromium",
+         "results": [
+          {
+           "workerIndex": 0,
+           "status": "failed",
+           "duration": 900,
+           "error": {
+            "message": "Error: MongoServerError: E11000 duplicate key error collection: anotherstore.Character",
+            "stack": "Error: MongoServerError: E11000 duplicate key error collection: anotherstore.Character\n    at e2e/serial.spec.js:40:5"
+           },
+           "errors": [
+            {
+             "message": "Error: MongoServerError: E11000 duplicate key error collection: anotherstore.Character",
+             "stack": "Error: MongoServerError: E11000 duplicate key error collection: anotherstore.Character\n    at e2e/serial.spec.js:40:5"
+            }
+           ],
+           "errorLocation": {
+            "file": "e2e/serial.spec.js",
+            "line": 40,
+            "column": 5
+           },
+           "stdout": [],
+           "stderr": [],
+           "retry": 0,
+           "startTime": "2026-08-19T04:20:12.000Z",
+           "attachments": []
+          }
+         ],
+         "status": "unexpected"
+        }
+       ],
+       "id": "id-4",
+       "file": "serial.spec.js",
+       "line": 14,
+       "column": 3
+      },
+      {
+       "title": "6 checks it again",
+       "ok": false,
+       "tags": [],
+       "tests": [
+        {
+         "timeout": 120000,
+         "annotations": [],
+         "expectedStatus": "passed",
+         "projectId": "chromium",
+         "projectName": "chromium",
+         "results": [
+          {
+           "workerIndex": 0,
+           "status": "failed",
+           "duration": 900,
+           "error": {
+            "message": "Error: MongoServerError: E11000 duplicate key error collection: anotherstore.Character",
+            "stack": "Error: MongoServerError: E11000 duplicate key error collection: anotherstore.Character\n    at e2e/serial.spec.js:40:5"
+           },
+           "errors": [
+            {
+             "message": "Error: MongoServerError: E11000 duplicate key error collection: anotherstore.Character",
+             "stack": "Error: MongoServerError: E11000 duplicate key error collection: anotherstore.Character\n    at e2e/serial.spec.js:40:5"
+            }
+           ],
+           "errorLocation": {
+            "file": "e2e/serial.spec.js",
+            "line": 40,
+            "column": 5
+           },
+           "stdout": [],
+           "stderr": [],
+           "retry": 0,
+           "startTime": "2026-08-19T04:20:12.000Z",
+           "attachments": []
+          }
+         ],
+         "status": "unexpected"
+        }
+       ],
+       "id": "id-5",
+       "file": "serial.spec.js",
+       "line": 15,
+       "column": 3
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "errors": [],
+ "stats": {
+  "startTime": "2026-08-19T05:00:00.000Z",
+  "duration": 60000,
+  "expected": 2,
+  "skipped": 0,
+  "unexpected": 4,
+  "flaky": 0
+ }
+}

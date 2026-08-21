@@ -26,6 +26,33 @@ define([
         register: function(character, start, changeBy) {
             var self = this;
             var p = Parse.Promise.as([]);
+            var paging_changed = false;
+
+            // R48: both parameters were accepted and neither was used, so
+            // /experience/0/10 and /experience/10/10 returned the identical
+            // full set and the Prev/Next controls were commented out of the
+            // template.
+            //
+            // Unlike `CharacterLogView`, which owns a display-only collection
+            // and can page server-side, this view renders the character's own
+            // `experience_notations` - the same collection
+            // `_propagate_experience_notation_change` walks to keep every
+            // row's running balance correct. Skipping rows in that query would
+            // quietly corrupt the ledger, so the page is taken at render time
+            // and the collection stays whole.
+            start = _.parseInt(start);
+            changeBy = _.parseInt(changeBy);
+            if (!_.isFinite(start) || start < 0) {
+                start = 0;
+            }
+            if (!_.isFinite(changeBy) || changeBy < 1) {
+                changeBy = 10;
+            }
+            if (start !== self.start || changeBy !== self.changeBy) {
+                self.start = start;
+                self.changeBy = changeBy;
+                paging_changed = true;
+            }
 
             if (character !== self.character) {
                 if (self.character) {
@@ -47,10 +74,12 @@ define([
                 }, function (rc) {
                     self.render();
                 });
+            } else if (paging_changed) {
+                self.render();
             }
 
             return p.then(function () {
-                Parse.Promise.as(self);
+                return Parse.Promise.as(self);
             });
         },
 
@@ -73,8 +102,15 @@ define([
             var en = self.collection.getByCid(id);
             var updatedEntered = moment(d, MOMENT_FORMAT);
             if (updatedEntered.isValid()) {
+                // No `en.save()` here on purpose. Setting `entered` fires
+                // `Character.on_update_experience_notation`, which re-sorts the
+                // ledger and saves every row whose running balance moved -
+                // including this one. Saving it again in parallel raced that
+                // batch: this row carried its *pre*-propagation earned/spent,
+                // so whichever write landed last decided the balance. It
+                // happened to be benign until the audit hook added a round-trip
+                // to the notation save and tipped the ordering.
                 en.set("entered", updatedEntered.toDate());
-                en.save();
                 $("#popupEditEntered").popup("close");
             } else {
                 // Can't do validation this way because then we would have to watch for
@@ -102,8 +138,9 @@ define([
             n = _.isFinite(n) ? n : 0;
             var en = self.collection.getByCid(id);
             var type = self.$("#alterationpopupEdit #alteration-type").val();
+            // As with the date popup above: the propagation this `set` kicks
+            // off saves this row itself, so an explicit save here only races it.
             en.set("alteration_" + type, n);
-            en.save();
             $("#alterationpopupEdit").popup("close");
         },
 
@@ -156,23 +193,19 @@ define([
 
         previous: function() {
             var self = this;
-            var incr = this.start - this.changeBy;
-            this.start = _.max([0, incr]);
-            window.location.hash = "#character/" + self.character.id + "/experience/" + this.start + "/10";
-            $.mobile.loading("show");
-            this.update_collection_query_and_fetch().then(function() {
-                $.mobile.loading("hide");
-            })
+            self.start = _.max([0, self.start - self.changeBy]);
+            self.render();
+            window.location.hash = "#character/" + self.character.id + "/experience/" + self.start + "/" + self.changeBy;
         },
 
         next: function() {
             var self = this;
-            this.start += self.changeBy;
-            window.location.hash = "#character/" + self.character.id + "/experience/" + this.start + "/10";
-            $.mobile.loading("show");
-            this.update_collection_query_and_fetch().then(function() {
-                $.mobile.loading("hide");
-            })
+            if (self.start + self.changeBy >= self.collection.length) {
+                return;
+            }
+            self.start += self.changeBy;
+            self.render();
+            window.location.hash = "#character/" + self.character.id + "/experience/" + self.start + "/" + self.changeBy;
         },
 
         add: function() {
@@ -180,22 +213,19 @@ define([
             self.character.add_experience_notation({reason: "Unspecified reason"});
         },
 
+        /**
+         * Refetch the whole ledger.
+         *
+         * Deliberately unpaged - see `register`. This also used to reference
+         * `self.changes` and a `VampireChange` symbol that exist nowhere in
+         * this view, so it threw if it was ever reached; nothing called it.
+         */
         update_collection_query_and_fetch: function () {
             var self = this;
-            var options = {reset: true};
             var q = new Parse.Query(ExperienceNotation);
             q.equalTo("owner", self.character).addDescending("entered").addDescending("createdAt");
-            /*
-            q.skip(self.start);
-            q.limit(self.changeBy);
-            */
             self.collection.query = q;
-            return self.collection.fetch(options).then(function () {
-                var q = new Parse.Query(VampireChange);
-                q.equalTo("owner", self.character).addAscending("createdAt").limit(1000);
-                self.changes.query = q;
-                return self.changes.fetch(options);
-            });
+            return self.collection.fetch({reset: true});
         },
 
         format_entry: function(log, entry) {
@@ -215,12 +245,96 @@ define([
 
         // Renders all of the Category models on the UI
         render: function() {
+            var self = this;
+            var stale_popups = "#popupEditEntered, #popupEditReason, #alterationpopupEdit";
+
+            // Never rebuild the table out from under an open dialog.
+            //
+            // Editing a notation is what causes the re-renders in the first
+            // place -- `change:reason` on the collection, and
+            // `finish_experience_notation_propagation` on the character once
+            // the running balances have been saved. Those land while the player
+            // is still in the NEXT dialog, and this render tears down the
+            // markup the dialog was opened from, re-enhances a fresh copy of
+            // every popup, and leaves the handlers' bare `$("#popupEditReason")`
+            // lookups pointing at whichever duplicate now comes first.
+            //
+            // Measured at eight workers: the reason dialog opened, took its
+            // text, and was gone before the Update button could be clicked --
+            // the failure snapshot shows the notations table with no popup on
+            // the page at all. At four workers the same test passes, which is
+            // the tell that this is a race rather than a wrong answer.
+            //
+            // Deferring is the whole fix: the view is redrawn on
+            // `popupafterclose` instead, which is the first moment the rebuild
+            // is safe and still well before anyone can read the table.
+            var open_dialogs = $(".ui-popup-container").not(".ui-popup-hidden").find(stale_popups);
+            if (open_dialogs.length) {
+                if (!self._renderQueuedBehindPopup) {
+                    self._renderQueuedBehindPopup = true;
+                    open_dialogs.first().one("popupafterclose", function () {
+                        self._renderQueuedBehindPopup = false;
+                        self.render();
+                    });
+                }
+                return this;
+            }
+
             // Sets the view's template property
+            var all = (this.collection && this.collection.models) || [];
             this.template = _.template(
                 $( "script#experienceNotationsAllView" ).html())(
                 { "character": this.character,
-                  "logs": this.collection.models,
+                  // The page, taken here rather than in the query, so the
+                  // model keeps the whole ledger for balance propagation.
+                  "logs": all.slice(this.start, this.start + this.changeBy),
+                  "start": this.start,
+                  "changeBy": this.changeBy,
+                  "total": all.length,
                   "format_entry": this.format_entry} );
+
+            // Drop the edit popups left behind by earlier renders, before the
+            // markup below replaces this view's content.
+            //
+            // All three popups live inside this template, so every render emits
+            // fresh copies of them. jQuery Mobile moves a popup's container out
+            // to the page element when it is *opened*, so an opened copy is no
+            // longer inside `div[role='main']` and survives the `.html()` call
+            // below - leaving one more element carrying a duplicate id behind on
+            // every render. Measured: seven `#popupEditReason` elements after
+            // three edits, growing without bound for as long as the page is
+            // open.
+            //
+            // That pile is not harmless, because the handlers above reach for
+            // these popups with bare id selectors (`$("#popupEditReason")`),
+            // which take whichever copy happens to come first in the document
+            // rather than the one actually on screen.
+            //
+            // A popup that is currently open is deliberately left alone:
+            // removing it would take the dialog away from whoever is typing in
+            // it, which is a worse bug than the leak.
+            //
+            // "Open" is `ui-popup-hidden`, not `ui-popup-active`. jQuery Mobile
+            // un-hides the container first and marks it active only once the
+            // open prerequisites finish: `container.removeClass(
+            // "ui-popup-hidden" )` at jquery.mobile-1.4.5.js:11023, then
+            // `container.addClass( "ui-popup-active" )` at :10969, one screen
+            // fade later. Between the two the dialog is on screen and being
+            // typed into while carrying neither class -- and this sweep, keyed
+            // off `ui-popup-active`, deleted it.
+            //
+            // Measured: the reason popup opened, accepted its text, and was
+            // gone by the time the Update button was clicked; the failure
+            // snapshot shows the notations table with no popup anywhere.
+            // Closing works the same way round (`ui-popup-active` removed at
+            // :11079 before `ui-popup-hidden` is added at :11056), so hidden is
+            // the only class that means "not on screen" at both ends.
+            $(".ui-popup-container.ui-popup-hidden").each(function () {
+                var container = $(this);
+                if (container.find(stale_popups).length) {
+                    container.remove();
+                }
+            });
 
             // Renders the view's template inside of the current listview element
             this.$el.find("div[role='main']").html(this.template);

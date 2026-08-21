@@ -102,3 +102,21 @@ node_modules
 .parse.project
 /statusview/
 gitflow/
+playwright-report/
+test-results/
+.playwright/
+# Production data and credentials — never commit.
+# toimport/ holds mongodump archives of the live player database and the
+# Greensboro Parse master key, which bypasses every ACL and CLP.
+toimport/
+*.archive
+*master_key*
+*.un~
+
+# Captured Playwright JSON runs, compared by diff-runs.js. Local artefacts.
+runs/
+
+# Scratch probes and their captured timelines. The probe pattern (see
+# parse8-migration-handoff.md) writes traces here; one investigation produced
+# 239MB. The instrument itself lives in e2e/helpers/, which is what to reuse.
+tmp-probes/

@@ -1,0 +1,96 @@
+{
+  "counts": {
+    "TroupePortrait/beforeSave": {
+      "ok": 4,
+      "failed": 0
+    },
+    "SimpleTrait/beforeDelete": {
+      "ok": 570,
+      "failed": 0
+    },
+    "ExperienceNotation/beforeDelete": {
+      "ok": 160,
+      "failed": 0
+    },
+    "Vampire/beforeSave": {
+      "ok": 987,
+      "failed": 0
+    },
+    "VampireCreation/beforeSave": {
+      "ok": 499,
+      "failed": 0
+    },
+    "ExperienceNotation/beforeSave": {
+      "ok": 282,
+      "failed": 0
+    },
+    "SimpleTrait/beforeSave": {
+      "ok": 865,
+      "failed": 0
+    },
+    "SimpleTrait/afterSave": {
+      "ok": 1730,
+      "failed": 0
+    },
+    "Patronage/afterSave": {
+      "ok": 14,
+      "failed": 0
+    },
+    "fn:change_troupe_staff": {
+      "ok": 9,
+      "failed": 0
+    },
+    "fn:update_vampire_change_permissions_for": {
+      "ok": 10,
+      "failed": 0
+    },
+    "fn:get_my_patronage_status": {
+      "ok": 24,
+      "failed": 0
+    },
+    "fn:get_expected_vampire_ids": {
+      "ok": 54,
+      "failed": 0
+    },
+    "fn:get_captured_emails": {
+      "ok": 2,
+      "failed": 0
+    },
+    "fn:request_password_reset_for": {
+      "ok": 1,
+      "failed": 0
+    },
+    "fn:vote_for_referendum": {
+      "ok": 4,
+      "failed": 2
+    },
+    "VampireApproval/beforeSave": {
+      "ok": 12,
+      "failed": 4
+    },
+    "CharacterPortrait/beforeSave": {
+      "ok": 2,
+      "failed": 1
+    },
+    "LongText/beforeSave": {
+      "ok": 20,
+      "failed": 0
+    }
+  },
+  "records": 5256,
+  "lines": 756779,
+  "malformed": 0,
+  "undated": 0,
+  "unexpectedLevels": {},
+  "firstTimestamp": "2026-08-20T20:56:08.586Z",
+  "lastTimestamp": "2026-08-20T21:00:57.764Z",
+  "sources": [
+    "logs/parse-server.info.2026-08-20"
+  ],
+  "bytes": 2679605494,
+  "window": {
+    "since": "2026-08-20T20:56:06.445Z",
+    "until": "2026-08-20T21:01:29.715Z",
+    "source": "runs/s10-step13e-3.json"
+  }
+}

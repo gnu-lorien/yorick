@@ -16,8 +16,9 @@ define([
     "../helpers/PromiseFailReport",
     "../helpers/ExpirationMixin",
     "../helpers/UserWreqr",
-    "../models/Character"
-], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSWTAV1_WerewolfCosts, PromiseFailReport, ExpirationMixin, UserChannel, Character ) {
+    "../models/Character",
+    "../helpers/VenueClass"
+], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSWTAV1_WerewolfCosts, PromiseFailReport, ExpirationMixin, UserChannel, Character, VenueClass ) {
 
     var ALL_SIMPLETRAIT_CATEGORIES = [
         ["attributes", "Attributes", "Attributes"],
@@ -70,6 +71,15 @@ define([
             }
             return Parse.Object.fetchAllIfNeeded([self.get("creation")]).then(function (creations) {
                 var creation = creations[0];
+                if (creation && creation.get("completed")) {
+                    // R22: these counters are creation-time bookkeeping and
+                    // nothing reads them once the wizard is finished, so
+                    // writing to them afterwards only produced meaningless
+                    // negatives - a post-creation Kith change drove
+                    // ctdbs_arts_1_remaining to -3, which then read as an
+                    // overspend that had never happened.
+                    return Parse.Promise.as(self);
+                }
                 var stepName = category + "_" + freeValue + "_remaining";
                 var listName = category + "_" + freeValue + "_picks";
                 creation.addUnique(listName, modified_trait);
@@ -261,9 +271,26 @@ define([
         },
     }, ExpirationMixin );
     
+    // Inherit Character's behaviour explicitly.
+    //
+    // The line below copies Character's STATICS (get_character, create, ...);
+    // it copies no instance methods, because those live on the prototype. This
+    // module used to receive them only as a side effect of Parse 1.5 chaining
+    // repeated registrations of the className "Vampire" -- see the note at the
+    // bottom of Character.js. parse@8 has one class per className, so that
+    // chain no longer exists.
+    //
+    // `defaults` rather than `extend`: this module's own definitions win, and
+    // the base fills in the rest. That is the inheritance the chain used to
+    // provide, now stated outright and independent of load order.
     _.extend(instance_methods, Character);
+    _.defaults(instance_methods, Character.baseMethods);
 
-    var Model = Parse.Object.extend("Vampire", instance_methods);
+    // One Parse class for the shared "Vampire" table, but a per-module
+    // identity to hang this venue's six statics on. parse@8 returns the SAME
+    // constructor for a repeated className, so writing `Model.create` here and
+    // in the other two venues is three writes to one slot. See VenueClass.js.
+    var Model = VenueClass(Parse.Object.extend("Vampire", instance_methods), instance_methods);
 
     Model.get_character = function(id, categories, character_cache) {
         if (_.isUndefined(character_cache)) {
@@ -277,7 +304,13 @@ define([
             var q = new Parse.Query(Model);
             //q.equalTo("owner", Parse.User.current());
             q.include("portrait");
-            q.include("owner");
+            // NO include("owner"). Including it made parse-server DELETE the
+            // pointer for a private owner, and Character#get_me_acl reads a
+            // missing owner as "no owner" and grants the CURRENT user read and
+            // write instead -- so opening someone else's sheet rewrote its ACL
+            // to the viewer. Without the include the bare pointer survives,
+            // get_me_acl takes its correct branch, and nothing on the sheet
+            // needs the owner's NAME, so no hydrate is required here.
             q.include("wta_backgrounds");
             q.include("extra_affinity_links");
             return q.get(id).then(function(m) {

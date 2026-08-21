@@ -14,15 +14,15 @@ require([
 
         Parse.initialize("APPLICATION_ID", "yymp8UWnJ7Va32Y2Q4uzvWxfPTYuDvZSA8kdhmdR");
         Parse.serverURL = siteconfig.serverURL;
-        
-        hello.init({
-            facebook : siteconfig.facebookAppId,
-        },{
-            scope : 'email',
-            redirect_uri: siteconfig.redirect_uri
-        });
 
-        Parse.FacebookUtils.init(hello);
+        // Facebook login is removed, not migrated -- the owner's explicit call.
+        //
+        // This used to run hello.init() and Parse.FacebookUtils.init(hello)
+        // here. Under parse@8 that throws "The Facebook JavaScript SDK must be
+        // loaded before calling init" during bootstrap, which aborts the whole
+        // require() callback: the router is never constructed and every route
+        // 404s. It was already half-removed on greensboro, where the buttons
+        // are hidden (2143924), so nothing user-facing depends on it.
 
         // Instantiates a new Backbone.js Mobile Router
         this.router = new Mobile();

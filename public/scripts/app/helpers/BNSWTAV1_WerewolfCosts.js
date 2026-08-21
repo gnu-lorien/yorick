@@ -6,9 +6,39 @@ define([
     "../models/Description"
 ], function( _, Parse, Backbone, Description ) {
 
+    // The highest level any trait can reach - `max_trait_value` in the
+    // venue models. Cost tables must cover every level a slider can select.
+    var MAX_TRAIT_LEVEL = 20;
+
     var Descriptions = Backbone.Collection.extend( {
         model: Description
     } );
+
+    // Categories that genuinely cost nothing: focus tracks, expended pools,
+    // skill/background specializations, and the link categories that only
+    // record affinities. Listing them explicitly is what lets an *unlisted*
+    // category be treated as a missing rule rather than as free - see the
+    // bottom of `calculate_trait_cost` and `Character.update_trait`.
+    var FREE_CATEGORIES = [
+        "focus_physicals",
+        "focus_mentals",
+        "focus_socials",
+        "health_levels",
+        "willpower_sources",
+        "wta_gnosis_sources",
+        "lore_specializations",
+        "academics_specializations",
+        "drive_specializations",
+        "linguistics_specializations",
+        "extra_affinity_links",
+        "wta_territory_specializations",
+        "contacts_specializations",
+        "allies_specializations",
+        "influence_elite_specializations",
+        "influence_underworld_specializations",
+        "wta_monikers",
+        "wta_totem_bonus_traits"
+    ];
 
     var Costs = Parse.Object.extend("WerewolfCosts", {
         initialize: function() {
@@ -56,13 +86,29 @@ define([
             return combined.length != 0;
         },
 
+        /**
+         * A cumulative cost table, one entry per trait level.
+         *
+         * This used to be `_.range(1, 10)` - nine entries - while
+         * `max_trait_value` lets a trait reach 20. Because `_.take` past the
+         * end of an array silently returns the whole array,
+         * `get_cost_on_table` charged levels 10-20 exactly what level 9 cost,
+         * and the plateau looked like a deliberate cap rather than an
+         * off-by-eleven.
+         */
         get_cost_table: function(cost_per_entry) {
-            return _.map(_.range(1, 10), function(i) {
+            return _.map(_.range(1, MAX_TRAIT_LEVEL + 1), function(i) {
                 return i * cost_per_entry;
             });
         },
 
         get_cost_on_table: function(ct, value) {
+            if (value > ct.length) {
+                // Never under-charge in silence. `_.take` would return the
+                // whole table and read as a correct total; an unusable
+                // number is refused out loud by Character.update_trait.
+                return undefined;
+            }
             return _.chain(ct).take(value).sum().value();
         },
 
@@ -115,8 +161,19 @@ define([
                 return self.get_trait_cost_on_table(self.get_cost_table(2), trait);
             }
 
+            // Rites are the Werewolf analogue of the Vampire's Rituals, which
+            // this codebase prices at 2 experience per level
+            // (BNSMETV1_VampireCosts, "rituals"), and the model already files
+            // them under the same print section as Backgrounds. Before this
+            // branch existed the cost resolved to `undefined` and
+            // `Character.update_trait`'s `_.isFinite` guard zeroed it, so
+            // every Rite was silently free.
+            if ("wta_rites" == category) {
+                return mod_value * 2;
+            }
+
             var rank = character.rank();
-    
+
             if ("skills" == category) {
                 var skill_ct;
                 if (rank >= 3) {
@@ -126,6 +183,16 @@ define([
                 }
                 return self.get_trait_cost_on_table(skill_ct, trait);
             }
+
+            if (_.contains(FREE_CATEGORIES, category)) {
+                return 0;
+            }
+
+            // Deliberately `undefined`, not 0: there is no rule for this
+            // category, which is a different thing from a rule that says
+            // "free". `Character.update_trait` turns this into a visible
+            // refusal rather than a silent giveaway.
+            return undefined;
         }
     });
 

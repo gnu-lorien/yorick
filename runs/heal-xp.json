@@ -1,0 +1,1323 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "e2e/xp-history.spec.js"
+    ],
+    "configFile": "C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\playwright.config.js",
+    "rootDir": "C:/prj/yorick/.claude/worktrees/bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": true,
+    "fullyParallel": false,
+    "globalSetup": "C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\e2e\\global-setup.js",
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/prj/yorick/.claude/worktrees/bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV/test-results",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "admin",
+        "name": "admin",
+        "testDir": "C:/prj/yorick/.claude/worktrees/bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "/admin-patronage\\.spec\\.js/",
+          "/admin-rules\\.spec\\.js/",
+          "/admin-referendums\\.spec\\.js/",
+          "/access-control\\.spec\\.js/"
+        ],
+        "timeout": 120000
+      },
+      {
+        "outputDir": "C:/prj/yorick/.claude/worktrees/bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV/test-results",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/prj/yorick/.claude/worktrees/bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV/e2e",
+        "testIgnore": [
+          "/admin-patronage\\.spec\\.js/",
+          "/admin-rules\\.spec\\.js/",
+          "/admin-referendums\\.spec\\.js/",
+          "/access-control\\.spec\\.js/"
+        ],
+        "testMatch": [
+          "/.*\\.spec\\.js/"
+        ],
+        "timeout": 120000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "html",
+        {
+          "open": "never",
+          "outputFolder": "playwright-report"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": "runs/heal-xp.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.62.1",
+    "workers": 8,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "xp-history.spec.js",
+      "file": "xp-history.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Task 4 - XP History",
+          "file": "xp-history.spec.js",
+          "line": 381,
+          "column": 6,
+          "specs": [
+            {
+              "title": "54 The character has exactly four XP notations with four distinct dates and reasons",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 0,
+                      "error": {
+                        "message": "TimeoutError: locator.click: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.ui-popup-container.ui-popup-active:visible #popupEditReason').last().locator('button[type=\"submit\"]').last()\u001b[22m\n\u001b[2m    - locator resolved to <button type=\"submit\" class=\"ui-btn ui-btn-b ui-icon-check ui-btn-icon-left ui-shadow ui-corner-all\">↵                    Update Reason↵              …</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is not stable\u001b[22m\n\u001b[2m  - retrying click action\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is not visible\u001b[22m\n\u001b[2m  - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is not visible\u001b[22m\n\u001b[2m  2 × retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m      - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not stable\u001b[22m\n\u001b[2m  37 × retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\u001b[2m       - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not visible\u001b[22m\n\u001b[2m  - retrying click action\u001b[22m\n\u001b[2m    - waiting 500ms\u001b[22m\n",
+                        "stack": "TimeoutError: locator.click: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.ui-popup-container.ui-popup-active:visible #popupEditReason').last().locator('button[type=\"submit\"]').last()\u001b[22m\n\u001b[2m    - locator resolved to <button type=\"submit\" class=\"ui-btn ui-btn-b ui-icon-check ui-btn-icon-left ui-shadow ui-corner-all\">↵                    Update Reason↵              …</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is not stable\u001b[22m\n\u001b[2m  - retrying click action\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is not visible\u001b[22m\n\u001b[2m  - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is not visible\u001b[22m\n\u001b[2m  2 × retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m      - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not stable\u001b[22m\n\u001b[2m  37 × retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\u001b[2m       - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not visible\u001b[22m\n\u001b[2m  - retrying click action\u001b[22m\n\u001b[2m    - waiting 500ms\u001b[22m\n\n    at submitActivePopup (C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\e2e\\helpers\\jqm-helpers.js:292:16)\n    at editNotationField (C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\e2e\\helpers\\xp.js:151:3)\n    at seedNotations (C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\e2e\\helpers\\xp.js:218:5)\n    at C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\e2e\\xp-history.spec.js:465:5",
+                        "location": {
+                          "file": "C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\e2e\\helpers\\jqm-helpers.js",
+                          "column": 16,
+                          "line": 292
+                        },
+                        "snippet": "\u001b[90m   at \u001b[39mhelpers\\jqm-helpers.js:292\n\n\u001b[0m \u001b[90m 290 |\u001b[39m   \u001b[36mconst\u001b[39m submit \u001b[33m=\u001b[39m popup\u001b[33m.\u001b[39mlocator(\u001b[32m'button[type=\"submit\"]'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 291 |\u001b[39m   \u001b[36mconst\u001b[39m target \u001b[33m=\u001b[39m (\u001b[36mawait\u001b[39m submit\u001b[33m.\u001b[39mcount()) \u001b[33m>\u001b[39m \u001b[35m0\u001b[39m \u001b[33m?\u001b[39m submit\u001b[33m.\u001b[39mlast() \u001b[33m:\u001b[39m popup\u001b[33m.\u001b[39mlocator(\u001b[32m'button'\u001b[39m)\u001b[33m.\u001b[39mlast()\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 292 |\u001b[39m   \u001b[36mawait\u001b[39m target\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 293 |\u001b[39m }\n \u001b[90m 294 |\u001b[39m\n \u001b[90m 295 |\u001b[39m \u001b[90m/**\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\e2e\\helpers\\jqm-helpers.js",
+                            "column": 16,
+                            "line": 292
+                          },
+                          "message": "TimeoutError: locator.click: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.ui-popup-container.ui-popup-active:visible #popupEditReason').last().locator('button[type=\"submit\"]').last()\u001b[22m\n\u001b[2m    - locator resolved to <button type=\"submit\" class=\"ui-btn ui-btn-b ui-icon-check ui-btn-icon-left ui-shadow ui-corner-all\">↵                    Update Reason↵              …</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is not stable\u001b[22m\n\u001b[2m  - retrying click action\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is not visible\u001b[22m\n\u001b[2m  - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is not visible\u001b[22m\n\u001b[2m  2 × retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m      - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not stable\u001b[22m\n\u001b[2m  37 × retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\u001b[2m       - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not visible\u001b[22m\n\u001b[2m  - retrying click action\u001b[22m\n\u001b[2m    - waiting 500ms\u001b[22m\n\n\n   at helpers\\jqm-helpers.js:292\n\n  290 |   const submit = popup.locator('button[type=\"submit\"]');\n  291 |   const target = (await submit.count()) > 0 ? submit.last() : popup.locator('button').last();\n> 292 |   await target.click();\n      |                ^\n  293 | }\n  294 |\n  295 | /**\n    at submitActivePopup (C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\e2e\\helpers\\jqm-helpers.js:292:16)\n    at editNotationField (C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\e2e\\helpers\\xp.js:151:3)\n    at seedNotations (C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\e2e\\helpers\\xp.js:218:5)\n    at C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\e2e\\xp-history.spec.js:465:5"
+                        }
+                      ],
+                      "stdout": [
+                        {
+                          "text": "[e2e xp-history] self-heal swept: {\"characters\":0,\"children\":0,\"errors\":[]}\n"
+                        },
+                        {
+                          "text": "[e2e xp-history] baseline Vampire row counts: {\"allCharacters\":0,\"fixtureCharacters\":0}\n"
+                        },
+                        {
+                          "text": "[e2e xp-history] destroyed in teardown: {\"characters\":1,\"children\":8,\"errors\":[],\"historyRowsLeft\":14}\n"
+                        },
+                        {
+                          "text": "[e2e xp-history] final Vampire row counts (should equal baseline {\"allCharacters\":0,\"fixtureCharacters\":0}): {\"allCharacters\":0,\"fixtureCharacters\":0}\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:07:26.951Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\test-results\\xp-history-Task-4---XP-His-e48e9--distinct-dates-and-reasons-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\test-results\\xp-history-Task-4---XP-His-e48e9--distinct-dates-and-reasons-chromium\\error-context.md"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\test-results\\xp-history-Task-4---XP-His-e48e9--distinct-dates-and-reasons-chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\test-results\\xp-history-Task-4---XP-His-e48e9--distinct-dates-and-reasons-chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\e2e\\helpers\\jqm-helpers.js",
+                        "column": 16,
+                        "line": 292
+                      }
+                    },
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 0,
+                      "error": {
+                        "message": "TimeoutError: locator.click: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.ui-popup-container.ui-popup-active:visible #popupEditReason').last().locator('button[type=\"submit\"]').last()\u001b[22m\n\u001b[2m    - locator resolved to <button type=\"submit\" class=\"ui-btn ui-btn-b ui-icon-check ui-btn-icon-left ui-shadow ui-corner-all\">↵                    Update Reason↵              …</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is not stable\u001b[22m\n\u001b[2m  - retrying click action\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is not visible\u001b[22m\n\u001b[2m  - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is not visible\u001b[22m\n\u001b[2m  2 × retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m      - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not stable\u001b[22m\n\u001b[2m  37 × retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\u001b[2m       - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not visible\u001b[22m\n\u001b[2m  - retrying click action\u001b[22m\n\u001b[2m    - waiting 500ms\u001b[22m\n",
+                        "stack": "TimeoutError: locator.click: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.ui-popup-container.ui-popup-active:visible #popupEditReason').last().locator('button[type=\"submit\"]').last()\u001b[22m\n\u001b[2m    - locator resolved to <button type=\"submit\" class=\"ui-btn ui-btn-b ui-icon-check ui-btn-icon-left ui-shadow ui-corner-all\">↵                    Update Reason↵              …</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is not stable\u001b[22m\n\u001b[2m  - retrying click action\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is not visible\u001b[22m\n\u001b[2m  - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is not visible\u001b[22m\n\u001b[2m  2 × retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m      - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not stable\u001b[22m\n\u001b[2m  37 × retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\u001b[2m       - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not visible\u001b[22m\n\u001b[2m  - retrying click action\u001b[22m\n\u001b[2m    - waiting 500ms\u001b[22m\n\n    at submitActivePopup (C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\e2e\\helpers\\jqm-helpers.js:292:16)\n    at editNotationField (C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\e2e\\helpers\\xp.js:151:3)\n    at seedNotations (C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\e2e\\helpers\\xp.js:218:5)\n    at C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\e2e\\xp-history.spec.js:465:5",
+                        "location": {
+                          "file": "C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\e2e\\helpers\\jqm-helpers.js",
+                          "column": 16,
+                          "line": 292
+                        },
+                        "snippet": "\u001b[90m   at \u001b[39mhelpers\\jqm-helpers.js:292\n\n\u001b[0m \u001b[90m 290 |\u001b[39m   \u001b[36mconst\u001b[39m submit \u001b[33m=\u001b[39m popup\u001b[33m.\u001b[39mlocator(\u001b[32m'button[type=\"submit\"]'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 291 |\u001b[39m   \u001b[36mconst\u001b[39m target \u001b[33m=\u001b[39m (\u001b[36mawait\u001b[39m submit\u001b[33m.\u001b[39mcount()) \u001b[33m>\u001b[39m \u001b[35m0\u001b[39m \u001b[33m?\u001b[39m submit\u001b[33m.\u001b[39mlast() \u001b[33m:\u001b[39m popup\u001b[33m.\u001b[39mlocator(\u001b[32m'button'\u001b[39m)\u001b[33m.\u001b[39mlast()\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 292 |\u001b[39m   \u001b[36mawait\u001b[39m target\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 293 |\u001b[39m }\n \u001b[90m 294 |\u001b[39m\n \u001b[90m 295 |\u001b[39m \u001b[90m/**\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\e2e\\helpers\\jqm-helpers.js",
+                            "column": 16,
+                            "line": 292
+                          },
+                          "message": "TimeoutError: locator.click: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.ui-popup-container.ui-popup-active:visible #popupEditReason').last().locator('button[type=\"submit\"]').last()\u001b[22m\n\u001b[2m    - locator resolved to <button type=\"submit\" class=\"ui-btn ui-btn-b ui-icon-check ui-btn-icon-left ui-shadow ui-corner-all\">↵                    Update Reason↵              …</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is not stable\u001b[22m\n\u001b[2m  - retrying click action\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is not visible\u001b[22m\n\u001b[2m  - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is not visible\u001b[22m\n\u001b[2m  2 × retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m      - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not stable\u001b[22m\n\u001b[2m  37 × retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\u001b[2m       - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not visible\u001b[22m\n\u001b[2m  - retrying click action\u001b[22m\n\u001b[2m    - waiting 500ms\u001b[22m\n\n\n   at helpers\\jqm-helpers.js:292\n\n  290 |   const submit = popup.locator('button[type=\"submit\"]');\n  291 |   const target = (await submit.count()) > 0 ? submit.last() : popup.locator('button').last();\n> 292 |   await target.click();\n      |                ^\n  293 | }\n  294 |\n  295 | /**\n    at submitActivePopup (C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\e2e\\helpers\\jqm-helpers.js:292:16)\n    at editNotationField (C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\e2e\\helpers\\xp.js:151:3)\n    at seedNotations (C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\e2e\\helpers\\xp.js:218:5)\n    at C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\e2e\\xp-history.spec.js:465:5"
+                        }
+                      ],
+                      "stdout": [
+                        {
+                          "text": "[e2e xp-history] self-heal swept: {\"characters\":0,\"children\":0,\"errors\":[]}\n"
+                        },
+                        {
+                          "text": "[e2e xp-history] baseline Vampire row counts: {\"allCharacters\":0,\"fixtureCharacters\":0}\n"
+                        },
+                        {
+                          "text": "[e2e xp-history] destroyed in teardown: {\"characters\":1,\"children\":8,\"errors\":[],\"historyRowsLeft\":14}\n"
+                        },
+                        {
+                          "text": "[e2e xp-history] final Vampire row counts (should equal baseline {\"allCharacters\":0,\"fixtureCharacters\":0}): {\"allCharacters\":0,\"fixtureCharacters\":0}\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-08-20T01:07:52.894Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\test-results\\xp-history-Task-4---XP-His-e48e9--distinct-dates-and-reasons-chromium-retry1\\test-failed-1.png"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\test-results\\xp-history-Task-4---XP-His-e48e9--distinct-dates-and-reasons-chromium-retry1\\error-context.md"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\test-results\\xp-history-Task-4---XP-His-e48e9--distinct-dates-and-reasons-chromium-retry1\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\test-results\\xp-history-Task-4---XP-His-e48e9--distinct-dates-and-reasons-chromium-retry1\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\prj\\yorick\\.claude\\worktrees\\bridge-cse_01KkdkFXDZi8Xq9zuYYqZdgV\\e2e\\helpers\\jqm-helpers.js",
+                        "column": 16,
+                        "line": 292
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-26f294c15826f4fac965",
+              "file": "xp-history.spec.js",
+              "line": 522,
+              "column": 3
+            },
+            {
+              "title": "55 The experience page renders exactly four rows with Date, Reason, Earned, Spent and Available columns",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:07:52.617Z",
+                      "annotations": [],
+                      "attachments": []
+                    },
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-08-20T01:08:18.541Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-63ff9cd3784b760bc7e9",
+              "file": "xp-history.spec.js",
+              "line": 547,
+              "column": 3
+            },
+            {
+              "title": "56 The header totals equal the column sums of the four rows",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:07:52.617Z",
+                      "annotations": [],
+                      "attachments": []
+                    },
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-08-20T01:08:18.541Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-1a5b67c1c4cf090c1a87",
+              "file": "xp-history.spec.js",
+              "line": 588,
+              "column": 3
+            },
+            {
+              "title": "57 The per-row running Available equals cumulative earned-minus-spent at every one of the four rows",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:07:52.617Z",
+                      "annotations": [],
+                      "attachments": []
+                    },
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-08-20T01:08:18.541Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-bd95b83e69edaa774736",
+              "file": "xp-history.spec.js",
+              "line": 607,
+              "column": 3
+            },
+            {
+              "title": "58 Add a fifth notation; the table shows five rows and the totals update by the added amounts",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:07:52.618Z",
+                      "annotations": [],
+                      "attachments": []
+                    },
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-08-20T01:08:18.541Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-61bbba32bb9d7dd936f7",
+              "file": "xp-history.spec.js",
+              "line": 640,
+              "column": 3
+            },
+            {
+              "title": "59 Edit the Reason on row 2; the new reason persists in the table after a reload",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:07:52.618Z",
+                      "annotations": [],
+                      "attachments": []
+                    },
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-08-20T01:08:18.541Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-e321fa902749ca69b4c2",
+              "file": "xp-history.spec.js",
+              "line": 677,
+              "column": 3
+            },
+            {
+              "title": "60 Edit the Date on row 3; the row re-sorts to the correct chronological position",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:07:52.618Z",
+                      "annotations": [],
+                      "attachments": []
+                    },
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-08-20T01:08:18.541Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-8ef48b48169b7fef9f1d",
+              "file": "xp-history.spec.js",
+              "line": 701,
+              "column": 3
+            },
+            {
+              "title": "60b Re-dating a notation forwards must not double-count it (defect found while implementing 60)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:07:52.618Z",
+                      "annotations": [],
+                      "attachments": []
+                    },
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-08-20T01:08:18.542Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-bc1497a5ced76f218c6b",
+              "file": "xp-history.spec.js",
+              "line": 751,
+              "column": 3
+            },
+            {
+              "title": "61 Edit Earned on row 2 upward by 20; Available increases by exactly 20 and Earned by exactly 20",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:07:52.618Z",
+                      "annotations": [],
+                      "attachments": []
+                    },
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-08-20T01:08:18.542Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-ef1c692ed99c0c0cea7b",
+              "file": "xp-history.spec.js",
+              "line": 806,
+              "column": 3
+            },
+            {
+              "title": "62 Edit Earned on row 2 downward by 15; Available decreases by exactly 15",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:07:52.618Z",
+                      "annotations": [],
+                      "attachments": []
+                    },
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-08-20T01:08:18.542Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-241ce370a365a47a993c",
+              "file": "xp-history.spec.js",
+              "line": 834,
+              "column": 3
+            },
+            {
+              "title": "63 Set Earned on row 2 to 0; Available decreases by exactly that row's prior earned value",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:07:52.618Z",
+                      "annotations": [],
+                      "attachments": []
+                    },
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-08-20T01:08:18.542Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-28f2969a1e15fb91f453",
+              "file": "xp-history.spec.js",
+              "line": 855,
+              "column": 3
+            },
+            {
+              "title": "64 Edit Spent on row 3 upward by 10; Available decreases by exactly 10 and Spent increases by exactly 10",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:07:52.618Z",
+                      "annotations": [],
+                      "attachments": []
+                    },
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-08-20T01:08:18.542Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-a2a8b46f45171222b728",
+              "file": "xp-history.spec.js",
+              "line": 876,
+              "column": 3
+            },
+            {
+              "title": "65 Reset Spent on row 3 to 0; Available returns to exactly its pre-edit balance",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:07:52.618Z",
+                      "annotations": [],
+                      "attachments": []
+                    },
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-08-20T01:08:18.542Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-c5c20e51964261e9ce55",
+              "file": "xp-history.spec.js",
+              "line": 897,
+              "column": 3
+            },
+            {
+              "title": "66 Edit both Earned and Spent on the same row; Available reflects the net of both deltas",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:07:52.618Z",
+                      "annotations": [],
+                      "attachments": []
+                    },
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-08-20T01:08:18.542Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-f8deb7c1a055357384cb",
+              "file": "xp-history.spec.js",
+              "line": 929,
+              "column": 3
+            },
+            {
+              "title": "67 Set Spent higher than the running Available; the negative balance is displayed rather than clamped",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:07:52.618Z",
+                      "annotations": [],
+                      "attachments": []
+                    },
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-08-20T01:08:18.542Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-e6bef7dc400516b41319",
+              "file": "xp-history.spec.js",
+              "line": 959,
+              "column": 3
+            },
+            {
+              "title": "68 Insert a backdated notation; it lands first and every subsequent row's Available re-propagates",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:07:52.618Z",
+                      "annotations": [],
+                      "attachments": []
+                    },
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-08-20T01:08:18.542Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-a3dab397121f7f094e3a",
+              "file": "xp-history.spec.js",
+              "line": 1000,
+              "column": 3
+            },
+            {
+              "title": "69 Delete a middle notation; the remaining rows re-propagate their running Available correctly",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:07:52.618Z",
+                      "annotations": [],
+                      "attachments": []
+                    },
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-08-20T01:08:18.542Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-4a814cbbcc4d8c53f806",
+              "file": "xp-history.spec.js",
+              "line": 1049,
+              "column": 3
+            },
+            {
+              "title": "70 Delete the top-most notation; the totals recalculate correctly",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:07:52.618Z",
+                      "annotations": [],
+                      "attachments": []
+                    },
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-08-20T01:08:18.542Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-668406aa8f1e84f1c9ff",
+              "file": "xp-history.spec.js",
+              "line": 1096,
+              "column": 3
+            },
+            {
+              "title": "71 Four rapid sequential additions produce the correct aggregate totals with no lost updates",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:07:52.618Z",
+                      "annotations": [],
+                      "attachments": []
+                    },
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-08-20T01:08:18.542Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-c853ae5ab836d7e36b27",
+              "file": "xp-history.spec.js",
+              "line": 1127,
+              "column": 3
+            },
+            {
+              "title": "72 The sheet header Available XP matches the XP page Available after all the above edits",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:07:52.618Z",
+                      "annotations": [],
+                      "attachments": []
+                    },
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-08-20T01:08:18.542Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-567313daa030331f1a5c",
+              "file": "xp-history.spec.js",
+              "line": 1182,
+              "column": 3
+            },
+            {
+              "title": "73 The costs view reconciles: total trait cost equals the Spent total from the history",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:07:52.618Z",
+                      "annotations": [],
+                      "attachments": []
+                    },
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-08-20T01:08:18.542Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-446b4bdfcf4967ff6610",
+              "file": "xp-history.spec.js",
+              "line": 1205,
+              "column": 3
+            },
+            {
+              "title": "74 With more than ten entries, /experience/0/10 and /experience/10/10 paginate with no duplicates",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:07:52.618Z",
+                      "annotations": [],
+                      "attachments": []
+                    },
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-08-20T01:08:18.542Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-490ab41bb891a9f649f8",
+              "file": "xp-history.spec.js",
+              "line": 1251,
+              "column": 3
+            },
+            {
+              "title": "75 Every XP notation add, edit and delete produces a corresponding entry in the character log",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-08-20T01:07:52.618Z",
+                      "annotations": [],
+                      "attachments": []
+                    },
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-08-20T01:08:18.542Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "01f77fcea32317d56ef4-e6fbc774a0c38b922f3e",
+              "file": "xp-history.spec.js",
+              "line": 1305,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-08-20T01:07:11.211Z",
+    "duration": 68298.93500000001,
+    "expected": 0,
+    "skipped": 22,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}

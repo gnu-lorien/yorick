@@ -1,7 +1,7 @@
 // including plugins
 var gulp = require('gulp'),
     htmlmin = require("gulp-htmlmin"),
-    minifyCss = require("gulp-minify-css"),
+    cleanCss = require("gulp-clean-css"),
     uglify = require("gulp-uglify"),
     replace = require("gulp-replace"),
     clean = require("gulp-clean"),
@@ -39,17 +39,37 @@ gulp.task('copy-create-templates', function () {
         .pipe(gulp.dest('dist/scripts/app/templates/create'));
 })
 
+// gulp-clean-css, not gulp-minify-css. The latter pins clean-css 3.x, which
+// calls util.isRegExp -- deprecated as DEP0055 and removed in node 23. The
+// engines field permits node 24, so on a supported node the old plugin threw
+// "TypeError: util.isRegExp is not a function" here and aborted the series at
+// the seventh task of twelve. That is why the uglify defect below went
+// unmeasured for so long: no build ever ran far enough to reach it.
 gulp.task('minify-css', function () {
     return gulp.src('./public/**/*.css') // path to your files
-        .pipe(minifyCss())
+        .pipe(cleanCss())
         .pipe(gulp.dest('dist'));
 });
 
+// The Parse SDK 8 bundle is excluded here and shipped by 'copy-parse-sdk'
+// instead. gulp-uglify 1.5.4 pins an ES5-only uglify-js, and the bundle uses
+// arrow functions; uglify throws a SyntaxError on it, and that throw rejects
+// the stream and aborts the whole gulp.series. Drop the exclusion and every
+// build target dies here, before it ever reaches its siteconfig task.
 gulp.task('minify-js', function () {
-    return gulp.src(['./public/**/*.js', '!./public/scripts/app/siteconfig.js', '!./public/**/*.min.js']) // path to your files
+    return gulp.src(['./public/**/*.js', '!./public/scripts/app/siteconfig.js', '!./public/**/*.min.js', '!./public/scripts/lib/parse-8.6.0.js']) // path to your files
         .pipe(debug({title: 'minifying:'}))
         .pipe(uglify({outSourceMap: true}))
         .pipe(gulp.dest('dist'));
+});
+
+// Ships, unminified, the one file 'minify-js' cannot process. Without this the
+// dist has no Parse SDK at all, the "parse-sdk" requirejs path (see app.js)
+// resolves to nothing, and the built app never boots. Keep this task in every
+// composite that runs 'minify-js'.
+gulp.task('copy-parse-sdk', function () {
+    return gulp.src('./public/scripts/lib/parse-8.6.0.js')
+        .pipe(gulp.dest('dist/scripts/lib'));
 });
 
 gulp.task('images', function () {
@@ -78,6 +98,13 @@ gulp.task('siteconfig-heroku', function () {
         .pipe(gulp.dest('dist/scripts/app'));
 });
 
+gulp.task('siteconfig-greensboro', function () {
+    return gulp.src('./public/scripts/app/siteconfig.js')
+        .pipe(replace('return ConfigGnuLorienDev;', 'return ConfigGreensboro;'))
+        .pipe(uglify({outSourceMap: true}))
+        .pipe(gulp.dest('dist/scripts/app'));
+});
+
 gulp.task('appbust', function () {
     return gulp.src('./public/scripts/app.js')
         .pipe(replace('bust=010101', 'bust=' + pjson.version))
@@ -93,8 +120,10 @@ gulp.task('indexbust', function () {
         .pipe(gulp.dest('dist'));
 })
 
-gulp.task('pubstorm', gulp.series('clean', 'minify-html', 'copy-print-templates', 'copy-referendum-templates', 'copy-html-templates', 'copy-create-templates', 'minify-css', 'images', 'minify-js', 'siteconfig-pubstorm', 'appbust', 'indexbust'));
+gulp.task('pubstorm', gulp.series('clean', 'minify-html', 'copy-print-templates', 'copy-referendum-templates', 'copy-html-templates', 'copy-create-templates', 'minify-css', 'images', 'minify-js', 'copy-parse-sdk', 'siteconfig-pubstorm', 'appbust', 'indexbust'));
 
-gulp.task('patron', gulp.series('clean', 'minify-html', 'copy-print-templates', 'copy-referendum-templates', 'copy-html-templates', 'copy-create-templates', 'minify-css', 'images', 'minify-js', 'siteconfig-patron', 'appbust', 'indexbust'));
+gulp.task('patron', gulp.series('clean', 'minify-html', 'copy-print-templates', 'copy-referendum-templates', 'copy-html-templates', 'copy-create-templates', 'minify-css', 'images', 'minify-js', 'copy-parse-sdk', 'siteconfig-patron', 'appbust', 'indexbust'));
 
-gulp.task('heroku', gulp.series('clean', 'minify-html', 'copy-print-templates', 'copy-referendum-templates', 'copy-html-templates', 'copy-create-templates', 'minify-css', 'images', 'minify-js', 'siteconfig-heroku', 'appbust', 'indexbust'));
+gulp.task('heroku', gulp.series('clean', 'minify-html', 'copy-print-templates', 'copy-referendum-templates', 'copy-html-templates', 'copy-create-templates', 'minify-css', 'images', 'minify-js', 'copy-parse-sdk', 'siteconfig-heroku', 'appbust', 'indexbust'));
+
+gulp.task('greensboro', gulp.series('clean', 'minify-html', 'copy-print-templates', 'copy-referendum-templates', 'copy-html-templates', 'copy-create-templates', 'minify-css', 'images', 'minify-js', 'copy-parse-sdk', 'siteconfig-greensboro', 'appbust', 'indexbust'));

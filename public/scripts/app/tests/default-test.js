@@ -37,13 +37,23 @@ define([
         Parse.serverURL = siteconfig.serverURL;
     }
     
+    // Each venue spells its background category differently, and the
+    // parameterised describes below buy backgrounds. Using the Vampire
+    // spelling for a Werewolf is not a near-miss: the venue cost engines
+    // return a cost only for a category they have a rule for, and
+    // `Character.update_trait` refuses outright when the cost is not finite
+    // ("No experience cost rule for category ..."). That refusal is correct
+    // behaviour -- it is the guard that stopped `wta_rites` being silently
+    // free -- so the spec, not the application, was wrong.
     var character_types = [
         {
             name: "Vampire",
-            template: Vampire
+            template: Vampire,
+            background_category: "backgrounds"
         },{
             name: "Werewolf",
-            template: Werewolf
+            template: Werewolf,
+            background_category: "wta_backgrounds"
         }
     ];
 
@@ -54,26 +64,50 @@ define([
     });
     var ParseStart = function() {
         ParseInit();
-        if (!_.eq(Parse.User.current().get("username"), "devuser")) {
+        var current = Parse.User.current();
+        if (!current || !_.eq(current.get("username"), "devuser")) {
             return Parse.User.logIn("devuser", "thedumbness");
         }
-        return Parse.Promise.as(Parse.User.current());
+        return Parse.Promise.as(current);
     };
 
     var MemberParseStart = function () {
         ParseInit();
-        if (!_.eq(Parse.User.current().get("username"), "sampmem")) {
+        var current = Parse.User.current();
+        if (!current || !_.eq(current.get("username"), "sampmem")) {
             return Parse.User.logIn("sampmem", "sampmem");
         }
-        return Parse.Promise.as(Parse.User.current());
+        return Parse.Promise.as(current);
     };
 
     var ASTParseStart = function () {
         ParseInit();
-        if (!_.eq(Parse.User.current().get("username"), "sampast")) {
+        var current = Parse.User.current();
+        if (!current || !_.eq(current.get("username"), "sampast")) {
             return Parse.User.logIn("sampast", "sampast");
         }
-        return Parse.Promise.as(Parse.User.current());
+        return Parse.Promise.as(current);
+    };
+
+    // Somebody with no relationship to the character or its troupe.
+    //
+    // The "doesn't show her vampire to everybody" specs below used to use
+    // devuser for this, and devuser is an ADMINISTRATOR (seed_db.js:44,
+    // `admin: true`). Every character is created with
+    // `acl.setRoleReadAccess("Administrator", true)` (Vampire.js), so devuser
+    // reading another player's character is the system working exactly as
+    // designed -- an admin who could not would be the bug. The specs were
+    // asserting the opposite and failing for it.
+    //
+    // sampstranger is seeded `admin: false, storyteller: false` and is what the
+    // Playwright suite uses for the same purpose.
+    var StrangerParseStart = function () {
+        ParseInit();
+        var current = Parse.User.current();
+        if (!current || !_.eq(current.get("username"), "sampstranger")) {
+            return Parse.User.logIn("sampstranger", "sampstranger");
+        }
+        return Parse.Promise.as(current);
     };
 
     describe("Parse", function() {
@@ -125,18 +159,18 @@ define([
             it("show up in the history", function (done) {
                 vampire.get_recorded_changes().done(function (changes) {
                     expect(changes.models.length).toBe(expected_change_length);
-                    return vampire.update_trait("Haven", 1, "backgrounds", 0, true)
+                    return vampire.update_trait("Haven", 1, character_type.background_category, 0, true)
                 }).done(function (trait) {
                     expected_change_length++;
                     return vampire.get_recorded_changes();
                 }).done(function(changes) {
                     expect(changes.models.length).toBe(expected_change_length);
-                    return vampire.update_trait("Haven", 1, "backgrounds", 0, true);
+                    return vampire.update_trait("Haven", 1, character_type.background_category, 0, true);
                 }).done(function(trait) {
                     return vampire.get_recorded_changes();
                 }).done(function(changes) {
                     expect(changes.models.length).toBe(expected_change_length);
-                    return vampire.update_trait("Haven", 2, "backgrounds", 0, true);
+                    return vampire.update_trait("Haven", 2, character_type.background_category, 0, true);
                 }).done(function(trait) {
                     expected_change_length++;
                     return vampire.get_recorded_changes();
@@ -154,7 +188,7 @@ define([
                 var first_trait_id = undefined;
                 var second_trait_id = undefined;
                 var third_trait_id = undefined;
-                vampire.update_trait("Retainers", 1, "backgrounds", 0, true).done(function (trait) {
+                vampire.update_trait("Retainers", 1, character_type.background_category, 0, true).done(function (trait) {
                     expected_change_length++;
                     trait.set("name", "Retainers: Specialized Now");
                     return vampire.update_trait(trait);
@@ -170,18 +204,18 @@ define([
                     return vampire.update_trait(trait);
                 }).done(function(){
                     expected_change_length++;
-                    return vampire.update_trait("Retainers: Specialized Now", 2, "backgrounds", 0);
+                    return vampire.update_trait("Retainers: Specialized Now", 2, character_type.background_category, 0);
                 }).done(function(trait){
                     second_trait_id = trait.id;
                     expected_change_length++;
-                    return vampire.update_trait("Retainers", 3, "backgrounds", 0);
+                    return vampire.update_trait("Retainers", 3, character_type.background_category, 0);
                 }).done(function(trait){
                     third_trait_id = trait.id;
                     expected_change_length++;
-                    return vampire.update_trait("Retainers: Specialized Now", 4, "backgrounds", 0);
+                    return vampire.update_trait("Retainers: Specialized Now", 4, character_type.background_category, 0);
                 }).done(function(){
                     expected_change_length++;
-                    return vampire.update_trait("Retainers", 4, "backgrounds", 0, true);
+                    return vampire.update_trait("Retainers", 4, character_type.background_category, 0, true);
                 }).done(function(){
                     expected_change_length++;
                     return vampire.get_recorded_changes();
@@ -262,9 +296,9 @@ define([
     
             it("can't be renamed to collide", function (done) {
                 var classic_trait, not_classic_trait;
-                vampire.update_trait("Retainers: Classic", 1, "backgrounds", 0, true).done(function (trait) {
+                vampire.update_trait("Retainers: Classic", 1, character_type.background_category, 0, true).done(function (trait) {
                     classic_trait = trait;
-                    return vampire.update_trait("Retainers: Not Classic", 2, "backgrounds", 0, true);
+                    return vampire.update_trait("Retainers: Not Classic", 2, character_type.background_category, 0, true);
                 }).done(function(trait) {
                     not_classic_trait = trait;
                     not_classic_trait.set("name", "Retainers: Classic");
@@ -287,14 +321,14 @@ define([
                 };
     
                 // Remove the thing
-                vampire.get_trait_by_name("backgrounds", "Haven").then(function (st) {
+                vampire.get_trait_by_name(character_type.background_category, "Haven").then(function (st) {
                     return vampire.remove_trait(st).then(function () {
                         SimpleTrait.prototype.destroy = old_destroy;
                         done.fail("Successfully removed a trait while destroy was broken");
                     }, function (error) {
                         SimpleTrait.prototype.destroy = old_destroy;
                         // Make sure we didn't remove the thing
-                        vampire.get_trait_by_name("backgrounds", "Haven").then(function (fa) {
+                        vampire.get_trait_by_name(character_type.background_category, "Haven").then(function (fa) {
                             expect(fa.get("value")).toBe(2);
                             expect(fa.get("free_value")).toBe(0);
                             done();
@@ -306,12 +340,12 @@ define([
             });
             
             it("can be removed", function (done) {
-                vampire.get_trait_by_name("backgrounds", "Haven").then(function (st) {
+                vampire.get_trait_by_name(character_type.background_category, "Haven").then(function (st) {
                     expect(st).toBeDefined();
                     expect(st.id).toBeDefined();
                     return vampire.remove_trait(st);
                 }).then(function () {
-                    return vampire.get_trait_by_name("backgrounds", "Haven");
+                    return vampire.get_trait_by_name(character_type.background_category, "Haven");
                 }).then(function (fa) {
                     expect(fa).toBeUndefined();
                     done();
@@ -1020,8 +1054,8 @@ define([
                 })
             });
     
-            it("doesn't show her vampire to everybody", function (done) {
-                ParseStart().then(function () {
+            it("doesn't show her vampire to a stranger", function (done) {
+                StrangerParseStart().then(function () {
                     return character_type.template.get_character(vampire.id);
                 }).then(function (v) {
                     done.fail("Fetched the vampire as devuser");
@@ -1063,8 +1097,8 @@ define([
                 })
             });
     
-            it("still doesn't show her vampire to everybody", function (done) {
-                ParseStart().then(function () {
+            it("still doesn't show her vampire to a stranger", function (done) {
+                StrangerParseStart().then(function () {
                     return character_type.template.get_character(vampire.id);
                 }).then(function (v) {
                     done.fail("Fetched the vampire as devuser");

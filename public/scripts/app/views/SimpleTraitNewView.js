@@ -245,11 +245,27 @@ define([
                 cost = valueField;
             }
             
+            // `|| 0`, because this picker has no pool: `register` is called as
+            // `register(c, category)` from the `/new` route, so `self.free_value`
+            // is undefined here and always was.
+            //
+            // It used not to matter. Parse 1.5's constructor did
+            // `this.set(attributes, {silent: true})` (parse-1.5.0.js:4526) and
+            // `_validate` opened with `if (options.silent || !this.validate)
+            // return true` (:5917) -- so construction never validated, and an
+            // undefined `free_value` landed as an attribute nothing reads
+            // (`b.get('free_value') || 0` in the redirect below).
+            //
+            // parse@8's constructor validates, and `SimpleTraitMixin.validate`
+            // rejects a `free_value` that is present and not finite. The throw
+            // is swallowed and rethrown as "Can't create an invalid Parse
+            // Object" from inside a jQuery click handler, so the hash was never
+            // assigned and the app sat on whatever page it was already showing.
             var trait = new SimpleTrait({
                 name: $(e.target).attr("name"),
                 value: cost,
                 category: self.category,
-                free_value: self.free_value
+                free_value: self.free_value || 0
             });
 
             if (_.contains(self.requireSpecializations, trait.get("name"))) {

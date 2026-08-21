@@ -3,8 +3,9 @@ define([
     "jquery",
     "backbone",
     "text!../templates/choose-user.html",
-    "parse"
-], function( $, Backbone, choose_user_html, Parse) {
+    "parse",
+    "../helpers/UserWreqr"
+], function( $, Backbone, choose_user_html, Parse, UserChannel) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
@@ -18,14 +19,24 @@ define([
             var self = this;
             self.click_template = _.template(click_template);
             self.collection = [];
-            var q = new Parse.Query("User");
-            q.select("id", "username", "realname", "email");
-            q.each(function (t) {
-                self.collection.push(t);
-            }).then(function () {
+            // This was a SECOND independent _User sweep, separate from the one
+            // in collections/Users.js and subject to the same decay. It now
+            // shares the registry, so there is one directory and one policy.
+            return UserChannel.get_users().then(function (users) {
+                self.collection = users.models;
                 self.render();
+                if ("all" !== users.scope) {
+                    // Was `console.log("No users? " + error.message)`: a refusal
+                    // that rendered an empty picker and told the user nothing.
+                    // A short list has to explain itself or it reads as a bug.
+                    self.$el.find("div[role='main']").prepend(
+                        "<p class='message'>Only storytellers and administrators " +
+                        "can browse the full member list.</p>");
+                }
             }, function (error) {
-                console.log("No users? " + error.message);
+                self.$el.find("div[role='main']").prepend(
+                    "<p class='message'>The member list could not be loaded: " +
+                    _.escape(error.message) + "</p>");
             })
         },
 

@@ -1,0 +1,249 @@
+{
+ "config": {
+  "version": "1.62.1",
+  "rootDir": "/repo/e2e",
+  "workers": 8,
+  "projects": [
+   {
+    "name": "chromium"
+   }
+  ],
+  "metadata": {
+   "actualWorkers": 8
+  }
+ },
+ "suites": [
+  {
+   "title": "serial.spec.js",
+   "file": "serial.spec.js",
+   "line": 0,
+   "column": 0,
+   "specs": [],
+   "suites": [
+    {
+     "title": "Serial group",
+     "file": "serial.spec.js",
+     "line": 5,
+     "column": 1,
+     "specs": [
+      {
+       "title": "1 opens the page",
+       "ok": false,
+       "tags": [],
+       "tests": [
+        {
+         "timeout": 120000,
+         "annotations": [],
+         "expectedStatus": "passed",
+         "projectId": "chromium",
+         "projectName": "chromium",
+         "results": [
+          {
+           "workerIndex": 0,
+           "status": "failed",
+           "duration": 800,
+           "error": {
+            "message": "Error: something unrelated broke first",
+            "stack": "Error: something unrelated broke first"
+           },
+           "errors": [
+            {
+             "message": "Error: something unrelated broke first",
+             "stack": "Error: something unrelated broke first"
+            }
+           ],
+           "errorLocation": {
+            "file": "e2e/serial.spec.js",
+            "line": 12,
+            "column": 3
+           },
+           "stdout": [],
+           "stderr": [],
+           "retry": 0,
+           "startTime": "2026-08-19T04:20:10.000Z",
+           "attachments": []
+          }
+         ],
+         "status": "unexpected"
+        }
+       ],
+       "id": "id-0",
+       "file": "serial.spec.js",
+       "line": 10,
+       "column": 3
+      },
+      {
+       "title": "2 the noisy one",
+       "ok": true,
+       "tags": [],
+       "tests": [
+        {
+         "timeout": 120000,
+         "annotations": [],
+         "expectedStatus": "passed",
+         "projectId": "chromium",
+         "projectName": "chromium",
+         "results": [
+          {
+           "workerIndex": 0,
+           "status": "skipped",
+           "duration": 0,
+           "errors": [],
+           "stdout": [],
+           "stderr": [],
+           "retry": 0,
+           "startTime": "2026-08-19T04:20:11.000Z",
+           "attachments": []
+          }
+         ],
+         "status": "skipped"
+        }
+       ],
+       "id": "id-1",
+       "file": "serial.spec.js",
+       "line": 11,
+       "column": 3
+      },
+      {
+       "title": "3 uploads a file",
+       "ok": true,
+       "tags": [],
+       "tests": [
+        {
+         "timeout": 120000,
+         "annotations": [],
+         "expectedStatus": "passed",
+         "projectId": "chromium",
+         "projectName": "chromium",
+         "results": [
+          {
+           "workerIndex": 0,
+           "status": "skipped",
+           "duration": 0,
+           "errors": [],
+           "stdout": [],
+           "stderr": [],
+           "retry": 0,
+           "startTime": "2026-08-19T04:20:11.000Z",
+           "attachments": []
+          }
+         ],
+         "status": "skipped"
+        }
+       ],
+       "id": "id-2",
+       "file": "serial.spec.js",
+       "line": 12,
+       "column": 3
+      },
+      {
+       "title": "4 checks the render",
+       "ok": true,
+       "tags": [],
+       "tests": [
+        {
+         "timeout": 120000,
+         "annotations": [],
+         "expectedStatus": "passed",
+         "projectId": "chromium",
+         "projectName": "chromium",
+         "results": [
+          {
+           "workerIndex": 0,
+           "status": "skipped",
+           "duration": 0,
+           "errors": [],
+           "stdout": [],
+           "stderr": [],
+           "retry": 0,
+           "startTime": "2026-08-19T04:20:11.000Z",
+           "attachments": []
+          }
+         ],
+         "status": "skipped"
+        }
+       ],
+       "id": "id-3",
+       "file": "serial.spec.js",
+       "line": 13,
+       "column": 3
+      },
+      {
+       "title": "5 replaces it",
+       "ok": true,
+       "tags": [],
+       "tests": [
+        {
+         "timeout": 120000,
+         "annotations": [],
+         "expectedStatus": "passed",
+         "projectId": "chromium",
+         "projectName": "chromium",
+         "results": [
+          {
+           "workerIndex": 0,
+           "status": "skipped",
+           "duration": 0,
+           "errors": [],
+           "stdout": [],
+           "stderr": [],
+           "retry": 0,
+           "startTime": "2026-08-19T04:20:11.000Z",
+           "attachments": []
+          }
+         ],
+         "status": "skipped"
+        }
+       ],
+       "id": "id-4",
+       "file": "serial.spec.js",
+       "line": 14,
+       "column": 3
+      },
+      {
+       "title": "6 checks it again",
+       "ok": true,
+       "tags": [],
+       "tests": [
+        {
+         "timeout": 120000,
+         "annotations": [],
+         "expectedStatus": "passed",
+         "projectId": "chromium",
+         "projectName": "chromium",
+         "results": [
+          {
+           "workerIndex": 0,
+           "status": "skipped",
+           "duration": 0,
+           "errors": [],
+           "stdout": [],
+           "stderr": [],
+           "retry": 0,
+           "startTime": "2026-08-19T04:20:11.000Z",
+           "attachments": []
+          }
+         ],
+         "status": "skipped"
+        }
+       ],
+       "id": "id-5",
+       "file": "serial.spec.js",
+       "line": 15,
+       "column": 3
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "errors": [],
+ "stats": {
+  "startTime": "2026-08-19T04:20:02.408Z",
+  "duration": 60000,
+  "expected": 0,
+  "skipped": 5,
+  "unexpected": 1,
+  "flaky": 0
+ }
+}

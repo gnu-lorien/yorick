@@ -173,20 +173,20 @@ define([
             self.showChildView('patronage', new PatronagesView({
                 el: "#usp-patronage-list",
                 collection: self.patronages,
-                back_url_base: "#profile/"
+                // R46: this built links to "#profile/<patronageId>", and no
+                // such route exists - the router only defines
+                // "patronage/:id" (`a_patronage`), which is the page these
+                // rows are meant to open. Every row here was a dead link.
+                back_url_base: "#patronage/"
             }), options);
             
             var roles = new Backbone.Collection();
+            // See the note in helpers/RoleWreqr.js: a relation query is a
+            // _User find, which is now closed, and this was an N+1 besides.
             var q = new Parse.Query(Parse.Role);
+            q.equalTo("users", Parse.User.current());
             q.each(function (role) {
-                var users_relation = role.getUsers();
-                var uq = users_relation.query();
-                uq.equalTo("objectId", Parse.User.current().id);
-                return uq.each(function (user) {
-                    roles.add(role);
-                }).fail(function (error) {
-                    console.log("Failed in promise for " + role.get("name"));
-                });
+                roles.add(role);
             }).fail(PromiseFailReport);
             self.showChildView('roles', new RolesView({
                 collection: roles

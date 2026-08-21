@@ -1,0 +1,71 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Playwright: Open Interactive UI Mode",
+            "type": "shell",
+            "command": "npx playwright test --ui",
+            "problemMatcher": [],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "Playwright: Run All E2E Tests",
+            "type": "shell",
+            "command": "npx playwright test",
+            "problemMatcher": [],
+            "group": "test"
+        },
+        {
+            "label": "Playwright: Run Character History & XP Tests",
+            "type": "shell",
+            "command": "npx playwright test e2e/character-history.spec.js",
+            "problemMatcher": [],
+            "group": "test"
+        },
+        {
+            "label": "Playwright: Run Administration Tests",
+            "type": "shell",
+            "command": "npx playwright test e2e/administration.spec.js",
+            "problemMatcher": [],
+            "group": "test"
+        },
+        {
+            "label": "Playwright: Run Troupe Tests",
+            "type": "shell",
+            "command": "npx playwright test e2e/troupes.spec.js",
+            "problemMatcher": [],
+            "group": "test"
+        },
+        {
+            "label": "Playwright: Run Character Sheet Tests",
+            "type": "shell",
+            "command": "npx playwright test e2e/character-sheet.spec.js",
+            "problemMatcher": [],
+            "group": "test"
+        },
+        {
+            "label": "Playwright: Run Auth & Profile Tests",
+            "type": "shell",
+            "command": "npx playwright test e2e/auth-profile.spec.js",
+            "problemMatcher": [],
+            "group": "test"
+        },
+        {
+            "label": "Playwright: Show HTML Report",
+            "type": "shell",
+            "command": "npx playwright show-report",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        }
+    ]
+}

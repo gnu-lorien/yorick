@@ -8,8 +8,9 @@ define([
     "parse",
     "../helpers/Progress",
     "../helpers/PromiseFailReport",
-    "../helpers/DescriptionFetcher"
-], function( $, Backbone, Parse, Progress, PromiseFailReport, DescriptionFetcher ) {
+    "../helpers/DescriptionFetcher",
+    "../helpers/ReportError"
+], function( $, Backbone, Parse, Progress, PromiseFailReport, DescriptionFetcher, ReportError ) {
 
     // Extends Backbone.View
     var View = Backbone.View.extend( {
@@ -99,7 +100,14 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.character.update_text(self.targetValue, $(e.target).attr("name")).done(function(b) {
+                ReportError.clear();
                 window.location.hash = self.redirect;
+            }).fail(function (error) {
+                // A refusal here is a real one - R22's Kith grant runs out of
+                // Art picks, for instance - and used to leave the picker
+                // sitting there with the loader spinning and nothing said.
+                $.mobile.loading("hide");
+                ReportError(error, "Couldn't pick that");
             });
 
             return false;
