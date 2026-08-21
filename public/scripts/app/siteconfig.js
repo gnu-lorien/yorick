@@ -39,7 +39,20 @@ define([
         redirect_uri: "https://sheets.ourislandgeorgia.net/index.html",
         SAMPLE_TROUPE_ID: "mXhRByDNxX"
     };
-    
+
+    // Ported from the greensboro branch, which is what the live deploy builds
+    // from. That branch's own copy of this file predates the fix described
+    // below and says ".../parse" with no version segment, so this value is
+    // deliberately NOT byte-identical to its source -- carried over verbatim it
+    // would 404 every API call against a modern SDK. The port is one-way: never
+    // sync this entry back the other way without the same adjustment.
+    var ConfigGreensboro = {
+        serverURL: "https://greensboro-yorick.herokuapp.com/parse/1",
+        facebookAppId: "202279720650237",
+        redirect_uri: "https://sheets.ourislandgeorgia.net/index.html",
+        SAMPLE_TROUPE_ID: "mXhRByDNxX"
+    };
+
     // The "/1" is not decoration.
     //
     // Parse JS SDK 1.5 hard-coded the API version segment onto whatever
@@ -58,7 +71,8 @@ define([
     //
     // Only the localhost value is overridden below, because the E2E harness
     // serves the app from the same origin as the API -- which is also why no
-    // test in this repo can catch the five deployed values being wrong.
+    // test in this repo can catch any of the deployed values being wrong.
+    // Deliberately not a count -- adding a config would silently falsify one.
     if (typeof window !== 'undefined' && window.location) {
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
             ConfigLocalhost.serverURL = window.location.origin + "/parse/1";
