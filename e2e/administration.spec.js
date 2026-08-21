@@ -40,9 +40,9 @@ test.describe('Administration Interfaces E2E Suite', () => {
   test('User Detail view allows toggling Administrator permission and password reset', async ({ page }) => {
     // Get target user ID dynamically
     const targetUserId = await page.evaluate(async () => {
-      const q = new window.Parse.Query(window.Parse.User);
-      q.equalTo('username', 'sampmem');
-      const u = await q.first();
+      // Via the Cloud function: clients may no longer find or count _User.
+      const payload = await window.Parse.Cloud.run('list_users');
+      const u = (payload.users || []).filter((x) => x.get('username') === 'sampmem')[0];
       return u ? u.id : null;
     });
 

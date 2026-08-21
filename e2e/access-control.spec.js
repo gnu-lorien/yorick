@@ -264,13 +264,13 @@ async function readOwnCharacterIds(page) {
 /** Whether `userId` currently belongs to the named global `Parse.Role`. Assertion-side read-back. */
 async function isUserInRole(page, roleName, userId) {
   return page.evaluate(async ({ roleName, userId }) => {
+    // Ask _Role directly. Walking the role's users relation is a _User find,
+    // which clients may no longer do; _Role is world-readable and answers the
+    // same question about direct membership.
     const q = new window.Parse.Query(window.Parse.Role);
     q.equalTo('name', roleName);
-    const role = await q.first();
-    if (!role) return false;
-    const uq = role.getUsers().query();
-    uq.equalTo('objectId', userId);
-    const found = await uq.first();
+    q.equalTo('users', window.Parse.User.createWithoutData(userId));
+    const found = await q.first();
     return !!found;
   }, { roleName, userId });
 }
@@ -366,7 +366,7 @@ test.describe('Task 13 - Access Control In The UI', () => {
     console.log('[e2e access-control] self-heal swept troupes:', JSON.stringify(sweptTroupes));
 
     state.baseline = {
-      allUsers: (await adminPage.evaluate(() => new window.Parse.Query(window.Parse.User).count())),
+      allUsers: (await adminPage.evaluate(() => window.Parse.Cloud.run('list_users').then((p) => (p.users || []).length))),
       allCharacters: await adminPage.evaluate(() => new window.Parse.Query('Vampire').count()),
       allTroupes: await adminPage.evaluate(() => new window.Parse.Query('Troupe').count()),
       fixtureCharacters: await countCharactersByPrefix(adminPage, FIXTURE_PREFIX),
@@ -375,9 +375,12 @@ test.describe('Task 13 - Access Control In The UI', () => {
     console.log('[e2e access-control] baseline counts:', JSON.stringify(state.baseline));
 
     const resolveUserId = async (username) => adminPage.evaluate(async (u) => {
-      const q = new window.Parse.Query(window.Parse.User);
-      q.equalTo('username', u);
-      const found = await q.first();
+      // Via the Cloud function, not a _User query. Clients may no longer
+      // find or count _User -- see database_seed/_SCHEMA.json -- so resolving a
+      // username in the browser is now the server's job. This runs as the admin
+      // page's session, which the function answers with the whole directory.
+      const payload = await window.Parse.Cloud.run('list_users');
+      const found = (payload.users || []).filter((x) => x.get('username') === u)[0];
       if (!found) throw new Error(`seeded user "${u}" not found`);
       return found.id;
     }, username);
@@ -465,7 +468,7 @@ test.describe('Task 13 - Access Control In The UI', () => {
       console.log('[e2e access-control] destroyed troupes:', JSON.stringify(destroyedTroupes));
 
       const final = {
-        allUsers: await adminPage.evaluate(() => new window.Parse.Query(window.Parse.User).count()).catch(() => -1),
+        allUsers: await adminPage.evaluate(() => window.Parse.Cloud.run('list_users').then((p) => (p.users || []).length)).catch(() => -1),
         allCharacters: await adminPage.evaluate(() => new window.Parse.Query('Vampire').count()).catch(() => -1),
         allTroupes: await adminPage.evaluate(() => new window.Parse.Query('Troupe').count()).catch(() => -1),
         fixtureCharacters: await countCharactersByPrefix(adminPage, FIXTURE_PREFIX).catch(() => -1),

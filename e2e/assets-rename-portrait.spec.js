@@ -300,7 +300,7 @@ test.describe('Task 6 - Rename And Portraits, Verified Everywhere They Appear', 
     state.baseline = {
       allTroupes: await adminPage.evaluate(() => new window.Parse.Query('Troupe').count()),
       allCharacters: await adminPage.evaluate(() => new window.Parse.Query('Vampire').count()),
-      allUsers: await adminPage.evaluate(() => new window.Parse.Query(window.Parse.User).count()),
+      allUsers: await adminPage.evaluate(() => window.Parse.Cloud.run('list_users').then((p) => (p.users || []).length)),
       fixtureTroupes: await countTroupesByPrefix(adminPage, FIXTURE_PREFIX),
       fixtureCharacters: await countCharactersByPrefix(adminPage, FIXTURE_PREFIX)
     };
@@ -405,7 +405,7 @@ test.describe('Task 6 - Rename And Portraits, Verified Everywhere They Appear', 
     const final = {
       allTroupes: await adminPage.evaluate(() => new window.Parse.Query('Troupe').count()).catch(() => -1),
       allCharacters: await adminPage.evaluate(() => new window.Parse.Query('Vampire').count()).catch(() => -1),
-      allUsers: await adminPage.evaluate(() => new window.Parse.Query(window.Parse.User).count()).catch(() => -1),
+      allUsers: await adminPage.evaluate(() => window.Parse.Cloud.run('list_users').then((p) => (p.users || []).length)).catch(() => -1),
       fixtureTroupes: await countTroupesByPrefix(adminPage, FIXTURE_PREFIX).catch(() => -1),
       fixtureCharacters: await countCharactersByPrefix(adminPage, FIXTURE_PREFIX).catch(() => -1)
     };

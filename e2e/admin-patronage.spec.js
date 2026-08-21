@@ -117,9 +117,12 @@ test.describe('Task 1 - Patronage Lifecycle And Patron Status', () => {
     await loginAsStranger(strangerPage);
 
     const resolveUserId = async (username) => adminPage.evaluate(async (u) => {
-      const q = new window.Parse.Query(window.Parse.User);
-      q.equalTo('username', u);
-      const found = await q.first();
+      // Via the Cloud function, not a _User query. Clients may no longer
+      // find or count _User -- see database_seed/_SCHEMA.json -- so resolving a
+      // username in the browser is now the server's job. This runs as the admin
+      // page's session, which the function answers with the whole directory.
+      const payload = await window.Parse.Cloud.run('list_users');
+      const found = (payload.users || []).filter((x) => x.get('username') === u)[0];
       if (!found) throw new Error(`seeded user "${u}" not found`);
       return found.id;
     }, username);
