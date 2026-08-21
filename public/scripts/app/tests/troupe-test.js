@@ -75,20 +75,52 @@ define([
             });
         });
 
+        // These two are the only automated caller of `change_troupe_staff`
+        // anywhere -- the Playwright suite drives the staff-edit form, but
+        // never names the function, and no unit test reaches it. That makes
+        // getting them right worth some care.
+        //
+        // Both used to send `{troupe, user, title, action}`. The Cloud
+        // function reads `{troupe_id, user_to_change_id, roles_to_add,
+        // roles_to_remove}` (cloud/main.js), so every one of those names was
+        // wrong: `troupe_id` arrived undefined and the call died fetching a
+        // troupe with no id, long before it reached the role check. The specs
+        // then asserted `expect(error).toBeDefined()`, which any failure at
+        // all satisfies -- so they would have stayed green if a regular member
+        // COULD promote themselves. That is the failure mode a security test
+        // exists to prevent, and these had it.
         describe("Staff Management Permissions (change_troupe_staff)", function () {
             it("regular member cannot add staff to troupe", function (done) {
+                var memberId;
                 helpers.MemberParseStart().then(function () {
+                    memberId = Parse.User.current().id;
                     return Parse.Cloud.run("change_troupe_staff", {
-                        troupe: SAMPLE_TROUPE_ID,
-                        user: "user_sampmem",
-                        title: "AST",
-                        action: "add"
+                        troupe_id: SAMPLE_TROUPE_ID,
+                        user_to_change_id: memberId,
+                        roles_to_add: ["AST"],
+                        roles_to_remove: []
                     });
                 }).then(function () {
                     done.fail("Regular member was able to promote themselves via change_troupe_staff!");
                 }, function (error) {
                     expect(error).toBeDefined();
-                    done();
+                    // And the refusal has to have actually refused something.
+                    // Reading the staff list back is what makes this test
+                    // about the outcome rather than about the shape of an
+                    // error object -- `get_staff` is the same call the
+                    // "can fetch troupe staff members" spec above asserts on,
+                    // so it is known to work.
+                    return helpers.ParseStart().then(function () {
+                        return sampleTroupe.get_staff();
+                    }).then(function (staff) {
+                        var promoted = _.find(staff, function (u) {
+                            return u.get("username") === "sampmem";
+                        });
+                        expect(promoted).toBeUndefined();
+                        done();
+                    }, function (e) {
+                        done.fail(e);
+                    });
                 });
             });
 
@@ -96,14 +128,22 @@ define([
                 helpers.ParseInit();
                 Parse.User.logOut();
                 Parse.Cloud.run("change_troupe_staff", {
-                    troupe: SAMPLE_TROUPE_ID,
-                    user: "user_sampmem",
-                    title: "LST",
-                    action: "add"
+                    troupe_id: SAMPLE_TROUPE_ID,
+                    user_to_change_id: "user_sampmem",
+                    roles_to_add: ["LST"],
+                    roles_to_remove: []
                 }).then(function () {
                     done.fail("Unauthenticated request succeeded on change_troupe_staff!");
                 }, function (error) {
                     expect(error).toBeDefined();
+                    // The exact refusal, not merely "something went wrong".
+                    // This is the function's first guard
+                    // (`if (_.isUndefined(request.user))` -> `response.error(
+                    // "Cannot change staff without logging in")`), and pinning
+                    // the text is what proves the request was rejected for
+                    // being anonymous rather than for any of the other
+                    // reasons this call can fail.
+                    expect(error.message).toBe("Cannot change staff without logging in");
                     done();
                 });
             });

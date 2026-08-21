@@ -37,13 +37,23 @@ define([
         Parse.serverURL = siteconfig.serverURL;
     }
     
+    // Each venue spells its background category differently, and the
+    // parameterised describes below buy backgrounds. Using the Vampire
+    // spelling for a Werewolf is not a near-miss: the venue cost engines
+    // return a cost only for a category they have a rule for, and
+    // `Character.update_trait` refuses outright when the cost is not finite
+    // ("No experience cost rule for category ..."). That refusal is correct
+    // behaviour -- it is the guard that stopped `wta_rites` being silently
+    // free -- so the spec, not the application, was wrong.
     var character_types = [
         {
             name: "Vampire",
-            template: Vampire
+            template: Vampire,
+            background_category: "backgrounds"
         },{
             name: "Werewolf",
-            template: Werewolf
+            template: Werewolf,
+            background_category: "wta_backgrounds"
         }
     ];
 
