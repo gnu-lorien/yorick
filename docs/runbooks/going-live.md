@@ -131,7 +131,7 @@ nothing to do with the app code:
 |---|---|---|
 | lockfile | **none** | `package-lock.json`, format version **3** |
 | `engines` | `node 14.x` | `node >=20.19` |
-| `.nvmrc` | `14.18.0` | `22` (added now) |
+| `.nvmrc` | `14.18.0` | `24.11.1` (added now) |
 
 Format-3 lockfiles need npm 7 or newer. Node 10 ships npm 6, which cannot read
 one. greensboro gets away with Node 10 only because it has no lockfile at
@@ -142,9 +142,20 @@ were the whole point of that step.
 So: **the migration does not resolve the Node 10 warning. It converts it from a
 warning into a failed build.**
 
-`.nvmrc` pinning `22` is now on this branch, which is the repository's half of
-the fix. 22 is inside the `engines` range, is what CI already tests, and is what
-Netlify's own message asks for.
+`.nvmrc` pinning `24.11.1` is now on this branch: the exact version every
+check in this work was actually run on -- the gulp builds, the server boots, the
+unit suite, the browser verification. It is inside the `engines` range and above
+the 22 Netlify's message asks for.
+
+Worth knowing rather than discovering later: **CI does not test 24.** `.travis.yml`
+runs 20.19 and 22. So the version the build will use is the one this work was
+verified on by hand, and not the one the automated suite covers. Both are inside
+`engines`, so neither is wrong; they are just different, and if you would rather
+they matched, the lever is adding "24" to `.travis.yml` rather than lowering
+this pin.
+
+If Netlify does not offer that exact patch release, `24` on its own gets the
+latest 24.x, which is still inside `engines`.
 
 **Check the Netlify UI as well, because the file may not be the deciding
 factor.** greensboro already carries `.nvmrc` = `14.18.0` and Netlify still
