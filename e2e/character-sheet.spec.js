@@ -11,15 +11,50 @@ test.describe('Core Character Management & Sheet Views E2E Suite', () => {
     const page = await browser.newPage();
     await loginAsAdmin(page);
 
-    // Create a populated test character
+    // Create a populated test character, and give it a trait to edit.
+    //
+    // `create_test_character` is `Vampire.create` (Vampire.js:427-431), which
+    // seeds Humanity, the three health levels and Willpower -- and nothing in
+    // `attributes`. That is not a bug: attributes are chosen in the creation
+    // wizard, which is what `attributes_7_remaining` / `_5_` / `_3_` on
+    // VampireCreation exist to meter, so a character that has never entered
+    // the wizard correctly has none. The trait this file edits therefore has
+    // to be added here.
+    //
+    // It used to not be, and the read below returned null every time, which
+    // the trait-edit test turned into a runtime `test.skip()`. It had never
+    // executed a single assertion on any stack.
+    //
+    // free_value 0 is deliberate. `update_creation_rules_for_changed_trait`
+    // returns early on a falsy free value (Vampire.js:65-70). At free_value >= 1
+    // `attributes` is in its category list, so it instead goes on to fetch and
+    // write creation-pool bookkeeping through `self.get("creation")` -- and a
+    // character straight out of `Vampire.create` has never entered the wizard
+    // and has no creation record for it to write to. free_value 7 would be the
+    // canonical creation pick, but it only makes sense for a character that is
+    // actually in creation, which this one is not.
+    //
+    // The 3 XP this costs (`BNSMETV1_VampireCosts.calculate_trait_cost`:
+    // attributes are `(value - free_value) * 3`) is spent on a throwaway
+    // character, and nothing in this file asserts its XP.
     const charData = await page.evaluate(async () => {
       return new Promise((resolve, reject) => {
         require(['app/models/Vampire'], function (Vampire) {
           Vampire.create_test_character('e2e_sheet_test').then(function (v) {
-            // Find a trait ID to test trait editing
-            const attributes = v.get('attributes') || [];
-            const firstAttr = attributes.length > 0 ? attributes[0].id : null;
-            resolve({ id: v.id, name: v.get('name'), traitId: firstAttr });
+            return v.update_trait('Physical', 1, 'attributes', 0, true).then(function () {
+              // Re-read rather than trusting the in-memory copy: parse-server
+              // omits an array field from the save response when the op did
+              // not change it, and parse@8 then applies the pending AddUnique
+              // to undefined -- see the long note in Character.update_trait.
+              return Vampire.get_character(v.id, ['attributes']);
+            });
+          }).then(function (fresh) {
+            const attributes = fresh.get('attributes') || [];
+            resolve({
+              id: fresh.id,
+              name: fresh.get('name'),
+              traitId: attributes.length > 0 ? attributes[0].id : null
+            });
           }).fail(reject);
         });
       });
@@ -29,6 +64,15 @@ test.describe('Core Character Management & Sheet Views E2E Suite', () => {
     characterName = charData.name;
     traitId = charData.traitId;
     await page.close();
+
+    // Loud, not silent. A missing trait id is a broken fixture, and the whole
+    // point of this change is that it can no longer masquerade as a skip.
+    if (!traitId) {
+      throw new Error(
+        'character-sheet fixture: no attributes trait id after seeding. ' +
+        'The trait-edit test cannot run, and must not quietly skip.'
+      );
+    }
   });
 
   test.beforeEach(async ({ page }) => {
@@ -103,12 +147,11 @@ test.describe('Core Character Management & Sheet Views E2E Suite', () => {
     await expect(catPage.locator(`a[href="#simpletraits/attributes/${characterId}/new"]`)).toBeAttached();
   });
 
+  // The `if (!traitId) test.skip(...)` guard that used to open this test is
+  // gone on purpose. `beforeAll` now guarantees the trait, and throws if it
+  // cannot -- a guard here would let the test go back to silently not running,
+  // which is exactly how it spent its whole life until now.
   test('SimpleTrait Edit View renders trait sliders and save button', async ({ page }) => {
-    if (!traitId) {
-      test.skip('No trait ID available for trait edit test');
-      return;
-    }
-
     await navigateToHash(page, `simpletrait/attributes/${characterId}/${traitId}`, '#simpletrait-change');
 
     const traitPage = page.locator('#simpletrait-change');
@@ -116,6 +159,15 @@ test.describe('Core Character Management & Sheet Views E2E Suite', () => {
     await expect(traitPage.locator('input.value-slider')).toBeAttached();
     await expect(traitPage.locator('button.save')).toBeVisible();
     await expect(traitPage.locator('button.remove')).toBeVisible();
+
+    // Not just "a slider exists": it is bound to THIS trait. The seeded value
+    // is 1, and jQuery Mobile's range enhancement keeps the underlying input
+    // in sync with the handle it draws.
+    await expect(traitPage.locator('input.value-slider')).toHaveValue('1');
+
+    // And the view identifies the trait it is editing, so a page that rendered
+    // the right furniture for the wrong record cannot pass.
+    await expect(traitPage.locator('#simpletrait-viewing')).toContainText('Physical');
   });
 
   test('Character Printable Sheet renders full sheet layout and print options', async ({ page }) => {
