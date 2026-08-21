@@ -28,28 +28,54 @@ section: they are a specification for a feature that was never built.
 
 ---
 
-## Read this before you trust a number here
-
-**The worktree had been testing the wrong software.** A git worktree has no
-`node_modules` of its own, so module resolution walks up to the main checkout's
-— and that checkout sits on a different branch pinning **parse-server 2.8.4 and
-Parse 1.11.1**, not the 9.10.0 / 8.6.0 this branch's lockfile specifies. Every
-suite run here measured the legacy stack while appearing to measure the new one.
-
-The visible symptom was small and easy to dismiss: `npm run test:node` reported
-one FAILING test instead of one skipped, because a test that reads
-parse-server's own source off disk was reading a different parse-server. The
-invisible symptom was everything else.
+## First: install dependencies in this worktree
 
 ```bash
 npm ci
 ```
 
-in the worktree fixes it, and is the first thing to do in any new one. After it,
-`npm run test:node` reports 249/1/0 exactly as recorded. Nothing in the repo
-detects this on its own, which is the uncomfortable part — **a worktree with no
-`node_modules` silently borrows whatever the neighbouring checkout happens to
-have installed.**
+Do this before running anything. It is a setup step, not a diagnosis, and it
+takes about ten seconds.
+
+**Why it is not optional.** `node_modules` is gitignored, and a new git worktree
+does not get one. Node then resolves modules by walking UP the directory tree
+and finds `C:/prj/yorick/node_modules` — which belongs to the main clone, and
+carries whatever branch that clone last had installed. If that is a branch with
+different pins, this worktree silently runs against those packages instead of
+its own.
+
+**This is a property of the directory, never of the branch.** `topic/parse8-migration`
+is on the far side of the Parse 8 / parse-server 9 migration, and its
+`package.json` and `package-lock.json` pin `parse@8.6.0` and
+`parse-server@9.10.0` correctly and always have. Nothing about the branch is
+stale. Only an uninstalled working directory is.
+
+**The symptom, if you skip it.** `npm run test:node` reports one FAILING test
+rather than one skipped:
+
+```
+✖ the replica still matches the installed parse-server
+  Error: ENOENT ... node_modules/parse-server/lib/triggers.js
+```
+
+Read that failure carefully, because it says exactly what went wrong. The test
+skips itself unless the *resolved* parse-server is 2.8.4, and then reads its
+source from a hardcoded repo-relative path,
+`<repo>/node_modules/parse-server/lib/triggers.js`. So a failure means both
+things at once: resolution returned 2.8.4 (or it would have skipped), and there
+is no `node_modules` beside this file (or it would have found it). Together
+those are precisely "the packages came from another directory".
+
+Note the test would still pass at the path it expects if this worktree really
+were on 2.8.4 — it uses `path.join(__dirname, '..')` rather than
+`require.resolve`. That is harmless today, since the version guard makes the
+whole check dead on any modern stack, but it is why the symptom appears as a
+confusing ENOENT rather than as a clear version mismatch.
+
+After `npm ci`, it reports 250 tests / 249 pass / 1 skipped, and that one skip
+is the intended one. Nothing in the repo detects the uninstalled case on its
+own, so the check is: if `test:node` does not look like that, stop and install
+before believing any other number on this page.
 
 ---
 
