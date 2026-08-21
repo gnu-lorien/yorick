@@ -10,9 +10,30 @@
 
 const MongoClient = require('mongodb').MongoClient;
 
+/**
+ * Every expected CLP below states `count` explicitly, mirroring its own `find`.
+ *
+ * That is not decoration. parse-server's MongoSchemaCollection builds a class's
+ * effective permissions as `{...emptyCLPS, ...storedClassPermissions}`, and
+ * emptyCLPS carries a `count` key whose value is an empty object. Absent and
+ * empty are not the same thing downstream: SchemaController.validatePermission
+ * returns early and allows an operation the merged permissions have no key for,
+ * but throws OPERATION_FORBIDDEN when the key is there and matches nobody.
+ * Because the merge always supplies the key, omitting `count` from a stored
+ * object is a refusal rather than a default - which is why a schema written
+ * against a server whose empty-permission template predated the `count` key
+ * stops working the moment it is read by one whose template has it.
+ *
+ * Drop `count` from one of these objects and `--fix` writes a class no client
+ * can count. Nothing in this app pages on a count; every count() it issues is
+ * a privilege check - the staff/admin nav gate, the admin route gate, the
+ * admin user list, the troupe staff editor - so what a refused count takes
+ * down is the administration surface, for administrators included.
+ */
 const EXPECTED_RULE_CLP = {
     get: { "*": true },
     find: { "*": true },
+    count: { "*": true },
     create: { "role:Administrator": true },
     update: { "role:Administrator": true },
     delete: { "role:Administrator": true },
@@ -22,6 +43,7 @@ const EXPECTED_RULE_CLP = {
 const EXPECTED_APPROVAL_CLP = {
     get: { "*": true },
     find: { "*": true },
+    count: { "*": true },
     create: { "role:Administrator": true, "role:AST": true, "role:LST": true },
     update: { "role:Administrator": true, "role:LST": true },
     delete: { "role:Administrator": true, "role:LST": true },
@@ -90,6 +112,72 @@ const EXPECTED_CREATE_CLP = {
  */
 const PUBLIC_CREATE_ALLOWED = ['_User', '_Session'];
 
+/**
+ * Compare two CLP rules for equal meaning rather than equal text.
+ *
+ * `count` and `find` are separate stored objects, so two rules that grant the
+ * same entities can still serialise in a different key order. Comparing them
+ * with JSON.stringify the way the `create` check compares against a single
+ * literal would report those as drift and then "repair" them into an identical
+ * value on every run.
+ */
+function samePermissionRule(a, b) {
+    const aKeys = Object.keys(a || {}).sort();
+    const bKeys = Object.keys(b || {}).sort();
+    if (aKeys.length !== bKeys.length) return false;
+    return aKeys.every((key, i) =>
+        key === bKeys[i] && JSON.stringify(a[key]) === JSON.stringify(b[key]));
+}
+
+/**
+ * Decide whether one stored _SCHEMA document is exposed to the missing-`count`
+ * defect, and what its count rule would have to become.
+ *
+ * Kept free of any database handle so the decision can be exercised without
+ * standing up a mongod; auditDatabase() is where the reporting and the write
+ * live.
+ *
+ * Returns null for a class the defect cannot reach. Otherwise it returns
+ * { className, find, count, hasCount, mirrors }, where `count` is the rule
+ * parse-server will actually enforce - an absent key enforces as empty, not as
+ * absent.
+ */
+function classifyCountRule(schemaDoc) {
+    const metadata = schemaDoc._metadata;
+    // Scope. A document with no class_permissions key never reaches the
+    // emptyCLPS merge at all: mongoSchemaToParseSchema leaves the class on
+    // defaultCLPS, which grants count to everyone. Those classes are not
+    // broken, and writing a stored count onto one would replace a working
+    // public default with a rule that then has to be maintained. Their actual
+    // problem is the fully public create that same default hands out, and the
+    // public-create sweep in auditDatabase() is what reports it.
+    if (!metadata || !metadata.class_permissions) return null;
+
+    const clp = metadata.class_permissions;
+    const find = clp.find || {};
+    const hasCount = Object.prototype.hasOwnProperty.call(clp, 'count');
+    const count = (hasCount && clp.count) || {};
+
+    // `hasCount` records how the document is WRITTEN; `denied` records what
+    // parse-server ENFORCES, and only the second may decide severity. The
+    // merge cannot distinguish an absent key from a stored `{}` or a stored
+    // null - all three arrive as a rule that matches nobody. A stored empty
+    // count beside a granting find is therefore the identical outage, and
+    // grading it as a mere disagreement would exit 0 on a database whose
+    // administration surface is down.
+    const denied = Object.keys(count).length === 0 &&
+        Object.keys(find).length > 0;
+
+    return {
+        className: schemaDoc._id,
+        find: find,
+        count: count,
+        hasCount: hasCount,
+        denied: denied,
+        mirrors: samePermissionRule(count, find)
+    };
+}
+
 async function auditDatabase(mongoUri, fixMode) {
     console.log('='.repeat(70));
     console.log(' YORICK DATABASE PERMISSION & SECURITY AUDITOR');
@@ -145,10 +233,19 @@ async function auditDatabase(mongoUri, fixMode) {
             if (hasPublicCreate || hasPublicUpdate || hasPublicDelete) {
                 report('FAIL', 'CLP Security', `Collection '${colName}' allows public writes (create: ${!!hasPublicCreate}, update: ${!!hasPublicUpdate}, delete: ${!!hasPublicDelete}).`);
                 if (fixMode) {
+                    // Note this replaces the whole class_permissions object
+                    // rather than merging into it, so every key the repaired
+                    // class ends up with is a key EXPECTED_RULE_CLP names.
                     await schemaCollection.updateOne(
                         { _id: colName },
                         { $set: { '_metadata.class_permissions': EXPECTED_RULE_CLP } }
                     );
+                    // `schemas` was read once, before any repair ran, so later
+                    // passes see the pre-repair document unless it is refreshed
+                    // here. Without this the count sweep would mirror a `find`
+                    // this write has already thrown away.
+                    schemaDoc._metadata = schemaDoc._metadata || {};
+                    schemaDoc._metadata.class_permissions = EXPECTED_RULE_CLP;
                     console.log(`        -> [FIXED] Updated CLPs for '${colName}' in _SCHEMA.`);
                 }
             } else {
@@ -181,6 +278,19 @@ async function auditDatabase(mongoUri, fixMode) {
                     { _id: colName },
                     { $set: { '_metadata.class_permissions.create': expected } }
                 );
+                // On a class that had NO class_permissions, that dotted $set
+                // CREATES one - moving the class off parse-server's public
+                // default and onto a stored object whose only key is `create`.
+                // A stored object with no `count` is exactly what the sweep
+                // below exists to catch, so this repair can introduce the very
+                // defect. `schemas` was read once, before any repair ran, so
+                // without this the sweep would still see the pre-repair
+                // document, classify the class as out of scope, and leave it
+                // uncountable.
+                schemaDoc._metadata = schemaDoc._metadata || {};
+                schemaDoc._metadata.class_permissions =
+                    schemaDoc._metadata.class_permissions || {};
+                schemaDoc._metadata.class_permissions.create = expected;
                 console.log(`        -> [FIXED] Set create permission for '${colName}' in _SCHEMA.`);
             }
         }
@@ -207,6 +317,57 @@ async function auditDatabase(mongoUri, fixMode) {
                 report('FAIL', 'CLP Security',
                     `Collection '${colName}' allows create by anyone ("*").`);
             }
+        }
+
+        // ORDERING: this sweep must stay after the sensitive-rule-collection
+        // loop above, because that loop's `--fix` replaces the whole
+        // class_permissions object. Run the two the other way round and the
+        // replacement drops the count rule this sweep has just written, so a
+        // single `--fix` run would leave those classes uncountable and report
+        // that it had fixed them.
+        //
+        // The defect: parse-server merges `{...emptyCLPS, ...stored}`, and
+        // emptyCLPS supplies `count: {}`. A stored class_permissions object
+        // that omits `count` therefore enforces an empty count rule, which
+        // validatePermission treats as a rule nobody satisfies rather than as
+        // no rule at all - so every count query on that class is refused. The
+        // counts this app issues are privilege checks rather than paging, so
+        // what goes down is the administration surface, administrators
+        // included.
+        let countFindings = 0;
+        for (const schemaDoc of schemas) {
+            const countRule = classifyCountRule(schemaDoc);
+            if (!countRule || countRule.mirrors) continue;
+            countFindings++;
+
+            if (countRule.denied) {
+                report('FAIL', 'CLP Availability',
+                    `Collection '${countRule.className}' enforces an empty 'count' rule (${countRule.hasCount ? 'stored empty' : 'key absent'}), so nobody may count it even though find grants ${JSON.stringify(countRule.find)}. ` +
+                    `A database seeded before the schema started stating count keeps the omission until it is repaired here.`);
+                if (fixMode) {
+                    // Each class gets its OWN find, read from the document in
+                    // hand. A shared table or the seed's value would be a guess:
+                    // production's find rules have drifted from the seed's, and
+                    // widening count past find would hand out a row count for
+                    // rows the same client is not allowed to read.
+                    await schemaCollection.updateOne(
+                        { _id: countRule.className },
+                        { $set: { '_metadata.class_permissions.count': countRule.find } }
+                    );
+                    console.log(`        -> [FIXED] Set count permission for '${countRule.className}' in _SCHEMA to mirror its own find.`);
+                }
+            } else {
+                // A stored count that merely disagrees with find is somebody's
+                // decision, not the emptyCLPS regression, so it is reported and
+                // left alone - overwriting it would silently widen or narrow a
+                // deliberate rule.
+                report('WARN', 'CLP Availability',
+                    `Collection '${countRule.className}' counts as ${JSON.stringify(countRule.count)} but finds as ${JSON.stringify(countRule.find)}. ` +
+                    `That is a stored rule rather than the missing-count defect, so --fix leaves it for a human.`);
+            }
+        }
+        if (countFindings === 0) {
+            report('PASS', 'CLP Availability', `Every class with stored class_permissions mirrors its find rule into count.`);
         }
 
         // Check VampireApproval CLP & Trigger Architecture
@@ -326,5 +487,8 @@ if (require.main === module) {
 }
 
 module.exports = {
-    auditDatabase
+    auditDatabase,
+    // Exported so the count decision can be exercised without a database.
+    classifyCountRule,
+    samePermissionRule
 };
