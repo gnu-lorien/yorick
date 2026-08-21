@@ -1262,10 +1262,15 @@ define([
             var q = new Parse.Query(Vampire);
             q.equalTo("troupes", troupe);
             q.include("portrait");
-            q.include("owner");
+            // NO include("owner"). parse-server deletes an unreadable pointer
+            // only when it was asked to EXPAND it, so including `owner` made a
+            // private owner's character arrive with the key missing entirely --
+            // and the `has("owner")` test below reads a missing owner as
+            // ARCHIVED, so the character silently vanished from this roster.
+            // Without the include the raw pointer survives and the test means
+            // what it says again.
             p = q.each(function (character) {
                 var shouldinclude = true;
-                console.log(JSON.stringify(options));
                 if (!options.includedeleted) {
                     if (!character.has("owner")) {
                         shouldinclude = false;
@@ -1274,6 +1279,10 @@ define([
                 if (shouldinclude) {
                     c.push(character);
                 }
+            }).then(function () {
+                // Hydrate BEFORE reset: `_finishFetch` fires no Backbone change
+                // event, so names filled in afterwards would never render.
+                return UserChannel.hydrate(c, "owner");
             }).then(function () {
                 self.troupeCharacters.collection.reset(c);
             })
@@ -1293,7 +1302,11 @@ define([
             var q = new Parse.Query(Werewolf);
             q.equalTo("troupes", troupe);
             q.include("portrait");
-            q.include("owner");
+            // NO include("owner"). parse-server deletes an unreadable pointer
+            // only when it was asked to EXPAND it, so including `owner` made a
+            // private owner's character arrive with the key missing outright.
+            // Without the include the raw pointer survives; UserChannel.hydrate
+            // below fills in the display fields, in place, before the reset.
             q.equalTo("type", "Werewolf");
             _.each(Werewolf.all_simpletrait_categories(), function (e) {
                 q.include(e[0]);
@@ -1308,7 +1321,6 @@ define([
             var vq = new Parse.Query(Vampire);
             vq.equalTo("troupes", troupe);
             vq.include("portrait");
-            vq.include("owner");
             vq.notEqualTo("type", "Werewolf");
             _.each(Vampire.all_simpletrait_categories(), function (e) {
                 vq.include(e[0]);
@@ -1319,6 +1331,10 @@ define([
                     c.push(character);
                     return character.get_long_text("extended_print_text");
                 });
+            });
+
+            p = p.then(function () {
+                return UserChannel.hydrate(c, "owner");
             });
 
             p = p.then(function () {
@@ -1342,7 +1358,11 @@ define([
             var q = new Parse.Query(Werewolf);
             q.exists("owner");
             q.include("portrait");
-            q.include("owner");
+            // NO include("owner"). parse-server deletes an unreadable pointer
+            // only when it was asked to EXPAND it, so including `owner` made a
+            // private owner's character arrive with the key missing outright.
+            // Without the include the raw pointer survives; UserChannel.hydrate
+            // below fills in the display fields, in place, before the reset.
             q.equalTo("type", "Werewolf");
             p = q.each(function (character) {
                 c.push(character);
@@ -1351,12 +1371,15 @@ define([
             var vq = new Parse.Query(Vampire);
             vq.exists("owner");
             vq.include("portrait");
-            vq.include("owner");
             vq.notEqualTo("type", "Werewolf");
             p = p.then(function () {
                 return vq.each(function (character) {
                     c.push(character);
                 });
+            });
+
+            p = p.then(function () {
+                return UserChannel.hydrate(c, "owner");
             });
 
             p = p.then(function () {
@@ -1379,7 +1402,11 @@ define([
             //q.equalTo("owner", Parse.User.current());
             q.exists("owner");
             q.include("portrait");
-            q.include("owner");
+            // NO include("owner"). parse-server deletes an unreadable pointer
+            // only when it was asked to EXPAND it, so including `owner` made a
+            // private owner's character arrive with the key missing outright.
+            // Without the include the raw pointer survives; UserChannel.hydrate
+            // below fills in the display fields, in place, before the reset.
             _.each(Vampire.all_simpletrait_categories(), function (e) {
                 q.include(e[0]);
             });
@@ -1388,6 +1415,8 @@ define([
             });
             p = q.each(function (character) {
                 c.push(character);
+            }).then(function () {
+                return UserChannel.hydrate(c, "owner");
             }).then(function () {
                 self.characters.collection.reset(c);
             })

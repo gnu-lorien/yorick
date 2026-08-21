@@ -304,7 +304,13 @@ define([
             var q = new Parse.Query(Model);
             //q.equalTo("owner", Parse.User.current());
             q.include("portrait");
-            q.include("owner");
+            // NO include("owner"). Including it made parse-server DELETE the
+            // pointer for a private owner, and Character#get_me_acl reads a
+            // missing owner as "no owner" and grants the CURRENT user read and
+            // write instead -- so opening someone else's sheet rewrote its ACL
+            // to the viewer. Without the include the bare pointer survives,
+            // get_me_acl takes its correct branch, and nothing on the sheet
+            // needs the owner's NAME, so no hydrate is required here.
             q.include("wta_backgrounds");
             q.include("extra_affinity_links");
             return q.get(id).then(function(m) {
