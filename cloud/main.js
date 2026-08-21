@@ -1104,6 +1104,375 @@ var require_administrator = function (request) {
         });
 };
 
+// ---------------------------------------------------------------------------
+// S11. The `_User` reads the browser is no longer allowed to make.
+//
+// parse-server 9.10.0 defaults `enforcePrivateUsers` true. On a `_User` CREATE
+// with no ACL supplied, `ACL['*'] = {read:true}` is written only when the flag
+// is OFF; `ACL[objectId] = {read:true,write:true}` is written unconditionally
+// after it. Existing rows are never rewritten, so the app degrades one signup
+// at a time. The browser has no master key, so every read of somebody else's
+// row moves here.
+//
+// Measured against a private fixture row (seed_db.js `sampprivate`): reading it
+// as an ADMINISTRATOR returns {"code":101,"error":"Object not found."}. A real
+// signup grants only the row's own id, so nothing about being an admin exempts
+// a browser-side read. That is the fact every clause below is built on.
+//
+// ARITY. Arity-2 `(request, response)` to match the other ten definitions in
+// this file. parse-server's arity-2 arm sends NOTHING if a body neither settles
+// `response` nor returns a value -- the hang recorded at :823-834 -- so every
+// body below ends in a two-armed `.then(ok, err)` whose `ok` arm does nothing
+// but call response.success.
+//
+// `require_administrator` above is deliberately NOT refactored: it answers a
+// narrower question and two shipped functions depend on it. `caller_scope` is
+// the single role reader for the new code.
+// ---------------------------------------------------------------------------
+
+/**
+ * Everything about a `_User` that is allowed to leave this server.
+ *
+ * `massmailauthorization` and `acceptedtos` are here because forms/UserForm.js
+ * renders both as checkboxes on `#administration/user/:id`, and
+ * character-summarize-list-item-csv.html prints the first. Dropping them would
+ * blank two admin surfaces silently.
+ */
+var IDENTITY_FIELDS = ["username", "realname", "massmailauthorization", "acceptedtos"];
+
+/**
+ * Whether `email` may be returned. TRUE, by owner decision, 2026-08-20.
+ *
+ * Read this before changing it, because the default is not the safe-looking
+ * one. parse-server already withholds `email` from every non-owner read
+ * (`protectedFields` defaults to {_User: {'*': ['email']}} and is computed only
+ * for non-master callers), so no browser caller can see another user's address
+ * today -- which views/AdministrationUserView.js and the R51 note below both
+ * record discovering the hard way. A master-key read bypasses that filter, so
+ * setting this true is an EXPANSION of exposure relative to current behaviour,
+ * not a restoration of something that recently worked.
+ *
+ * It was chosen deliberately: the admin patronage list, the patronage CSV, the
+ * ballot dump and the character-summarize CSVs all carry a
+ * `massmailauthorization` column, so those exports are mailed from, and an
+ * export whose address column is blank is quietly useless.
+ *
+ * NOTE THE INTERACTION, because no single decision contains it: the directory
+ * clause below admits any troupe-role holder, so with this true a Narrator can
+ * read every member's address. If that is too wide, the narrower fix is to keep
+ * this true and drop `email` from the `list_users` sweep only -- entitled
+ * per-record lookups keep it, bulk enumeration does not.
+ */
+var IDENTITY_INCLUDES_EMAIL = true;
+
+/** Nobody may ask about more accounts than this in one call. */
+var MAX_IDENTITY_IDS = 200;
+
+/** The projection actually sent to Mongo. Defence in depth with identity_of. */
+var identity_select = function () {
+    return IDENTITY_INCLUDES_EMAIL ? IDENTITY_FIELDS.concat(["email"]) : IDENTITY_FIELDS;
+};
+
+/**
+ * The ONLY user-shaped value this file returns.
+ *
+ * Built field by field from an allowlist rather than filtered out of a fetched
+ * row, and the distinction is the whole point: a master-key read bypasses
+ * `protectedFields` AND the authData strip (filterSensitiveData returns early
+ * for master, BEFORE `delete object.authData`), and helpers/FacebookLogin.js
+ * shows that field carries a live access token. `request.user` is worse still --
+ * its server data holds the caller's SESSION TOKEN. Constructing the result
+ * means no field escapes by accident, only by someone editing IDENTITY_FIELDS.
+ *
+ * `Parse.Object.fromJSON`, never `new Parse.User(...)` + `.set(...)`: the
+ * result must be CLEAN. fromJSON yields `dirty() === false` and a populated
+ * server data bag; a single `.set()` afterwards flips the encoded form to a
+ * bare attribute-less Pointer, because the encoder tests `value.dirty()`. The
+ * browser would render that as blanks, with no error anywhere. That is also why
+ * `extra` is smuggled into the JSON rather than set on the object, and why
+ * cloud/Troupe.js#get_staff -- which does `user.set("role", title)` -- must NOT
+ * be lifted for this.
+ */
+var identity_of = function (user, extra) {
+    var json = {className: "_User", objectId: user.id};
+    _.each(identity_select(), function (field) {
+        var value = user.get(field);
+        if (!_.isUndefined(value) && !_.isNull(value)) {
+            json[field] = value;
+        }
+    });
+    _.each(extra || {}, function (value, key) {
+        json[key] = value;
+    });
+    return Parse.Object.fromJSON(json);
+};
+
+/** Master-keyed projection read of the named ids, chunked past the page size. */
+var read_identities = function (ids) {
+    var wanted = _.compact(_.uniq(ids));
+    if (0 === wanted.length) {
+        return Promise.resolve([]);
+    }
+    return Promise.all(_.map(_.chunk(wanted, 100), function (chunk) {
+        var q = new Parse.Query(Parse.User);
+        q.containedIn("objectId", chunk);
+        q.select(identity_select());
+        q.limit(chunk.length);   // without this, find() caps at 100
+        return q.find({useMasterKey: true});
+    })).then(function (batches) {
+        return _.map(_.flatten(batches), function (u) { return identity_of(u); });
+    });
+};
+
+/**
+ * What the caller is. Decided here, never from anything the browser sent.
+ *
+ * `admininterface` / `storytellerinterface` are UI caches the BROWSER writes
+ * onto the user's own row, and `_User` grants `update` to '*', so a player can
+ * set either on themselves. Nothing here reads them.
+ *
+ * `is_staff` is "holds any troupe role", by owner decision 2026-08-20 -- the
+ * account directory stays open to every storyteller rather than narrowing to
+ * lead storytellers, so no existing user loses a capability they have today.
+ *
+ * Match the PREFIXED roles only, never the bare generic "LST" / "AST" /
+ * "Narrator": change_troupe_staff also adds users to the troupe's generic
+ * roles, so every current AND FORMER storyteller org-wide holds the bare names.
+ * Matching those would hand the directory to people who have not staffed a
+ * troupe in years.
+ *
+ * DIRECT membership only -- `equalTo("users", u)` does not expand the role
+ * graph. `Administrator` is a member ROLE of every prefixed troupe role, so
+ * an administrator never appears here as a storyteller and every clause must
+ * short-circuit on is_admin first, the same ordering :924-941 already uses.
+ */
+var caller_scope = function (request) {
+    if (request.master) {
+        return Promise.resolve({id: null, is_admin: true, is_staff: true});
+    }
+    if (!request.user) {
+        return Promise.reject("Unauthorized: Must be logged in.");
+    }
+    var q = new Parse.Query(Parse.Role);
+    q.equalTo("users", request.user);
+    q.limit(1000);
+    return q.find({useMasterKey: true}).then(function (roles) {
+        var names = _.map(roles, function (r) { return r.get("name"); });
+        return {
+            id: request.user.id,
+            is_admin: _.some(names, function (n) {
+                return "Administrator" === n || "SiteAdministrator" === n;
+            }),
+            is_staff: _.some(names, function (n) {
+                return _.startsWith(n, "LST_") ||
+                       _.startsWith(n, "AST_") ||
+                       _.startsWith(n, "Narrator_");
+            })
+        };
+    });
+};
+
+/**
+ * Options that make a Cloud query run with EXACTLY the caller's read
+ * permissions -- ACLs, role-graph expansion and all.
+ *
+ * The auth user carries its session token, and a query carrying one is
+ * authenticated as that user. Note the failure mode is SAFE: a query with no
+ * options bag authenticates as NOBODY, so a forgotten bag returns nothing
+ * rather than everything.
+ */
+var as_caller = function (request) {
+    var token = request.user && request.user.getSessionToken();
+    if (!token) {
+        return Promise.reject("Unauthorized: No session on this request.");
+    }
+    return Promise.resolve({sessionToken: token});
+};
+
+/**
+ * Which of `ids` this caller may be told about.
+ *
+ * The character arm is the interesting one: the entitlement to see who owns a
+ * character IS the entitlement to read the character, so this re-runs the
+ * character query AS THE CALLER rather than recomputing roles. It cannot
+ * over-return (a character the caller cannot read is simply absent), it cannot
+ * drift from models/Character.js#get_me_acl because it IS that ACL, and it gets
+ * role-graph expansion for free. "Vampire" covers all three venues: Werewolf
+ * and ChangelingBetaSlice both register className "Vampire" on purpose.
+ */
+var allowed_identity_ids = function (request, scope, ids) {
+    var allowed = {};
+    if (scope.is_admin || scope.is_staff) {
+        _.each(ids, function (id) { allowed[id] = true; });
+        return Promise.resolve(allowed);
+    }
+    if (scope.id) { allowed[scope.id] = true; }
+    var others = _.without(ids, scope.id);
+    if (0 === others.length) {
+        return Promise.resolve(allowed);
+    }
+    return as_caller(request).then(function (options) {
+        var q = new Parse.Query("Vampire");
+        q.containedIn("owner", _.map(others, function (id) {
+            return new Parse.User({id: id});
+        }));
+        q.select("owner");
+        // `each`, not find+limit: find() truncates silently at its limit, and a
+        // silently short answer here renders as "(unknown)", i.e. a lie.
+        return q.each(function (character) {
+            var owner = character.get("owner");
+            if (owner && owner.id) { allowed[owner.id] = true; }
+        }, options);
+    }).then(function () {
+        return allowed;
+    });
+};
+
+/**
+ * The account directory. Replaces collections/Users.js's sweep AND the second,
+ * independent sweep in views/UsersView.js.
+ *
+ * params:  {}
+ * returns: { scope: "all" | "self", users: [Parse.User] }
+ * errors:  "Unauthorized: Must be logged in."
+ *
+ * `scope` is returned so the browser can SAY why a list is short instead of
+ * rendering a mysteriously empty picker, and so the deployed policy is visible
+ * in devtools. The "self" tier is not a rejection on purpose: #profile and
+ * #patronage/:id are login-only routes that legitimately need the caller's own
+ * row, and it reproduces exactly the filter helpers/UserWreqr.js already
+ * applies in the browser -- moved to where it can actually withhold anything.
+ */
+Parse.Cloud.define("list_users", function (request, response) {
+    var scope;
+    caller_scope(request).then(function (s) {
+        scope = s;
+        if (!scope.is_admin && !scope.is_staff) {
+            return read_identities([scope.id]);
+        }
+        var rows = [];
+        var q = new Parse.Query(Parse.User);
+        q.select(identity_select());
+        // `each` pages server-side and cannot truncate. `find` would cap at 100
+        // and silently lose most of the production accounts.
+        return q.each(function (user) {
+            rows.push(identity_of(user));
+        }, {useMasterKey: true}).then(function () {
+            return rows;
+        });
+    }).then(function (users) {
+        response.success({
+            scope: (scope.is_admin || scope.is_staff) ? "all" : "self",
+            users: users
+        });
+    }, function (error) {
+        response.error(_.isString(error) ? error : error.message);
+    });
+});
+
+/**
+ * Resolve a bounded set of ids the caller already holds. This is the workhorse:
+ * it replaces every include("owner"), the include("caster"), and the three
+ * by-id gets. It cannot be used to enumerate -- you must already know the ids.
+ *
+ * params:  { ids: [objectId] }         at most MAX_IDENTITY_IDS
+ * returns: { users: [Parse.User], withheld: [objectId] }
+ * errors:  "Unauthorized: Must be logged in."
+ *          "`ids` must be an array of objectIds."
+ *          "Ask about at most 200 accounts per call."
+ *
+ * `withheld` deliberately CONFLATES "you may not see this" with "no such row".
+ * Reporting them separately would make this an existence oracle for arbitrary
+ * objectIds; the browser has no use for the distinction, and the one place that
+ * cared -- "archived" vs "hidden" -- is answered by the pointer's presence, not
+ * by this call, because archiving unsets `owner` outright.
+ */
+Parse.Cloud.define("get_users_by_id", function (request, response) {
+    var ids = request.params.ids;
+    if (!_.isArray(ids)) {
+        response.error("`ids` must be an array of objectIds.");
+        return;
+    }
+    var requested = _.uniq(_.filter(ids, _.isString));
+    if (MAX_IDENTITY_IDS < requested.length) {
+        response.error("Ask about at most " + MAX_IDENTITY_IDS + " accounts per call.");
+        return;
+    }
+    if (0 === requested.length) {
+        response.success({users: [], withheld: []});
+        return;
+    }
+    caller_scope(request).then(function (scope) {
+        return allowed_identity_ids(request, scope, requested);
+    }).then(function (allowed) {
+        return read_identities(_.filter(requested, function (id) {
+            return allowed[id];
+        }));
+    }).then(function (users) {
+        var found = {};
+        _.each(users, function (u) { found[u.id] = true; });
+        response.success({
+            users: users,
+            withheld: _.filter(requested, function (id) { return !found[id]; })
+        });
+    }, function (error) {
+        response.error(_.isString(error) ? error : error.message);
+    });
+});
+
+/**
+ * A troupe's staff, each carrying their per-troupe title. Replaces
+ * public/scripts/app/models/Troupe.js#get_staff, whose relation query carried
+ * NO options at all -- an ordinary ACL-filtered client read that degrades to a
+ * SHORT list with no marker, re-creating exactly the "this troupe has no staff"
+ * confusion views/TroupeView.js documents fighting.
+ *
+ * Any logged-in caller, for any troupe -- today's behaviour, and the one place
+ * where universal visibility reads as intent: #troupe/:id is gated only by
+ * enforce_logged_in, TroupeView renders the roster for every viewer regardless
+ * of `writable`, troupe rows are public by construction on both sides, and the
+ * troupe already publishes a `staffemail` to everyone. The roster answers the
+ * question the page exists to answer.
+ *
+ * `role` is smuggled through identity_of's `extra` rather than set on the
+ * object: a `.set()` would dirty it and the encoder would ship a bare pointer.
+ * Order is fixed LST, AST, Narrator -- the browser-side version iterated an
+ * object whose key order came from promise resolution.
+ *
+ * params:  { troupe_id: string }
+ * returns: { staff: [Parse.User] }   each with a `role` attribute
+ * errors:  "No troupe was named." / "Unauthorized: Must be logged in."
+ */
+Parse.Cloud.define("get_troupe_staff", function (request, response) {
+    var troupe_id = request.params.troupe_id;
+    if (!troupe_id) {
+        response.error("No troupe was named.");
+        return;
+    }
+    caller_scope(request).then(function () {
+        return new Troupe({id: troupe_id}).get_roles();
+    }).then(function (roles) {
+        var staff = [];
+        return Promise.all(_.map(["LST", "AST", "Narrator"], function (title) {
+            var role = roles[title];
+            if (!role) {                       // a troupe missing one of its roles
+                return Promise.resolve();
+            }
+            var q = role.getUsers().query();
+            q.select(identity_select());
+            return q.each(function (user) {
+                staff.push(identity_of(user, {role: title}));
+            }, {useMasterKey: true});
+        })).then(function () {
+            return staff;
+        });
+    }).then(function (staff) {
+        response.success({staff: staff});
+    }, function (error) {
+        response.error(_.isString(error) ? error : error.message);
+    });
+});
+
 // R51, second half. Parse never returns another user's `email` to a client -
 // it is private to that user - so `AdministrationUserView`'s reset button read
 // an empty address off its own copy of the record and failed with "you must
@@ -1262,3 +1631,22 @@ Parse.Cloud.define("change_troupe_staff", function(request, response) {
         response.error(error);
     });
 });
+
+// ---------------------------------------------------------------------------
+// Testing surface.
+//
+// parse-server `require`s this file and reads only the registrations above, so
+// exporting is inert at runtime. It exists because `identity_of` is the single
+// line standing between a master-key read and a credential leak, and a function
+// that can only be reached through a Cloud call over HTTP against a seeded
+// database is a function nobody writes a leak test for.
+//
+// Export nothing here that is not needed by test/user-directory.test.js.
+// ---------------------------------------------------------------------------
+module.exports = {
+    identity_of: identity_of,
+    identity_select: identity_select,
+    IDENTITY_FIELDS: IDENTITY_FIELDS,
+    IDENTITY_INCLUDES_EMAIL: IDENTITY_INCLUDES_EMAIL,
+    MAX_IDENTITY_IDS: MAX_IDENTITY_IDS
+};
