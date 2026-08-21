@@ -18,21 +18,26 @@ define([
             //self.title_options = ["AST", "Narrator"];
         },
 
+        /**
+         * The troupe's staff, from the server.
+         *
+         * This used to walk each role's users relation with an ordinary client
+         * query carrying no options at all. That is an ACL-filtered read, so a
+         * private staffer was simply ABSENT -- the roster rendered one fewer
+         * name with no marker anywhere, re-creating exactly the "this troupe
+         * has no staff" confusion TroupeView documents fighting.
+         *
+         * It also did `user.set("role", title)`, dirtying a _User row the
+         * caller cannot write. The Cloud function attaches the title without
+         * dirtying anything.
+         *
+         * Role order is fixed LST, AST, Narrator server-side; the old version
+         * iterated an object whose key order came from promise resolution.
+         */
         get_staff: function() {
             var self = this;
-            var users = [];
-            return Parse.Promise.when(self.get_roles()).then(function (roles) {
-                var userqs = _.map(roles, function(role, title) {
-                    var u = role.getUsers();
-                    var q = u.query();
-                    return q.each(function(user) {
-                        user.set("role", title);
-                        users.push(user);
-                    });
-                })
-                return Parse.Promise.when(userqs);
-            }).then(function() {
-                return Parse.Promise.as(users);
+            return Parse.Cloud.run("get_troupe_staff", {troupe_id: self.id}).then(function (payload) {
+                return Parse.Promise.as(payload.staff);
             });
         },
 
