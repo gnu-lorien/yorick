@@ -151,16 +151,34 @@ const MIN_SWEEP_WIDTH = 8;
 
 /**
  * ===========================================================================
- * QUARANTINE -- two known-noisy tests, forgiven only under a pinned signature.
+ * QUARANTINE -- tests whose failures are forgiven under a pinned signature.
  * ===========================================================================
  *
- * Grep `QUARANTINE` to find this. To remove an entry, delete its block: nothing
- * else in this file names these tests, and the gate prints a loud QUARANTINE
- * section on every run precisely so that nobody forgets they are here.
+ * CURRENTLY EMPTY. Nothing is forgiven; every failure counts.
  *
- * Both are pre-existing harness noise, not migration damage, and both are
- * documented in docs/runbooks/harness-noise-floor.md. The rate is roughly one
- * bad run in seven on a quiet machine and one in three on a loaded one.
+ * It held two entries until 2026-08-21 -- `admin-referendums` test 49 and
+ * `assets-rename-portrait` test 114 -- both pre-existing harness noise rather
+ * than migration damage, and both retired after 22 consecutive full
+ * eight-worker runs in which each passed ON ITS FIRST ATTEMPT. The evidence,
+ * and the reason "first attempt" is the load-bearing part of that sentence,
+ * are in docs/runbooks/harness-noise-floor.md.
+ *
+ * The machinery below is deliberately kept. Test 114 forgave a serial tail of
+ * 14 -- the entire Parse File surface -- so while it was quarantined a run
+ * where it failed was INCONCLUSIVE rather than clean, and those fourteen went
+ * unmeasured. If a flake ever earns a place here again, that cost is what to
+ * weigh, and `test/gate.test.js` still exercises every path through it using
+ * both a synthetic entry and the two retired ones (`RETIRED_QUARANTINE`)
+ * against the real recorded m18/m19 pair.
+ *
+ * To add an entry, give it the exact flattened key -- the BARE spec basename,
+ * never an `e2e/`-prefixed path -- and all five fields:
+ *
+ *   why             one line, for the QUARANTINE section the gate prints
+ *   doc             where the evidence lives
+ *   messageRe       matched against the ANSI-stripped failure message
+ *   errorLocation   {file, line, column}; file matched as a path suffix
+ *   tail            how many tests the failure strands, MEASURED not guessed
  *
  * The signature pin is the load-bearing part. Forgiving a test by NAME would
  * forgive it for any reason at all, including "parse-server 9 returned a 500".
@@ -174,49 +192,7 @@ const MIN_SWEEP_WIDTH = 8;
  * repo-relative suffix because the recorded absolute paths embed whichever
  * worktree recorded them.
  */
-const QUARANTINE = {
-  // Test 49. Fails with a BYTE-IDENTICAL signature on both stacks:
-  // runs/candidate.json, runs/vendor.json and runs/w4a.json were recorded on
-  // the legacy parse-server 2.8.4 / Parse 1.5 stack and carry exactly the same
-  // string that runs/m17.json and runs/m20.json produce under parse@8. So it is
-  // the harness and the migration did not change it.
-  //
-  // Cost of forgiving it: a serial tail of 4 -- tests 50-53 -- of which 50 and
-  // 51 are the two AUTHORIZATION tests in that file ("a non-patron is prevented
-  // from voting", "an unauthenticated visitor cannot reach #referendum/:id").
-  // That is why a forgiven failure is INCONCLUSIVE and not PASS.
-  ['admin-referendums.spec.js :: Task 3 - Referendums: Creation And Voting :: ' +
-  '49 A third user votes for the same option as the first; that tally reaches 2']: {
-    why: 'harness noise; byte-identical signature on the legacy stack (candidate/vendor/w4a)',
-    doc: 'docs/runbooks/harness-noise-floor.md',
-    messageRe: /^Error: expect\(received\)\.toBe\(expected\)[\s\S]*Expected: 2[\s\S]*Received: undefined/,
-    errorLocation: { file: 'e2e/admin-referendums.spec.js', line: 452, column: 45 },
-    tail: 4
-  },
-
-  // Test 114. The jQuery Mobile transition-lock flake root-caused in
-  // harness-noise-floor.md ("What the bug was"): a stuck `isPageTransitioning`
-  // leaves every subsequent changePage queued and undrained, so the hash moves
-  // and the active page never does. `c5f8d5e` added an 8s self-heal; the test
-  // still loses the race under eight-worker load.
-  //
-  // The `active page is` value varies (#splashscreen in m18/m19/vendor,
-  // #character-log in candidate/w4a) and the hash embeds a random objectId, so
-  // the pin is a PREFIX on the message plus an exact errorLocation -- never a
-  // string equality.
-  //
-  // Cost of forgiving it: a serial tail of 14 -- tests 115-128, the entire
-  // Parse File surface. This is the most expensive quarantine in the file and
-  // the one most likely to hide S10 damage; see the header's Hole C.
-  ['assets-rename-portrait.spec.js :: Task 6 - Rename And Portraits, Verified Everywhere They Appear :: ' +
-  '114 Renaming to collide with an existing character name succeeds - names are deliberately not unique']: {
-    why: 'jQuery Mobile transition-lock flake; pre-existing, root-caused, partially healed',
-    doc: 'docs/runbooks/harness-noise-floor.md',
-    messageRe: /^Error: expected jQuery Mobile page "#character-rename" to become active within 20000ms/,
-    errorLocation: { file: 'e2e/helpers/jqm-helpers.js', line: 68, column: 11 },
-    tail: 14
-  }
-};
+const QUARANTINE = {};
 
 // ---------------------------------------------------------------------------
 // Reading reports
