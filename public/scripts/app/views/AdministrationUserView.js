@@ -177,16 +177,14 @@ define([
             self.password.currentView.model = user;
             self.patronage.currentView.render();
             self.patronage_new.currentView.model.set("userid", user.id);
+            // See the note in helpers/RoleWreqr.js: a relation query is a
+            // _User find, which is now closed, and this was an N+1 besides.
             var q = new Parse.Query(Parse.Role);
+            q.equalTo("users", user);
             q.each(function (role) {
-                var users_relation = role.getUsers();
-                var uq = users_relation.query();
-                uq.equalTo("objectId", user.id);
-                return uq.each(function (user) {
-                    self.roles.add(role);
-                }).fail(function (error) {
-                    console.log("Failed in promise for " + role.get("name"));
-                });
+                self.roles.add(role);
+            }).fail(function (error) {
+                console.log("Couldn't list this user's roles: " + error.message);
             });
         }
     });

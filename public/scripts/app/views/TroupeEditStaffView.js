@@ -71,27 +71,32 @@ define([
                             return troupe.save();
                         });
                         */
-            var roles = {};
-            return Parse.Promise.when(self.troupe.get_roles()).then(function (inroles) {
-                roles = inroles;
-                var promises = _.map(self.troupe.title_options, function (title) {
-                    var u = roles[title].getUsers();
-                    var q = u.query();
-                    q.equalTo("objectId", self.user.id);
-                    return q.count().then(function (count) {
-                        roles[title] = count;
-                        console.log("Setting up role " + title + " count with " + count);
-                    })
-                });
-                return Parse.Promise.when(promises);
-            }).then(function () {
-                var role = _.findKey(roles, function (count, key, rolesagain) {
-                    console.log("Got " + count + " for " + key);
-                    if (_.isFinite(count) && count > 0) {
-                        return true;
-                    }
-                    return false;
-                })
+            // Ask _Role which of this troupe's titles the user holds, rather
+            // than counting each title's _User relation. Three reasons, and the
+            // second is the one that bites:
+            //
+            // 1. A relation query is a _User FIND, so it is refused outright
+            //    now that _User find is closed.
+            // 2. Before that, it did not fail -- a count() of a row the caller
+            //    cannot read returns 0, which reads as "not in this role". The
+            //    form then displayed "Not on Staff" for a real storyteller, and
+            //    submitting it unchanged sent roles_to_remove for all three
+            //    titles, STRIPPING THEM OF EVERY ROLE. Silent, and destructive.
+            // 3. It was an N+1.
+            //
+            // Direct membership is exactly what change_troupe_staff manipulates,
+            // so this is the same question asked of a world-readable class.
+            var titles = self.troupe.title_options;
+            var names = _.map(titles, function (t) { return t + "_" + self.troupe.id; });
+            var q = new Parse.Query(Parse.Role);
+            q.containedIn("name", names);
+            q.equalTo("users", self.user);
+            return q.find().then(function (found) {
+                var held = _.map(found, function (r) { return r.get("name").split("_")[0]; });
+                // Fixed title order rather than promise-resolution order: the
+                // old _.findKey over a promise-populated object picked
+                // nondeterministically for a user holding two roles in one troupe.
+                var role = _.find(titles, function (t) { return _.includes(held, t); });
                 console.log("I found this user with a role of " + role);
                 return Parse.Promise.as(role);
             }).then(function (role) {
