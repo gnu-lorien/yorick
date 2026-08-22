@@ -93,7 +93,11 @@ export function PasswordResetScreen(_: ScreenProps) {
 
   return (
     <Page id="user-reset-password" title="Reset Password" chrome={false}>
-      <Form onSubmit={onSubmit}>
+      {/* The one form in the app that carries `profile-form`. It is written
+          into index.html's #user-reset-password block, and PasswordReset.js
+          uses it as the selector for the element it renders into. Every other
+          Backform form is a bare <form>. */}
+      <Form className="profile-form" onSubmit={onSubmit}>
         <InputField
           name="email"
           type="email"

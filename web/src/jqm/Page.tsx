@@ -36,6 +36,14 @@ export interface PageProps {
   /** Extra classes on the content div, for pages that carry their own styling. */
   contentClassName?: string;
   /**
+   * Inline style for the content div.
+   *
+   * For the printable sheet, whose font-size control scales the whole sheet --
+   * `match_font_size` sets it on the layout view's own element, which IS this
+   * div.
+   */
+  contentStyle?: React.CSSProperties;
+  /**
    * Static HTML to place *inside* `div[role="main"]`, with no wrapper element.
    *
    * For the pages whose body is a checked-in HTML template rather than JSX --
@@ -53,6 +61,7 @@ export function Page({
   chrome: chromeProp,
   children,
   contentClassName,
+  contentStyle,
   contentHtml,
 }: PageProps) {
   const chromeFromShell = useChrome();
@@ -138,10 +147,16 @@ export function Page({
           ref={mainRef}
           role="main"
           className={cx('ui-content', contentClassName)}
+          style={contentStyle}
           dangerouslySetInnerHTML={{ __html: contentHtml }}
         />
       ) : (
-        <div ref={mainRef} role="main" className={cx('ui-content', contentClassName)}>
+        <div
+          ref={mainRef}
+          role="main"
+          className={cx('ui-content', contentClassName)}
+          style={contentStyle}
+        >
           {children}
         </div>
       )}

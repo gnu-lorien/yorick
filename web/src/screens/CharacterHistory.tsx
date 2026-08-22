@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { Page } from '@/jqm/Page';
 import { useLoading } from '@/jqm/Loader';
-import { Parse } from '@/parse/init';
 import { Character } from '@/parse/models/Character';
+import { loadCharacter } from '@/parse/character/load';
 import { getRecordedChanges } from '@/parse/character/recordedChanges';
 import { useBackButton } from '@/shell/backButton';
 import { showError } from '@/shell/reportError';
 import { ChangeTable } from './CharacterLog';
+import { getTransformed } from '@/parse/character/approvals';
+import { PrintSheet } from '@/print/PrintSheet';
+import { PrintSettings } from './CharacterPrint';
 import { registerScreen, type ScreenProps } from './registry';
 
 /**
@@ -38,17 +41,15 @@ import { registerScreen, type ScreenProps } from './registry';
  * newest change whatever the URL says. Kept, because a port that made `:id`
  * mean something would be a behaviour change wearing a migration's clothes.
  *
- * NOT PORTED, and the one gap here: `#history-sheet`. It holds
- * views/CharacterPrintView.js (1036 lines, thirteen print templates, a
- * Backform settings form and helpers/VampirePrintHelper) driven by
- * `Character.get_transformed`, which replays the timeline to reconstruct the
- * sheet at the picked moment. Neither the print view nor `get_transformed`
- * exists in web/src yet, and both are much larger than this screen. The region
- * div is kept so the page's shape and the E2E suite's
- * `expect(page.locator('#history-sheet')).toBeVisible()` still hold; it is
- * empty. Moving the slider therefore updates the two tables and nothing else.
+ * `#history-sheet` holds the whole character sheet, redrawn as it stood at the
+ * picked moment. The changes to undo are the ones AFTER the picked index --
+ * `takeRightWhile(model => model.id != selectedId)`, reversed -- replayed
+ * backwards by `getTransformed`. The reconstruction is then shown with an empty
+ * transform description (`c.transform_description = []`), so nothing is marked
+ * red or green: this screen shows a past state, not a diff. The approval screen
+ * is the one that shows a diff, and it passes a description.
  *
- * @compare-known #character/9cYrGGv2w3/history/0 -- #history-sheet is empty; CharacterPrintView and get_transformed are not ported
+ * @compare #character/9cYrGGv2w3/history/0
  */
 export function CharacterHistoryScreen({ route }: ScreenProps) {
   const cid = route.named['cid'];
@@ -56,6 +57,7 @@ export function CharacterHistoryScreen({ route }: ScreenProps) {
 
   const [changes, setChanges] = useState<Parse.Object[] | null>(null);
   const [picked, setPicked] = useState<number | null>(null);
+  const [character, setCharacter] = useState<Character | null>(null);
 
   useBackButton(`#character?${cid}`);
 
@@ -64,12 +66,13 @@ export function CharacterHistoryScreen({ route }: ScreenProps) {
     let cancelled = false;
     void (async () => {
       try {
-        // The legacy handler asks for `get_character(cid, "all")`, which
-        // hydrates every trait category. That is for the print view in
-        // #history-sheet; the slider and the two tables need only the change
-        // rows, so this reads the character alone.
-        const character = await track(new Parse.Query(Character).get(cid));
+        // `get_character(cid, "all")` -- every trait category hydrated, which
+        // the sheet in #history-sheet needs to draw. The slider and the two
+        // tables would be happy with the character alone.
+        const loaded = await track(loadCharacter(cid, 'all'));
         if (cancelled) return;
+        const character = loaded.character;
+        setCharacter(character);
         // `get_recorded_changes()` with nothing held yet: the full fetch.
         const timeline = await track(getRecordedChanges(character));
         if (cancelled) return;
@@ -95,7 +98,7 @@ export function CharacterHistoryScreen({ route }: ScreenProps) {
     };
   }, [cid, track]);
 
-  const ready = changes !== null && picked !== null;
+  const ready = changes !== null && picked !== null && character !== null;
 
   return (
     <Page id="character-history" title="Character History">
@@ -122,8 +125,9 @@ export function CharacterHistoryScreen({ route }: ScreenProps) {
           </div>
         ) : null}
       </div>
-      {/* CharacterPrintView's region. Empty; see the class doc. */}
-      <div id="history-sheet" />
+      <div id="history-sheet">
+        {ready ? <HistorySheet character={character} changes={changes} picked={picked} /> : null}
+      </div>
     </Page>
   );
 }
@@ -288,3 +292,49 @@ function ViewingTables({ changes, picked }: { changes: Parse.Object[]; picked: n
 }
 
 registerScreen('characterhistory', CharacterHistoryScreen);
+
+/**
+ * The character as it stood at the picked change.
+ *
+ * `getTransformed` undoes everything newer than the picked row, so the further
+ * left the slider goes the further back the sheet reads. The description it
+ * returns is deliberately dropped: MainView sets
+ * `c.transform_description = []` before handing the clone to the print view, so
+ * this screen shows a state rather than a diff.
+ */
+function HistorySheet({
+  character,
+  changes,
+  picked,
+}: {
+  character: Character;
+  changes: Parse.Object[];
+  picked: number;
+}) {
+  const transformed = useMemo(() => {
+    // Everything after the picked index, newest first -- the order
+    // `getTransformed` replays them in to walk backwards.
+    const toUndo = changes.slice(picked + 1).reverse();
+    return getTransformed(character, toUndo);
+  }, [character, changes, picked]);
+
+  // Embedded in a region, and with the print settings form: the history view
+  // passes no `no_print_settings_form`, so the font-size control shows here too.
+  const [fontSize, setFontSize] = useState(100);
+  const [excludeExtended, setExcludeExtended] = useState(false);
+  return (
+    <PrintSheet
+      standalone={false}
+      character={transformed.character}
+      excludeExtended={excludeExtended}
+      settings={
+        <PrintSettings
+          fontSize={fontSize}
+          onFontSize={setFontSize}
+          excludeExtended={excludeExtended}
+          onExcludeExtended={setExcludeExtended}
+        />
+      }
+    />
+  );
+}

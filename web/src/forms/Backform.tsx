@@ -35,7 +35,16 @@ const CONTROLS = 'col-sm-8';
 const CONTROL = 'form-control';
 const HELP = 'help-block';
 
-/** The `<form>` the legacy views render their fields into. */
+/**
+ * The `<form>` the legacy views render their fields into.
+ *
+ * No class by default. `profile-form` looks like it belongs on every Backform
+ * form and does not: it appears exactly once in the whole app, written into
+ * index.html's `#user-reset-password` block, and PasswordReset.js uses it as a
+ * selector to find the element it should render into. Every other Backform form
+ * -- the print settings, the troupe form, the profile form -- renders into a
+ * bare `<form>`. Callers that need it pass it.
+ */
 export function Form({
   children,
   onSubmit,
@@ -47,7 +56,7 @@ export function Form({
 }) {
   return (
     <form
-      className={cx('profile-form', className)}
+      className={className}
       onSubmit={(e) => {
         // Backform's buttons are type="submit" and their handlers all begin
         // with preventDefault(); doing it once here means a field's handler
@@ -237,7 +246,10 @@ export function SelectField({
           id={id ? `${id}-button` : undefined}
           className="ui-btn ui-icon-carat-d ui-btn-icon-right ui-corner-all ui-shadow"
         >
-          <span>{selected?.label ?? ''}</span>
+          {/* The span carries the select's own classes, not just its text.
+              jQM's selectmenu copies them across when it builds the button
+              face, so `form-control` ends up on both. */}
+          <span className={cx(CONTROL, ...extraClasses)}>{selected?.label ?? ''}</span>
           <select
             id={id}
             className={cx(CONTROL, ...extraClasses)}
@@ -284,8 +296,44 @@ export function CheckboxField({
 }: CheckboxFieldProps) {
   return (
     <Group name={name}>
+      {/*
+        Two vocabularies stacked, and both are load-bearing. Backform emits
+        `div.checkbox > label > input`; jQuery Mobile's checkboxradio widget
+        then rewrites the inside of that into
+        `div.ui-checkbox > (label.ui-btn…, input)` -- label first, input after
+        it, not nested. Harvested from the running legacy #profile and
+        #printable-sheet.
+
+        `ui-checkbox-on` / `-off` is the whole of the widget's look, and the
+        label's click handler is the whole of its behaviour: the stylesheet
+        positions the real input off the control, so without the label being
+        clickable the box cannot be ticked.
+
+        No `id` and no `htmlFor` unless a caller asks: the legacy markup has
+        neither, because jQM binds the label's click in JavaScript rather than
+        relying on the label-for association.
+      */}
       <div className="checkbox">
-        <label>
+        <div className="ui-checkbox">
+          <label
+            htmlFor={id}
+            className={cx(
+              'ui-btn ui-corner-all ui-btn-inherit ui-btn-icon-left',
+              checked ? 'ui-checkbox-on' : 'ui-checkbox-off',
+            )}
+            onClick={
+              id
+                ? undefined
+                : (e) => {
+                    // With no `for` link, clicking the label does nothing on its
+                    // own. jQM wires this up; so does this.
+                    e.preventDefault();
+                    if (!disabled) onChange(!checked);
+                  }
+            }
+          >
+            {label}
+          </label>
           <input
             id={id}
             type="checkbox"
@@ -295,9 +343,8 @@ export function CheckboxField({
             disabled={disabled}
             required={required}
             onChange={(e) => onChange(e.target.checked)}
-          />{' '}
-          {label}
-        </label>
+          />
+        </div>
       </div>
     </Group>
   );
