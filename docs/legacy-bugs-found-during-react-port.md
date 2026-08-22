@@ -11,11 +11,37 @@ was confirmed, and what the fix is.
 
 **Every entry below was confirmed against the running app**, not inferred from
 reading. Where a claim could only be checked by running it, the measurement is
-quoted. Two things that *looked* like bugs turned out to be already fixed, and
-one turned out not to be a bug at all; they are listed at the end so nobody
-re-investigates them.
+quoted.
 
-Ordered by how much a user would notice.
+## How each of these was found, and why that matters
+
+This branch already carries the Parse 8 migration, and that work left long
+comments behind explaining what it fixed. Those comments are written in the past
+tense -- "used to be", "previously" -- and they are a changelog, not a list of
+open defects. Reading one as a live bug is an easy mistake and I made it three
+times; see "Not bugs" at the end.
+
+So it is worth being explicit about where each entry came from, because a
+difference a machine measured is worth more than one a person noticed while
+reading:
+
+**Found by the port itself.** `npm run compare:dom` renders a screen in both
+front ends and diffs the DOM. These four are differences it flagged, which I
+then traced to a cause:
+
+  #1 troupe shortcuts, #2 sortbycreated, #4 memoised sub-view, #13 owner line.
+
+#1 is the only one of the thirteen that is a Parse 8 regression -- a thing that
+worked before that migration and does not now, which the migration did not
+catch.
+
+**Found by reading the legacy source while porting it.** These nine would have
+turned up for anyone who read those files as closely, migration or not. The port
+is why anyone did:
+
+  #3, #5, #6, #7, #8, #9, #10, #11, #12.
+
+Ordered below by how much a user would notice, not by how they were found.
 
 ---
 
