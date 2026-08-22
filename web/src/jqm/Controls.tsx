@@ -298,3 +298,99 @@ export function Controlgroup({
     </div>
   );
 }
+
+/* --------------------------------------------------------------- slider -- */
+
+export interface SliderProps {
+  id: string;
+  name?: string;
+  label?: ReactNode;
+  value: number;
+  min: number;
+  max: number;
+  onChange: (value: number) => void;
+  className?: string;
+  disabled?: boolean;
+}
+
+/**
+ * jQuery Mobile's slider.
+ *
+ * Markup harvested from the running legacy app on the trait-change screen. jQM
+ * does a lot to an `<input type="range">` here, and every part of it matters:
+ *
+ * - The input's type becomes `number`, with the original recorded as
+ *   `data-type="range"`. The visible track is the sibling `<div>`; the number
+ *   input beside it is the editable half of the control, not a leftover.
+ * - The label gains `id="<inputId>-label"`, which the handle then points at
+ *   with `aria-labelledby`. Without the label there is no id to point at, and
+ *   jQM omits the attribute -- so the two travel together.
+ * - The handle's `left` is the value's position along the range, as a
+ *   percentage. It is inline style rather than a class because it is
+ *   continuous, and it is what actually moves the handle.
+ *
+ * The handle is an anchor with `role="slider"`; dragging it is jQM behaviour
+ * this does not reproduce, because the number input is what every caller in
+ * this app reads and writes. Clicking the track is likewise not wired up.
+ */
+export function Slider({
+  id,
+  name,
+  label,
+  value,
+  min,
+  max,
+  onChange,
+  className,
+  disabled,
+}: SliderProps) {
+  // Guard the degenerate range: min === max would divide by zero, and jQM pins
+  // the handle to the left in that case.
+  const fraction = max > min ? (value - min) / (max - min) : 0;
+  const percent = `${(fraction * 100).toFixed(4).replace(/\.?0+$/, '')}%`;
+
+  return (
+    <>
+      {label !== undefined && (
+        <label htmlFor={id} id={`${id}-label`}>
+          {label}
+        </label>
+      )}
+      <div className="ui-slider">
+        <input
+          type="number"
+          data-type="range"
+          name={name}
+          id={id}
+          className={cx(className, 'ui-shadow-inset ui-body-inherit ui-corner-all ui-slider-input')}
+          value={value}
+          min={min}
+          max={max}
+          disabled={disabled}
+          onChange={(e) => {
+            const next = Number.parseInt(e.target.value, 10);
+            if (Number.isFinite(next)) onChange(next);
+          }}
+        />
+        <div
+          role="application"
+          className="ui-slider-track ui-shadow-inset ui-bar-inherit ui-corner-all"
+        >
+          <a
+            href="#"
+            className="ui-slider-handle ui-btn ui-shadow"
+            role="slider"
+            aria-valuemin={min}
+            aria-valuemax={max}
+            aria-valuenow={value}
+            aria-valuetext={String(value)}
+            title={String(value)}
+            aria-labelledby={label !== undefined ? `${id}-label` : undefined}
+            style={{ left: percent }}
+            onClick={(e) => e.preventDefault()}
+          />
+        </div>
+      </div>
+    </>
+  );
+}
