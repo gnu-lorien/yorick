@@ -30,7 +30,8 @@ front ends and diffs the DOM, or the port could not reproduce a screen without
 first working out why the original failed. These five:
 
   #0 approval page unreachable, #1 troupe shortcuts, #2 sortbycreated,
-  #4 memoised sub-view, #13 owner line, #14 leaked diff markers.
+  #4 memoised sub-view, #13 owner line, #14 leaked diff markers,
+  #15 truncated ledger.
 
 #1 is the only one of the thirteen that is a Parse 8 regression -- a thing that
 worked before that migration and does not now, which the migration did not
@@ -41,6 +42,13 @@ turned up for anyone who read those files as closely, migration or not. The port
 is why anyone did:
 
   #3, #5, #6, #7, #8, #9, #10, #11, #12.
+
+Two of the first group are worth singling out, because a per-screen check would
+not have caught either. **#14** appeared only when the comparison walked screens
+in sequence within one browser session, the way a person does -- the history
+screen matched alone and differed after the approval screen had been open.
+**#0** was found because the port could not reproduce a screen that never
+renders in the original.
 
 Ordered below by how much a user would notice, not by how they were found.
 
@@ -531,6 +539,51 @@ is recorded as a deliberate divergence in `web/src/screens/CharacterHistory.tsx`
 
 ---
 
+## 15. The experience ledger is fetched 100 rows at a time, and the balances are recomputed against the truncated list
+
+**`public/scripts/app/views/CharacterExperienceView.js:223-230`** and
+**`public/scripts/app/models/Character.js:515`**
+
+```js
+var q = new Parse.Query(ExperienceNotation);
+q.equalTo("owner", self.character).addDescending("entered").addDescending("createdAt");
+self.collection.query = q;
+return self.collection.fetch({reset: true});
+```
+
+`collection.fetch()` is a plain `find()` with no `limit`, so it takes the
+server's default page of **100**. The same shape as #12, and worse in its
+consequences: this is not a list that is merely displayed short.
+
+`_propagate_experience_notation_change` walks exactly this collection to
+recompute every entry's running `earned` / `spent`, and then writes
+`experience_earned` and `experience_spent` onto the character from the newest
+entry. With more than 100 notations the oldest ones are absent from the walk, so
+the totals are rebuilt from a partial ledger and saved.
+
+The view's own comment explains why it cannot simply page the query -- "Skipping
+rows in that query would quietly corrupt the ledger, so the page is taken at
+render time and the collection stays whole" -- which is right about *display*
+paging and does not address the 100-row ceiling underneath it.
+
+Not currently reachable: no character in the dev database is near 100 notations.
+A long-running character in production could be.
+
+**Fix:** raise the limit, or page the fetch with `skip` and concatenate.
+
+```js
+q.limit(1000);
+```
+
+Anything that changes what the walk sees changes the saved totals, so this wants
+checking against a real character with a long ledger before it ships.
+
+**Impact:** none today, silent experience corruption if a character ever crosses
+100 notations. The React port has the same ceiling and says so in
+`web/src/parse/character/experience.ts`.
+
+---
+
 ## Not bugs — checked and cleared
 
 Recorded so nobody spends time on them again.
@@ -566,8 +619,8 @@ be the live path is how the above happened — but it is a tidy-up, not a defect
 2. **#1** — a whole feature is missing. One word.
 3. **#5** and **#7** — both leave users stuck with no explanation.
 4. **#3**, **#8**, **#11** — visible and small.
-5. **#12** — before the rule set grows past 100.
-6. **#14** — one line to delete, on a screen built to show what changed.
+5. **#14** — one line to delete, on a screen built to show what changed.
+6. **#15** and **#12** — before either list grows past 100.
 7. **#9**, **#2**, **#10** — tidy-ups with no user-visible effect today.
 8. **#6** and **#13** — decide whether they are defects at all before touching
    them.
