@@ -30,7 +30,7 @@ front ends and diffs the DOM, or the port could not reproduce a screen without
 first working out why the original failed. These five:
 
   #0 approval page unreachable, #1 troupe shortcuts, #2 sortbycreated,
-  #4 memoised sub-view, #13 owner line.
+  #4 memoised sub-view, #13 owner line, #14 leaked diff markers.
 
 #1 is the only one of the thirteen that is a Parse 8 regression -- a thing that
 worked before that migration and does not now, which the migration did not
@@ -479,6 +479,58 @@ part.
 
 ---
 
+## 14. The approval screen leaves diff markers on every sheet drawn afterwards
+
+**`public/scripts/app/views/CharacterApprovalView.js:336-339`**
+
+```js
+self.model.transform_description = td;
+if (c) {
+    c.transform_description = td;
+}
+```
+
+`c` is the clone the approval sheet renders. `self.model` is the character
+itself -- and the router memoises that object across routes
+(`_get_character_from_cache`), so the description outlives the screen that made
+it.
+
+`helpers/VampirePrintHelper.js` switches on `this.model.transform_description`
+to decide whether to draw a value plainly or as "old struck through in red, new
+in green". So the next screen that draws a character sheet inherits the
+approval screen's diff and paints markers that mean nothing there.
+
+**Confirmed** by opening `#character/9cYrGGv2w3/approval` and then
+`#character/9cYrGGv2w3/history/0` -- Back then History, an ordinary click path.
+`router._character.transform_description` holds 4 entries, and `#history-sheet`
+renders 3 `fa-minus` and 3 `fa-plus` markers. Opening the history page on its
+own renders none.
+
+The history screen actively tries to avoid this: `MainView.update_picked` sets
+`c.transform_description = []` on the clone it builds. That clears the clone and
+not the cached original, which is the half that matters.
+
+**Fix:** do not write to `self.model`. The line is not load-bearing -- the sheet
+renders `c` -- so deleting it is enough:
+
+```js
+if (c) {
+    c.transform_description = td;
+}
+```
+
+If something does depend on reading it back off the model, clear it when the
+approval screen closes instead.
+
+**Impact:** a character's history reads as though changes were made that were
+not. Cosmetic, but on a screen whose entire purpose is showing what changed, and
+it appears only after a particular navigation, which is why it has survived.
+
+React holds no state shared between screens, so it draws the plain sheet. This
+is recorded as a deliberate divergence in `web/src/screens/CharacterHistory.tsx`.
+
+---
+
 ## Not bugs — checked and cleared
 
 Recorded so nobody spends time on them again.
@@ -515,8 +567,9 @@ be the live path is how the above happened — but it is a tidy-up, not a defect
 3. **#5** and **#7** — both leave users stuck with no explanation.
 4. **#3**, **#8**, **#11** — visible and small.
 5. **#12** — before the rule set grows past 100.
-6. **#9**, **#2**, **#10** — tidy-ups with no user-visible effect today.
-7. **#6** and **#13** — decide whether they are defects at all before touching
+6. **#14** — one line to delete, on a screen built to show what changed.
+7. **#9**, **#2**, **#10** — tidy-ups with no user-visible effect today.
+8. **#6** and **#13** — decide whether they are defects at all before touching
    them.
 
 ## Before you change any of these

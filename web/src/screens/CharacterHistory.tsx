@@ -49,7 +49,22 @@ import { registerScreen, type ScreenProps } from './registry';
  * red or green: this screen shows a past state, not a diff. The approval screen
  * is the one that shows a diff, and it passes a description.
  *
- * @compare #character/9cYrGGv2w3/history/0
+ * @compare-known #character/9cYrGGv2w3/history/0 -- legacy paints stale diff markers here after the approval screen has been visited
+ *
+ * That marker is order-dependent, and the order is the ordinary one. Visited on
+ * its own this screen matches the legacy DOM exactly. Visited after
+ * `#character/:cid/approval` -- Back, then History, which is a normal click path
+ * -- the legacy sheet grows red and green change markers that do not belong on
+ * it, because CharacterApprovalView writes its diff onto the *shared cached
+ * character* (`self.model.transform_description = td`) rather than onto the
+ * clone it renders. The router memoises that character across routes, so the
+ * next screen to draw a sheet inherits the description.
+ *
+ * Measured: after opening the approval page and then this one by hash,
+ * `router._character.transform_description` holds 4 entries and `#history-sheet`
+ * renders 3 `fa-minus` and 3 `fa-plus` markers. React holds no such shared
+ * state, so it draws the plain sheet this screen is supposed to show. Recorded
+ * as legacy bug #14.
  */
 export function CharacterHistoryScreen({ route }: ScreenProps) {
   const cid = route.named['cid'];
