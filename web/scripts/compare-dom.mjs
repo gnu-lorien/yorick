@@ -18,6 +18,9 @@
  *
  * Exits non-zero if any requested screen differs, so it can gate a commit.
  */
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
 const LEGACY = process.env.LEGACY_URL || 'http://localhost:41500';
@@ -25,10 +28,40 @@ const REACT = process.env.REACT_URL || 'http://localhost:41501';
 const USERNAME = process.env.COMPARE_USER || 'devuser';
 const PASSWORD = process.env.COMPARE_PASSWORD || 'thedumbness';
 
-/** Screens compared when none are named on the command line. */
-const DEFAULT_HASHES = ['', '#about', '#privacy', '#signup', '#reset'];
+/**
+ * The URLs to compare, collected from the screens themselves.
+ *
+ * A screen file declares the URLs it should be checked at with `@compare`
+ * lines in a comment:
+ *
+ *     // @compare #characters?all
+ *
+ * Collecting them per-file rather than from one list here is what lets several
+ * screens be written at once: a new screen brings its own coverage and touches
+ * no shared line. Use `@compare (home)` for the empty hash.
+ */
+function declaredHashes() {
+  const REPO = fileURLToPath(new URL('../..', import.meta.url));
+  const found = [];
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) { walk(full); continue; }
+      if (!entry.name.endsWith('.tsx')) continue;
+      for (const m of fs.readFileSync(full, 'utf8').matchAll(/@compare\s+(\S+)/g)) {
+        found.push(m[1] === '(home)' ? '' : m[1]);
+      }
+    }
+  };
+  walk(REPO + 'web/src/screens');
+  return [...new Set(found)];
+}
 
-const hashes = process.argv.slice(2).length ? process.argv.slice(2) : DEFAULT_HASHES;
+const hashes = process.argv.slice(2).length ? process.argv.slice(2) : declaredHashes();
+if (!hashes.length) {
+  console.log('No @compare URLs declared in web/src/screens. Nothing to check.');
+  process.exit(0);
+}
 
 /**
  * Reduce a subtree to tag + id + sorted classes, nested.

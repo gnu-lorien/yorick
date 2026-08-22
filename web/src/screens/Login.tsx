@@ -3,7 +3,7 @@ import { Page } from '@/jqm/Page';
 import { Link } from '@/jqm/Controls';
 import { useLogIn } from '@/parse/session';
 import { navigate } from '@/router/router';
-import type { ScreenProps } from './registry';
+import { registerScreen, type ScreenProps } from './registry';
 import yorickLogo from '@legacy-img/yorick_256.png';
 
 /**
@@ -23,6 +23,11 @@ import yorickLogo from '@legacy-img/yorick_256.png';
  * The Facebook button is not carried over. Facebook login was removed rather
  * than migrated during the Parse 8 work -- see the comment in app/loadall.js --
  * and the button is already hidden in production.
+
+ * No `@compare` marker: this screen has no URL of its own. The legacy app
+ * reaches it only through `enforce_logged_in`, which shows #login without
+ * changing the hash, so there is no address the comparison harness could visit.
+ * It is covered by the E2E suite's login flow instead.
  */
 export function LoginScreen(_: ScreenProps) {
   const logIn = useLogIn();
@@ -97,3 +102,8 @@ export function LoginScreen(_: ScreenProps) {
     </Page>
   );
 }
+
+// `login` is not in the route table -- the legacy app reaches the login page
+// through `enforce_logged_in` rather than a URL -- so App.tsx renders it
+// directly. Registered under a synthetic name so the status report counts it.
+registerScreen('__login', LoginScreen);

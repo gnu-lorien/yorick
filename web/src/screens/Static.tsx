@@ -4,10 +4,14 @@ import { Link } from '@/jqm/Controls';
 import { Form, InputField, ButtonField } from '@/forms/Backform';
 import { Parse } from '@/parse/init';
 import { useLoading } from '@/jqm/Loader';
-import type { ScreenProps } from './registry';
+import { registerScreen, type ScreenProps } from './registry';
 import privacyPolicyHtml from '@legacy-img/scripts/app/templates/privacy-policy.html?raw';
 
-/** The About page, from the `#about` block in public/index.html. */
+/**
+ * The About page, from the `#about` block in public/index.html.
+ *
+ * @compare #about
+ */
 export function AboutScreen(_: ScreenProps) {
   return (
     <Page id="about" title="About">
@@ -47,6 +51,8 @@ export function AboutScreen(_: ScreenProps) {
  * two copies of it in one repository is how they end up disagreeing. The file
  * contains no template interpolation -- the legacy view runs it through
  * `_.template()` with no data -- so it is static markup either way.
+ *
+ * @compare #privacy
  */
 export function PrivacyPolicyScreen(_: ScreenProps) {
   return <Page id="privacy" title="Privacy Policy" contentHtml={privacyPolicyHtml} />;
@@ -63,6 +69,8 @@ export function PrivacyPolicyScreen(_: ScreenProps) {
  * Both outcomes are reported through the button's own status line, as the
  * original does with `set({status, message})`. Note that success says the mail
  * was sent without revealing whether the address exists.
+ *
+ * @compare #reset
  */
 export function PasswordResetScreen(_: ScreenProps) {
   const [email, setEmail] = useState('');
@@ -105,3 +113,7 @@ export function PasswordResetScreen(_: ScreenProps) {
     </Page>
   );
 }
+
+registerScreen('about', AboutScreen);
+registerScreen('privacy_policy', PrivacyPolicyScreen);
+registerScreen('resetpassword', PasswordResetScreen);

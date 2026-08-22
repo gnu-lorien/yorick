@@ -6,7 +6,7 @@ import { cx } from '@/jqm/classes';
 import { Parse } from '@/parse/init';
 import { Character, userCharactersQuery, sortCharacters } from '@/parse/models/Character';
 import { CharacterListItem } from './CharacterListItem';
-import type { ScreenProps } from './registry';
+import { registerScreen, type ScreenProps } from './registry';
 
 /**
  * The player's own characters.
@@ -25,6 +25,8 @@ import type { ScreenProps } from './registry';
  * Note the route only does anything for `type === "all"`. The legacy handler is
  * a bare `if ("all" == type)` with no else, so any other value leaves the app
  * wherever it was; that is preserved.
+ *
+ * @compare #characters?all
  */
 export function CharactersList({ route }: ScreenProps) {
   const type = route.named['type'];
@@ -155,3 +157,5 @@ function rowText(character: Character): string {
     .filter(Boolean)
     .join(' ');
 }
+
+registerScreen('characters', CharactersList);

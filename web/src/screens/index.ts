@@ -1,26 +1,21 @@
-import { registerScreen } from './registry';
-import { LoginScreen } from './Login';
-import { SignupScreen } from './Signup';
-import { AboutScreen, PrivacyPolicyScreen, PasswordResetScreen } from './Static';
-import { PlayerOptions } from './PlayerOptions';
-import { CharactersList } from './CharactersList';
-
 /**
- * Every ported screen, registered under its legacy handler name.
+ * Load every screen module, so each one registers itself.
  *
- * Importing this module is what wires the routes up; App.tsx does it once. A
- * handler missing from here renders the "not migrated yet" placeholder, so this
- * list is the migration's progress bar -- `npm run migration:status` counts it.
+ * Screens self-register: a screen file ends with `registerScreen('handler',
+ * Component)` and this glob imports all of them. There used to be a hand-kept
+ * list here instead, which was fine until screens started being written in
+ * parallel -- then every new screen was an edit to the same file and a conflict
+ * with every other new screen. A glob has no such shared line.
+ *
+ * `eager: true` because registration is a side effect that must happen before
+ * the first render, not on demand. That does mean every screen is in the
+ * initial bundle; splitting them is a later change, and one to make against a
+ * measurement rather than a guess.
+ *
+ * Modules that export no screen -- NotMigrated, the shared list-item
+ * components -- are imported too and simply register nothing.
  */
+const modules = import.meta.glob('./**/*.tsx', { eager: true });
 
-registerScreen('home', PlayerOptions);
-registerScreen('signup', SignupScreen);
-registerScreen('about', AboutScreen);
-registerScreen('privacy_policy', PrivacyPolicyScreen);
-registerScreen('resetpassword', PasswordResetScreen);
-registerScreen('characters', CharactersList);
-
-// `login` is not in the route table -- the legacy app reaches the login page
-// through `enforce_logged_in` rather than a URL -- so App.tsx renders it
-// directly. Registered anyway so the status report counts it as done.
-registerScreen('__login', LoginScreen);
+/** How many screen modules were loaded. Reported by the dev console banner. */
+export const loadedScreenModules = Object.keys(modules).length;

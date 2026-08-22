@@ -20,10 +20,21 @@ const handlers = [...screenMapSrc.matchAll(/^\s{2}([a-z_0-9]+):\s*\{\s*pageId:\s
   (m) => ({ handler: m[1], pageId: m[2] === 'null' ? null : m[2].slice(1, -1) }),
 );
 
-const indexSrc = fs.readFileSync(REPO + 'web/src/screens/index.ts', 'utf8');
-const done = new Set(
-  [...indexSrc.matchAll(/registerScreen\(\s*'([^']+)'/g)].map((m) => m[1]),
-);
+// Screens self-register, so scan the screen files rather than one index.
+// Reading them as text, not importing them, keeps this free of a bundler and
+// immune to one broken screen hiding the status of all the others.
+const screensDir = REPO + 'web/src/screens';
+const done = new Set();
+const walk = (dir) => {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) { walk(full); continue; }
+    if (!entry.name.endsWith('.tsx')) continue;
+    const src = fs.readFileSync(full, 'utf8');
+    for (const m of src.matchAll(/^registerScreen\(\s*'([^']+)'/gm)) done.add(m[1]);
+  }
+};
+walk(screensDir);
 
 // The legacy view files, so the remaining work names its own source.
 const viewsDir = REPO + 'public/scripts/app/views';

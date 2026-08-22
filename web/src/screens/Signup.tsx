@@ -3,7 +3,7 @@ import { Page } from '@/jqm/Page';
 import { Parse } from '@/parse/init';
 import { sessionChanged, useSession } from '@/parse/session';
 import { navigate } from '@/router/router';
-import type { ScreenProps } from './registry';
+import { registerScreen, type ScreenProps } from './registry';
 import yorickLogo from '@legacy-img/yorick_256.png';
 
 /**
@@ -15,6 +15,8 @@ import yorickLogo from '@legacy-img/yorick_256.png';
  *
  * Note that signUp logs the new user in as a side effect, which is why this
  * navigates to the start page rather than back to the login screen.
+ *
+ * @compare #signup
  */
 export function SignupScreen(_: ScreenProps) {
   const session = useSession();
@@ -84,3 +86,5 @@ export function SignupScreen(_: ScreenProps) {
     </Page>
   );
 }
+
+registerScreen('signup', SignupScreen);

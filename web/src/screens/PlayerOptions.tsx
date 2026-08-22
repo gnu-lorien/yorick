@@ -5,7 +5,7 @@ import { Parse } from '@/parse/init';
 import { useSession, sessionChanged } from '@/parse/session';
 import { useMyTroupes } from '@/data/queries';
 import { cx, positionClass } from '@/jqm/classes';
-import type { ScreenProps } from './registry';
+import { registerScreen, type ScreenProps } from './registry';
 
 /**
  * The start page -- what you land on after logging in.
@@ -16,6 +16,8 @@ import type { ScreenProps } from './registry';
  *
  * The "Troupe View All Characters" region below the menu is ported too; see
  * TroupeQuickAccess at the bottom of this file.
+ *
+ * @compare (home)
  */
 export function PlayerOptions(_: ScreenProps) {
   const session = useSession();
@@ -120,3 +122,5 @@ function TroupeQuickAccess({ enabled }: { enabled: boolean }) {
     </div>
   );
 }
+
+registerScreen('home', PlayerOptions);
