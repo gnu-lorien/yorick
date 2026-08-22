@@ -11,7 +11,6 @@ requirejs.config( {
 		// Core Libraries
 		jquery: "//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery",
 		jquerymobile: "jquery.mobile-1.4.5",
-		jscookie: "js.cookie",
 		// Vendored, not fetched. Both are byte-for-byte the versions these
 		// paths used to serve (lodash 3.10.0, Backbone 1.1.2 — checked against
 		// each file's own VERSION constant), so this changes nothing at
@@ -51,7 +50,7 @@ requirejs.config( {
 		marionette: "backbone.marionette",
 		"bootstrap-datepicker": "//cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.6.1/js/bootstrap-datepicker",
 		"url-search-params": "url-search-params.max.amd",
-		papaparse: "papaparse-4.1.2",
+		papaparse: "papaparse-5.6.0",
 
 		app: "../app"
 	},

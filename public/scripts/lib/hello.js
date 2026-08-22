@@ -1,156 +1,4 @@
-/*! hellojs v1.16.1 | (c) 2012-2017 Andrew Dodson | MIT https://adodson.com/hello.js/LICENSE */
-// ES5 Object.create
-if (!Object.create) {
-
-	// Shim, Object create
-	// A shim for Object.create(), it adds a prototype to a new object
-	Object.create = (function() {
-
-		function F() {}
-
-		return function(o) {
-
-			if (arguments.length != 1) {
-				throw new Error('Object.create implementation only accepts one parameter.');
-			}
-
-			F.prototype = o;
-			return new F();
-		};
-
-	})();
-
-}
-
-// ES5 Object.keys
-if (!Object.keys) {
-	Object.keys = function(o, k, r) {
-		r = [];
-		for (k in o) {
-			if (r.hasOwnProperty.call(o, k))
-				r.push(k);
-		}
-
-		return r;
-	};
-}
-
-// ES5 [].indexOf
-if (!Array.prototype.indexOf) {
-	Array.prototype.indexOf = function(s) {
-
-		for (var j = 0; j < this.length; j++) {
-			if (this[j] === s) {
-				return j;
-			}
-		}
-
-		return -1;
-	};
-}
-
-// ES5 [].forEach
-if (!Array.prototype.forEach) {
-	Array.prototype.forEach = function(fun/*, thisArg*/) {
-
-		if (this === void 0 || this === null) {
-			throw new TypeError();
-		}
-
-		var t = Object(this);
-		var len = t.length >>> 0;
-		if (typeof fun !== 'function') {
-			throw new TypeError();
-		}
-
-		var thisArg = arguments.length >= 2 ? arguments[1] : void 0;
-		for (var i = 0; i < len; i++) {
-			if (i in t) {
-				fun.call(thisArg, t[i], i, t);
-			}
-		}
-
-		return this;
-	};
-}
-
-// ES5 [].filter
-if (!Array.prototype.filter) {
-	Array.prototype.filter = function(fun, thisArg) {
-
-		var a = [];
-		this.forEach(function(val, i, t) {
-			if (fun.call(thisArg || void 0, val, i, t)) {
-				a.push(val);
-			}
-		});
-
-		return a;
-	};
-}
-
-// Production steps of ECMA-262, Edition 5, 15.4.4.19
-// Reference: http://es5.github.io/#x15.4.4.19
-if (!Array.prototype.map) {
-
-	Array.prototype.map = function(fun, thisArg) {
-
-		var a = [];
-		this.forEach(function(val, i, t) {
-			a.push(fun.call(thisArg || void 0, val, i, t));
-		});
-
-		return a;
-	};
-}
-
-// ES5 isArray
-if (!Array.isArray) {
-
-	// Function Array.isArray
-	Array.isArray = function(o) {
-		return Object.prototype.toString.call(o) === '[object Array]';
-	};
-
-}
-
-// Test for location.assign
-if (typeof window === 'object' && typeof window.location === 'object' && !window.location.assign) {
-
-	window.location.assign = function(url) {
-		window.location = url;
-	};
-
-}
-
-// Test for Function.bind
-if (!Function.prototype.bind) {
-
-	// MDN
-	// Polyfill IE8, does not support native Function.bind
-	Function.prototype.bind = function(b) {
-
-		if (typeof this !== 'function') {
-			throw new TypeError('Function.prototype.bind - what is trying to be bound is not callable');
-		}
-
-		function C() {}
-
-		var a = [].slice;
-		var f = a.call(arguments, 1);
-		var _this = this;
-		var D = function() {
-			return _this.apply(this instanceof C ? this : b || window, f.concat(a.call(arguments)));
-		};
-
-		C.prototype = this.prototype;
-		D.prototype = new C();
-
-		return D;
-	};
-
-}
-
+/*! hellojs v1.21.4 - (c) 2012-2026 Andrew Dodson - MIT https://adodson.com/hello.js/LICENSE */
 /**
  * @hello.js
  *
@@ -171,6 +19,7 @@ hello.utils = {
 
 	// Extend the first object with the properties and methods of the second
 	extend: function(r /*, a[, b[, ...]] */) {
+		const dangerousKeys = ['__proto__', 'constructor', 'prototype'];
 
 		// Get the arguments as an array but ommit the initial item
 		Array.prototype.slice.call(arguments, 1).forEach(function(a) {
@@ -179,6 +28,11 @@ hello.utils = {
 			}
 			else if (r && (r instanceof Object || typeof r === 'object') && a && (a instanceof Object || typeof a === 'object') && r !== a) {
 				for (var x in a) {
+					// Prevent prototype pollution
+					if (dangerousKeys.includes(x)) {
+						continue;
+					}
+
 					r[x] = hello.utils.extend(r[x], a[x]);
 				}
 			}
@@ -326,7 +180,7 @@ hello.utils.extend(hello, {
 		var _this = this;
 		var utils = _this.utils;
 		var error = utils.error;
-		var promise = utils.Promise();
+		var {promise, reject, resolve} = utils.createDeferredPromise();
 
 		// Get parameters
 		var p = utils.args({network: 's', options: 'o', callback: 'f'}, arguments);
@@ -347,32 +201,33 @@ hello.utils.extend(hello, {
 		p.network = p.network || _this.settings.default_service;
 
 		// Bind callback to both reject and fulfill states
-		promise.proxy.then(p.callback, p.callback);
+		promise.then(p.callback, p.callback);
 
 		// Trigger an event on the global listener
 		function emit(s, value) {
 			hello.emit(s, value);
 		}
 
-		promise.proxy.then(emit.bind(this, 'auth.login auth'), emit.bind(this, 'auth.failed auth'));
+		promise.then(emit.bind(this, 'auth.login auth'), emit.bind(this, 'auth.failed auth'));
 
 		// Is our service valid?
 		if (typeof (p.network) !== 'string' || !(p.network in _this.services)) {
 			// Trigger the default login.
 			// Ahh we dont have one.
-			return promise.reject(error('invalid_network', 'The provided network was not recognized'));
+			reject(error('invalid_network', 'The provided network was not recognized'));
+			return promise;
 		}
 
 		var provider = _this.services[p.network];
 
 		// Create a global listener to capture events triggered out of scope
-		var callbackId = utils.globalEvent(function(str) {
+		var callbackId = utils.globalEvent(function(obj) {
 
 			// The responseHandler returns a string, lets save this locally
-			var obj;
-
-			if (str) {
-				obj = JSON.parse(str);
+			if (obj) {
+				if (typeof (obj) == 'string') {
+					obj = JSON.parse(obj);
+				}
 			}
 			else {
 				obj = error('cancelled', 'The authentication was not completed');
@@ -387,14 +242,14 @@ hello.utils.extend(hello, {
 				utils.store(obj.network, obj);
 
 				// Fulfill a successful login
-				promise.fulfill({
+				resolve({
 					network: obj.network,
 					authResponse: obj
 				});
 			}
 			else {
 				// Reject a successful login
-				promise.reject(obj);
+				reject(obj);
 			}
 		});
 
@@ -483,7 +338,7 @@ hello.utils.extend(hello, {
 				if (diff.length === 0) {
 
 					// OK trigger the callback
-					promise.fulfill({
+					resolve({
 						unchanged: true,
 						network: p.network,
 						authResponse: session
@@ -523,7 +378,12 @@ hello.utils.extend(hello, {
 		}
 
 		// Convert state to a string
-		p.qs.state = encodeURIComponent(JSON.stringify(p.qs.state));
+		if (provider.oauth.base64_state) {
+			p.qs.state = window.btoa(JSON.stringify(p.qs.state));
+		}
+		else {
+			p.qs.state = encodeURIComponent(JSON.stringify(p.qs.state));
+		}
 
 		// URL
 		if (parseInt(provider.oauth.version, 10) === 1) {
@@ -563,18 +423,16 @@ hello.utils.extend(hello, {
 			var timer = setInterval(function() {
 				if (!popup || popup.closed) {
 					clearInterval(timer);
-					if (!promise.state) {
 
-						var response = error('cancelled', 'Login has been cancelled');
+					var response = error('cancelled', 'Login has been cancelled');
 
-						if (!popup) {
-							response = error('blocked', 'Popup was blocked');
-						}
-
-						response.network = p.network;
-
-						promise.reject(response);
+					if (!popup) {
+						response = error('blocked', 'Popup was blocked');
 					}
+
+					response.network = p.network;
+
+					reject(response);
 				}
 			}, 100);
 		}
@@ -583,7 +441,7 @@ hello.utils.extend(hello, {
 			window.location = url;
 		}
 
-		return promise.proxy;
+		return promise;
 
 		function encodeFunction(s) {return s;}
 
@@ -600,21 +458,21 @@ hello.utils.extend(hello, {
 		var error = utils.error;
 
 		// Create a new promise
-		var promise = utils.Promise();
+		var {promise, resolve, reject} = utils.createDeferredPromise();
 
-		var p = utils.args({name:'s', options: 'o', callback: 'f'}, arguments);
+		var p = utils.args({name: 's', options: 'o', callback: 'f'}, arguments);
 
 		p.options = p.options || {};
 
 		// Add callback to events
-		promise.proxy.then(p.callback, p.callback);
+		promise.then(p.callback, p.callback);
 
 		// Trigger an event on the global listener
 		function emit(s, value) {
 			hello.emit(s, value);
 		}
 
-		promise.proxy.then(emit.bind(this, 'auth.logout auth'), emit.bind(this, 'error'));
+		promise.then(emit.bind(this, 'auth.logout auth'), emit.bind(this, 'error'));
 
 		// Network
 		p.name = p.name || this.settings.default_service;
@@ -622,7 +480,7 @@ hello.utils.extend(hello, {
 
 		if (p.name && !(p.name in _this.services)) {
 
-			promise.reject(error('invalid_network', 'The network was unrecognized'));
+			reject(error('invalid_network', 'The network was unrecognized'));
 
 		}
 		else if (p.name && p.authResponse) {
@@ -634,7 +492,7 @@ hello.utils.extend(hello, {
 				utils.store(p.name, null);
 
 				// Emit events by default
-				promise.fulfill(hello.utils.merge({network:p.name}, opts || {}));
+				resolve(hello.utils.merge({network: p.name}, opts || {}));
 			};
 
 			// Run an async operation to remove the users session
@@ -656,7 +514,7 @@ hello.utils.extend(hello, {
 					}
 					else if (logout === undefined) {
 						// The callback function will handle the response.
-						return promise.proxy;
+						return promise;
 					}
 				}
 			}
@@ -665,10 +523,10 @@ hello.utils.extend(hello, {
 			callback(_opts);
 		}
 		else {
-			promise.reject(error('invalid_session', 'There was no session to remove'));
+			reject(error('invalid_session', 'There was no session to remove'));
 		}
 
-		return promise.proxy;
+		return promise;
 	},
 
 	// Returns all the sessions that are subscribed too
@@ -923,7 +781,7 @@ hello.utils.extend(hello.utils, {
 	// An easy way to create a hidden iframe
 	// @param string src
 	iframe: function(src) {
-		this.append('iframe', {src: src, style: {position:'absolute', left: '-1000px', bottom: 0, height: '1px', width: '1px'}}, 'body');
+		this.append('iframe', {src: src, style: {position: 'absolute', left: '-1000px', bottom: 0, height: '1px', width: '1px'}}, 'body');
 	},
 
 	// Recursive merge two objects into one, second parameter overides the first
@@ -971,7 +829,7 @@ hello.utils.extend(hello.utils, {
 			t = typeof (args[i]);
 
 			if ((typeof (o[x]) === 'function' && o[x].test(args[i])) || (typeof (o[x]) === 'string' && (
-			(o[x].indexOf('s') > -1 && t === 'string') ||
+				(o[x].indexOf('s') > -1 && t === 'string') ||
 			(o[x].indexOf('o') > -1 && t === 'object') ||
 			(o[x].indexOf('i') > -1 && t === 'number') ||
 			(o[x].indexOf('a') > -1 && t === 'object') ||
@@ -1067,183 +925,29 @@ hello.utils.extend(hello.utils, {
 		return true;
 	},
 
-	//jscs:disable
+	// Create a deferred promise with externally accessible resolve/reject functions
+	// Returns an object with {promise, resolve, reject}
+	createDeferredPromise: function() {
+		// Use modern Promise.withResolvers if available, otherwise polyfill
+		if (Promise.withResolvers) {
+			return Promise.withResolvers();
+		}
 
-	/*!
-	 **  Thenable -- Embeddable Minimum Strictly-Compliant Promises/A+ 1.1.1 Thenable
-	 **  Copyright (c) 2013-2014 Ralf S. Engelschall <http://engelschall.com>
-	 **  Licensed under The MIT License <http://opensource.org/licenses/MIT>
-	 **  Source-Code distributed on <http://github.com/rse/thenable>
-	 */
-	Promise: (function(){
-		/*  promise states [Promises/A+ 2.1]  */
-		var STATE_PENDING   = 0;                                         /*  [Promises/A+ 2.1.1]  */
-		var STATE_FULFILLED = 1;                                         /*  [Promises/A+ 2.1.2]  */
-		var STATE_REJECTED  = 2;                                         /*  [Promises/A+ 2.1.3]  */
+		// Polyfill for older browsers
+		var resolve;
+		var reject;
+		var promise = new Promise(function(res, rej) {
+			resolve = res;
+			reject = rej;
+		});
 
-		/*  promise object constructor  */
-		var api = function (executor) {
-			/*  optionally support non-constructor/plain-function call  */
-			if (!(this instanceof api))
-				return new api(executor);
-
-			/*  initialize object  */
-			this.id           = "Thenable/1.0.6";
-			this.state        = STATE_PENDING; /*  initial state  */
-			this.fulfillValue = undefined;     /*  initial value  */     /*  [Promises/A+ 1.3, 2.1.2.2]  */
-			this.rejectReason = undefined;     /*  initial reason */     /*  [Promises/A+ 1.5, 2.1.3.2]  */
-			this.onFulfilled  = [];            /*  initial handlers  */
-			this.onRejected   = [];            /*  initial handlers  */
-
-			/*  provide optional information-hiding proxy  */
-			this.proxy = {
-				then: this.then.bind(this)
-			};
-
-			/*  support optional executor function  */
-			if (typeof executor === "function")
-				executor.call(this, this.fulfill.bind(this), this.reject.bind(this));
+		return {
+			promise: promise,
+			resolve: resolve,
+			reject: reject
 		};
+	},
 
-		/*  promise API methods  */
-		api.prototype = {
-			/*  promise resolving methods  */
-			fulfill: function (value) { return deliver(this, STATE_FULFILLED, "fulfillValue", value); },
-			reject:  function (value) { return deliver(this, STATE_REJECTED,  "rejectReason", value); },
-
-			/*  "The then Method" [Promises/A+ 1.1, 1.2, 2.2]  */
-			then: function (onFulfilled, onRejected) {
-				var curr = this;
-				var next = new api();                                    /*  [Promises/A+ 2.2.7]  */
-				curr.onFulfilled.push(
-					resolver(onFulfilled, next, "fulfill"));             /*  [Promises/A+ 2.2.2/2.2.6]  */
-				curr.onRejected.push(
-					resolver(onRejected,  next, "reject" ));             /*  [Promises/A+ 2.2.3/2.2.6]  */
-				execute(curr);
-				return next.proxy;                                       /*  [Promises/A+ 2.2.7, 3.3]  */
-			}
-		};
-
-		/*  deliver an action  */
-		var deliver = function (curr, state, name, value) {
-			if (curr.state === STATE_PENDING) {
-				curr.state = state;                                      /*  [Promises/A+ 2.1.2.1, 2.1.3.1]  */
-				curr[name] = value;                                      /*  [Promises/A+ 2.1.2.2, 2.1.3.2]  */
-				execute(curr);
-			}
-			return curr;
-		};
-
-		/*  execute all handlers  */
-		var execute = function (curr) {
-			if (curr.state === STATE_FULFILLED)
-				execute_handlers(curr, "onFulfilled", curr.fulfillValue);
-			else if (curr.state === STATE_REJECTED)
-				execute_handlers(curr, "onRejected",  curr.rejectReason);
-		};
-
-		/*  execute particular set of handlers  */
-		var execute_handlers = function (curr, name, value) {
-			/* global process: true */
-			/* global setImmediate: true */
-			/* global setTimeout: true */
-
-			/*  short-circuit processing  */
-			if (curr[name].length === 0)
-				return;
-
-			/*  iterate over all handlers, exactly once  */
-			var handlers = curr[name];
-			curr[name] = [];                                             /*  [Promises/A+ 2.2.2.3, 2.2.3.3]  */
-			var func = function () {
-				for (var i = 0; i < handlers.length; i++)
-					handlers[i](value);                                  /*  [Promises/A+ 2.2.5]  */
-			};
-
-			/*  execute procedure asynchronously  */                     /*  [Promises/A+ 2.2.4, 3.1]  */
-			if (typeof process === "object" && typeof process.nextTick === "function")
-				process.nextTick(func);
-			else if (typeof setImmediate === "function")
-				setImmediate(func);
-			else
-				setTimeout(func, 0);
-		};
-
-		/*  generate a resolver function  */
-		var resolver = function (cb, next, method) {
-			return function (value) {
-				if (typeof cb !== "function")                            /*  [Promises/A+ 2.2.1, 2.2.7.3, 2.2.7.4]  */
-					next[method].call(next, value);                      /*  [Promises/A+ 2.2.7.3, 2.2.7.4]  */
-				else {
-					var result;
-					try { result = cb(value); }                          /*  [Promises/A+ 2.2.2.1, 2.2.3.1, 2.2.5, 3.2]  */
-					catch (e) {
-						next.reject(e);                                  /*  [Promises/A+ 2.2.7.2]  */
-						return;
-					}
-					resolve(next, result);                               /*  [Promises/A+ 2.2.7.1]  */
-				}
-			};
-		};
-
-		/*  "Promise Resolution Procedure"  */                           /*  [Promises/A+ 2.3]  */
-		var resolve = function (promise, x) {
-			/*  sanity check arguments  */                               /*  [Promises/A+ 2.3.1]  */
-			if (promise === x || promise.proxy === x) {
-				promise.reject(new TypeError("cannot resolve promise with itself"));
-				return;
-			}
-
-			/*  surgically check for a "then" method
-				(mainly to just call the "getter" of "then" only once)  */
-			var then;
-			if ((typeof x === "object" && x !== null) || typeof x === "function") {
-				try { then = x.then; }                                   /*  [Promises/A+ 2.3.3.1, 3.5]  */
-				catch (e) {
-					promise.reject(e);                                   /*  [Promises/A+ 2.3.3.2]  */
-					return;
-				}
-			}
-
-			/*  handle own Thenables    [Promises/A+ 2.3.2]
-				and similar "thenables" [Promises/A+ 2.3.3]  */
-			if (typeof then === "function") {
-				var resolved = false;
-				try {
-					/*  call retrieved "then" method */                  /*  [Promises/A+ 2.3.3.3]  */
-					then.call(x,
-						/*  resolvePromise  */                           /*  [Promises/A+ 2.3.3.3.1]  */
-						function (y) {
-							if (resolved) return; resolved = true;       /*  [Promises/A+ 2.3.3.3.3]  */
-							if (y === x)                                 /*  [Promises/A+ 3.6]  */
-								promise.reject(new TypeError("circular thenable chain"));
-							else
-								resolve(promise, y);
-						},
-
-						/*  rejectPromise  */                            /*  [Promises/A+ 2.3.3.3.2]  */
-						function (r) {
-							if (resolved) return; resolved = true;       /*  [Promises/A+ 2.3.3.3.3]  */
-							promise.reject(r);
-						}
-					);
-				}
-				catch (e) {
-					if (!resolved)                                       /*  [Promises/A+ 2.3.3.3.3]  */
-						promise.reject(e);                               /*  [Promises/A+ 2.3.3.3.4]  */
-				}
-				return;
-			}
-
-			/*  handle other values  */
-			promise.fulfill(x);                                          /*  [Promises/A+ 2.3.4, 2.3.3.4]  */
-		};
-
-		/*  export API  */
-		return api;
-	})(),
-
-	//jscs:enable
 
 	// Event
 	// A contructor superclass for adding event menthods, on, off, emit.
@@ -1391,16 +1095,16 @@ hello.utils.extend(hello.utils, {
 		// Credit: http://www.xtf.dk/2011/08/center-new-popup-window-even-on.html
 		// Fixes dual-screen position                         Most browsers      Firefox
 
-		if (options.height) {
+		if (options.height && options.top === undefined) {
 			var dualScreenTop = window.screenTop !== undefined ? window.screenTop : screen.top;
 			var height = screen.height || window.innerHeight || documentElement.clientHeight;
-			options.top = (options.top) ? options.top : parseInt((height - options.height) / 2, 10) + dualScreenTop;
+			options.top = parseInt((height - options.height) / 2, 10) + dualScreenTop;
 		}
 
-		if (options.width) {
+		if (options.width && options.left === undefined) {
 			var dualScreenLeft = window.screenLeft !== undefined ? window.screenLeft : screen.left;
 			var width = screen.width || window.innerWidth || documentElement.clientWidth;
-			options.left = (options.left) ? options.left : parseInt((width - options.width) / 2, 10) + dualScreenLeft;
+			options.left = parseInt((width - options.width) / 2, 10) + dualScreenLeft;
 		}
 
 		// Convert options into an array
@@ -1449,17 +1153,26 @@ hello.utils.extend(hello.utils, {
 		// OAuth2 or OAuth1 server response?
 		if (p && p.state && (p.code || p.oauth_token)) {
 
-			var state = JSON.parse(p.state);
+			try {
+				var state = JSON.parse(p.state);
 
-			// Add this path as the redirect_uri
-			p.redirect_uri = state.redirect_uri || location.href.replace(/[\?\#].*$/, '');
+				// Add this path as the redirect_uri
+				p.redirect_uri = state.redirect_uri || location.href.replace(/[\?\#].*$/, '');
 
-			// Redirect to the host
-			var path = _this.qs(state.oauth_proxy, p);
+				// Redirect to the host
+				var path = _this.qs(state.oauth_proxy, p);
 
-			location.assign(path);
 
-			return;
+				if (isValidUrl(path)) {
+					location.assign(path);
+				}
+
+				return;
+			}
+			catch (e) {
+				console.error('Could not decode state parameter', e);
+				return;
+			}
 		}
 
 		// Save session, from redirected authentication
@@ -1532,7 +1245,7 @@ hello.utils.extend(hello.utils, {
 			}
 
 			// If this page is still open
-			if (p.page_uri) {
+			if (p.page_uri && isValidUrl(p.page_uri)) {
 				location.assign(p.page_uri);
 			}
 		}
@@ -1541,9 +1254,25 @@ hello.utils.extend(hello.utils, {
 		// (URI Fragments within 302 Location URI are lost over HTTPS)
 		// Loading the redirect.html before triggering the OAuth Flow seems to fix it.
 		else if ('oauth_redirect' in p) {
+			var url = decodeURIComponent(p.oauth_redirect);
 
-			location.assign(decodeURIComponent(p.oauth_redirect));
+			if (isValidUrl(url)) {
+				location.assign(url);
+			}
+
 			return;
+		}
+
+		function isValidUrl(url) {
+			var regexp = /^https?:/;
+			return regexp.test(url)
+
+				// If `HELLOJS_REDIRECT_URL` is defined in the window context, validate that the URL matches it.
+				&& (
+					!Object.prototype.hasOwnProperty.call(window, 'HELLOJS_REDIRECT_URL')
+					||
+					url.match(window.HELLOJS_REDIRECT_URL)
+				);
 		}
 
 		// Trigger a callback to authenticate
@@ -1773,8 +1502,8 @@ hello.api = function() {
 	var utils = _this.utils;
 	var error = utils.error;
 
-	// Construct a new Promise object
-	var promise = utils.Promise();
+	// Construct a new Promise object with external resolvers
+	var {promise, resolve, reject} = utils.createDeferredPromise();
 
 	// Arguments
 	var p = utils.args({path: 's!', query: 'o', method: 's', data: 'o', timeout: 'i', callback: 'f'}, arguments);
@@ -1802,7 +1531,8 @@ hello.api = function() {
 	// Remove the network from path, e.g. facebook:/me/friends
 	// Results in { network : facebook, path : me/friends }
 	if (!p.path) {
-		return promise.reject(error('invalid_path', 'Missing the path parameter from the request'));
+		reject(error('invalid_path', 'Missing the path parameter from the request'));
+		return promise;
 	}
 
 	p.path = p.path.replace(/^\/+/, '');
@@ -1822,14 +1552,16 @@ hello.api = function() {
 	// INVALID
 	// Is there no service by the given network name?
 	if (!o) {
-		return promise.reject(error('invalid_network', 'Could not match the service requested: ' + p.network));
+		reject(error('invalid_network', 'Could not match the service requested: ' + p.network));
+		return promise;
 	}
 
 	// PATH
 	// As long as the path isn't flagged as unavaiable, e.g. path == false
 
 	if (!(!(p.method in o) || !(p.path in o[p.method]) || o[p.method][p.path] !== false)) {
-		return promise.reject(error('invalid_path', 'The provided path is not available on the selected network'));
+		reject(error('invalid_path', 'The provided path is not available on the selected network'));
+		return promise;
 	}
 
 	// PROXY
@@ -1927,7 +1659,7 @@ hello.api = function() {
 		getPath(url);
 	}
 
-	return promise.proxy;
+	return promise;
 
 	// If url needs a base
 	// Wrap everything in
@@ -1945,7 +1677,7 @@ hello.api = function() {
 				delete p.data[key];
 			}
 			else if (!defaults) {
-				promise.reject(error('missing_attribute', 'The attribute ' + key + ' is missing from the request'));
+				reject(error('missing_attribute', 'The attribute ' + key + ' is missing from the request'));
 			}
 
 			return val;
@@ -1969,10 +1701,10 @@ hello.api = function() {
 			if (!p.formatResponse) {
 				// Bad request? error statusCode or otherwise contains an error response vis JSONP?
 				if (typeof headers === 'object' ? (headers.statusCode >= 400) : (typeof r === 'object' && 'error' in r)) {
-					promise.reject(r);
+					reject(r);
 				}
 				else {
-					promise.fulfill(r);
+					resolve(r);
 				}
 
 				return;
@@ -1980,7 +1712,7 @@ hello.api = function() {
 
 			// Should this be an object
 			if (r === true) {
-				r = {success:true};
+				r = {success: true};
 			}
 			else if (!r) {
 				r = {};
@@ -1988,7 +1720,7 @@ hello.api = function() {
 
 			// The delete callback needs a better response
 			if (p.method === 'delete') {
-				r = (!r || utils.isEmpty(r)) ? {success:true} : r;
+				r = (!r || utils.isEmpty(r)) ? {success: true} : r;
 			}
 
 			// FORMAT RESPONSE?
@@ -2024,10 +1756,10 @@ hello.api = function() {
 			// Dispatch to listeners
 			// Emit events which pertain to the formatted response
 			if (!r || 'error' in r) {
-				promise.reject(r);
+				reject(r);
 			}
 			else {
-				promise.fulfill(r);
+				resolve(r);
 			}
 		});
 	}
@@ -2116,7 +1848,7 @@ hello.utils.extend(hello.utils, {
 			// Add some additional query parameters to the URL
 			// We're pretty stuffed if the endpoint doesn't like these
 			p.query.redirect_uri = p.redirect_uri;
-			p.query.state = JSON.stringify({callback:p.callbackID});
+			p.query.state = JSON.stringify({callback: p.callbackID});
 
 			var opts;
 
@@ -2185,7 +1917,7 @@ hello.utils.extend(hello.utils, {
 					// This will prompt the request to be signed as though it is OAuth1
 					then: p.proxy_response_type || (p.method.toLowerCase() === 'get' ? 'redirect' : 'proxy'),
 					method: p.method.toLowerCase(),
-					suppress_response_codes: true
+					suppress_response_codes: p.suppress_response_codes || true
 				});
 			}
 
@@ -2666,7 +2398,7 @@ hello.utils.extend(hello.utils, {
 	isBinary: function(data) {
 
 		return data instanceof Object && (
-		(this.domInstance('input', data) && data.type === 'file') ||
+			(this.domInstance('input', data) && data.type === 'file') ||
 		('FileList' in window && data instanceof window.FileList) ||
 		('File' in window && data instanceof window.File) ||
 		('Blob' in window && data instanceof window.Blob));
@@ -2789,7 +2521,7 @@ hello.utils.extend(hello.utils, {
 	hello.api = function() {
 
 		// Get arguments
-		var p = utils.args({path: 's!', method: 's', data:'o', timeout: 'i', callback: 'f'}, arguments);
+		var p = utils.args({path: 's!', method: 's', data: 'o', timeout: 'i', callback: 'f'}, arguments);
 
 		// Change for into a data object
 		if (p.data) {
@@ -2809,7 +2541,6 @@ hello.utils.extend(hello.utils, {
 /////////////////////////////////////
 
 hello.utils.responseHandler(window, window.opener || window.parent);
-
 // Script to support ChromeApps
 // This overides the hello.utils.popup method to support chrome.identity.launchWebAuthFlow
 // See https://developer.chrome.com/apps/app_identity#non
@@ -2936,7 +2667,6 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 
 	})();
 }
-
 // Phonegap override for hello.phonegap.js
 (function() {
 
@@ -3034,7 +2764,6 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 	};
 
 })();
-
 (function(hello) {
 
 	// OAuth1
@@ -3283,7 +3012,6 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 	}
 
 })(hello);
-
 (function(hello) {
 	// For APIs, once a version is no longer usable, any calls made to it will be defaulted to the next oldest usable version.
 	// So we explicitly state it.
@@ -3317,7 +3045,7 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 				publish: 'publish_actions',
 
 				// Deprecated in v2.0
-				// Create_event	: 'create_event',
+				// Create_event: 'create_event',
 
 				offline_access: ''
 			},
@@ -3340,13 +3068,13 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 			logout: function(callback, options) {
 				// Assign callback to a global handler
 				var callbackID = hello.utils.globalEvent(callback);
-				var redirect = encodeURIComponent(hello.settings.redirect_uri + '?' + hello.utils.param({callback:callbackID, result: JSON.stringify({force:true}), state: '{}'}));
+				var redirect = encodeURIComponent(hello.settings.redirect_uri + '?' + hello.utils.param({callback: callbackID, result: JSON.stringify({force: true}), state: '{}'}));
 				var token = (options.authResponse || {}).access_token;
 				hello.utils.iframe('https://www.facebook.com/logout.php?next=' + redirect + '&access_token=' + token);
 
 				// Possible responses:
-				// String URL	- hello.logout should handle the logout
-				// Undefined	- this function will handle the callback
+				// String URL - hello.logout should handle the logout
+				// Undefined - this function will handle the callback
 				// True - throw a success, this callback isn't handling the callback
 				// False - throw a error
 				if (!token) {
@@ -3496,7 +3224,6 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 	}
 
 })(hello);
-
 (function(hello) {
 
 	hello.init({
@@ -3519,12 +3246,12 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 			// Map GET resquests
 			get: {
 				me: sign('flickr.people.getInfo'),
-				'me/friends': sign('flickr.contacts.getList', {per_page:'@{limit|50}'}),
-				'me/following': sign('flickr.contacts.getList', {per_page:'@{limit|50}'}),
-				'me/followers': sign('flickr.contacts.getList', {per_page:'@{limit|50}'}),
-				'me/albums': sign('flickr.photosets.getList', {per_page:'@{limit|50}'}),
+				'me/friends': sign('flickr.contacts.getList', {per_page: '@{limit|50}'}),
+				'me/following': sign('flickr.contacts.getList', {per_page: '@{limit|50}'}),
+				'me/followers': sign('flickr.contacts.getList', {per_page: '@{limit|50}'}),
+				'me/albums': sign('flickr.photosets.getList', {per_page: '@{limit|50}'}),
 				'me/album': sign('flickr.photosets.getPhotos', {photoset_id: '@{id}'}),
-				'me/photos': sign('flickr.people.getPhotos', {per_page:'@{limit|50}'})
+				'me/photos': sign('flickr.people.getPhotos', {per_page: '@{limit|50}'})
 			},
 
 			wrap: {
@@ -3743,7 +3470,6 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 	}
 
 })(hello);
-
 (function(hello) {
 
 	hello.init({
@@ -3833,7 +3559,6 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 	}
 
 })(hello);
-
 (function(hello) {
 
 	hello.init({
@@ -3877,7 +3602,7 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 					formatError(o, headers);
 
 					if (Array.isArray(o)) {
-						o = {data:o};
+						o = {data: o};
 					}
 
 					if (o.data) {
@@ -3936,7 +3661,6 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 	}
 
 })(hello);
-
 (function(hello) {
 
 	var contactsUrl = 'https://www.google.com/m8/feeds/contacts/default/full?v=3.0&alt=json&max-results=@{limit|1000}&start-index=@{start|1}';
@@ -3945,24 +3669,23 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 
 		google: {
 
-			name: 'Google Plus',
+			name: 'Google Sign-In',
 
 			// See: http://code.google.com/apis/accounts/docs/OAuth2UserAgent.html
 			oauth: {
 				version: 2,
-				auth: 'https://accounts.google.com/o/oauth2/auth',
-				grant: 'https://accounts.google.com/o/oauth2/token'
+				auth: 'https://accounts.google.com/o/oauth2/v2/auth',
+				grant: 'https://www.googleapis.com/oauth2/v4/token'
 			},
 
 			// Authorization scopes
 			scope: {
-				basic: 'https://www.googleapis.com/auth/plus.me profile',
+				basic: 'openid profile',
 				email: 'email',
 				birthday: '',
 				events: '',
 				photos: 'https://picasaweb.google.com/data/',
 				videos: 'http://gdata.youtube.com',
-				friends: 'https://www.google.com/m8/feeds, https://www.googleapis.com/auth/plus.login',
 				files: 'https://www.googleapis.com/auth/drive.readonly',
 				publish: '',
 				publish_files: 'https://www.googleapis.com/auth/drive',
@@ -3980,11 +3703,14 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 					// Let's set this to an offline access to return a refresh_token
 					p.qs.access_type = 'offline';
 				}
+				else if (p.qs.response_type.indexOf('id_token') > -1) {
+					p.qs.nonce = parseInt(Math.random() * 1e12, 10).toString(36);
+				}
 
 				// Reauthenticate
 				// https://developers.google.com/identity/protocols/
 				if (p.options.force) {
-					p.qs.approval_prompt = 'force';
+					p.qs.prompt = 'consent';
 				}
 			},
 
@@ -3993,18 +3719,15 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 
 			// Map GET requests
 			get: {
-				me: 'plus/v1/people/me',
+				me: 'oauth2/v3/userinfo?alt=json',
 
 				// Deprecated Sept 1, 2014
 				//'me': 'oauth2/v1/userinfo?alt=json',
 
 				// See: https://developers.google.com/+/api/latest/people/list
-				'me/friends': 'plus/v1/people/me/people/visible?maxResults=@{limit|100}',
 				'me/following': contactsUrl,
 				'me/followers': contactsUrl,
 				'me/contacts': contactsUrl,
-				'me/share': 'plus/v1/people/me/activities/public?maxResults=@{limit|100}',
-				'me/feed': 'plus/v1/people/me/activities/public?maxResults=@{limit|100}',
 				'me/albums': 'https://picasaweb.google.com/data/feed/api/user/default?alt=json&max-results=@{limit|100}&start-index=@{start|1}',
 				'me/album': function(p, callback) {
 					var key = p.query.id;
@@ -4058,6 +3781,10 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 
 			wrap: {
 				me: function(o) {
+					if (o.sub) {
+						o.id = o.sub;
+					}
+
 					if (o.id) {
 						o.last_name = o.family_name || (o.name ? o.name.familyName : null);
 						o.first_name = o.given_name || (o.name ? o.name.givenName : null);
@@ -4158,8 +3885,12 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 	}
 
 	function formatPhotos(o) {
-		o.data = o.feed.entry.map(formatEntry);
-		delete o.feed;
+		if ('feed' in o) {
+			o.data = 'entry' in o.feed ? o.feed.entry.map(formatEntry) : [];
+			delete o.feed;
+		}
+
+		return o;
 	}
 
 	// Google has a horrible JSON API
@@ -4176,7 +3907,7 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 			return formatEntry(o.entry);
 		}
 
-		// New style: Google Drive & Plus
+		// New style: Google Drive
 		else if ('items' in o) {
 			o.data = o.items.map(formatItem);
 			delete o.items;
@@ -4202,11 +3933,11 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 			for (var i = 0; i < o.feed.entry.length; i++) {
 				var a = o.feed.entry[i];
 
-				a.id	= a.id.$t;
-				a.name	= a.title.$t;
+				a.id = a.id.$t;
+				a.name = a.title.$t;
 				delete a.title;
 				if (a.gd$email) {
-					a.email	= (a.gd$email && a.gd$email.length > 0) ? a.gd$email[0].address : null;
+					a.email = (a.gd$email && a.gd$email.length > 0) ? a.gd$email[0].address : null;
 					a.emails = a.gd$email;
 					delete a.gd$email;
 				}
@@ -4516,7 +4247,6 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 	}
 
 })(hello);
-
 (function(hello) {
 
 	hello.init({
@@ -4708,7 +4438,6 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 	}
 
 })(hello);
-
 (function(hello) {
 
 	hello.init({
@@ -4874,7 +4603,6 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 	}
 
 }(hello));
-
 (function(hello) {
 
 	hello.init({
@@ -4951,7 +4679,7 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 				'me/like': like
 			},
 
-			del:{
+			del: {
 				'me/like': like
 			},
 
@@ -5076,7 +4804,6 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 	}
 
 })(hello);
-
 // See: https://developers.soundcloud.com/docs/api/reference
 (function(hello) {
 
@@ -5162,7 +4889,6 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 	}
 
 })(hello);
-
 // See: https://developer.spotify.com/web-api/
 (function(hello) {
 
@@ -5262,7 +4988,6 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 	}
 
 })(hello);
-
 (function(hello) {
 
 	var base = 'https://api.twitter.com/';
@@ -5363,7 +5088,7 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 			del: {
 
 				// See: https://dev.twitter.com/rest/reference/post/favorites/destroy
-				'me/like': function() {
+				'me/like': function(p, callback) {
 					p.method = 'post';
 					var id = p.data.id;
 					p.data = null;
@@ -5485,7 +5210,6 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 	*/
 
 })(hello);
-
 // Vkontakte (vk.com)
 (function(hello) {
 
@@ -5528,6 +5252,7 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 			get: {
 				me: function(p, callback) {
 					p.query.fields = 'id,first_name,last_name,photo_max';
+					p.query.v = '5.131';
 					callback('users.get');
 				}
 			},
@@ -5577,7 +5302,6 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 	}
 
 })(hello);
-
 (function(hello) {
 
 	hello.init({
@@ -5764,7 +5488,6 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 	}
 
 })(hello);
-
 (function(hello) {
 
 	hello.init({
@@ -5776,7 +5499,10 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 				version: '1.0a',
 				auth: 'https://api.login.yahoo.com/oauth/v2/request_auth',
 				request: 'https://api.login.yahoo.com/oauth/v2/get_request_token',
-				token: 'https://api.login.yahoo.com/oauth/v2/get_token'
+				token: 'https://api.login.yahoo.com/oauth/v2/get_token',
+				// Yahoo requires the state param to be base 64 encoded, hence the flag base64_state is set to true for Yahoo.
+				// Else uri encoding is used for all the other providers.
+				base64_state: true
 			},
 
 			// Login handler
@@ -5922,14 +5648,12 @@ if (typeof chrome === 'object' && typeof chrome.identity === 'object' && chrome.
 	}
 
 })(hello);
-
 // Register as anonymous AMD module
 if (typeof define === 'function' && define.amd) {
 	define(function() {
 		return hello;
 	});
 }
-
 // CommonJS module for browserify
 if (typeof module === 'object' && module.exports) {
 	module.exports = hello;
