@@ -1,0 +1,36 @@
+<!doctype html>
+<html class="no-js ui-mobile" lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Yorick</title>
+    <meta name="description" content="A Character Database for Underground Theater">
+    <meta property="og:title" content="Yorick">
+    <meta property="og:image" content="https://patron.undergroundtheater.org/yorick_max.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!--
+      Kept on their CDNs because public/index.html loads them from exactly these
+      URLs. Font Awesome supplies the icons the character sheet and the trait
+      lists use; the datepicker stylesheet dresses the patronage date fields.
+      Vendoring them is a separate change with its own visual diff to check.
+    -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.6.1/css/bootstrap-datepicker.standalone.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
+    <style>
+        #relationships-network {
+            width: 640px;
+            height: 480px;
+            border: 1px solid lightgray;
+            background-color: #333333;
+        }
+
+        .max-yorick-sizing {
+            max-width: 100%;
+            max-height: 90vh;
+        }
+    </style>
+</head>
+<body class="ui-mobile-viewport ui-overlay-a">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>

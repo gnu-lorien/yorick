@@ -1,0 +1,300 @@
+import { useId, type ReactNode, type InputHTMLAttributes, type TextareaHTMLAttributes, type SelectHTMLAttributes } from 'react';
+import { buttonClasses, cx, positionClass, type IconPos, type Theme } from './classes';
+
+/**
+ * jQuery Mobile's form controls and buttons.
+ *
+ * Each one emits the markup jQM's enhancer produced; see
+ * docs/react-migration/jqm-enhanced-markup.md. The wrappers look redundant
+ * until you notice the stylesheet targets them: `.ui-input-text` carries the
+ * border and the inset shadow, and the bare `<input>` inside it is transparent
+ * and borderless. Dropping a wrapper does not simplify the markup, it deletes
+ * the field's appearance.
+ */
+
+/* -------------------------------------------------------------- buttons -- */
+
+export interface ButtonProps {
+  children?: ReactNode;
+  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  icon?: string | false;
+  iconpos?: IconPos;
+  inline?: boolean;
+  theme?: Theme;
+  type?: 'button' | 'submit' | 'reset';
+  disabled?: boolean;
+  id?: string;
+  className?: string;
+}
+
+export function Button({
+  children,
+  onClick,
+  icon,
+  iconpos,
+  inline,
+  theme,
+  type = 'button',
+  disabled,
+  id,
+  className,
+}: ButtonProps) {
+  return (
+    <button
+      id={id}
+      type={type}
+      disabled={disabled}
+      onClick={onClick}
+      className={cx(
+        buttonClasses({ icon, iconpos, inline, theme }),
+        // jQM's disabled styling is a class, not the attribute -- the CSS has
+        // no :disabled rules at all.
+        disabled && 'ui-state-disabled',
+        className,
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+export interface LinkButtonProps extends Omit<ButtonProps, 'onClick' | 'type'> {
+  href: string;
+  onClick?: (event: React.MouseEvent<HTMLAnchorElement>) => void;
+  /** jQM's `data-rel="back"`, kept because the E2E suite looks for it. */
+  rel?: string;
+}
+
+export function LinkButton({
+  children,
+  href,
+  onClick,
+  icon,
+  iconpos,
+  inline,
+  theme,
+  disabled,
+  id,
+  className,
+  rel,
+}: LinkButtonProps) {
+  return (
+    <a
+      id={id}
+      href={href}
+      role="button"
+      data-rel={rel}
+      onClick={onClick}
+      className={cx(
+        'ui-link',
+        buttonClasses({ icon, iconpos, inline, theme }),
+        disabled && 'ui-state-disabled',
+        className,
+      )}
+    >
+      {children}
+    </a>
+  );
+}
+
+/** A plain in-content anchor. jQM gave every one of these `ui-link`. */
+export function Link({
+  href,
+  children,
+  onClick,
+  className,
+  id,
+}: {
+  href: string;
+  children?: ReactNode;
+  onClick?: (event: React.MouseEvent<HTMLAnchorElement>) => void;
+  className?: string;
+  id?: string;
+}) {
+  return (
+    <a id={id} href={href} onClick={onClick} className={cx('ui-link', className)}>
+      {children}
+    </a>
+  );
+}
+
+/* --------------------------------------------------------------- inputs -- */
+
+type NativeInput = Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'className'>;
+
+export interface TextInputProps extends NativeInput {
+  /** Rendered above the field, as the legacy templates' `<label>` did. */
+  label?: ReactNode;
+  type?: 'text' | 'password' | 'number' | 'email' | 'date' | 'file' | 'url' | 'tel';
+  wrapperClassName?: string;
+}
+
+export function TextInput({ label, type = 'text', wrapperClassName, id, ...rest }: TextInputProps) {
+  const generated = useId();
+  const inputId = id ?? generated;
+  return (
+    <>
+      {label !== undefined && <label htmlFor={inputId}>{label}</label>}
+      <div className={cx('ui-input-text ui-body-inherit ui-corner-all ui-shadow-inset', wrapperClassName)}>
+        <input id={inputId} type={type} {...rest} />
+      </div>
+    </>
+  );
+}
+
+export interface TextareaProps extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'className'> {
+  label?: ReactNode;
+  /** jQM's autogrow. On by default, as `data-autogrow` defaulted to true. */
+  autogrow?: boolean;
+  className?: string;
+}
+
+export function Textarea({ label, autogrow = true, id, className, ...rest }: TextareaProps) {
+  const generated = useId();
+  const areaId = id ?? generated;
+  return (
+    <>
+      {label !== undefined && <label htmlFor={areaId}>{label}</label>}
+      {/* No wrapper: jQM put the classes on the textarea itself. */}
+      <textarea
+        id={areaId}
+        className={cx(
+          'ui-input-text ui-shadow-inset ui-body-inherit ui-corner-all',
+          autogrow && 'ui-textinput-autogrow',
+          className,
+        )}
+        {...rest}
+      />
+    </>
+  );
+}
+
+export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'className'> {
+  label?: ReactNode;
+  /** The text shown in the button face. Defaults to the selected option's label. */
+  buttonText?: string;
+  className?: string;
+}
+
+/**
+ * jQM's select.
+ *
+ * The visible control is the `<div>` and the `<span>` inside it; the real
+ * `<select>` sits on top, transparent, and supplies the native dropdown. So the
+ * span has to mirror the selected option's label or the control renders blank.
+ * `buttonText` exists for the cases where the legacy code set that label to
+ * something other than the option text.
+ */
+export function Select({ label, buttonText, id, children, className, ...rest }: SelectProps) {
+  const generated = useId();
+  const selectId = id ?? generated;
+
+  let face = buttonText;
+  if (face === undefined) {
+    const value = rest.value ?? rest.defaultValue;
+    const options = Array.isArray(children) ? children.flat() : [children];
+    for (const opt of options) {
+      if (opt && typeof opt === 'object' && 'props' in opt) {
+        const p = opt.props as { value?: string | number; children?: ReactNode };
+        if (String(p.value) === String(value)) {
+          face = typeof p.children === 'string' ? p.children : String(p.children ?? '');
+          break;
+        }
+      }
+    }
+  }
+
+  return (
+    <>
+      {label !== undefined && <label htmlFor={selectId}>{label}</label>}
+      <div className={cx('ui-select', className)}>
+        <div
+          id={`${selectId}-button`}
+          className="ui-btn ui-icon-carat-d ui-btn-icon-right ui-corner-all ui-shadow"
+        >
+          <span>{face}</span>
+          <select id={selectId} {...rest}>
+            {children}
+          </select>
+        </div>
+      </div>
+    </>
+  );
+}
+
+export interface CheckableProps extends Omit<NativeInput, 'checked'> {
+  label: ReactNode;
+  checked?: boolean;
+}
+
+function Checkable({ kind, label, checked, id, ...rest }: CheckableProps & { kind: 'checkbox' | 'radio' }) {
+  const generated = useId();
+  const inputId = id ?? generated;
+  return (
+    <div className={`ui-${kind}`}>
+      <label
+        htmlFor={inputId}
+        className={cx(
+          'ui-btn ui-corner-all ui-btn-inherit ui-btn-icon-left',
+          `ui-${kind}-${checked ? 'on' : 'off'}`,
+        )}
+      >
+        {label}
+      </label>
+      <input id={inputId} type={kind} checked={checked} {...rest} />
+    </div>
+  );
+}
+
+export function Checkbox(props: CheckableProps) {
+  return <Checkable kind="checkbox" {...props} />;
+}
+
+export function Radio(props: CheckableProps) {
+  return <Checkable kind="radio" {...props} />;
+}
+
+/* --------------------------------------------------------- controlgroup -- */
+
+export function Controlgroup({
+  children,
+  horizontal,
+  className,
+  id,
+}: {
+  children?: ReactNode;
+  horizontal?: boolean;
+  className?: string;
+  id?: string;
+}) {
+  const items = Array.isArray(children) ? children.flat().filter(Boolean) : [children].filter(Boolean);
+  return (
+    <div
+      id={id}
+      data-role="controlgroup"
+      className={cx(
+        'ui-controlgroup',
+        horizontal ? 'ui-controlgroup-horizontal' : 'ui-controlgroup-vertical',
+        'ui-corner-all',
+        className,
+      )}
+    >
+      <div className="ui-controlgroup-controls">
+        {items.map((child, i) =>
+          child && typeof child === 'object' && 'props' in child
+            ? {
+                ...child,
+                props: {
+                  ...(child.props as { className?: string }),
+                  className: cx(
+                    (child.props as { className?: string }).className,
+                    positionClass(i, items.length),
+                  ),
+                },
+              }
+            : child,
+        )}
+      </div>
+    </div>
+  );
+}

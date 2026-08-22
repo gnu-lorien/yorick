@@ -33,6 +33,11 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
+    "@tanstack/react-query": "^5.101.4",
+    "@types/lodash": "^4.17.25",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^5.2.0",
     "gulp": "^5.0.1",
     "gulp-clean": "^0.4.0",
     "gulp-clean-css": "^4.3.0",
@@ -46,7 +51,11 @@
     "karma-jasmine": "~4.0.2",
     "karma-requirejs": "~1.1.0",
     "mongodb-memory-server": "^11.2.0",
-    "requirejs": "^2.3.8"
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "requirejs": "^2.3.8",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.6"
   },
   "repository": {
     "type": "git",
@@ -86,6 +95,14 @@
     "test:e2e:longtexts": "playwright test e2e/long-texts.spec.js",
     "test:e2e:descriptions": "playwright test e2e/descriptions-by-creature.spec.js",
     "test:e2e:lifecycle": "playwright test e2e/lifecycle-vampire.spec.js e2e/lifecycle-werewolf.spec.js e2e/lifecycle-changeling.spec.js",
-    "test:e2e:access": "playwright test e2e/access-control.spec.js"
+    "test:e2e:access": "playwright test e2e/access-control.spec.js",
+    "dev:react": "vite --config web/vite.config.ts",
+    "build:react": "vite build --config web/vite.config.ts",
+    "preview:react": "vite preview --config web/vite.config.ts",
+    "typecheck:react": "tsc -p web/tsconfig.json --noEmit",
+    "generate:routes": "node web/scripts/generate-route-table.mjs && node web/scripts/generate-screen-map.mjs && node web/scripts/generate-page-titles.mjs",
+    "verify:routes": "node web/scripts/verify-route-parity.mjs",
+    "migration:status": "node web/scripts/migration-status.mjs",
+    "compare:dom": "node web/scripts/compare-dom.mjs"
   }
 }
