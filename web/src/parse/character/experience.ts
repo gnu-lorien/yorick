@@ -50,13 +50,26 @@ export function experienceNotationQuery(character: Character): Parse.Query {
     .addDescending('createdAt');
 }
 
-/** Every ledger entry for a character, newest first. */
+/**
+ * Every ledger entry for a character, newest first.
+ *
+ * `find()`, not `each()`. Two reasons, and the first is not a preference:
+ * `each()` refuses a sorted query outright -- "Cannot iterate on a query with
+ * sort, skip, or limit" -- because it paginates by objectId and cannot honour
+ * an ordering while doing so. The order here is the whole point, since the
+ * running balances are computed by walking the list.
+ *
+ * The second is fidelity. The legacy fetch is
+ * `collection.fetch({reset: true})`, which is a plain `find()` taking the
+ * server's default page of 100. So a character with more than 100 notations
+ * loses the oldest ones -- and because `recomputeRunningBalances` walks exactly
+ * this list, the totals would be recomputed against a truncated ledger rather
+ * than merely displayed short. Reproduced rather than fixed, as everywhere
+ * else; raising the limit is a behaviour change and belongs in its own commit.
+ * Recorded as legacy bug #15.
+ */
 export async function fetchExperienceNotations(character: Character): Promise<Parse.Object[]> {
-  const notations: Parse.Object[] = [];
-  await experienceNotationQuery(character).each((notation) => {
-    notations.push(notation);
-  });
-  return notations;
+  return experienceNotationQuery(character).find();
 }
 
 /** What the character has left to spend. */

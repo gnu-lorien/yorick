@@ -72,10 +72,17 @@ export function CharacterApproval({ route }: ScreenProps) {
         setCharacter(loaded.character);
         setChanges(timeline);
         setApprovals(priorApprovals);
-        // `picked.left = 0`, `right = length - 1`, `approval = approvals.length`
-        // -- one past the last approval, which is what puts the Approve button
-        // on screen rather than a past approval's row.
-        setPicked({ left: 0, right: timeline.length - 1, approval: priorApprovals.length });
+        // The approval index starts one past the last approval, which is what
+        // puts the Approve button on screen rather than a past approval's row.
+        //
+        // left and right are then DERIVED from it rather than set to the whole
+        // timeline. `ApprovalsView.initialize` calls
+        // `update_picks_for_approval(picked.approval)` on the way up, so the
+        // range the screen opens on already excludes everything covered by the
+        // most recent approval. Skipping that derivation makes no difference
+        // until a character actually has an approval, and then it shows the
+        // whole timeline as unapproved.
+        setPicked(picksForApproval(timeline, priorApprovals, priorApprovals.length));
       } catch (error) {
         if (cancelled) return;
         showError(error, "Couldn't open that character's approvals");
@@ -93,32 +100,9 @@ export function CharacterApproval({ route }: ScreenProps) {
     return transformedForRange(character, changes, picked.left, picked.right);
   }, [ready, character, changes, picked]);
 
-  /**
-   * Move the approvals slider.
-   *
-   * Ports `update_picks_for_approval`. The chosen approval's change fixes the
-   * right-hand end; the one before it fixes the left, one past where it stopped.
-   * Past the end of the list -- the "not yet approved" position -- the range is
-   * the whole timeline.
-   */
   function pickApproval(index: number) {
     if (!changes) return;
-    let left = 0;
-    let right = changes.length - 1;
-
-    const approval = approvals[index];
-    if (approval) {
-      const changeId = (approval.get('change') as Parse.Object | undefined)?.id;
-      const found = lastIndexOfChange(changes, changeId);
-      if (found !== -1) right = found;
-    }
-    if (index > 0) {
-      const previous = approvals[index - 1];
-      const previousId = (previous?.get('change') as Parse.Object | undefined)?.id;
-      const found = lastIndexOfChange(changes, previousId);
-      if (found !== -1) left = found + 1;
-    }
-    setPicked({ approval: index, left, right });
+    setPicked(picksForApproval(changes, approvals, index));
   }
 
   async function approve() {
@@ -253,7 +237,12 @@ function ChangeRangeSliders({
   const pct = (value: number) => (max > 0 ? (value / max) * 100 : 0);
   return (
     <div>
-      <label htmlFor="slider">Changes to Character:</label>
+      {/* jQM's slider gives the label it finds an id, so the handle can point
+          at it with aria-labelledby: `$("label[for='" + inputId + "']")` then
+          `.attr("id", inputId + "-label")`. */}
+      <label htmlFor="slider" id="slider-label">
+        Changes to Character:
+      </label>
       {/*
         jQM's rangeslider is NOT two sliders stacked. The two number inputs are
         direct children of `.ui-rangeslider`, marked `-first` and `-last`, and
@@ -427,6 +416,10 @@ function ApprovalSlider({
 }) {
   return (
     <div>
+      {/* No id here, unlike the changes slider's label above. Measured: jQM
+          gives the rangeslider's label an id and this plain slider's label
+          none, on the same page and in the same render. Matched rather than
+          made consistent. */}
       <label htmlFor="approval-slider">Previous Approvals:</label>
       <RangeHalf
         id="approval-slider"
@@ -510,6 +503,54 @@ function ApprovalEdit({
 }
 
 registerScreen('characterapproval', CharacterApproval);
+
+/**
+ * The range of changes an approval index selects.
+ *
+ * Ports `update_picks_for_approval`. The chosen approval's change fixes the
+ * right-hand end; the one before it fixes the left, one past where it stopped.
+ * Past the end of the list -- the "not yet approved" position -- the right-hand
+ * end is the newest change and the left is just after the last approved one.
+ */
+function picksForApproval(
+  changes: Parse.Object[],
+  approvals: Parse.Object[],
+  index: number,
+): { left: number; right: number; approval: number } {
+  let left = 0;
+  let right = changes.length - 1;
+
+  const approval = approvals[index];
+  if (approval) {
+    const changeId = (approval.get('change') as Parse.Object | undefined)?.id;
+    const found = lastIndexOfChange(changes, changeId);
+    if (found !== -1) right = found;
+  }
+  if (index > 0) {
+    const previous = approvals[index - 1];
+    const previousId = (previous?.get('change') as Parse.Object | undefined)?.id;
+    const found = lastIndexOfChange(changes, previousId);
+    if (found !== -1) left = found + 1;
+  }
+
+  // Clamped to the slider's own range, because in the legacy app the slider
+  // does the clamping and then writes the clamped value back.
+  //
+  // `left = found + 1` runs off the end whenever the last approval covers the
+  // newest change: with four changes and the newest approved, it computes 4
+  // against a max of 3. jQuery Mobile's rangeslider pins the input to its max
+  // and fires `change`, which `ChangesView.update_left` writes straight into
+  // `picked` -- so the state the screen settles on is left = 3, not 4.
+  // Measured on the running app: `picked` reads {approval: 1, left: 3,
+  // right: 3} in exactly that situation, and the range shows one row rather
+  // than none.
+  const top = Math.max(0, changes.length - 1);
+  return {
+    approval: index,
+    left: Math.min(Math.max(0, left), top),
+    right: Math.min(Math.max(0, right), top),
+  };
+}
 
 /**
  * The index of the last change with this id.

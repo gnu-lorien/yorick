@@ -53,6 +53,14 @@ export interface PageProps {
    * which CSS child selectors apply.
    */
   contentHtml?: string;
+  /**
+   * Popups, rendered as siblings of the content div.
+   *
+   * jQuery Mobile moves an enhanced popup's container out to the page element,
+   * so a popup is a child of the page and NOT of `div[role="main"]`. See
+   * jqm/Popup.tsx.
+   */
+  popups?: ReactNode;
 }
 
 export function Page({
@@ -63,6 +71,7 @@ export function Page({
   contentClassName,
   contentStyle,
   contentHtml,
+  popups,
 }: PageProps) {
   const chromeFromShell = useChrome();
   const chrome = chromeProp ?? chromeFromShell;
@@ -160,6 +169,7 @@ export function Page({
           {children}
         </div>
       )}
+      {popups}
     </div>
   );
 }

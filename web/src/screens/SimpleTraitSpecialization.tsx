@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Page } from '@/jqm/Page';
 import { useLoading } from '@/jqm/Loader';
@@ -149,5 +149,94 @@ function Editor({
   );
 }
 
+/**
+ * Name the specialization of a trait that does not exist yet.
+ *
+ * Ports views/SimpleTraitNewSpecializationView.js and the
+ * `simpletrait_new_specialize` handler. Same page and same template as the
+ * screen above, and a different job: there is no row to update, so nothing is
+ * saved here. Saving sets the specialization on the in-memory trait and hands
+ * it to the add-trait screen through the URL --
+ *
+ *   #simpletrait/spacer/:category/:cid/:name/:value/:free_value/new
+ *
+ * -- with `name` now carrying the "Base: Specialization" form. The trait is
+ * created there, once, rather than created here and edited there.
+ *
+ * @compare #simpletrait/specialize/backgrounds/9cYrGGv2w3/Resources/2/0/new
+ */
+export function SimpleTraitNewSpecialization({ route }: ScreenProps) {
+  const category = route.named['category'] ?? '';
+  const cid = route.named['cid'] ?? '';
+  const backToCategory = `#simpletraits/${category}/${cid}/all`;
+
+  useBackButton(backToCategory);
+
+  // Built from the URL, and coerced for the same reason `simpletraitnew` does
+  // it: SimpleTrait.validate rejects a non-finite value, and under parse@8 that
+  // throws "Can't create an invalid Parse Object" with no clue which field was
+  // wrong. A hand-typed hash should land on a page, not kill the route.
+  const trait = useMemo(() => {
+    const t = new SimpleTrait({
+      name: decodeURIComponent(route.named['name'] ?? ''),
+      value: Number.parseInt(route.named['value'] ?? '', 10) || 0,
+      free_value: Number.parseInt(route.named['free_value'] ?? '', 10) || 0,
+    });
+    // No `category` on it: the legacy constructor omits it here too, and the
+    // add-trait screen supplies one from its own route.
+    return t;
+  }, [route.named]);
+
+  const { data } = useQuery({
+    queryKey: ['new-specialize-description', category, trait.baseName()],
+    queryFn: async () =>
+      (await new Parse.Query(Description)
+        .equalTo('category', category)
+        .startsWith('name', trait.baseName())
+        .first()) ?? null,
+  });
+
+  const [specialization, setSpecialization] = useState(trait.specialization() ?? '');
+
+  function onSave() {
+    trait.setSpecialization(specialization);
+    navigate(
+      `#simpletrait/spacer/${category}/${cid}/${trait.name}/${trait.value}/${trait.freeValue}/new`,
+    );
+  }
+
+  return (
+    <Page id="simpletrait-new-specialization" title="Simple Trait Specialization">
+      <p>{data ? String(data.get('help_specialization') ?? '') : ''}</p>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSave();
+        }}
+      >
+        <label htmlFor="specialization">Specialization for {trait.baseName()}:</label>
+        <div className="ui-input-text ui-body-inherit ui-corner-all ui-shadow-inset">
+          <input
+            type="text"
+            name="specialization"
+            id="specialization"
+            value={specialization}
+            onChange={(e) => setSpecialization(e.target.value)}
+          />
+        </div>
+      </form>
+      <p>
+        <button className="cancel ui-btn" onClick={() => navigate(backToCategory)}>
+          Cancel
+        </button>
+        <button className="save ui-btn" onClick={onSave}>
+          Save Changes
+        </button>
+      </p>
+    </Page>
+  );
+}
+
 registerScreen('simpletraitspecialize', SimpleTraitSpecialization);
 registerScreen('charactercreatespecializesimpletrait', SimpleTraitSpecialization);
+registerScreen('simpletrait_new_specialize', SimpleTraitNewSpecialization);
