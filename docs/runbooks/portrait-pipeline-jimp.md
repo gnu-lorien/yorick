@@ -13,12 +13,14 @@ The attribution was wrong, and the reason it was wrong is the useful part.
 treat it as a symptom. It is now guarded (`cloud/main.js`), so what you will see
 instead is a message naming the portrait's URL.
 
-> **Superseded in part by Step 12 — read [§7](#7-step-12-happened-which-of-the-above-held)
-> before acting on anything above.** The jimp bump landed, and the TypeError this
-> document is named after is gone. Sections 1–6 describe jimp **0.2.28**, which
-> the repo no longer ships. They are kept because the old shape is still what you
-> will find in any run log older than 2026-08-20, and because §3's reasoning
-> about misattribution is version-independent and still worth having.
+> **Superseded in part by Steps 12 and 13 — read [§7](#7-step-12-happened-which-of-the-above-held)
+> and [§8](#8-step-13-happened-jimp-161-and-the-removal-that-was-not-one) before
+> acting on anything above.** The jimp bump landed, and the TypeError this
+> document is named after is gone. Sections 1–6 describe jimp **0.2.28** and §7
+> describes **0.22.12**; the repo now ships **1.6.1**. They are kept because the old
+> shapes are still what you will find in any run log older than 2026-08-21, and
+> because §3's reasoning about misattribution is version-independent — §8 is that
+> same mistake made again, about a feature removal that had not happened.
 
 ---
 
@@ -259,3 +261,78 @@ The 18 other version moves in the lock are all inside jimp's own closure
 root moves reach nothing outside jimp. Pre-existing `npm ls` complaints
 (`ip-address@10.5.0 extraneous`, `socks@2.3.3 invalid`) are byte-identical in the
 lock before and after and are not from this step.
+
+---
+
+## 8. Step 13 happened: jimp 1.6.1, and the removal that was not one
+
+Driven by security, not by the pipeline: **GHSA-5v7r-6r5c-r473**, an infinite loop
+in the `file-type` ASF parser, reachable because `crop_and_thumb` feeds
+user-uploaded bytes to `Image.read`. It could not be fixed by pinning `file-type`
+forward — the fixed line (>= 21.3.1) is ESM-only and `@jimp/core@0.22.12` is CJS —
+so the only route was the major. jimp 1.6.1 carries `file-type@21.3.4` and audits
+clean.
+
+### The claim that nearly stopped this, and was false
+
+The migration was initially scoped as expensive on the belief that **jimp 1.x
+removed remote-URL reading**, which §1 shows this pipeline is built on. That is
+wrong. Measured on 1.6.1 against a local HTTP server:
+
+| input | 1.6.1 result |
+|---|---|
+| `Jimp.read("http://.../img.jpg")` | resolves, correct dimensions |
+| 404 | rejects, `"HTTP Status 404 for url ..."` |
+| `text/plain` 200 | rejects, `"Could not find MIME for Buffer <null>"` |
+| empty 200 | rejects, `"Could not find MIME for Buffer <null>"` |
+| JSON 200 | rejects, `"Could not find MIME for Buffer <null>"` |
+
+Those are the **same two message shapes** §7 measured on 0.22.12, so
+`crop_and_thumb`'s `.catch` re-attaching the URL, and the `!image` guard this
+document is named after, both survive the upgrade unchanged. The lesson is the one
+§3 makes about misattribution, in a new costume: probe the installed package before
+pricing the work from its reputation.
+
+### The §7 table, re-measured on 1.6.1
+
+| | 0.22.12 | 1.6.1 |
+|---|---|---|
+| module shape | `require("jimp")` **is** the class | `{ Jimp, JimpMime, rgbaToInt, intToRGBA, ... }` |
+| MIME constants | `Jimp.MIME_JPEG` | `JimpMime.jpeg` — same `"image/jpeg"` string |
+| `getBuffer` | `(mime, cb)`; per-instance own property | `(mime)` returning a promise; a real prototype method again |
+| `scaleToFit` | `(w, h, cb)` | `({ w, h })`, mutates and returns `this` |
+| `crop` | `(x, y, w, h)` | `({ x, y, w, h })` — positional is **rejected** by a zod schema, not merely deprecated |
+| construction | `new Jimp(w, h, color, cb)` | `new Jimp({ width, height, color })` |
+| `write` | `(path, cb)` | `(path)` returning a promise |
+| colour helpers | `Jimp.rgbaToInt` | top-level `rgbaToInt` |
+
+§7's note that `getBuffer` is an own property rather than a prototype method is **no
+longer true** on 1.6.1: `typeof Jimp.prototype.getBuffer === "function"`. Anyone
+probing the class will now find what they expect.
+
+### What did not change
+
+- **Pixels.** The committed fixtures, written by 0.2.28, still decode to the colours
+  the assertions expect. A fixture regenerated on 1.6.1 is 12 bytes smaller with
+  identical pixels — the same delta `makeFixturePng`'s comment already records for
+  the 0.2.28 to 0.22.12 move.
+- **The buffer round trip in `create_thumbnail`.** It still looks redundant and still
+  is not: `scaleToFit` mutates, all four sizes are built concurrently from one
+  `input_image`, and decoding a fresh instance per size is what keeps them from
+  resizing each other.
+- **The scaffolding did go.** `getBuffer` and `write` returning promises, and
+  `scaleToFit` returning `this`, made all four hand-rolled callback-to-promise
+  wrappers dead weight. They were deleted, not translated.
+
+### §6's last open item, closed
+
+§6 predicted the deprecated `request` transitive would leave when jimp moved, and §7
+recorded that it had not — it was coming from `parse-server@2.8.4` twice, and would
+"go at Step 13 or not at all." **It is gone**, but not from this step:
+`parse-server@9.10.0` does not depend on it at all. `npm ls request` is empty and
+`node_modules/request` does not exist.
+
+### Verification
+
+`npm run test:e2e:assets` — **30 passed**, covering the center crop, all four
+thumbnail sizes, and the non-image rejection path of test 124.

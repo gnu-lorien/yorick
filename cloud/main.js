@@ -4,7 +4,11 @@ var pretty = require('./prettyprint').pretty;
 var Vampire = Parse.Object.extend("Vampire");
 var Patronage = Parse.Object.extend("Patronage");
 var Troupe = require('./Troupe.js').Troupe;
-var Image = require("jimp");
+// jimp 1.x exports a namespace, not the class: `require("jimp")` used to BE the
+// constructor, and is now `{ Jimp, JimpMime, rgbaToInt, ... }`. The MIME
+// constants moved with it - `Image.MIME_JPEG` is gone, `JimpMime.jpeg` is the
+// same "image/jpeg" string.
+var { Jimp: Image, JimpMime } = require("jimp");
 var Promise = global.Promise;
 var moment = require("moment");
 var compat = require('./trigger-compat.js');
@@ -13,37 +17,22 @@ var compat = require('./trigger-compat.js');
    the require world and the node world */
 
 var create_thumbnail = function(portrait, input_image, size) {
-    var promise = new Promise(
-        function(resolve, reject) {
-            var cb = function(err, buffer) {
-                    if (err) reject(err);
-                    else resolve(buffer);
-                }
-            var img = input_image.getBuffer(Image.MIME_JPEG, cb);
-        }
-    );
-    return promise.then(function (buffer) {
+    // The three hand-rolled callback-to-promise wrappers this function used to
+    // carry are gone: on jimp 1.x `getBuffer` returns a promise, and
+    // `scaleToFit` mutates in place and returns the same instance. The shape of
+    // the chain, and every step in it, is otherwise unchanged.
+    //
+    // The round trip out to a buffer and back through `Image.read` is NOT
+    // redundant, on either version. `scaleToFit` mutates, and all four sizes
+    // are built concurrently from the same `input_image`; decoding a fresh
+    // instance per size is what stops them resizing each other's pixels.
+    return input_image.getBuffer(JimpMime.jpeg).then(function (buffer) {
         return Image.read(buffer);
     }).then(function(image) {
-        return new Promise(
-            function(resolve, reject) {
-                var cb = function(err, unused) {
-                    if (err) reject(err);
-                    else resolve(image);
-                }
-                var img = image.scaleToFit(size, size, cb);
-            }
-        );
+        // `{w, h}` replaces the positional (width, height) arguments.
+        return image.scaleToFit({ w: size, h: size });
     }).then(function (image) {
-        return new Promise(
-            function (resolve, reject) {
-                var cb = function (err, buffer) {
-                    if (err) reject(err);
-                    else resolve(buffer);
-                }
-                var img = image.getBuffer(Image.MIME_JPEG, cb);
-            }
-        );
+        return image.getBuffer(JimpMime.jpeg);
     }).then(function (buffer) {
         var base64 = buffer.toString("base64");
         var cropped = new Parse.File("thumbnail_" + size + ".jpg", {base64: base64});
@@ -89,13 +78,17 @@ var crop_and_thumb = function(req) {
     var original_url = portrait.get("original").url();
 
     return Image.read(original_url).catch(function (err) {
-        // 0.22.x rejects properly. It does not always reject legibly: a body
+        // jimp rejects properly. It does not always reject legibly: a body
         // whose type cannot be sniffed - the .txt of test 124, a JSON error
         // page, an empty response - rejects with "Could not find MIME for
         // Buffer <null>" and no URL in it at all. Only the non-200 shape names
         // the URL ("HTTP Status 404 for url ..."). Re-attach it here so every
         // failure of this fetch says which portrait it was reading, which is
         // the property that made the previous version's TypeError diagnosable.
+        //
+        // Both message shapes were re-measured on 1.6.1 against a local server
+        // and are byte-identical to 0.22.x's, so this handler did not need to
+        // change with the upgrade.
         var reason = (err && err.message) || String(err);
         throw new Error(
             "could not read the uploaded image back from " + original_url +
@@ -118,7 +111,8 @@ var crop_and_thumb = function(req) {
         // measured against a local server: a 404, an empty 200, a JSON 200, a
         // text/plain 200 and a truncated JPEG all reject. So this branch is
         // unreachable on the version we now ship, and the .catch above is what
-        // handles the failures that used to land here.
+        // handles the failures that used to land here. Re-measured on 1.6.1:
+        // same rejections, same messages, still unreachable.
         //
         // It stays because it is cheap and because the failure it describes is a
         // property of the promise contract, not of one library: anything that
@@ -128,19 +122,23 @@ var crop_and_thumb = function(req) {
             throw new Error(
                 "could not read the uploaded image back from " + original_url +
                 " - jimp resolved without one. This should be unreachable on " +
-                "jimp 0.22.x, which rejects instead; if you are seeing it, the " +
+                "jimp 1.x, which rejects instead; if you are seeing it, the " +
                 "read path is not the one this guard was written against."
             );
         }
 
         // Crop the image to the smaller of width or height.
+        //
+        // jimp 1.x takes an options object here; the positional
+        // `crop(x, y, w, h)` form is not merely deprecated but rejected, with a
+        // zod "invalid_type: expected object, received number" error.
         var size = Math.min(image.bitmap.width, image.bitmap.height);
-        return image.crop(
-            (image.bitmap.width - size) / 2,
-            (image.bitmap.height - size) / 2,
-            size,
-            size
-        );
+        return image.crop({
+            x: (image.bitmap.width - size) / 2,
+            y: (image.bitmap.height - size) / 2,
+            w: size,
+            h: size
+        });
     }).then(function (image) {
         var promises = [];
         _.each(THUMBNAIL_SIZES, function (size) {

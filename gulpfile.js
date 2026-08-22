@@ -1,8 +1,8 @@
 // including plugins
 var gulp = require('gulp'),
-    htmlmin = require("gulp-htmlmin"),
+    htmlmin = require("gulp-html-minifier-terser"),
     cleanCss = require("gulp-clean-css"),
-    uglify = require("gulp-uglify"),
+    uglify = require("gulp-terser"),
     replace = require("gulp-replace"),
     clean = require("gulp-clean"),
     debug = require("gulp-debug"),
@@ -52,14 +52,27 @@ gulp.task('minify-css', function () {
 });
 
 // The Parse SDK 8 bundle is excluded here and shipped by 'copy-parse-sdk'
-// instead. gulp-uglify 1.5.4 pins an ES5-only uglify-js, and the bundle uses
-// arrow functions; uglify throws a SyntaxError on it, and that throw rejects
-// the stream and aborts the whole gulp.series. Drop the exclusion and every
-// build target dies here, before it ever reaches its siteconfig task.
+// instead. Historically this was mandatory: gulp-uglify 1.5.4 pinned an
+// ES5-only uglify-js that threw a SyntaxError on the bundle's arrow
+// functions, and that throw rejected the stream and aborted the whole
+// gulp.series before it ever reached the siteconfig task.
+//
+// The minifier is now gulp-terser, which parses ES2015+ happily, so the
+// exclusion is no longer load-bearing. It is kept because 'copy-parse-sdk'
+// still overwrites this file afterwards, making any minification of it dead
+// work. Dropping both the exclusion and 'copy-parse-sdk' would ship a
+// minified SDK - a real improvement, but a change to the deployed bytes, so
+// it belongs in its own commit with its own build diff.
+// parse-1.5.0.js is excluded for a different reason: nothing requires it, but
+// the './public/**/*.js' glob was shipping the whole Parse 1.5 SDK to the
+// browser anyway. It stays in the source tree because ten comments across
+// public/scripts cite its line numbers as the reference implementation the
+// parse-compat shims were written against - but it has no business being
+// served. Advisories it carries: GHSA-wvh7-5p38-2qfc, GHSA-9f2h-7v79-mxw3.
 gulp.task('minify-js', function () {
-    return gulp.src(['./public/**/*.js', '!./public/scripts/app/siteconfig.js', '!./public/**/*.min.js', '!./public/scripts/lib/parse-8.6.0.js']) // path to your files
+    return gulp.src(['./public/**/*.js', '!./public/scripts/app/siteconfig.js', '!./public/**/*.min.js', '!./public/scripts/lib/parse-8.6.0.js', '!./public/scripts/lib/parse-1.5.0.js']) // path to your files
         .pipe(debug({title: 'minifying:'}))
-        .pipe(uglify({outSourceMap: true}))
+        .pipe(uglify())
         .pipe(gulp.dest('dist'));
 });
 
@@ -80,35 +93,35 @@ gulp.task('images', function () {
 gulp.task('siteconfig-pubstorm', function () {
     return gulp.src('./public/scripts/app/siteconfig.js')
         .pipe(replace('return ConfigGnuLorienDev;', 'return ConfigPubstorm;'))
-        .pipe(uglify({outSourceMap: true}))
+        .pipe(uglify())
         .pipe(gulp.dest('dist/scripts/app'));
 });
 
 gulp.task('siteconfig-patron', function () {
     return gulp.src('./public/scripts/app/siteconfig.js')
         .pipe(replace('return ConfigGnuLorienDev;', 'return ConfigPatron;'))
-        .pipe(uglify({outSourceMap: true}))
+        .pipe(uglify())
         .pipe(gulp.dest('dist/scripts/app'));
 });
 
 gulp.task('siteconfig-heroku', function () {
     return gulp.src('./public/scripts/app/siteconfig.js')
         .pipe(replace('return ConfigGnuLorienDev;', 'return ConfigHeroku;'))
-        .pipe(uglify({outSourceMap: true}))
+        .pipe(uglify())
         .pipe(gulp.dest('dist/scripts/app'));
 });
 
 gulp.task('siteconfig-greensboro', function () {
     return gulp.src('./public/scripts/app/siteconfig.js')
         .pipe(replace('return ConfigGnuLorienDev;', 'return ConfigGreensboro;'))
-        .pipe(uglify({outSourceMap: true}))
+        .pipe(uglify())
         .pipe(gulp.dest('dist/scripts/app'));
 });
 
 gulp.task('appbust', function () {
     return gulp.src('./public/scripts/app.js')
         .pipe(replace('bust=010101', 'bust=' + pjson.version))
-        .pipe(uglify({outSourceMap: true}))
+        .pipe(uglify())
         .pipe(gulp.dest('dist/scripts'));
 });
 

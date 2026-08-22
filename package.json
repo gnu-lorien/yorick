@@ -13,36 +13,40 @@
   },
   "dependencies": {
     "bcryptjs": "2.4.3",
-    "body-parser": "^1.18.3",
+    "body-parser": "^1.20.6",
     "cors": "^2.8.4",
-    "express": "^4.16.3",
-    "jimp": "^0.22.12",
+    "express": "^4.22.2",
+    "jimp": "^1.6.1",
     "lodash": "^4.17.10",
     "moment": "^2.22.2",
     "mongodb": "7.1.0",
     "parse": "8.6.0",
     "parse-server": "=9.10.0",
     "paypal-ipn": "^3.0.0",
-    "serve-static": "^1.13.2"
+    "serve-static": "^1.16.3"
+  },
+  "overrides": {
+    "ws": "8.21.3",
+    "ip-address": "10.5.0",
+    "follow-redirects": "1.16.0",
+    "uuid": "11.1.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
-    "gulp": "^4.0.0",
-    "gulp-clean": "^0.3.2",
+    "gulp": "^5.0.1",
+    "gulp-clean": "^0.4.0",
     "gulp-clean-css": "^4.3.0",
-    "gulp-debug": "^2.1.2",
-    "gulp-htmlmin": "^2.0.0",
+    "gulp-debug": "^4.0.0",
+    "gulp-html-minifier-terser": "^8.0.0",
     "gulp-replace": "^0.5.4",
-    "gulp-uglify": "^1.5.3",
+    "gulp-terser": "^2.1.0",
     "jasmine-core": "~3.8.0",
     "karma": "~6.4.4",
     "karma-chrome-launcher": "^3.2.0",
     "karma-jasmine": "~4.0.2",
     "karma-requirejs": "~1.1.0",
     "mongodb-memory-server": "^11.2.0",
-    "nodefy": "^0.2.2",
-    "requirejs": "^2.2.0",
-    "url-search-params": "^0.6.1"
+    "requirejs": "^2.3.8"
   },
   "repository": {
     "type": "git",

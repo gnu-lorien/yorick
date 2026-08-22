@@ -13,7 +13,10 @@
 
 const fs = require('fs');
 const path = require('path');
-const Jimp = require('jimp');
+// jimp 1.x exports a namespace rather than the class itself, and the colour
+// helpers are top-level named exports rather than statics on it: what used to
+// be `Jimp.rgbaToInt` is now `rgbaToInt`.
+const { Jimp, rgbaToInt } = require('jimp');
 
 const FIXTURE_DIR = path.join(__dirname, '..', 'fixtures');
 
@@ -31,7 +34,7 @@ const COLORS = {
 const DEFAULT_TOLERANCE = 28;
 
 function toInt(color) {
-  return Jimp.rgbaToInt(color.r, color.g, color.b, 255);
+  return rgbaToInt(color.r, color.g, color.b, 255);
 }
 
 function ensureFixtureDir() {
@@ -55,12 +58,11 @@ async function makeFixturePng(fileName, color, width, height) {
   if (fs.existsSync(target)) {
     return target;
   }
-  const image = await new Promise((resolve, reject) => {
-    new Jimp(width, height, toInt(color), (err, img) => (err ? reject(err) : resolve(img)));
-  });
-  await new Promise((resolve, reject) => {
-    image.write(target, (err) => (err ? reject(err) : resolve()));
-  });
+  // jimp 1.x constructs from an options object and `write` returns a promise,
+  // so both callback wrappers are gone. Pixels are unchanged - a fixture
+  // regenerated on 1.6.1 decodes to the same colour the assertions below expect.
+  const image = new Jimp({ width, height, color: toInt(color) });
+  await image.write(target);
   return target;
 }
 

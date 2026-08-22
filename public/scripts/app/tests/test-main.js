@@ -241,7 +241,6 @@ require.config({
         jquery: "//cdnjs.cloudflare.com/ajax/libs/jquery/1.11.2/jquery",
         
         jquerymobile: "jquery.mobile-1.4.5",
-        jscookie: "js.cookie",
         underscore: "lodash",
         backbone: "backbone",
         // The Parse SDK at 8.6.0 behind the 1.5 compatibility layer, exactly
@@ -272,7 +271,7 @@ require.config({
         // their ids) and wrong for these three, whose filenames differ.
         // Without them the first view requiring one dies with a 404 that
         // reads as a missing module rather than a missing path.
-        papaparse: "papaparse-4.1.2",
+        papaparse: "papaparse-5.6.0",
         "url-search-params": "url-search-params.max.amd",
         vis: "vis",
         backform: "backform",
