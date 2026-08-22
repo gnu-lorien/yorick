@@ -119,10 +119,39 @@ The generated files -- `routeTable.ts`, `screenMap.ts`, `pageTitles.ts` -- are
 extracted from the legacy source by `npm run generate:routes`. Re-run it after
 any change to `mobileRouter.js` or `index.html`; do not edit them by hand.
 
-## Two bugs found while porting
+## Bugs found while porting
 
-Neither is fixed here. Both are in the legacy app today, and changing behaviour
-during a port is how a migration stops being reviewable.
+None of these are fixed here. All are in the legacy app today, and changing
+behaviour during a port is how a migration stops being reviewable -- every diff
+would then have two possible explanations.
+
+The exception is noted below: one of them cannot be reproduced without writing
+code whose purpose is to render nothing.
+
+**The start page's troupe shortcuts have been empty since the Parse 8 upgrade.**
+`PlayerOptionsView.js:71` reads a role's name through a doubled property path:
+
+```js
+var id = role.attributes.attributes.name;
+```
+
+Under Parse 1.5 that resolved. Under parse@8 `role.attributes` is the plain
+attribute bag, so `.attributes` on it is undefined, `id` is undefined, no troupe
+is ever matched, and "Troupe View All Characters" renders as a heading above an
+empty list -- for every user, including storytellers who staff a troupe.
+Measured against the running app with an account holding `LST_<troupeId>`: both
+the role and the troupe are in cache, and the lookup succeeds through
+`role.get("name")` and fails through the path above.
+
+This is the one place the React app deliberately diverges. The legacy fix is one
+word.
+
+**A dead Facebook button still paints on the profile page.**
+`FacebookLinkButtonView` renders "Link Account to Facebook", whose click handler
+calls `Parse.FacebookUtils.link()` -- but `app/loadall.js` deliberately no
+longer calls `Parse.FacebookUtils.init()`, because under parse@8 it throws
+during bootstrap and takes the router down with it. The button cannot work. Not
+ported; the region div is kept and its contents are not.
 
 **`sortbycreated` has never worked.** Five call sites in `mobileRouter.js` set
 it on a local array, while the collection comparators in `Vampires.js`,
@@ -137,3 +166,17 @@ truthy, but `get_user_characters` does not `include("owner")`, so the pointer is
 a stub and the line is skipped. It renders in the admin and troupe listings,
 which hydrate owners through `UserWreqr`. The React app reproduces this, and
 would have diverged silently if single-instance mode had been left on.
+
+## Two things about jQuery Mobile worth knowing
+
+**Writing `class="ui-btn"` into source markup is an instruction, not a
+shortcut.** `$.fn.buttonMarkup` runs `classNameToOptions()` over the existing
+class list and treats an element already carrying `ui-btn` as one it enhanced
+before -- so the *absent* `ui-shadow` and `ui-corner-all` are read back as
+`shadow: false, corners: false`. `templates/troupe.html` does this on five
+buttons, which are square and flat as a result.
+
+**jQuery Mobile does not enhance `<button>` through its button widget at all.**
+That widget's initSelector is `input[type='button'], input[type='submit'],
+input[type='reset']` (jquery.mobile-1.4.5.js:8202). Real `<button>` elements are
+reached only by `$.fn.buttonMarkup` during page enhancement.
