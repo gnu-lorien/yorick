@@ -48,7 +48,11 @@ function declaredHashes() {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) { walk(full); continue; }
       if (!entry.name.endsWith('.tsx')) continue;
-      for (const m of fs.readFileSync(full, 'utf8').matchAll(/@compare\s+(\S+)/g)) {
+      // The target must be a hash or the literal `(home)`. Screens that have
+      // no URL say so in prose -- "No `@compare` marker: ..." -- and a looser
+      // pattern picks the next word out of that sentence and tries to visit
+      // "marker:" as a URL.
+      for (const m of fs.readFileSync(full, 'utf8').matchAll(/@compare\s+(#\S+|\(home\))/g)) {
         found.push(m[1] === '(home)' ? '' : m[1]);
       }
     }
