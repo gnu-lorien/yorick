@@ -26,10 +26,11 @@ difference a machine measured is worth more than one a person noticed while
 reading:
 
 **Found by the port itself.** `npm run compare:dom` renders a screen in both
-front ends and diffs the DOM. These four are differences it flagged, which I
-then traced to a cause:
+front ends and diffs the DOM, or the port could not reproduce a screen without
+first working out why the original failed. These five:
 
-  #1 troupe shortcuts, #2 sortbycreated, #4 memoised sub-view, #13 owner line.
+  #0 approval page unreachable, #1 troupe shortcuts, #2 sortbycreated,
+  #4 memoised sub-view, #13 owner line.
 
 #1 is the only one of the thirteen that is a Parse 8 regression -- a thing that
 worked before that migration and does not now, which the migration did not
@@ -42,6 +43,51 @@ is why anyone did:
   #3, #5, #6, #7, #8, #9, #10, #11, #12.
 
 Ordered below by how much a user would notice, not by how they were found.
+
+---
+
+## 0. A new character's approval page cannot be opened at all
+
+**`public/scripts/app/views/CharacterApprovalView.js:317-319`**
+
+```js
+var right_id = self.model.recorded_changes.at(self.picked.get("right"));
+right_id = right_id.id || right_id.cid || null;
+```
+
+`picked.right` is initialised to `recorded_changes.models.length - 1`. For a
+character with no non-experience change rows -- which is every character that
+has just been created -- that is **-1**, `at(-1)` is `undefined`, and reading
+`.id` off it throws.
+
+The route's tail is `.fail(PromiseFailReport)`, which writes a console line and
+stops. Its `$.mobile.loading("hide")` sits inside the `.then()` rather than an
+`.always()`, so nothing lowers the spinner.
+
+**Confirmed** on the running app with a character holding zero non-XP changes:
+opening `#character/ISZilUG8M4/approval` leaves the app on the **splash
+screen**, hash changed, `#character-approval` never rendered, and the loading
+overlay spinning permanently. Reproducing the line directly gives
+`TypeError: Cannot read properties of undefined (reading 'id')` with
+`rightIndex: -1, rowCount: 0`.
+
+**Fix:** guard the empty timeline.
+
+```js
+var picked_change = self.model.recorded_changes.at(self.picked.get("right"));
+var right_id = picked_change ? (picked_change.id || picked_change.cid || null) : null;
+```
+
+With a null id nothing matches, the whole (empty) timeline is undone, and the
+sheet shows the character as at creation -- which is correct.
+
+Worth fixing the spinner at the same time: move `$.mobile.loading("hide")` into
+an `.always()`, or the next failure on this route strands the user again.
+
+**Impact:** the highest here. A player or storyteller who opens Show Approval on
+a new character is left staring at the splash screen with a spinner and has to
+reload. React guards it; see the note on `transformedForRange` in
+`web/src/parse/character/approvals.ts`.
 
 ---
 
@@ -464,12 +510,13 @@ be the live path is how the above happened — but it is a tidy-up, not a defect
 
 ## Suggested order
 
-1. **#1** — a whole feature is missing. One word.
-2. **#5** and **#7** — both leave users stuck with no explanation.
-3. **#3**, **#8**, **#11** — visible and small.
-4. **#12** — before the rule set grows past 100.
-5. **#9**, **#2**, **#10** — tidy-ups with no user-visible effect today.
-6. **#6** and **#13** — decide whether they are defects at all before touching
+1. **#0** — a whole page is unreachable and the app is left stuck.
+2. **#1** — a whole feature is missing. One word.
+3. **#5** and **#7** — both leave users stuck with no explanation.
+4. **#3**, **#8**, **#11** — visible and small.
+5. **#12** — before the rule set grows past 100.
+6. **#9**, **#2**, **#10** — tidy-ups with no user-visible effect today.
+7. **#6** and **#13** — decide whether they are defects at all before touching
    them.
 
 ## Before you change any of these
