@@ -1,0 +1,458 @@
+# Bugs found in the legacy front end while porting it to React
+
+Everything here is in `public/scripts/` on this branch **today**. None of it is
+fixed by the React migration — the porting rule is that a migration which also
+changes behaviour cannot be reviewed, because every diff then has two possible
+explanations. The two places React deliberately diverges are marked as such.
+
+This document is meant to be handed to a session that will fix them in the
+legacy app. Each entry gives the file and line, what actually happens, how it
+was confirmed, and what the fix is.
+
+**Every entry below was confirmed against the running app**, not inferred from
+reading. Where a claim could only be checked by running it, the measurement is
+quoted. Two things that *looked* like bugs turned out to be already fixed, and
+one turned out not to be a bug at all; they are listed at the end so nobody
+re-investigates them.
+
+Ordered by how much a user would notice.
+
+---
+
+## 1. The start page's troupe shortcuts have been empty since the Parse 8 upgrade
+
+**`public/scripts/app/views/PlayerOptionsView.js:71`**
+
+```js
+var id = role.attributes.attributes.name;
+```
+
+The "Troupe View All Characters" section on the start page renders its heading
+above an empty list, for every user, including storytellers who staff a troupe.
+
+`role.attributes` is the plain attribute bag, so `.attributes` on it is
+`undefined` and reading `.name` off that yields `undefined`. The id extraction
+below it (`id.split('_')[1]`) then produces nothing, no troupe is ever matched,
+and `self.troupes.reset([])` empties the list. Under Parse 1.5 the doubled path
+resolved; under parse@8 it does not.
+
+**Confirmed** against the running app with `devuser`, who holds
+`LST_qvtD2RxzGG`. Both the role and the troupe were present in their caches and
+`TroupeHelper.channel.reqres.request('get', 'qvtD2RxzGG')` returned the troupe —
+so the data was all there. Replaying the view's own derivation showed
+`role.get("name")` returning `"LST_qvtD2RxzGG"` and
+`role.attributes.attributes.name` returning `undefined`. Re-firing the
+collection event with both caches full still rendered zero rows.
+
+**Fix:**
+
+```js
+var id = role.get("name");
+```
+
+**Impact:** highest of anything here. A whole feature is silently absent for
+every storyteller and admin.
+
+**React diverges here deliberately.** Reproducing it would mean writing code
+whose only purpose is to render nothing. See `web/src/screens/PlayerOptions.tsx`.
+
+---
+
+## 2. `sortbycreated` has never worked
+
+**`public/scripts/app/routers/mobileRouter.js:1250, 1273, 1312, 1368, 1412`**
+and the comparators in **`collections/Vampires.js:16`**,
+**`collections/Patronages.js:23`**, **`collections/Users.js:20`**
+
+```js
+var c = [];
+if (Parse.User.current().get("username") == "devuser") { c.sortbycreated = true; }
+// ...
+self.characters.collection.reset(c);
+```
+
+```js
+comparator: function (left, right) {
+    if (_.has(self, "sortbycreated")) { /* by createdAt, descending */ }
+    else                              { /* by name */ }
+}
+```
+
+The flag is set on `c`, a plain array. The comparator reads it off `self`, the
+collection. `reset(c)` copies the array's *elements*, not its properties, so the
+flag never arrives and the creation-ordered branch is dead. Every listing has
+always sorted by name.
+
+**Confirmed:** logged in as `devuser` — the one account the flag is supposed to
+apply to — the character list came back alphabetical (Aldous, Brenna, Corwin)
+rather than newest-first.
+
+**Fix:** decide whether the feature is wanted at all. It is a developer
+convenience hard-coded to one username. Either delete the dead branch and the
+five assignments, or set the flag on the collection:
+
+```js
+self.characters.collection.sortbycreated = true;
+self.characters.collection.reset(c);
+```
+
+Note that "fixing" it changes the order of every listing for that account, so it
+is a visible change, not a silent one.
+
+**Impact:** none to users. Worth resolving because three copies of a dead branch
+invite someone to trust it.
+
+---
+
+## 3. A dead "Link Account to Facebook" button still paints on the profile page
+
+**`public/scripts/app/views/UserSettingsProfileView.js:85-120`**,
+**`public/scripts/app/templates/profile-facebook-account.html`**
+
+`FacebookLinkButtonView` renders a button whose click handler calls
+`Parse.FacebookUtils.link(...)`. But `app/loadall.js` deliberately no longer
+calls `Parse.FacebookUtils.init()` — under parse@8 it throws during bootstrap
+("The Facebook JavaScript SDK must be loaded before calling init") and takes the
+whole router down with it, so every route 404s.
+
+The button therefore renders and cannot work. The template also calls
+`Parse.FacebookUtils.isLinked()` to choose between "Link" and "Unlink".
+
+**Fix:** remove the region and its view, matching the decision already taken for
+Facebook login. `greensboro` already hides these buttons.
+
+**Impact:** a visible control that does nothing. React does not port it.
+
+---
+
+## 4. The character sheet's identity block can show the wrong character's id
+
+**`public/scripts/app/views/CharacterView.js:37`**
+
+```js
+this.subview = this.subview || new CharacterListItem(this.model);
+```
+
+The sub-view is created once per page load and memoised. Its element carries the
+id and class of whichever character was opened **first**; later visits replace
+the contents but not the wrapper. Open character A, then character B, and B's
+details sit inside `<div id="<A's objectId>" class="Vampire">`.
+
+**Confirmed:** opening a werewolf immediately after a vampire left the wrapper
+reading `#9cYrGGv2w3.Vampire` — the vampire's id — while the content was the
+werewolf's. Everything else on the sheet was correct.
+
+Two separate things are going on. The memoisation is the bug. The presence of an
+id and class at all is an accident: `new CharacterListItem(this.model)` passes
+the *model* where `Backbone.View` expects an options bag, and the View
+constructor picks `id` and `className` off whatever it is handed — so a
+`Parse.Object` donates its `objectId` and its `className`.
+
+**Fix:**
+
+```js
+this.subview = new CharacterListItem(this.model);
+```
+
+or keep the memo and update the element:
+
+```js
+this.subview.$el.attr("id", this.model.id);
+```
+
+**Impact:** low on its own — nothing reads that id today. It becomes a real
+problem the moment anything selects a character by it.
+
+---
+
+## 5. Refusing a non-admin from an admin route creates a redirect loop
+
+**`public/scripts/app/routers/mobileRouter.js:1559-1569`**
+
+```js
+admin_route_failed: function (context) {
+    return function (error) {
+        $.mobile.loading("hide");
+        if (Parse.User.current()) {
+            window.location.hash = "";
+        }
+        return ReportError(error, context);
+    };
+},
+```
+
+`window.location.hash = ""` is a **push**, not a replace. A non-admin who opens
+`#administration` is bounced to the start page with `#administration` still in
+history; pressing Back returns them there and bounces them again. They cannot
+get back past it.
+
+**Fix:** replace rather than push.
+
+```js
+window.history.replaceState(null, "", window.location.pathname + window.location.search);
+```
+
+(or `location.replace("#")`, which also avoids the extra entry).
+
+**Impact:** a Back button that does not work, on every admin route, for every
+non-admin who stumbles into one.
+
+---
+
+## 6. Admin status is read from a cache refreshed at most every five minutes
+
+**`public/scripts/app/routers/mobileRouter.js:1504-1529`** and **`:1546`**
+
+`enforce_admin` reads `Parse.User.current().get("admininterface")`. That field is
+only reconciled against the `Administrator` / `SiteAdministrator` roles inside
+`enforce_logged_in`, and only when `lastadminchecktime` is more than 300000ms
+old.
+
+So someone just promoted to admin is refused for up to five minutes, and someone
+just demoted keeps access for up to five minutes.
+
+**Fix:** this is a design decision rather than an outright defect — the recount
+is a query on every route and the throttle exists to avoid it. If it matters,
+either shorten the window, or have `enforce_admin` force a recount when the
+cached answer is "no" (cheap: it only costs a query on the refusal path).
+
+**Impact:** confusing during role changes; a mild security consideration on the
+demotion side, though the server's own ACLs are what actually enforce access.
+
+---
+
+## 7. A troupe that fails to load says nothing
+
+**`public/scripts/app/routers/mobileRouter.js:2182-2203`**
+
+The `troupe` handler's chain is `.then(...).then(...).always(hide_the_loader)`
+with **no `.fail`** anywhere. A troupe that cannot be fetched — wrong id,
+permission refused, network — drops the spinner and leaves the user on whatever
+page they were on, with nothing said and the URL changed.
+
+**Fix:** add the failure tail the other handlers use.
+
+```js
+}).fail(ReportError.on("Couldn't open that troupe"))
+  .always(function () { $.mobile.loading("hide"); });
+```
+
+Note `.fail` must come before `.always`, or the `always` handler's return value
+resolves the chain and the failure never reaches the reporter — the same trap
+`ReportError.js` documents at its tail.
+
+**Impact:** a dead end with no explanation. React reports it; that is the one
+addition made during the port, and it is called out in `Troupe.tsx`.
+
+---
+
+## 8. Specializing a trait in a category with no Description row throws
+
+**`public/scripts/app/views/SimpleTraitSpecializationView.js:110`** and
+**`public/index.html:845`**
+
+```js
+"description": this.collection.first()
+```
+
+```html
+<p><%= description.attributes.help_specialization %></p>
+```
+
+`first()` on an empty collection is `undefined`, and the template reads
+`.attributes` off it. The query behind the collection is
+`equalTo("category", category).startsWith("name", trait.get_base_name())`, so any
+trait whose base name matches no Description row in its category renders a
+broken page rather than an empty help line.
+
+**Fix:** guard in the template.
+
+```html
+<p><%= description ? description.attributes.help_specialization : "" %></p>
+```
+
+**Impact:** a blank/broken page on an uncommon path. React guards it; a row that
+exists renders identically.
+
+---
+
+## 9. `update_creation_rules_for_changed_trait` throws on a null creation record
+
+**`public/scripts/app/models/Vampire.js:76-96`**, and the same shape in
+`Werewolf.js` and `ChangelingBetaSlice.js`
+
+```js
+var creation = creations[0];
+if (creation && creation.get("completed")) {
+    return Parse.Promise.as(self);
+}
+var stepName = ...;
+creation.addUnique(listName, modified_trait);   // creation may be null here
+```
+
+The guard tests `creation &&` — acknowledging it can be missing — and then uses
+it unguarded three lines later. A character with no creation record throws a
+`TypeError`.
+
+**Not reachable today**: every caller runs `ensure_creation_rules_exist` first.
+It is a trap for the next caller who does not.
+
+**Fix:**
+
+```js
+if (!creation || creation.get("completed")) {
+    return Parse.Promise.as(self);
+}
+```
+
+**Impact:** none today. React returns early instead — the one place the port
+declines to reproduce legacy behaviour because reproducing it means crashing.
+
+---
+
+## 10. The troupe staff list prints an email column that is always blank
+
+**`public/scripts/app/templates/troupe-staff-list.html:3`**
+
+```html
+<li><%= user.get("role") %>: <%= user.get("username") %> <%= user.get("email") %> <%= user.get("realname") %></li>
+```
+
+`get_troupe_staff` builds each staffer through `identity_of`, which copies an
+allowlist of fields, and `cloud/main.js:1165` sets `IDENTITY_INCLUDES_EMAIL =
+false` deliberately. parse-server also withholds another user's address from
+every non-master read. So every row renders as `LST: devuser  ` with a double
+space where the email would be.
+
+**Fix:** drop `user.get("email")` from the template. Do **not** flip
+`IDENTITY_INCLUDES_EMAIL` — that publishes staff email addresses to anyone who
+can read the troupe.
+
+**Impact:** cosmetic. Reproduced verbatim in React, double space and all.
+
+---
+
+## 11. The administration menu is a plain bullet list, not a listview
+
+**`public/index.html`**, the `#administration` block
+
+```html
+<div role="main" class="ui-content">
+    <ul>
+        <li><a href="#troupes">Troupes</a></li>
+```
+
+No `data-role="listview"`, so jQuery Mobile leaves it alone and the admin front
+door renders as bullet-point links — while `#player-options`, one click away, is
+a proper inset listview of full-width buttons. Almost certainly unintended.
+
+Two smaller things in the same block: one label is unspaced where every sibling
+is spaced (`SummarizeCharacters`), and the first entry, "Troupes", points at
+`#troupes` — not an administration route at all, and the same destination as the
+footer's Troupes tab.
+
+**Fix:** `<ul data-role="listview" data-inset="true">`, and fix the label.
+
+**Impact:** visual inconsistency on a screen only admins see. Note that changing
+it will make `compare:dom` fail for `#administration` until the React screen is
+updated to match — which is the system working.
+
+---
+
+## 12. The clan-rule fetch takes the server's default page of 100
+
+**`public/scripts/app/collections/BNSMETV1_ClanRules.js`**, via a plain
+`query.find()`
+
+No `limit`, so the query returns at most 100 rows. There are **42** clan rules on
+the running server, so nothing is lost today. Above 100, rules would silently
+disappear and in-clan disciplines would be priced at the out-of-clan rate —
+which shows up as characters being over-charged experience, not as an error.
+
+**Fix:** `q.limit(1000)`, or page with `each()`.
+
+**Impact:** none today; a silent over-charge if the rule set grows. Worth fixing
+before it does. The React port has the same cliff, and says so.
+
+---
+
+## 13. A player's own roster never shows the owner line
+
+**`public/scripts/app/routers/mobileRouter.js:1253-1255`**
+
+```js
+var q = new Parse.Query(Vampire);
+q.equalTo("owner", Parse.User.current());
+q.include("portrait");
+```
+
+`character-list-item.html` prints the owner when `owner.get("username")` is
+truthy, but no `include("owner")` means the pointer stays a stub, so the line is
+skipped. The admin and troupe listings do show it, because they hydrate owners
+through `UserWreqr`.
+
+**This may well be intentional** — showing a player their own name on every row
+of their own roster is noise. Listed because it is a difference between
+listings that looks accidental, and because it interacts with the next point.
+
+**Do not "fix" it by adding `include("owner")`.** There is a comment at
+`Vampire.js:325` explaining why: including the owner made parse-server *delete*
+the pointer when the owner was private, and `get_me_acl` reads a missing owner
+as "no owner" and grants the **current** user read and write — so opening
+someone else's sheet rewrote its ACL to the viewer. If the line is wanted,
+hydrate the owner separately.
+
+**Impact:** none, probably by design. The ACL trap next to it is the important
+part.
+
+---
+
+## Not bugs — checked and cleared
+
+Recorded so nobody spends time on them again.
+
+**`fauxtrait` staleness in `SimpleTraitChangeView` — already fixed.** The
+comment at `:39` describes it in the past tense ("used to be rebuilt only
+when…"), and line 45 now rebuilds it unconditionally. An earlier draft of my own
+commit message described this in the present tense; that was wrong.
+
+**`update_trait`'s fourth argument in `SimpleTraitChangeView` — already fixed.**
+Line 158 passes `0` explicitly. The long comment above it explains the bug that
+omitting it used to cause (writing to `<category>_undefined_remaining`, a key
+nothing reads), not a bug that is still there.
+
+**`VampireCosts.initialize`'s try/catch — not a bug.** It reads as a reference
+to an identifier the module never declares, wrapped in a catch that builds a
+fallback — so it looks like it must always throw. It does not.
+`app/loadall.js` assigns `this.BNSMETV1_ClanRules = new ClanRules` at module
+scope, which in that non-strict `require` callback is `window`, making the bare
+identifier a global. **Measured on the running app:** the identifier resolves to
+an object holding 42 rules, so the `try` branch is what runs and the fallback is
+dead code. An agent working on the port reported the opposite, and I repeated it
+in a commit message before checking; both were wrong.
+
+The fallback being unreachable is still worth a look — dead code that appears to
+be the live path is how the above happened — but it is a tidy-up, not a defect.
+
+---
+
+## Suggested order
+
+1. **#1** — a whole feature is missing. One word.
+2. **#5** and **#7** — both leave users stuck with no explanation.
+3. **#3**, **#8**, **#11** — visible and small.
+4. **#12** — before the rule set grows past 100.
+5. **#9**, **#2**, **#10** — tidy-ups with no user-visible effect today.
+6. **#6** and **#13** — decide whether they are defects at all before touching
+   them.
+
+## Before you change any of these
+
+The React port reproduces most of this behaviour deliberately, and
+`npm run compare:dom` asserts that the two front ends render the same DOM. Fixing
+a legacy bug will therefore make that comparison fail for the affected screen —
+correctly. Update the React screen in the same change, and drop the
+`@compare-known` marker if the divergence it records has just gone away.
+
+`docs/react-migration/README.md` lists which divergences are currently
+deliberate.

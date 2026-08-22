@@ -93,11 +93,21 @@ let clanRulesLoad: Promise<void> | undefined;
 /**
  * Fetch the in-clan discipline table, once.
  *
- * The legacy `initialize` (VampireCosts.js:37) is written as a try/catch around
- * a bare `BNSMETV1_ClanRules` identifier that is never defined, so it always
- * throws ReferenceError and always takes the fallback branch: build the
- * collection and fetch it. Only the fallback is ported, because only the
- * fallback ever ran.
+ * The legacy `initialize` (VampireCosts.js:37) is a try/catch around a bare
+ * `BNSMETV1_ClanRules` identifier that the module never declares -- its own
+ * import of that collection is bound to `FallbackClanRules`. It reads as a
+ * reference that must throw, and an earlier note in this file claimed it did.
+ * It does not: `app/loadall.js` assigns `this.BNSMETV1_ClanRules = new
+ * ClanRules` at module scope, which in that non-strict require callback is
+ * `window`, so the bare identifier resolves to a global collection fetched once
+ * at boot. Measured on the running app: it is an object holding 42 rules, and
+ * the try branch is what runs.
+ *
+ * Both branches end at the same table, so this ports the fetch-and-hold shape
+ * rather than reproducing a boot-time global. What is NOT reproduced is the
+ * sharing: the legacy global is fetched once for the whole page, while this
+ * fetches its own copy the first time a vampire needs pricing. Same rules, one
+ * extra request per session.
  *
  * Repeated calls share the in-flight promise rather than re-querying -- every
  * screen that prices a trait calls this first. A failed load clears the memo so
