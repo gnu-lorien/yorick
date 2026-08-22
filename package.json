@@ -100,9 +100,10 @@
     "build:react": "vite build --config web/vite.config.ts",
     "preview:react": "vite preview --config web/vite.config.ts",
     "typecheck:react": "tsc -p web/tsconfig.json --noEmit",
-    "generate:routes": "node web/scripts/generate-route-table.mjs && node web/scripts/generate-screen-map.mjs && node web/scripts/generate-page-titles.mjs",
+    "generate:routes": "node web/scripts/generate-route-table.mjs && node web/scripts/generate-screen-map.mjs && node web/scripts/generate-page-titles.mjs && node web/scripts/generate-venue-data.mjs",
     "verify:routes": "node web/scripts/verify-route-parity.mjs",
     "migration:status": "node web/scripts/migration-status.mjs",
-    "compare:dom": "node web/scripts/compare-dom.mjs"
+    "compare:dom": "node web/scripts/compare-dom.mjs",
+    "generate:venues": "node web/scripts/generate-venue-data.mjs"
   }
 }
