@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { cx } from './classes';
 import { useChrome } from './chrome';
+import { useErrorRegion } from '@/shell/useErrorRegion';
 
 /**
  * A jQuery Mobile page.
@@ -57,6 +58,20 @@ export function Page({
   const chromeFromShell = useChrome();
   const chrome = chromeProp ?? chromeFromShell;
   const ref = useRef<HTMLDivElement>(null);
+  const mainRef = useRef<HTMLDivElement>(null);
+
+  // The global error banner, prepended into div[role="main"] as a DOM node
+  // rather than rendered as a child.
+  //
+  // Two reasons, both forced. React cannot render children alongside
+  // `dangerouslySetInnerHTML`, and the privacy notice needs its HTML to be a
+  // *direct* child of div[role="main"] -- wrapping it in a container nests the
+  // whole page one level deeper and changes which CSS child selectors apply.
+  // And this is exactly what ReportError.js itself does: it prepends a detached
+  // element into the active page's main. Doing the same keeps one node outside
+  // React's tree, which React tolerates because it reconciles against its own
+  // child nodes by reference rather than by position.
+  useErrorRegion(mainRef);
 
   // jQM sizes the page to the viewport so a short page still fills the screen
   // and the fixed footer sits at the bottom rather than under the content. It
@@ -120,12 +135,13 @@ export function Page({
     >
       {contentHtml !== undefined ? (
         <div
+          ref={mainRef}
           role="main"
           className={cx('ui-content', contentClassName)}
           dangerouslySetInnerHTML={{ __html: contentHtml }}
         />
       ) : (
-        <div role="main" className={cx('ui-content', contentClassName)}>
+        <div ref={mainRef} role="main" className={cx('ui-content', contentClassName)}>
           {children}
         </div>
       )}

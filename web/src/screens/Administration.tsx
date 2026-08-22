@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Page } from '@/jqm/Page';
 import { navigate } from '@/router/router';
+import { showError } from '@/shell/reportError';
 import { useSession } from '@/parse/session';
 import { registerScreen, type ScreenProps } from './registry';
 
@@ -43,11 +44,16 @@ export function AdministrationScreen(_: ScreenProps) {
   const blocked = session.loggedIn && !session.admin;
   useEffect(() => {
     if (!blocked) return;
-    // The legacy tail also renders a banner through ReportError into a
-    // document-level `#global-error-region`. React has no equivalent yet, so
-    // the refusal reaches the console but not the screen; see the port report.
-    console.error(
-      "ReportError Couldn't open the administration menu: Administrator access is required for that page.",
+    // The banner follows the bounce and settles on the start page, which is
+    // ReportError's whole point: a message pinned to the page the user is
+    // being sent away from would never be read.
+    //
+    // showError rather than reportError: there is nothing here to rethrow into.
+    // e2e/access-control.spec.js:517 asserts this banner is visible and that
+    // its text matches /administrator access/i, so the wording is a contract.
+    showError(
+      'Administrator access is required for that page.',
+      "Couldn't open the administration menu",
     );
     navigate('');
   }, [blocked]);

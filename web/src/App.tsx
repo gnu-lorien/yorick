@@ -7,6 +7,8 @@ import { navigate, currentFragment } from '@/router/router';
 import { screenMap } from '@/router/screenMap';
 import { titleFor } from '@/router/pageTitles';
 import { useSession, useLogOut, type Session } from '@/parse/session';
+import { useBackTarget } from '@/shell/backButton';
+import { errorRegionOnNavigate } from '@/shell/reportError';
 import { screenFor } from '@/screens/registry';
 import { NotMigrated, NoRoute } from '@/screens/NotMigrated';
 import { LoginScreen } from '@/screens/Login';
@@ -39,6 +41,15 @@ export function App() {
   const route = useHashRoute();
   const session = useSession();
   const logOut = useLogOut();
+
+  // Tell the error banner where we are. A failure that redirects must carry its
+  // message to wherever the user lands, or the message is never read; the next
+  // move after that clears it. See shell/reportError.ts for why this passes the
+  // fragment rather than just signalling that something changed.
+  const fragment = route?.fragment ?? '';
+  useEffect(() => {
+    errorRegionOnNavigate(fragment);
+  }, [fragment]);
 
   // `logout` is a route, not a screen: the legacy handler logs out and sends
   // the browser back to the start rather than rendering anything.
@@ -90,6 +101,7 @@ function Shell({
   children: ReactNode;
 }) {
   const logOut = useLogOut();
+  const backTarget = useBackTarget();
   const title = pageId ? titleFor(pageId) : '';
 
   // Header and footer stay hidden until someone is logged in -- app/main.js
@@ -103,7 +115,14 @@ function Shell({
   return (
     <LoadingProvider>
       <ChromeContext.Provider value={chrome}>
-        {chrome && <Header title={title} username={session.username ?? undefined} onLogout={onLogout} />}
+        {chrome && (
+          <Header
+            title={title}
+            username={session.username ?? undefined}
+            backHref={backTarget ?? undefined}
+            onLogout={onLogout}
+          />
+        )}
         {children}
         {chrome && (
           <Footer

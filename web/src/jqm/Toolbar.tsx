@@ -67,11 +67,22 @@ export interface HeaderProps {
   title: string;
   /** The logged-in username, which the log-out button's label includes. */
   username?: string;
+  /**
+   * Where Back goes, when the screen has an opinion.
+   *
+   * The legacy router sets this per route with `set_back_button(url)`, which
+   * rewrites `#header-back-button`'s href -- so Back is a destination the
+   * screen chooses, not browser history. Screens declare it with
+   * `useBackButton()`; see shell/backButton.ts for why the two differ.
+   *
+   * Without one, Back falls back to `history.back()`.
+   */
+  backHref?: string;
   onBack?: () => void;
   onLogout?: () => void;
 }
 
-export function Header({ title, username, onBack, onLogout }: HeaderProps) {
+export function Header({ title, username, backHref, onBack, onLogout }: HeaderProps) {
   return (
     <div
       data-role="header"
@@ -81,15 +92,24 @@ export function Header({ title, username, onBack, onLogout }: HeaderProps) {
       className="ui-header ui-bar-a ui-header-fixed slidedown"
     >
       <a
-        href="#"
+        href={backHref ?? '#'}
         id="header-back-button"
         data-rel="back"
         role="button"
         className="ui-btn-left ui-link ui-btn ui-icon-arrow-l ui-btn-icon-left ui-shadow ui-corner-all"
         onClick={(e) => {
-          e.preventDefault();
-          if (onBack) onBack();
-          else window.history.back();
+          if (onBack) {
+            e.preventDefault();
+            onBack();
+            return;
+          }
+          // With a declared target the href does the work, as it does in the
+          // legacy app. Only the default -- a bare "#" -- needs intercepting,
+          // because following it would go to the start page rather than back.
+          if (!backHref) {
+            e.preventDefault();
+            window.history.back();
+          }
         }}
       >
         Back
