@@ -66,6 +66,9 @@ export interface Venue {
   /** The cost engine, once its rules have loaded. */
   costs: CostEngine;
 
+  /** Load whatever rules the cost engine needs. Safe to call more than once. */
+  loadRules(): Promise<void>;
+
   /**
    * The highest value this trait may take.
    *
@@ -80,6 +83,45 @@ export interface Venue {
    * and the costs screen totals exactly that subset.
    */
   totalCostCategories: string[];
+
+  /**
+   * Create the creation record, if this character has none.
+   *
+   * Ports `ensure_creation_rules_exist`. Each venue seeds a different set of
+   * pool counters, and all three then grant the same 30 experience with the
+   * reason "Character Creation XP" -- which is a ledger entry, so it must not
+   * be granted twice.
+   */
+  ensureCreationRulesExist(character: Character): Promise<void>;
+
+  /**
+   * Spend a creation pool slot on a trait that has just changed.
+   *
+   * Ports `update_creation_rules_for_changed_trait`. Two guards in every venue
+   * matter and are easy to drop:
+   *
+   * - Outside the sum categories (merits and flaws), a change with no
+   *   `freeValue` touches no pool at all and returns immediately.
+   * - A completed creation record is left alone. Those counters are
+   *   creation-time bookkeeping that nothing reads afterwards, so writing to
+   *   them later only produced meaningless negatives -- a post-creation Kith
+   *   change drove `ctdbs_arts_1_remaining` to -3, which then read as an
+   *   overspend that had never happened.
+   */
+  updateCreationRulesForChangedTrait(
+    character: Character,
+    category: string,
+    trait: SimpleTrait,
+    freeValue: number,
+  ): Promise<void>;
+
+  /**
+   * The categories whose creation pool is spent as a sum of trait values.
+   *
+   * Everywhere else a pick costs one slot; in these, a 3-point merit costs
+   * three. Comes from the venue's SUM_CREATION_CATEGORIES.
+   */
+  sumCreationCategories: string[];
 }
 
 /**
