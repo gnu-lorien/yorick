@@ -338,20 +338,29 @@ export async function getOwnedIds(character: Character): Promise<OwnedIds> {
  *     if (_.eq(client, server)) { self.is_mismatched = false; }
  *     else                      { self.is_mismatched = true; }
  *
- * `_.eq` is SameValueZero -- `===` for objects -- not a deep comparison, and
- * `client` and `server` are always two freshly-built objects. Measured with the
- * repo's lodash 4.18.1: `_.eq({x:[1]},{x:[1]})` is false where
- * `_.isEqual({x:[1]},{x:[1]})` is true. So `is_mismatched` is set to true every
- * single time, whatever the two sides hold.
+ * `_.eq` means different things in different lodash majors, and which one this
+ * app has decides what the line does:
  *
- * That is not a dormant branch. `_check_character_mismatch` in mobileRouter.js
- * (:1578) runs this whenever a character is opened by someone who does not own
- * it, and repairs a "mismatch" by running the whole of `updateTroupeAcls` --
- * so every storyteller opening any player's sheet rewrites that character's
- * ACL, its traits', its notations' and its long texts', and waits for it.
+ *   lodash 3  `_.eq` is an alias of `_.isEqual` -- a DEEP comparison.
+ *   lodash 4  `_.eq` is SameValueZero, i.e. `===` for objects.
  *
- * Reproduced exactly, comparison and all. The identity check below is not dead
- * code left by accident; deleting it changes when characters get repaired.
+ * The app loads the VENDORED lodash, not the one in node_modules:
+ * `public/scripts/app.js` maps the AMD name `underscore` to
+ * `public/scripts/lib/lodash.js`, which is 3.10.0. Measured in the running app:
+ * `_.VERSION` is "3.10.0", `_.eq({x:[1]},{x:[1]})` is **true**, and the lodash 3
+ * survivors the rest of this codebase depends on -- `_.contains`, `_.pluck`,
+ * `_.select`, `_.any` -- are all present, which they would not be under 4.
+ *
+ * So this is a real deep comparison, and `is_mismatched` is true only when the
+ * two sides genuinely differ. An earlier version of this file asserted the
+ * opposite, having tested against node_modules' lodash 4 rather than the
+ * vendored 3 the browser loads, and implemented `client !== server` -- which on
+ * two freshly-built objects is always true. That is not a harmless difference:
+ * `_check_character_mismatch` (mobileRouter.js:1578) runs this whenever someone
+ * who does not own a character opens it, and "repairs" a mismatch by running
+ * the whole of `updateTroupeAcls`. Every storyteller opening any player's sheet
+ * would have rewritten that character's ACL, its traits', its notations' and
+ * its long texts', and waited for it.
  */
 export async function updateServerClientPermissionsMismatch(
   character: Character,
@@ -363,7 +372,8 @@ export async function updateServerClientPermissionsMismatch(
       getOwnedIds(character),
       Parse.Cloud.run('get_expected_vampire_ids', { character: character.id }) as Promise<OwnedIds>,
     ]);
-    state.isMismatched = client !== server;
+    // Deep, because lodash 3's `_.eq` is `_.isEqual`. See the note above.
+    state.isMismatched = !deepEqual(client, server);
     return character;
   };
 
@@ -392,4 +402,32 @@ export async function checkServerClientPermissionsMismatch(
 /** The last mismatch verdict, or undefined if no check has run. */
 export function isMismatched(character: Character): boolean | undefined {
   return stateOf(character).isMismatched;
+}
+
+/**
+ * Structural equality, standing in for lodash 3's `_.eq`.
+ *
+ * Only has to handle what `getOwnedIds` and the `get_expected_vampire_ids`
+ * Cloud function return: an object keyed by class name whose values are arrays
+ * of id strings. Order matters and is preserved by both sides, so the arrays
+ * are compared element-wise rather than as sets -- which is what `_.isEqual`
+ * does too.
+ */
+function deepEqual(left: unknown, right: unknown): boolean {
+  if (left === right) return true;
+  if (typeof left !== 'object' || typeof right !== 'object' || !left || !right) return false;
+  if (Array.isArray(left) !== Array.isArray(right)) return false;
+
+  const leftKeys = Object.keys(left as Record<string, unknown>);
+  const rightKeys = Object.keys(right as Record<string, unknown>);
+  if (leftKeys.length !== rightKeys.length) return false;
+
+  return leftKeys.every(
+    (key) =>
+      Object.prototype.hasOwnProperty.call(right, key) &&
+      deepEqual(
+        (left as Record<string, unknown>)[key],
+        (right as Record<string, unknown>)[key],
+      ),
+  );
 }

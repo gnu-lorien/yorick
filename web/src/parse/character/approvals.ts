@@ -457,34 +457,41 @@ export function groupedSkills(
 }
 
 /**
- * The willpower the character actually has.
+ * The willpower the character has, and what the printed sheet draws.
  *
- * This is **not** what the printed sheet draws, and the difference is a live
- * bug rather than a porting decision. The original is
+ * Ports `get_willpower_total`, which sums `willpower_sources` with lodash's
+ * iteratee shorthand:
  *
  *     var total = _.sum(wps, "attributes.value");
  *
- * and lodash 4 removed `_.sum`'s iteratee argument -- it became `_.sumBy`. So
- * the second argument is ignored and the SimpleTrait objects are summed
- * directly: `undefined + object`, then string concatenation. Measured against
- * this repo's lodash: two sources give the string
- * "[object Object][object Object]", none gives `undefined`.
- * templates/print/willpower.html then runs `_.range(0, total)`, and both of
- * those coerce to an empty range, so **every printed sheet has shown zero
- * willpower boxes since the lodash 4 upgrade**.
+ * That shorthand exists in lodash 3 and was removed in lodash 4, where the
+ * second argument is ignored and `_.sumBy` took over -- so which lodash the app
+ * loads decides whether this works at all. It loads the VENDORED one:
+ * `public/scripts/app.js` maps the AMD name `underscore` to
+ * `public/scripts/lib/lodash.js`, which is 3.10.0, and the shorthand works
+ * there. Measured in the running app: `_.VERSION` is "3.10.0",
+ * `_.sum([{attributes:{value:3}},{attributes:{value:4}}], "attributes.value")`
+ * is 7, and `_.sumBy` does not exist.
  *
- * `willpowerBoxCount` below is what the sheet renders today. Use that when
- * porting the sheet, so the port does not quietly fix a bug and make its own
- * DOM comparison fail; use this one when the bug is fixed.
+ * An earlier version of this file claimed the opposite -- that every printed
+ * sheet had shown zero willpower boxes since a lodash 4 upgrade -- and added a
+ * `willpowerBoxCount` returning 0 to "reproduce" it. That was measured against
+ * node_modules' lodash 4 rather than the vendored 3 the browser loads, and
+ * would have shipped a printable sheet with the willpower track missing.
  */
 export function willpowerTotal(character: Character): number {
   const sources = (character.get('willpower_sources') as SimpleTrait[] | undefined) ?? [];
   return sources.reduce((total, source) => total + (source?.value ?? 0), 0);
 }
 
-/** What templates/print/willpower.html draws today: nothing. See willpowerTotal. */
-export function willpowerBoxCount(_character: Character): number {
-  return 0;
+/**
+ * Kept as a name the print sheet can call, now identical to `willpowerTotal`.
+ *
+ * It exists because the sheet used to need a second, deliberately-wrong count;
+ * see the note above for why it does not.
+ */
+export function willpowerBoxCount(character: Character): number {
+  return willpowerTotal(character);
 }
 
 /**

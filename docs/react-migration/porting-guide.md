@@ -135,6 +135,34 @@ The handler in `mobileRouter.js` does more than fetch. Look for:
 - **Guards.** `enforce_logged_in` is already handled centrally by App.tsx; a
   role check inside the handler is not, and is yours to port.
 
+## The app does not run the lodash in node_modules
+
+`public/scripts/app.js` maps the AMD name `underscore` to
+`public/scripts/lib/lodash.js`, which is **lodash 3.10.0**. `node_modules` holds
+lodash 4, and the two differ in ways that change what legacy code means:
+
+| | lodash 3 (what the app runs) | lodash 4 (what node has) |
+| --- | --- | --- |
+| `_.sum(arr, "a.b")` | iteratee shorthand works | second argument ignored |
+| `_.eq(a, b)` | alias of `_.isEqual` -- deep | SameValueZero -- `===` |
+| `_.contains`, `_.pluck`, `_.select`, `_.any` | present | removed |
+
+This has already produced two wrong "findings" and two regressions in this port.
+One concluded that every printed sheet had shown zero willpower boxes for years
+and shipped a function returning 0 to match; the other concluded that a
+permissions check always reported a mismatch and implemented `!==`, which would
+have made every storyteller viewing any player's sheet rewrite that character's
+ACL and everything hanging off it.
+
+**Never reason about a legacy lodash call from node's copy.** Check it in the
+running app:
+
+```js
+window.require(['underscore'], function (_) { console.log(_.VERSION, _.sum(...)); });
+```
+
+The same warning applies to anything else the app vendors and npm also carries.
+
 ## When the two apps disagree
 
 `compare:dom` will tell you. Before changing your React code to match, find out
