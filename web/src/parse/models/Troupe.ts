@@ -15,13 +15,6 @@ import { Parse } from '../init';
  *   old code also dirtied a _User row the caller cannot write.
  */
 
-export interface StaffMember {
-  objectId: string;
-  username: string;
-  realname?: string;
-  title: string;
-}
-
 /** The staff titles a troupe has roles for, in the order they are shown. */
 export const TROUPE_TITLES = ['LST', 'AST', 'Narrator'] as const;
 export type TroupeTitle = (typeof TROUPE_TITLES)[number];
@@ -63,10 +56,20 @@ export class Troupe extends Parse.Object {
    * Role order is fixed LST, AST, Narrator server-side. The pre-Cloud version
    * iterated an object whose key order came from promise resolution, so the
    * roster could come back in a different order each time.
+   *
+   * These are `Parse.User` objects, not plain records: the Cloud function
+   * builds each one with `Parse.Object.fromJSON({className: "_User", ...})`, so
+   * the wire form carries `__type: "Object"` and the SDK decodes it back into a
+   * user. They are projections, not whole rows -- `identity_of` copies an
+   * allowlist of fields -- and the per-troupe title arrives as an extra
+   * attribute named `role`, which is what templates/troupe-staff-list.html
+   * reads. `email` is never among them: parse-server withholds another user's
+   * address from every non-master read, and cloud/main.js keeps it that way
+   * deliberately (IDENTITY_INCLUDES_EMAIL is false).
    */
-  async getStaff(): Promise<StaffMember[]> {
+  async getStaff(): Promise<Parse.User[]> {
     const payload = (await Parse.Cloud.run('get_troupe_staff', { troupe_id: this.id })) as {
-      staff: StaffMember[];
+      staff: Parse.User[];
     };
     return payload.staff;
   }
@@ -104,6 +107,26 @@ export class Troupe extends Parse.Object {
     const portrait = this.get('portrait') as Parse.Object | undefined;
     const file = portrait?.get(`thumb_${size}`) as Parse.File | undefined;
     return file?.url() ?? 'head_skull.png';
+  }
+
+  /**
+   * The full-size portrait URL for templates/troupe-portrait-display.html.
+   *
+   * `null` means the troupe has no portrait pointer at all, which is the case
+   * the template renders as an "Add Portrait" link rather than an `<img>` --
+   * so the two are not interchangeable and an empty string is not a stand-in
+   * for either. A pointer that resolves to a row with no `original` file gives
+   * an empty string, keeping the `<img>` the template would have emitted.
+   *
+   * `fetch()` mutates the pointer in place, so the caller's troupe ends up
+   * holding the hydrated portrait exactly as TroupeView.render leaves it.
+   */
+  async fetchPortraitOriginalUrl(): Promise<string | null> {
+    const portrait = this.get('portrait') as Parse.Object | undefined;
+    if (!portrait) return null;
+    const fetched = await portrait.fetch();
+    const file = fetched.get('original') as Parse.File | undefined;
+    return file?.url() ?? '';
   }
 
   /** The portrait thumbnail URL, fetching the portrait if it is a stub. */

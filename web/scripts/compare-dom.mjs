@@ -40,6 +40,16 @@ const PASSWORD = process.env.COMPARE_PASSWORD || 'thedumbness';
  * screens be written at once: a new screen brings its own coverage and touches
  * no shared line. Use `@compare (home)` for the empty hash.
  */
+/**
+ * URLs whose difference is deliberate, and why.
+ *
+ * Declared with `@compare-known <url> -- <reason>` in the screen's doc comment.
+ * These still run and still print their diff -- the point is not to stop
+ * looking, it is to stop a known difference drowning out a new one. They are
+ * counted separately in the summary so the list cannot quietly grow.
+ */
+const known = new Map();
+
 function declaredHashes() {
   const REPO = fileURLToPath(new URL('../..', import.meta.url));
   const found = [];
@@ -52,8 +62,16 @@ function declaredHashes() {
       // no URL say so in prose -- "No `@compare` marker: ..." -- and a looser
       // pattern picks the next word out of that sentence and tries to visit
       // "marker:" as a URL.
-      for (const m of fs.readFileSync(full, 'utf8').matchAll(/@compare\s+(#\S+|\(home\))/g)) {
+      const src = fs.readFileSync(full, 'utf8');
+      for (const m of src.matchAll(/@compare\s+(#\S+|\(home\))/g)) {
         found.push(m[1] === '(home)' ? '' : m[1]);
+      }
+      // A screen that is *known* to differ says so, with a reason on the same
+      // line. See knownDivergences() below for why these still run.
+      for (const m of src.matchAll(/@compare-known\s+(#\S+|\(home\))\s+--\s+(.+)/g)) {
+        const url = m[1] === '(home)' ? '' : m[1];
+        found.push(url);
+        known.set(url, m[2].trim());
       }
     }
   };
@@ -82,7 +100,17 @@ function skeletonSource() {
         .filter((c) => c !== 'ui-page-active')
         .sort()
         .join('.');
-      const id = el.id ? `#${el.id}` : '';
+      // jQuery Mobile mints ids from a per-enhancement counter when the source
+      // element has none -- `this.selectId = this.select.attr("id") ||
+      // ("select-" + this.uuid)` at jquery.mobile-1.4.5.js:10096. Those cannot
+      // be reproduced by a second run of anything, and nothing keys off them:
+      // not the stylesheet, not the E2E suite. Normalised away on both sides,
+      // for the same reason inline styles are ignored -- they are runtime
+      // artefacts, not markup.
+      const rawId = el.id && /^(select|collapsible|slider|radio|checkbox)-\d+(-button|-menu)?$/.test(el.id)
+        ? ''
+        : el.id;
+      const id = rawId ? `#${rawId}` : '';
       const self = '  '.repeat(depth) + el.tagName.toLowerCase() + id + (classes ? '.' + classes : '');
       const kids = [...el.children]
         .filter((c) => !c.matches('script, style, link'))
@@ -164,17 +192,61 @@ async function show(page, baseUrl, hash) {
   await page.waitForTimeout(1200);
 }
 
+/**
+ * Report the difference between two skeletons.
+ *
+ * A naive line-by-line comparison is close to unreadable here: one extra row in
+ * a list shifts every following line, so a single inserted `<li>` prints as
+ * forty differing lines with legacy and react interleaved out of phase. This
+ * finds the first genuine divergence and then reports the *sets* of lines each
+ * side has that the other does not, which for the common cases -- an extra row,
+ * a missing wrapper, a renamed class -- says what actually changed.
+ */
 function diff(a, b) {
   const left = (a ?? '(missing)').split('\n');
   const right = (b ?? '(missing)').split('\n');
-  const out = [];
-  const max = Math.max(left.length, right.length);
-  for (let i = 0; i < max; i++) {
-    if (left[i] !== right[i]) {
-      if (left[i] !== undefined) out.push(`  legacy: ${left[i]}`);
-      if (right[i] !== undefined) out.push(`  react : ${right[i]}`);
-    }
+
+  let firstDivergence = 0;
+  while (
+    firstDivergence < left.length &&
+    firstDivergence < right.length &&
+    left[firstDivergence] === right[firstDivergence]
+  ) {
+    firstDivergence++;
   }
+
+  const out = [];
+  out.push(`  lines: legacy ${left.length}, react ${right.length}; first differ at ${firstDivergence + 1}`);
+  if (left[firstDivergence] !== undefined) out.push(`    legacy: ${left[firstDivergence]}`);
+  if (right[firstDivergence] !== undefined) out.push(`    react : ${right[firstDivergence]}`);
+
+  // Multiset difference, so a row that simply repeats is not reported as new.
+  const tally = (lines) => {
+    const counts = new Map();
+    for (const line of lines) counts.set(line, (counts.get(line) ?? 0) + 1);
+    return counts;
+  };
+  const leftCounts = tally(left);
+  const rightCounts = tally(right);
+  const onlyIn = (mine, theirs) => {
+    const found = [];
+    for (const [line, count] of mine) {
+      const extra = count - (theirs.get(line) ?? 0);
+      for (let i = 0; i < extra; i++) found.push(line);
+    }
+    return found;
+  };
+
+  const onlyLegacy = onlyIn(leftCounts, rightCounts);
+  const onlyReact = onlyIn(rightCounts, leftCounts);
+  const show = (label, lines) => {
+    if (!lines.length) return;
+    out.push(`  only in ${label} (${lines.length}):`);
+    for (const line of lines.slice(0, 25)) out.push(`    ${line.trim()}`);
+    if (lines.length > 25) out.push(`    ... and ${lines.length - 25} more`);
+  };
+  show('legacy', onlyLegacy);
+  show('react', onlyReact);
   return out;
 }
 
@@ -183,6 +255,7 @@ const legacyPage = await browser.newPage();
 const reactPage = await browser.newPage();
 
 let failures = 0;
+let knownCount = 0;
 try {
   await login(legacyPage, LEGACY);
   await login(reactPage, REACT);
@@ -202,8 +275,9 @@ try {
     // legacy app keeps all 59 pages in the document, so the element exists
     // whether or not it is the one on screen.
     if (legacyActive !== reactActive) {
-      failures++;
-      console.log(`DIFF  ${label}  different page`);
+      if (known.has(hash)) knownCount++;
+      else failures++;
+      console.log(`${known.has(hash) ? 'KNOWN' : 'DIFF '} ${label}  different page`);
       console.log(`  legacy: #${legacyActive}`);
       console.log(`  react : #${reactActive}`);
       console.log();
@@ -218,8 +292,14 @@ try {
       console.log(`OK    ${label}  ${selector}`);
       continue;
     }
-    failures++;
-    console.log(`DIFF  ${label}  ${selector}`);
+    const reason = known.get(hash);
+    if (reason) {
+      knownCount++;
+      console.log(`KNOWN ${label}  ${selector}  -- ${reason}`);
+    } else {
+      failures++;
+      console.log(`DIFF  ${label}  ${selector}`);
+    }
     for (const line of diff(legacySkeleton, reactSkeleton)) console.log(line);
     console.log();
   }
@@ -227,5 +307,13 @@ try {
   await browser.close();
 }
 
-console.log(`\n${hashes.length - failures}/${hashes.length} screens match`);
+// Deliberate divergences are counted apart from matches, never folded into
+// them. A migration whose scoreboard says "20/20" while three screens quietly
+// differ is a scoreboard nobody should trust.
+const matched = hashes.length - failures - knownCount;
+console.log(
+  `\n${matched}/${hashes.length} screens match` +
+    (knownCount ? `, ${knownCount} differ deliberately` : '') +
+    (failures ? `, ${failures} differ unexpectedly` : ''),
+);
 process.exit(failures ? 1 : 0);

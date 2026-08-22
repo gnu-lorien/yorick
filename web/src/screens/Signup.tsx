@@ -16,7 +16,7 @@ import yorickLogo from '@legacy-img/yorick_256.png';
  * Note that signUp logs the new user in as a side effect, which is why this
  * navigates to the start page rather than back to the login screen.
  *
- * @compare #signup
+ * @compare-known #signup -- lands on #player-options, which diverges; see PlayerOptions
  */
 export function SignupScreen(_: ScreenProps) {
   const session = useSession();

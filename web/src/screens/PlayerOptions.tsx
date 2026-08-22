@@ -17,7 +17,7 @@ import { registerScreen, type ScreenProps } from './registry';
  * The "Troupe View All Characters" region below the menu is ported too; see
  * TroupeQuickAccess at the bottom of this file.
  *
- * @compare (home)
+ * @compare-known (home) -- the legacy quick-access list is empty; see TroupeQuickAccess
  */
 export function PlayerOptions(_: ScreenProps) {
   const session = useSession();
@@ -81,6 +81,26 @@ export function PlayerOptions(_: ScreenProps) {
  * think they have any special roles" -- and it matters beyond tidiness: the
  * roles query behind it is a request every player would otherwise make on every
  * visit to the start page for a list that is always empty.
+ *
+ * THIS DIVERGES FROM THE LEGACY APP, DELIBERATELY, and it is the only place in
+ * the migration that does.
+ *
+ * The legacy list is empty for everyone. It reads the role's name through a
+ * doubled property path:
+ *
+ *     var id = role.attributes.attributes.name;      PlayerOptionsView.js:71
+ *
+ * Under Parse 1.5 that resolved. Under parse@8 `role.attributes` is the plain
+ * attribute bag, so `.attributes` on it is undefined, `id` is undefined, no
+ * troupe is ever matched, and the section renders as a heading above an empty
+ * <ul>. Measured against the running app with an account that holds
+ * LST_<troupeId>: the role and the troupe are both in cache and the lookup
+ * succeeds when done with `role.get("name")`, and fails through the path above.
+ *
+ * So this is a regression the Parse 8 upgrade introduced, not a feature that
+ * was meant to be absent -- which is why it is not reproduced. Reproducing it
+ * would mean writing code whose purpose is to render nothing. The legacy fix is
+ * one word: `role.get("name")`.
  */
 function TroupeQuickAccess({ enabled }: { enabled: boolean }) {
   const { troupes, isLoading } = useMyTroupes();

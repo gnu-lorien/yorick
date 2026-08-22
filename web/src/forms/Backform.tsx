@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { cx } from '@/jqm/classes';
 
 /**
@@ -214,21 +214,32 @@ export function SelectField({
   extraClasses = [],
   id,
 }: SelectFieldProps) {
-  const generated = useId();
-  const selectId = id ?? generated;
   const selected = options.find((o) => o.value === value);
   return (
     <Group name={name} label={label}>
       {/* jQM's select: the div and span are the visible control, the real
           <select> sits transparently on top. See jqm/Controls.tsx. */}
       <div className="ui-select">
+        {/*
+          The button carries an id only when the select was given one.
+
+          jQuery Mobile derives it -- `this.selectId = this.select.attr("id") ||
+          ("select-" + this.uuid)` (jquery.mobile-1.4.5.js:10096) -- so with an
+          id on the select it is predictable, and without one it is a
+          per-enhancement counter that no second run can reproduce. Backform's
+          own select template emits no id at all, so the legacy DOM always
+          carries the counter form. Inventing a React id here would put a
+          *different* unreproducible id in its place, which is worse: nothing
+          keys off it, in the stylesheet or in the E2E suite, and
+          compare-dom.mjs normalises the counter form away on the legacy side.
+        */}
         <div
-          id={`${selectId}-button`}
+          id={id ? `${id}-button` : undefined}
           className="ui-btn ui-icon-carat-d ui-btn-icon-right ui-corner-all ui-shadow"
         >
           <span>{selected?.label ?? ''}</span>
           <select
-            id={selectId}
+            id={id}
             className={cx(CONTROL, ...extraClasses)}
             name={name}
             value={value}
