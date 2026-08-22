@@ -86,6 +86,32 @@ Do not hand-write `ui-` classes in a screen when a kit component exists. Plain
 in-content anchors need no `ui-link`: `Page` adds it, the way jQM's enhancer
 did.
 
+## Shared capabilities you should use
+
+Three things live outside your screen and are already built. Use them rather
+than reinventing or skipping them.
+
+**The loading spinner.** `useLoading().track(promise)` from `@/jqm/Loader`
+raises the spinner for the life of a promise and lowers it whatever the
+outcome. The legacy handlers do this with matched
+`$.mobile.loading("show")` / `("hide")` pairs and hide it in an `.always()`
+precisely because hiding only on success leaves a stuck spinner that swallows
+the next click. `track` cannot forget.
+
+**The error banner.** `reportError(error, context)` from `@/shell/reportError`
+shows the failure in a `#global-error-region` inside the active page, then
+rethrows -- so the chain stays failed, which is what stops a `catch` that
+reports from turning a failure into a success downstream. `showError` is the
+non-throwing variant, for the few places the legacy code also carried on. The
+banner follows exactly one redirect, so it is safe to report and then navigate.
+Use `context` to name what was attempted: "Couldn't save the rule".
+
+**The Back button.** `useBackButton("#somewhere")` from `@/shell/backButton`
+points the header's Back at a destination. The legacy router does this per route
+with `set_back_button(url)`, so Back is a place the screen chooses, not browser
+history -- check your handler in mobileRouter.js for a `set_back_button` call
+and port it. Declaring nothing falls back to `history.back()`.
+
 ## Keep every handle the tests use
 
 The E2E suite selects on ids, on classes like `.character-list-item`, and on
