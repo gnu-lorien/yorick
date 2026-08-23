@@ -134,10 +134,10 @@
 
     <div id="administration" data-role="page" data-title="Administration">
         <div role="main" class="ui-content">
-            <ul>
+            <ul data-role="listview" data-inset="true">
                 <li><a href="#troupes">Troupes</a></li>
                 <li><a href="#administration/characters/all">Characters</a></li>
-                <li><a href="#administration/characters/summarize">SummarizeCharacters</a></li>
+                <li><a href="#administration/characters/summarize">Summarize Characters</a></li>
                 <li><a href="#administration/users/all">Users</a></li>
                 <li><a href="#administration/patronages">Patronages</a></li>
                 <li><a href="#administration/patronagescsv">Patronages CSV</a></li>
@@ -842,7 +842,7 @@
     </div>
 
     <script id="simpleTraitSpecialization" type="text/template">
-    <p><%= description.attributes.help_specialization %></p>
+    <p><%= description ? description.attributes.help_specialization : "" %></p>
     <form>
         <label for="specialization">Specialization for <%= name %>:</label>
         <input type="text" name="specialization" id="specialization" value="<%= specialization %>">

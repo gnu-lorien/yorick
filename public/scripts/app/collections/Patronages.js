@@ -17,16 +17,14 @@ define([
             self.query = new Parse.Query(self.model);
         },
         
+        // Sorted by expiresOn, descending, always. See
+        // collections/Vampires.js for why the `sortbycreated` branch that used
+        // to sit here is gone: the flag was set on the array handed to
+        // `reset()`, never on the collection the comparator reads it off, so
+        // the branch was unreachable.
         comparator: function (left, right) {
-            var self = this;
-            var l, r;
-            if (_.has(self, "sortbycreated")) {
-                l = right.createdAt;
-                r = left.createdAt;
-            } else {
-                l = right.get("expiresOn");
-                r = left.get("expiresOn");
-            }
+            var l = right.get("expiresOn");
+            var r = left.get("expiresOn");
             if (_.gt(l, r)) {
                 return 1;
             } else if (_.lt(l, r)){

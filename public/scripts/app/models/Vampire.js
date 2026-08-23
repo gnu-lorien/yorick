@@ -73,9 +73,25 @@ define([
             if (!_.contains(["flaws", "merits", "focus_mentals", "focus_physicals", "focus_socials", "attributes", "skills", "disciplines", "backgrounds"], category)) {
                 return Parse.Promise.as(self);
             }
-            return Parse.Object.fetchAllIfNeeded([self.get("creation")]).then(function (creations) {
+            // `_.compact`, so a character with NO creation pointer takes the
+            // empty-list path instead of throwing.
+            //
+            // parse@8's `fetchAllIfNeeded` reads `.className` off every member
+            // of the list, so `[undefined]` throws a TypeError synchronously -
+            // before the `creation` guard below is ever reached. Measured
+            // against parse 8.6.0: "Cannot read properties of undefined
+            // (reading 'className')" from ParseObject.js:1775.
+            // `fetchAllIfNeeded([])` resolves with `[]`, which the guard then
+            // handles.
+            return Parse.Object.fetchAllIfNeeded(_.compact([self.get("creation")])).then(function (creations) {
                 var creation = creations[0];
-                if (creation && creation.get("completed")) {
+                // `!creation`, not `creation &&`. The old test acknowledged the
+                // record could be missing and then used it unguarded three
+                // lines later, so a character with no creation record threw a
+                // TypeError instead of returning. Not reachable today - every
+                // caller runs `ensure_creation_rules_exist` first - but it was
+                // a trap set for the next caller who does not.
+                if (!creation || creation.get("completed")) {
                     // R22: these counters are creation-time bookkeeping and
                     // nothing reads them once the wizard is finished, so
                     // writing to them afterwards only produced meaningless
