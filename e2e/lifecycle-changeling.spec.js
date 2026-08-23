@@ -1076,7 +1076,14 @@ test.describe('Task 12c - Changeling lifecycle and dual audit log', () => {
       }
 
       const sheet = await L.readHistorySheetText(memberPage);
-      expect(sheet.length, `index ${index} renders a printable snapshot`).toBeGreaterThan(400);
+      // Whitespace-stripped, for the reason lifecycle-vampire.spec.js gives at
+      // the same assertion: the two front ends render the same sheet and differ
+      // only in template indentation, so a raw-length threshold measures the
+      // indentation rather than the snapshot.
+      expect(
+        sheet.replace(/\s+/g, '').length,
+        `index ${index} renders a printable snapshot`
+      ).toBeGreaterThan(300);
       steps.push({ index, applied: tables.applied.name, sheetLength: sheet.length });
     }
     expect(steps.length).toBeGreaterThanOrEqual(10);

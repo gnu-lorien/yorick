@@ -135,9 +135,23 @@ function ItemView({ children }: { children: React.ReactNode }) {
   return <div>{children}</div>;
 }
 
-/** A panel heading. Every box track carries one. */
+/**
+ * A panel heading. Every box track carries one.
+ *
+ * The trailing space is template indentation, and it is load-bearing to anyone
+ * reading the sheet as text. Every one of the ten print templates puts a
+ * newline after `</h4>`, so the heading and whatever follows it never run
+ * together: the Morality panel reads "Morality Humanity" and not
+ * "MoralityHumanity". `compare:dom` cannot see the difference -- text is what
+ * it ignores -- and e2e/lifecycle-vampire.spec.js asserts on exactly that
+ * phrase.
+ */
 function PanelHeading({ children }: { children: React.ReactNode }) {
-  return <h4 className="ui-bar ui-bar-a ui-corner-all">{children}</h4>;
+  return (
+    <>
+      <h4 className="ui-bar ui-bar-a ui-corner-all">{children}</h4>{' '}
+    </>
+  );
 }
 
 /** Render one formatted value, with its additions and removals marked. */
