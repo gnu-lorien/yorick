@@ -85,6 +85,21 @@ function Pip() {
  * morality tracks and from 0 for willpower and gnosis -- `0 == i % 5` against
  * `_.range(1, 31)` versus `0 == (i + 1) % 5` against `_.range(0, total)` -- so
  * both end up breaking after the 5th box. Written once, counting from 1.
+ *
+ * The space after every box is not decoration and not optional. Each `<i>` sits
+ * on its own indented line in the template, so the browser gets a whitespace
+ * text node between them and renders a gap -- these are inline elements, and
+ * inline elements separated by whitespace are separated on screen. JSX drops
+ * whitespace between siblings, so without this the whole track runs together
+ * into one solid strip of boxes.
+ *
+ * The trailing space matters for the same reason: the health track puts its
+ * label straight after the boxes ("... Healthy", not "...Healthy") and the
+ * blood track its blood-per-turn figure straight after the pips.
+ *
+ * `&nbsp;` is what widens the gap every fifth box, and it is surrounded by
+ * ordinary spaces in the template, which is why a group break is visibly wider
+ * than a single gap rather than the same width.
  */
 function Boxes({ total, split, linebreak }: { total: number; split?: number; linebreak?: number }) {
   const count = Number.isFinite(total) ? Math.max(0, Math.trunc(total)) : 0;
@@ -94,12 +109,36 @@ function Boxes({ total, split, linebreak }: { total: number; split?: number; lin
         const i = index + 1;
         return (
           <Fragment key={i}>
-            <Box />
-            {split && i % split === 0 ? <>&nbsp;</> : null}
-            {linebreak && i % linebreak === 0 ? <br /> : null}
+            <Box />{' '}
+            {split && i % split === 0 ? <>&nbsp;{' '}</> : null}
+            {linebreak && i % linebreak === 0 ? (
+              <>
+                <br />{' '}
+              </>
+            ) : null}
           </Fragment>
         );
       })}
+    </>
+  );
+}
+
+/**
+ * A run of filled circles, spaced as the template spaces them.
+ *
+ * Same reason as `Boxes`: one `<i>` per indented line, so one space between
+ * each and one after the last, which is the gap before the blood-per-turn
+ * figure that follows.
+ */
+function Pips({ count }: { count: number }) {
+  const n = Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
+  return (
+    <>
+      {Array.from({ length: n }, (_, i) => (
+        <Fragment key={i}>
+          <Pip />{' '}
+        </Fragment>
+      ))}
     </>
   );
 }
@@ -219,9 +258,7 @@ function PanelView({ panel, context }: { panel: Panel; context: PrintContext }) 
         <div>
           <PanelHeading>Blood</PanelHeading>
           <Boxes total={30} split={5} linebreak={10} />
-          {Array.from({ length: Math.max(0, gen) }, (_, i) => (
-            <Pip key={i} />
-          ))}
+          <Pips count={gen} />
           {BLOOD_PER_TURN[gen] ?? ''} / {gen}
         </div>
       );
@@ -232,9 +269,7 @@ function PanelView({ panel, context }: { panel: Panel; context: PrintContext }) 
         <div>
           <PanelHeading>Blood</PanelHeading>
           <Boxes total={panel.total} split={panel.split} linebreak={panel.linebreak} />
-          {Array.from({ length: Math.max(0, panel.bloodPerTurn) }, (_, i) => (
-            <Pip key={i} />
-          ))}
+          <Pips count={panel.bloodPerTurn} />
           {panel.total} / {panel.bloodPerTurn}
         </div>
       );

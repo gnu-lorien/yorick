@@ -49,18 +49,39 @@ import { registerScreen, type ScreenProps } from './registry';
  * says "Nothing here yet", even on the Descriptions route where "attributes" is
  * a real category and is the option showing.
  *
- * Only one `@compare` for six routes, and it is the harness that decides that
- * rather than laziness. `compare:dom` walks its hashes in one browser page, and
- * moving between two hashes of the same document does not reload it -- which is
- * the same thing a user does by clicking from one rule editor to another. On
- * that second visit the legacy page is *un-enhanced*: jQuery Mobile enhances
- * `#administration-descriptions` once, at its first `pagecreate`, and both
- * views re-render their forms as raw Backform HTML every time they are opened,
- * with nothing to enhance them again. So the legacy screen genuinely shows a
- * bare browser dropdown and an unstyled button from the second visit onwards,
- * and comparing against that would mean reproducing a defect that only exists
- * for part of the time. Check the other five routes one at a time:
+ * Only one `@compare` for six routes, and the reason is a legacy defect that is
+ * order-dependent rather than screen-dependent.
+ *
+ * `update_categories` ends `Parse.Promise.as(form.render())` -- DescriptionsView
+ * :227 and EditRules:356, identically -- which replaces the category `<select>`
+ * and re-enhances nothing. jQuery Mobile enhances a page once, at its first
+ * `pagecreate`, so whichever of the six finishes rendering before that moment
+ * gets a styled control and every render afterwards is raw. Both views also
+ * declare the same `el` and share the one page element, so visiting either
+ * affects the other.
+ *
+ * The two `enhanceWithin()` calls each view makes -- EditRules:284 and :323,
+ * DescriptionsView:164 and :203 -- have never done anything. Both declare
+ * `el: "#administration-descriptions > div[data-role='main']"` and the markup is
+ * `<div role="main" class="ui-content">` (public/index.html:439). `data-role` is
+ * absent, so the selector matches nothing, `this.$el` is an empty set, and
+ * enhancing it is a no-op. Equally, in both views.
+ *
+ * So there is no per-route difference here: not one to reproduce, and not one to
+ * deliberately decline to reproduce. On a fresh load the Descriptions screen is
+ * as unstyled as the rule editors. Rendering all six through one component is
+ * *more* faithful than the legacy behaviour, not less.
+ *
+ * What the single marker buys is only that `compare:dom` walks its hashes in one
+ * browser page, so whichever route it visits second has already lost the race to
+ * `pagecreate`. Check the other five one at a time:
  * `npm run compare:dom -- "#administration/bnsmetv1_clan_rules"`.
+ *
+ * The legacy fix -- re-enhance after `update_categories` re-renders, in both
+ * views -- makes the control styled deterministically on every admin screen
+ * whatever the visit order. Once that lands the two front ends agree on all six,
+ * this note is spent, and the other five routes can take `@compare` markers of
+ * their own.
  *
  * @compare #administration/descriptions
  */
