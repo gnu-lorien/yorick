@@ -8,7 +8,7 @@ import { screenMap } from '@/router/screenMap';
 import { titleFor } from '@/router/pageTitles';
 import { useSession, useLogOut, type Session } from '@/parse/session';
 import { useBackTarget } from '@/shell/backButton';
-import { errorRegionOnNavigate } from '@/shell/reportError';
+import { errorRegionOnNavigate, showError } from '@/shell/reportError';
 import { useScreenGeneration } from '@/shell/testBridge';
 import { screenFor } from '@/screens/registry';
 import { NotMigrated, NoRoute } from '@/screens/NotMigrated';
@@ -37,6 +37,44 @@ import '@/screens/index';
  * through `get_character`, which begins with it. The five here reach neither.
  */
 const PUBLIC_HANDLERS = new Set(['signup', 'about', 'privacy_policy', 'resetpassword', 'logout']);
+
+/**
+ * Routes that require `admininterface`, and what happens without it.
+ *
+ * The legacy gates these two ways and the difference is visible, so both are
+ * kept. Fourteen call `enforce_admin()`, whose failure tail reports
+ * "Administrator access is required for that page." and sends the visitor home;
+ * four -- the user and patronage listings -- are a bare `if (is_ad) {...}` with
+ * no else, so nothing happens at all: no page, no message, and the hash left
+ * pointing at a route that did not run.
+ *
+ * The gap this closes is not theoretical. Without it a non-admin who types the
+ * URL gets the whole admin screen rendered at them, and only discovers the
+ * refusal when a save comes back forbidden. Most of these are protected
+ * server-side, so it was information disclosure and confusion rather than a
+ * breach -- which is exactly what the legacy comment at
+ * mobileRouter.js:1537 says about the same problem.
+ */
+const ADMIN_HANDLERS = new Map<string, 'redirect' | 'silent'>([
+  ['administration', 'redirect'],
+  ['administration_characters_all', 'redirect'],
+  ['administration_characters_summarize', 'redirect'],
+  ['administration_referendums', 'redirect'],
+  ['administration_referendum', 'redirect'],
+  ['administration_user_patronages', 'redirect'],
+  ['administration_patronage', 'redirect'],
+  ['administration_patronage_new', 'redirect'],
+  ['administration_descriptions', 'redirect'],
+  ['administration_bnsctdbs_kith_rules', 'redirect'],
+  ['administration_bnsmetv1_clan_rules', 'redirect'],
+  ['administration_bnsmetv1_elder_discipline_rules', 'redirect'],
+  ['administration_bnsmetv1_technique_rules', 'redirect'],
+  ['administration_bnsmetv1_ritual_rules', 'redirect'],
+  ['administration_users', 'silent'],
+  ['administration_user', 'silent'],
+  ['administration_patronages', 'silent'],
+  ['administration_patronages_csv', 'silent'],
+]);
 
 export function App() {
   const route = useHashRoute();
@@ -93,6 +131,11 @@ export function App() {
     );
   }
 
+  const adminGate = ADMIN_HANDLERS.get(handler);
+  if (adminGate && !session.admin) {
+    return <AdminRefusal mode={adminGate} session={session} />;
+  }
+
   const pageId = screenMap[handler]?.pageId ?? handler;
   const Screen = screenFor(handler);
 
@@ -111,6 +154,29 @@ export function App() {
   );
 }
 
+/**
+ * What a non-admin gets instead of an admin screen.
+ *
+ * `redirect` reproduces `admin_route_failed`: say why, then go home. `silent`
+ * reproduces the four bare `if (is_ad)` gates, which render nothing and leave
+ * the hash where it is -- in the legacy that means the previously visited page
+ * stays on screen, because jQuery Mobile keeps every page in the document and
+ * simply does not transition. React unmounts, so what is left is an empty
+ * shell. The refusal is the same; only the scenery behind it differs.
+ */
+function AdminRefusal({ mode, session }: { mode: 'redirect' | 'silent'; session: Session }) {
+  useEffect(() => {
+    if (mode !== 'redirect') return;
+    showError(
+      new Error('Administrator access is required for that page.'),
+      "Couldn't open that page",
+    );
+    navigate('', { replace: true });
+  }, [mode]);
+
+  return <Shell session={session} />;
+}
+
 function Shell({
   session,
   pageId,
@@ -118,7 +184,7 @@ function Shell({
 }: {
   session: Session;
   pageId?: string;
-  children: ReactNode;
+  children?: ReactNode;
 }) {
   const logOut = useLogOut();
   const backTarget = useBackTarget();
