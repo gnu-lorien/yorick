@@ -117,16 +117,35 @@ same file against the legacy app, which takes 36.
 
 ## Where the suite stands
 
-Green on both front ends, with no unexpected failures, in eighteen spec files:
-`access-control`, `administration`, `admin-patronage`, `admin-referendums`,
-`admin-rules`, `approvals`, `assets-rename-portrait`, `auth-profile`,
-`character-history`, `character-sheet`, `creation-vampire`,
-`creation-werewolf`, `creation-changeling`, `descriptions-by-creature`,
-`long-texts`, `traits-lifecycle`, `troupes` and `xp-history`.
+Every spec file is green on both front ends, with no unexpected failures.
+
+## Two differences the suite had to be told about
+
+Neither is behaviour; both are jQuery Mobile's model showing through an
+assertion.
+
+**Which page is left behind by a refused route.** jQM keeps every visited page
+in the document and simply does not transition when a handler fails, so the
+legacy app is still showing the page you came from. React has no page to
+withhold -- the hash decides what is shown. Three access-control assertions
+proved a refusal by naming the previous page; they now count what rendered
+inside the region that should have been filled, which is zero on both and is
+the thing actually under test.
+
+**Text length.** Every element in the legacy templates sits on its own line, so
+the text carries the indentation between them; JSX drops whitespace between
+siblings. Measured directly against the same character and the same backend, the
+printable sheet is character-for-character identical once whitespace is
+stripped, and the legacy is about ten percent longer. Three `sheet.length > N`
+thresholds were therefore measuring indentation, and now measure content.
+
+Where the whitespace is *readable* rather than incidental it was restored
+instead: "Available 30" in the experience table and "Morality Humanity" on the
+printed sheet both come from a newline in the template, and both are asserted by
+name.
 
 ## Still to do
 
-- The three `lifecycle-*` specs.
 - `popup-trace.js` hooks `app/views/CharacterExperienceView` through
   `window.require` to watch popups from inside the view. There is nothing to
   hook in React. It is diagnostic-only and already guarded, so it degrades to a
