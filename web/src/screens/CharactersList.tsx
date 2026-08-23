@@ -26,7 +26,14 @@ import { registerScreen, type ScreenProps } from './registry';
  * a bare `if ("all" == type)` with no else, so any other value leaves the app
  * wherever it was; that is preserved.
  *
- * @compare #characters?all
+ * @compare-known #characters?all -- legacy rows lose their first/last classes once this page has been rendered into twice; see legacy bug #16
+ *
+ * Matches exactly on a first visit. Visit `#administration/characters/all`
+ * first -- it renders into this same `#characters-all` page -- and the legacy
+ * rows come back without `ui-first-child` / `ui-last-child`, so the inset list
+ * loses its rounded ends. CharactersListView.render writes new `<li>`s into the
+ * `<ul>` and never re-enhances; the first visit only looks right because jQuery
+ * Mobile enhances the whole page on `pagecreate`. Recorded as legacy bug #16.
  */
 export function CharactersList({ route }: ScreenProps) {
   const type = route.named['type'];

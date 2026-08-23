@@ -211,3 +211,21 @@ export function userLabel(user: Parse.User, joinWith: 'concat' | 'interpolate'):
   if (joinWith === 'concat') return parts.map((p) => String(p)).join(' ');
   return parts.map((p) => (p === undefined || p === null ? '' : String(p))).join(' ');
 }
+
+/**
+ * The owner's most recent patronage, or undefined.
+ *
+ * Ports `UserWreqr.get_latest_patronage`, including its shrug at failure: the
+ * legacy chain ends in `.always()` returning whatever it managed to get, so a
+ * refused or failed query yields undefined rather than rejecting. That matters
+ * because the only caller is character creation, and a patronage lookup that
+ * fails must not stop someone making a character -- they simply get one with no
+ * expiry inherited.
+ */
+export async function latestPatronageFor(user: Parse.User): Promise<Patronage | undefined> {
+  try {
+    return await new Parse.Query(Patronage).equalTo('owner', user).descending('expiresOn').first();
+  } catch {
+    return undefined;
+  }
+}

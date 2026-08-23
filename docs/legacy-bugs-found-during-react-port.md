@@ -31,7 +31,7 @@ first working out why the original failed. These five:
 
   #0 approval page unreachable, #1 troupe shortcuts, #2 sortbycreated,
   #4 memoised sub-view, #13 owner line, #14 leaked diff markers,
-  #15 truncated ledger.
+  #15 truncated ledger, #16 lost list corners.
 
 #1 is the only one of the thirteen that is a Parse 8 regression -- a thing that
 worked before that migration and does not now, which the migration did not
@@ -584,6 +584,48 @@ checking against a real character with a long ledger before it ships.
 
 ---
 
+## 16. Character lists lose their rounded ends after the first visit
+
+**`public/scripts/app/views/CharactersListView.js:45-56`**
+
+```js
+render: function() {
+    this.template = _.template( character_list_item_html )({ ... });
+    this.$el.find("ul[data-role='listview']").html(this.template);
+    return this;
+}
+```
+
+No `enhanceWithin()` and no `listview("refresh")`. **41 of the app's view files
+call `enhanceWithin()` at the end of render; this one does not.**
+
+It looks fine the first time because jQuery Mobile enhances the whole page on
+`pagecreate`, which happens after the rows are already in the `<ul>`. On any
+later render the page is already enhanced, jQM does not touch it again, and the
+freshly-written `<li>`s never receive `ui-first-child` / `ui-last-child` -- the
+classes that round the top and bottom of an inset list.
+
+**Confirmed:** open `#administration/characters/all` and then `#characters?all`
+-- both render into `#characters-all` -- and the rows come back as bare
+`li.ui-li-has-thumb`, where a first visit gives
+`li.ui-first-child.ui-li-has-thumb` and `li.ui-last-child.ui-li-has-thumb`. The
+same happens between `#characters?all` and a troupe roster.
+
+**Fix:** re-enhance after writing the rows, as every other view does.
+
+```js
+this.$el.find("ul[data-role='listview']").html(this.template).listview("refresh");
+```
+
+`listview("refresh")` rather than `enhanceWithin()` is the narrower call and the
+one jQM documents for exactly this.
+
+**Impact:** visual, on the screen players use most, and only after they have
+moved between two rosters. React always emits the position classes, so this is
+recorded as a deliberate divergence in `web/src/screens/CharactersList.tsx`.
+
+---
+
 ## Not bugs — checked and cleared
 
 Recorded so nobody spends time on them again.
@@ -620,9 +662,10 @@ be the live path is how the above happened — but it is a tidy-up, not a defect
 3. **#5** and **#7** — both leave users stuck with no explanation.
 4. **#3**, **#8**, **#11** — visible and small.
 5. **#14** — one line to delete, on a screen built to show what changed.
-6. **#15** and **#12** — before either list grows past 100.
-7. **#9**, **#2**, **#10** — tidy-ups with no user-visible effect today.
-8. **#6** and **#13** — decide whether they are defects at all before touching
+6. **#16** — one call to add, on the screen players use most.
+7. **#15** and **#12** — before either list grows past 100.
+8. **#9**, **#2**, **#10** — tidy-ups with no user-visible effect today.
+9. **#6** and **#13** — decide whether they are defects at all before touching
    them.
 
 ## Before you change any of these

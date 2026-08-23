@@ -49,13 +49,20 @@ export function Form({
   children,
   onSubmit,
   className,
+  id,
 }: {
   children?: ReactNode;
   onSubmit?: (e: React.FormEvent) => void;
   className?: string;
+  /**
+   * For the forms whose element is written into index.html and found by
+   * selector -- `#character-new-form`, which CharacterNewView renders into.
+   */
+  id?: string;
 }) {
   return (
     <form
+      id={id}
       className={className}
       onSubmit={(e) => {
         // Backform's buttons are type="submit" and their handlers all begin
@@ -71,8 +78,11 @@ export function Form({
 }
 
 interface GroupProps {
-  /** The field name. Backform adds it to the group as a class. */
-  name: string;
+  /**
+   * The field name. Backform adds it to the group as a class, and a field with
+   * no name adds nothing -- `addClass(undefined)` is a no-op.
+   */
+  name?: string;
   label?: ReactNode;
   children: ReactNode;
   helpMessage?: string;
@@ -351,7 +361,13 @@ export function CheckboxField({
 }
 
 export interface ButtonFieldProps {
-  name: string;
+  /**
+   * Optional, because Backform adds the field's name to the group as a class
+   * (`this.$el.addClass(field.name)`) and some button fields declare none --
+   * the new-character form's is `{control: "Button", label: "..."}` with no
+   * name at all, so its group is a bare `form-group`.
+   */
+  name?: string;
   label: string;
   type?: 'submit' | 'button' | 'reset';
   onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
