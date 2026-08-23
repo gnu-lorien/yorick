@@ -85,6 +85,7 @@ import {
 import { getExpectedVampireIds, updateVampireChangePermissionsFor } from '@/domain/cloud'
 import { promiseFailReport, reportError } from '@/domain/errors'
 import { ALL_VENUES, venueForCharacter } from '@/domain/venues'
+import type { VenueKey } from '@/parse/classes'
 import type {
   ExperienceNotationOptions as VenueExperienceNotationOptions,
   TraitQueue,
@@ -417,6 +418,17 @@ export interface CharacterState {
 
 /** Everything `Character.js`'s `instance_methods` provided, minus the ledger. */
 export interface CharacterMethods {
+  /* -- the venue's own terms, delegated -- */
+  generation(): number
+  has_generation(): boolean
+  rank(): number
+  has_rank(): boolean
+  seeming(): number
+  has_seeming(): boolean
+  get_in_clan_disciplines(): (string | undefined)[]
+  get_affinities(): unknown[]
+  get_arts_affinities(): Array<string | undefined>
+
   /* -- the venue's tables, as the model exposed them -- */
   all_simpletrait_categories(): readonly (readonly [string, string, string])[]
   all_text_attributes(): readonly string[]
@@ -1179,6 +1191,52 @@ const characterMethods: CharacterMethods & ThisType<Character> = {
       this as unknown as VenueCharacter,
       trait as never,
     )
+  },
+
+  /*
+   * The venue's own terms, reachable from the character.
+   *
+   * `generation` is Vampire's, `rank` Werewolf's, `seeming` Changeling's, and
+   * each existed only on its own venue's prototype in the Backbone app -- so
+   * asking a werewolf for its generation threw a TypeError. That is reproduced,
+   * with a message that names the mismatch instead of "not a function": these
+   * are called from the printable sheet, the cost engines and the E2E fixture
+   * helpers, and a wrong-venue call is a bug in the caller worth reading.
+   */
+  generation(): number {
+    return namedVenueTerm(this, 'Vampire', 'generation')
+  },
+
+  has_generation(): boolean {
+    return namedVenueTermPresent(this, 'Vampire', 'has_generation')
+  },
+
+  rank(): number {
+    return namedVenueTerm(this, 'Werewolf', 'rank')
+  },
+
+  has_rank(): boolean {
+    return namedVenueTermPresent(this, 'Werewolf', 'has_rank')
+  },
+
+  seeming(): number {
+    return namedVenueTerm(this, 'ChangelingBetaSlice', 'seeming')
+  },
+
+  has_seeming(): boolean {
+    return namedVenueTermPresent(this, 'ChangelingBetaSlice', 'has_seeming')
+  },
+
+  get_in_clan_disciplines(): (string | undefined)[] {
+    return venueMethod(this, 'get_in_clan_disciplines') as (string | undefined)[]
+  },
+
+  get_affinities(): unknown[] {
+    return venueMethod(this, 'get_affinities') as unknown[]
+  },
+
+  get_arts_affinities(): Array<string | undefined> {
+    return venueMethod(this, 'get_arts_affinities') as Array<string | undefined>
   },
 
   /*
@@ -2249,6 +2307,50 @@ export function characterFor(object: CharacterObject): Character {
 /* ------------------------------------------------------------------------- *
  * Small shared helpers
  * ------------------------------------------------------------------------- */
+
+/**
+ * The venue's own numeric term, under the name its own venue uses.
+ *
+ * Generation, rank and seeming are ONE slot -- the venue strategies unify it as
+ * `venue_term` -- but they are three different words, and in the Backbone app
+ * each method existed only on its own venue's prototype: asking a werewolf for
+ * its generation was a TypeError, not its rank.
+ *
+ * The guard keeps that. Unifying the slot must not quietly answer a
+ * wrong-venue question with the right-venue number, because the caller asking
+ * a werewolf for a generation has a bug and the answer would look plausible.
+ */
+function namedVenueTerm(character: Character, venue: VenueKey, name: string): number {
+  assertVenue(character, venue, name)
+  return character.venue.venue_term(character as unknown as VenueCharacter)
+}
+
+function namedVenueTermPresent(character: Character, venue: VenueKey, name: string): boolean {
+  assertVenue(character, venue, name)
+  return character.venue.has_venue_term(character as unknown as VenueCharacter)
+}
+
+function assertVenue(character: Character, venue: VenueKey, name: string): void {
+  if (character.venue.key !== venue) {
+    throw new CharacterError(
+      4,
+      `${name}() is defined for a ${venue} character; this one is a ${character.venue.key}`,
+    )
+  }
+}
+
+/** A method only some venues define, called on the venue that does. */
+function venueMethod(character: Character, name: string): unknown {
+  const venue = character.venue as unknown as Record<string, ((ch: unknown) => unknown) | undefined>
+  const fn = venue[name]
+  if (typeof fn !== 'function') {
+    throw new CharacterError(
+      4,
+      `${name}() is not defined for a ${character.venue.key} character`,
+    )
+  }
+  return fn.call(venue, character)
+}
 
 function safe_stringify(value: unknown): string {
   try {

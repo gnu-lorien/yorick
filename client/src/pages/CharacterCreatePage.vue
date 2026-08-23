@@ -186,20 +186,26 @@ const meritFlawRatings = descending(1, 0)
                 <p>{{ st.value }}</p>
               </li>
               <li>
-                <a :href="`#charactercreate/simpletext/${st.name}s/${st.name}/${cid}/pick`">
-                  Repick {{ st.label }}
-                </a>
+                <a :href="`#charactercreate/simpletext/${st.name}s/${st.name}/${cid}/pick`">Repick {{ st.label }}</a>
               </li>
               <li data-icon="delete">
-                <a :href="`#charactercreate/simpletext/${st.name}s/${st.name}/${cid}/unpick`">
-                  Unpick {{ st.label }}
-                </a>
+                <a :href="`#charactercreate/simpletext/${st.name}s/${st.name}/${cid}/unpick`">Unpick {{ st.label }}</a>
               </li>
             </template>
+          <!--
+            The link text is on ONE line, deliberately.
+
+            The original template rendered `<a href="...">Pick <%= ust %></a>`
+            with no surrounding whitespace, and the E2E suite matches it with an
+            ANCHORED regex -- `filter({ hasText: /^Pick Clan$/ })`. Playwright
+            does not trim for a regex, so a prettier multi-line body makes the
+            text `"
+  Pick Clan
+"` and the assertion fails on a screen that is
+            visibly correct.
+          -->
             <li v-else>
-              <a :href="`#charactercreate/simpletext/${st.name}s/${st.name}/${cid}/pick`">
-                Pick {{ st.label }}
-              </a>
+              <a :href="`#charactercreate/simpletext/${st.name}s/${st.name}/${cid}/pick`">Pick {{ st.label }}</a>
             </li>
           </ul>
         </div>

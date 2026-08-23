@@ -137,21 +137,21 @@ const textAttributes = computed(() => {
   const c = character.value
   if (!c || beingCreated.value) return []
   trackAll()
-  const pretty = c.venue.TEXT_ATTRIBUTES_PRETTY_NAMES
-  return c.venue.TEXT_ATTRIBUTES.map((name, i) => {
-    const heading = pretty[i]
-    return {
-      name,
-      // A pretty name may be a function of the character; see the note in
-      // CharacterCreatePage. The template's own fallback was
-      // `st[0].toUpperCase() + st.substr(1)`.
-      upper:
-        typeof heading === 'function'
-          ? (heading as (ch: unknown) => string)(c)
-          : ((heading as string) ?? name.charAt(0).toUpperCase() + name.slice(1)),
-      value: (c.get(name) as string) || '',
-    }
-  })
+  return c.venue.TEXT_ATTRIBUTES.map((name) => ({
+    name,
+    /*
+     * `st[0].toUpperCase() + st.substr(1)`, and NOT the venue's pretty name.
+     *
+     * The two templates disagree on purpose. The creation wizard labels these
+     * with `TEXT_ATTRIBUTES_PRETTY_NAMES` (`character-create-view.html:9`); the
+     * sheet capitalises the attribute name itself (`index.html:317`). For five
+     * of Vampire's six the two agree, which is what makes the difference easy
+     * to miss -- the sixth is `antecedence`, whose pretty name is the whole
+     * question "Primary, Secondary, or NPC".
+     */
+    upper: name.charAt(0).toUpperCase() + name.slice(1),
+    value: (c.get(name) as string) || '',
+  }))
 })
 </script>
 
@@ -213,21 +213,16 @@ const textAttributes = computed(() => {
                     {{ st.upper }}
                     <p>{{ st.value }}</p>
                   </li>
+                  <!-- One line each: see the note in CharacterCreatePage.vue. -->
                   <li>
-                    <a :href="`#simpletext/${st.name}s/${st.name}/${character.id}/pick`">
-                      Repick {{ st.upper }}
-                    </a>
+                    <a :href="`#simpletext/${st.name}s/${st.name}/${character.id}/pick`">Repick {{ st.upper }}</a>
                   </li>
                   <li data-icon="delete">
-                    <a :href="`#simpletext/${st.name}s/${st.name}/${character.id}/unpick`">
-                      Unpick {{ st.upper }}
-                    </a>
+                    <a :href="`#simpletext/${st.name}s/${st.name}/${character.id}/unpick`">Unpick {{ st.upper }}</a>
                   </li>
                 </template>
                 <li v-else>
-                  <a :href="`#simpletext/${st.name}s/${st.name}/${character.id}/pick`">
-                    Pick {{ st.upper }}
-                  </a>
+                  <a :href="`#simpletext/${st.name}s/${st.name}/${character.id}/pick`">Pick {{ st.upper }}</a>
                 </li>
               </ul>
             </div>

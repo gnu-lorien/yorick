@@ -38,6 +38,8 @@
  * somewhere else entirely.
  */
 import type { Router } from 'vue-router'
+import { normaliseHash } from '@/router/backbone-hash'
+import { pathForHash } from '@/router'
 
 /** Bumped to force the router outlet to rebuild a component in place. */
 let remountKey = 0
@@ -100,27 +102,52 @@ function amdRequire(
 export function installTestApi(router: Router): void {
   const api: YorickTestApi = {
     async reload(hash?: string) {
+      /*
+       * Dispatch the hash the CALLER asked for, never `router.currentRoute`.
+       *
+       * `hashchange` is delivered asynchronously, so between an in-app
+       * `window.location.hash = "#character?X"` and the router acting on it
+       * there is a window where `location.hash` already reads the new value
+       * while `router.currentRoute` still holds the old one. `navigateToHash`
+       * lands exactly in that window: it sees the hash already matching, takes
+       * the "no hashchange will fire" branch, and calls this.
+       *
+       * Re-dispatching `currentRoute` there re-ran the route the app had just
+       * navigated AWAY from -- for `#charactercreate/complete/:cid` that meant
+       * completing creation a second time -- and then that route's own
+       * `window.location.hash = ...` was a no-op, because the hash already held
+       * the wanted value. The router stayed on an action route that renders
+       * nothing, and the app was left with no active page at all.
+       *
+       * Resolving the requested hash here makes the call independent of whether
+       * the pending `hashchange` has been delivered yet.
+       */
+      const wantedPath =
+        hash === undefined ? null : pathForHash(normaliseHash(hash))
+
       if (hash !== undefined) {
         const wanted = hash.startsWith('#') ? hash : '#' + hash
-        if (window.location.hash !== wanted) {
-          window.location.hash = wanted
-          // The `hashchange` listener drives the router from here.
-          await new Promise((resolve) => setTimeout(resolve, 0))
-          return
-        }
+        if (window.location.hash !== wanted) window.location.hash = wanted
       }
-      // Same route: force the component to be torn down and rebuilt, which is
-      // what `Backbone.history.loadUrl` amounted to for a handler that
-      // re-fetched and re-rendered.
+
+      // Force the component to be torn down and rebuilt, which is what
+      // `Backbone.history.loadUrl` amounted to for a handler that re-fetched
+      // and re-rendered.
       remountKey++
       for (const fn of listeners) fn()
-      await router.replace({
-        path: router.currentRoute.value.path,
-        query: router.currentRoute.value.query,
-        force: true,
-      } as never).catch(() => {
-        // A redundant navigation is not an error worth surfacing to a test.
-      })
+      await router
+        .replace(
+          wantedPath !== null
+            ? ({ path: wantedPath, force: true } as never)
+            : ({
+                path: router.currentRoute.value.path,
+                query: router.currentRoute.value.query,
+                force: true,
+              } as never),
+        )
+        .catch(() => {
+          // A redundant navigation is not an error worth surfacing to a test.
+        })
     },
     modules,
     router,
