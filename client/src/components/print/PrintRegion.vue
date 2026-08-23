@@ -108,6 +108,18 @@ const willpowerTotal = computed(() => {
   return c.get_willpower_total?.() ?? 0
 })
 
+/**
+ * Glamour pool by seeming, from `print/glamour.html`. It DECREASES with
+ * seeming: 1 -> 14 down to 5 -> 10.
+ */
+const GLAMOUR_BY_SEEMING: Record<number, number> = { 1: 14, 2: 13, 3: 12, 4: 11, 5: 10 }
+
+/** `character.seeming()`, Changeling's own venue term. Unguarded, as above. */
+const seeming = computed(() => {
+  trackAll()
+  return (props.character as unknown as { seeming(): number }).seeming()
+})
+
 /** Blood per turn by generation, from `print/blood.html`. */
 const BLOOD_PER_TURN: Record<number, number> = { 1: 10, 2: 12, 3: 15, 4: 20, 5: 30 }
 
@@ -207,7 +219,25 @@ const gnosisTotal = computed(() => {
 
   <PrintBoxes v-else-if="spec.view === 'GnosisView'" name="Gnosis" :total="gnosisTotal" />
 
-  <PrintBoxes v-else-if="spec.view === 'GlamourView'" name="Glamour" :total="10" />
+  <!--
+    Glamour is a pool sized by SEEMING, and it runs backwards: seeming 1 is 14
+    boxes and seeming 5 is 10. Seeming 0 is not a small pool -- it is a Kinain,
+    who has no Glamour at all, and the word is printed where the number would
+    be. `print/glamour.html`.
+  -->
+  <div v-else-if="spec.view === 'GlamourView'">
+    <h4 class="ui-bar ui-bar-a ui-corner-all">Glamour</h4>
+    <template v-if="seeming !== 0">
+      <template v-for="i in GLAMOUR_BY_SEEMING[seeming] ?? 0" :key="i">
+        <i class="fa fa-square-o"></i>
+        <template v-if="i % 5 === 0">&nbsp;</template>
+        <br v-if="i % 10 === 0" />
+      </template>
+      <br />
+      {{ GLAMOUR_BY_SEEMING[seeming] }}
+    </template>
+    <template v-else>Kinain</template>
+  </div>
 
   <div v-else-if="spec.view === 'MoralityView'">
     <h4 class="ui-bar ui-bar-a ui-corner-all">Morality</h4>
