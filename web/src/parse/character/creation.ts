@@ -2,6 +2,7 @@ import { Parse } from '../init';
 import type { Character } from '../models/Character';
 import type { SimpleTrait } from '../models/SimpleTrait';
 import type { Venue } from '../venues/types';
+import { getTrait, removeTrait } from './traits';
 
 /**
  * The creation wizard's pool bookkeeping, in the parts that are venue-agnostic.
@@ -116,6 +117,83 @@ export async function fetchAllCreationElements(
     }
   }
   if (pending.length) await Parse.Object.fetchAllIfNeeded(pending);
+}
+
+/**
+ * How many picks are left across every sub-pool of a category.
+ *
+ * Ports `remaining_picks` (VampireCreation.js). It reads the sub-pools that are
+ * actually on the record rather than a per-venue table of top ratings, which is
+ * what the badge next to each heading shows.
+ *
+ * The digit test is the load-bearing part. Without it the prefix `skills_`
+ * would also match `skills_specializations_1_remaining`, and the Skills badge
+ * would silently absorb a different pool's count.
+ */
+export function remainingPicks(creation: Parse.Object, category: string): number {
+  const prefix = `${category}_`;
+  const suffix = '_remaining';
+  let total = 0;
+  for (const [key, value] of Object.entries(creation.attributes as Record<string, unknown>)) {
+    if (typeof value !== 'number') continue;
+    if (!key.startsWith(prefix) || key.length <= prefix.length + suffix.length) continue;
+    if (!key.endsWith(suffix)) continue;
+    const middle = key.slice(prefix.length, key.length - suffix.length);
+    if (!/^-?\d+$/.test(middle)) continue;
+    total += value;
+  }
+  return total;
+}
+
+/** The traits taken out of one sub-pool, in the order they were picked. */
+export function picksIn(creation: Parse.Object, category: string, index: number): SimpleTrait[] {
+  return (creation.get(`${category}_${index}_picks`) as SimpleTrait[] | undefined) ?? [];
+}
+
+/** How many slots are left in one sub-pool. */
+export function remainingIn(creation: Parse.Object, category: string, index: number): number {
+  const value = creation.get(`${category}_${index}_remaining`) as number | undefined;
+  return typeof value === 'number' ? value : 0;
+}
+
+/**
+ * Give a creation pick back and delete the trait it bought.
+ *
+ * Ports `unpick_from_creation`. It differs from `releaseCreationPickForTrait`
+ * in knowing which sub-pool it is crediting -- the wizard's unpick link carries
+ * the index -- so it does not have to search for the trait, and in going on to
+ * remove the trait afterwards.
+ *
+ * The slot is credited *before* `removeTrait` runs, and `removeTrait` then
+ * releases nothing because the pick list no longer holds the trait. Reversing
+ * the two would refund the slot twice.
+ */
+export async function unpickFromCreation(
+  character: Character,
+  venue: Venue,
+  category: string,
+  pickedTraitId: string,
+  pickIndex: number,
+): Promise<void> {
+  await fetchAllCreationElements(character, venue);
+  const trait = await getTrait(character, category, pickedTraitId);
+  if (!trait) return;
+
+  const creation = character.get('creation') as Parse.Object | undefined;
+  if (!creation) return;
+
+  const picksName = `${category}_${pickIndex}_picks`;
+  const remainingName = `${category}_${pickIndex}_remaining`;
+  creation.remove(picksName, trait);
+  if (venue.sumCreationCategories.includes(category)) {
+    const remaining = (creation.get(picksName) as SimpleTrait[] | undefined) ?? [];
+    const sum = remaining.reduce((subtotal, pick) => subtotal + (pick.value ?? 0), 0);
+    creation.set(remainingName, 7 - sum);
+  } else {
+    creation.increment(remainingName, 1);
+  }
+  await creation.save();
+  await removeTrait(character, venue, trait);
 }
 
 /** True while the character is still going through the creation wizard. */
