@@ -32,7 +32,7 @@
  */
 import { computed, onMounted, ref, shallowRef } from 'vue'
 import { useRoute } from 'vue-router'
-import { JqmPage } from '@/components/jqm'
+import { JqmPage, JqmSelect } from '@/components/jqm'
 import { useBackHref } from '@/composables/useBackHref'
 import { listUsers, type IdentityUser } from '@/domain/cloud'
 import { clearError, reportErrorOn } from '@/domain/errors'
@@ -169,11 +169,15 @@ async function remove() {
       <div class="form-group owner">
         <label class="control-label" for="patronage-owner">Owner</label>
         <div class="controls">
-          <select id="patronage-owner" v-model="owner" class="form-control" name="owner">
+          <JqmSelect
+            id="patronage-owner"
+            v-model="owner"
+            name="owner"
+          >
             <option v-for="option in ownerOptions" :key="option.value" :value="option.value">
               {{ option.label }}
             </option>
-          </select>
+          </JqmSelect>
         </div>
       </div>
 

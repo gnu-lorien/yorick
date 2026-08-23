@@ -38,7 +38,7 @@
  * with it rather than rendered empty.
  */
 import { computed, onMounted, ref, shallowRef } from 'vue'
-import { JqmCheckbox, JqmPage } from '@/components/jqm'
+import { JqmCheckbox, JqmPage, JqmSearchInput, vJqmListview } from '@/components/jqm'
 import PatronageRows from '@/components/PatronageRows.vue'
 import { useBackHref } from '@/composables/useBackHref'
 import { patronageQuery, sortPatronages, type Patronage } from '@/domain/Patronage'
@@ -223,10 +223,11 @@ async function submit() {
         </form>
       </div>
       <form class="ui-filterable">
-        <input id="usp-patronage-list-filter" data-type="search" />
+        <JqmSearchInput id="usp-patronage-list-filter" />
       </form>
       <div id="usp-patronage-list-region">
         <ul
+          v-jqm-listview
           id="usp-patronage-list"
           data-role="listview"
           data-inset="true"

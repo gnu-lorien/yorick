@@ -28,7 +28,7 @@
  */
 import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { JqmPage } from '@/components/jqm'
+import { JqmCheckbox, JqmPage, JqmSelect, vJqmListview } from '@/components/jqm'
 import CharacterSummary from '@/components/CharacterSummary.vue'
 import { useBackHref } from '@/composables/useBackHref'
 import { reportErrorOn } from '@/domain/errors'
@@ -70,6 +70,14 @@ const playable = ref(true)
 const FONT_SIZES = [50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150]
 
 const categoryName = computed(() => summaryCategoryName(category.value))
+
+/** `JqmSelect` speaks strings; the font size is a percentage number. */
+const fontSizeModel = computed({
+  get: () => String(printOptions.fontSize),
+  set: (value: string) => {
+    printOptions.fontSize = Number(value)
+  },
+})
 
 function traitsOf(character: Parse.Object): Parse.Object[] {
   return traitsIn(character, category.value)
@@ -124,10 +132,7 @@ function printShown() {
     <div id="sections">
       <form @submit.prevent>
         <label for="selecttoprint-category">Category</label>
-        <div class="ui-select">
-          <div class="ui-btn ui-icon-carat-d ui-btn-icon-right ui-corner-all ui-shadow">
-            <span>{{ categoryName }}</span>
-            <select id="selecttoprint-category" v-model="category" name="category">
+        <JqmSelect id="selecttoprint-category" v-model="category" name="category">
               <optgroup
                 v-for="group in SUMMARY_CATEGORY_GROUPS"
                 :key="group.label"
@@ -137,67 +142,46 @@ function printShown() {
                   {{ entry[1] }}
                 </option>
               </optgroup>
-            </select>
-          </div>
-        </div>
+            </JqmSelect>
 
         <label for="selecttoprint-antecedence">NPC, PC, Primary, or Secondary</label>
-        <div class="ui-select">
-          <div class="ui-btn ui-icon-carat-d ui-btn-icon-right ui-corner-all ui-shadow">
-            <span>{{ ANTECEDENCE_OPTIONS.find((o) => o.value === antecedence)?.label }}</span>
-            <select id="selecttoprint-antecedence" v-model="antecedence" name="antecedence">
+        <JqmSelect id="selecttoprint-antecedence" v-model="antecedence" name="antecedence">
               <option v-for="o in ANTECEDENCE_OPTIONS" :key="o.value" :value="o.value">
                 {{ o.label }}
               </option>
-            </select>
-          </div>
-        </div>
+            </JqmSelect>
 
         <label for="selecttoprint-resulttype">Which sort of results to show?</label>
-        <div class="ui-select">
-          <div class="ui-btn ui-icon-carat-d ui-btn-icon-right ui-corner-all ui-shadow">
-            <span>{{ RESULT_TYPE_OPTIONS.find((o) => o.value === resulttype)?.label }}</span>
-            <select id="selecttoprint-resulttype" v-model="resulttype" name="resulttype">
+        <JqmSelect id="selecttoprint-resulttype" v-model="resulttype" name="resulttype">
               <option v-for="o in RESULT_TYPE_OPTIONS" :key="o.value" :value="o.value">
                 {{ o.label }}
               </option>
-            </select>
-          </div>
-        </div>
+            </JqmSelect>
 
-        <label for="selecttoprint-playable">
-          <input
-            id="selecttoprint-playable"
-            v-model="playable"
-            type="checkbox"
-            name="playable"
-          />
+        <JqmCheckbox id="selecttoprint-playable" v-model="playable" name="playable">
           Only show playable characters
-        </label>
+        </JqmCheckbox>
       </form>
     </div>
 
     <div id="print-options">
       <form @submit.prevent>
         <label for="selecttoprint-font-size">Font Size</label>
-        <div class="ui-select">
-          <div class="ui-btn ui-icon-carat-d ui-btn-icon-right ui-corner-all ui-shadow">
-            <span>{{ printOptions.fontSize }}%</span>
-            <select id="selecttoprint-font-size" v-model="printOptions.fontSize" name="font_size">
-              <option v-for="size in FONT_SIZES" :key="size" :value="size">{{ size }}%</option>
-            </select>
-          </div>
-        </div>
+        <JqmSelect
+          id="selecttoprint-font-size"
+          v-model="fontSizeModel"
+          name="font_size"
+        >
+          <option v-for="size in FONT_SIZES" :key="size" :value="size">{{ size }}%</option>
+        </JqmSelect>
 
-        <label for="selecttoprint-exclude-extended">
-          <input
-            id="selecttoprint-exclude-extended"
-            v-model="printOptions.excludeExtended"
-            type="checkbox"
-            name="exclude_extended"
-          />
+        <JqmCheckbox
+          id="selecttoprint-exclude-extended"
+          v-model="printOptions.excludeExtended"
+          name="exclude_extended"
+        >
           Exclude Extended Print Text
-        </label>
+        </JqmCheckbox>
       </form>
     </div>
 
@@ -207,6 +191,7 @@ function printShown() {
 
     <div id="troupe-select-to-print-characters-list">
       <ul
+        v-jqm-listview
         data-role="listview"
         data-inset="true"
         class="ui-listview ui-listview-inset ui-corner-all ui-shadow"

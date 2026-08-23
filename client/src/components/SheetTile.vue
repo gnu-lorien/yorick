@@ -9,11 +9,14 @@
  * added them anyway; the template's author evidently did not trust it to).
  */
 withDefaults(defineProps<{ href: string; block?: 'a' | 'b' | 'c' | 'd' }>(), { block: 'b' })
+
+import { vJqmListview } from '@/components/jqm'
 </script>
 
 <template>
   <div :class="`ui-block-${block}`">
     <ul
+      v-jqm-listview
       data-role="listview"
       data-inset="true"
       class="ui-listview ui-listview-inset ui-corner-all ui-shadow"

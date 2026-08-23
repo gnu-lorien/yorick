@@ -11,10 +11,11 @@
  * on submit is worse than being told up front. The route table now marks this
  * `gate: 'admin'` like everything it links to.
  *
- * The list is a plain `<ul>` in the original, not a `data-role="listview"`, so
+ * The list is a plain `<ul
+        v-jqm-listview>` in the original, not a `data-role="listview"`, so
  * it renders unstyled here too.
  */
-import { JqmPage } from '@/components/jqm'
+import { JqmPage, vJqmListview } from '@/components/jqm'
 
 const DESTINATIONS = [
   { href: '#troupes', label: 'Troupes' },

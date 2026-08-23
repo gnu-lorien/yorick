@@ -22,7 +22,7 @@
  */
 import { computed, onMounted, shallowRef } from 'vue'
 import { useRoute } from 'vue-router'
-import { JqmListItem, JqmListview, JqmPage } from '@/components/jqm'
+import { JqmListItem, JqmListview, JqmPage, vJqmListview } from '@/components/jqm'
 import CharacterSummary from '@/components/CharacterSummary.vue'
 import SheetTile from '@/components/SheetTile.vue'
 import { useBackHref } from '@/composables/useBackHref'
@@ -204,6 +204,7 @@ const textAttributes = computed(() => {
           <div class="ui-grid-b ui-responsive">
             <div v-for="st in textAttributes" :key="st.name" class="ui-block-b">
               <ul
+                v-jqm-listview
                 data-role="listview"
                 data-inset="true"
                 class="ui-listview ui-listview-inset ui-corner-all ui-shadow"

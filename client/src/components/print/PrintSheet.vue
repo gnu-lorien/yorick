@@ -24,6 +24,7 @@ import { venueOf } from '@/parse/classes'
 import Parse from '@/parse'
 import { trackAll } from '@/parse/reactivity'
 import PrintRegion from '@/components/print/PrintRegion.vue'
+import { JqmCheckbox, JqmSelect } from '@/components/jqm'
 
 const props = defineProps<{
   character: Parse.Object
@@ -61,6 +62,14 @@ const localExcludeExtended = ref(false)
 const FONT_SIZES = [50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150]
 
 const fontSize = computed(() => props.fontSize ?? localFontSize.value)
+
+/** `JqmSelect` speaks strings; the font size is a percentage number. */
+const fontSizeModel = computed({
+  get: () => String(localFontSize.value),
+  set: (value: string) => {
+    localFontSize.value = Number(value)
+  },
+})
 const excluded = computed(() => props.excludeExtended ?? localExcludeExtended.value)
 
 /**
@@ -115,28 +124,31 @@ function specFor(region: string) {
   >
     <div id="cpp-settings" class="hidden-when-printing">
       <slot name="settings">
+        <!--
+          Backform built these two controls and jQuery Mobile then ENHANCED
+          them, so the markup that reaches the screen is jQM's, not Backform's.
+          Emitting Backform's alone -- a bare `<select>` and a bare checkbox --
+          is what made this form render as unstyled browser widgets in the
+          middle of an otherwise themed sheet.
+        -->
         <form v-if="!noPrintSettingsForm" class="backform form-horizontal" @submit.prevent>
           <div class="form-group font_size">
             <label class="control-label">Font Size</label>
             <div class="controls">
-              <select v-model.number="localFontSize" class="form-control" name="font_size">
+              <JqmSelect
+                v-model="fontSizeModel"
+                name="font_size"
+              >
                 <option v-for="size in FONT_SIZES" :key="size" :value="size">{{ size }}%</option>
-              </select>
+              </JqmSelect>
             </div>
           </div>
           <div class="form-group exclude_extended">
             <label class="control-label">&nbsp;</label>
             <div class="controls">
-              <div class="checkbox">
-                <label>
-                  <input
-                    v-model="localExcludeExtended"
-                    type="checkbox"
-                    name="exclude_extended"
-                  />
-                  Exclude Extended Print Text
-                </label>
-              </div>
+              <JqmCheckbox v-model="localExcludeExtended" name="exclude_extended">
+                Exclude Extended Print Text
+              </JqmCheckbox>
             </div>
           </div>
         </form>

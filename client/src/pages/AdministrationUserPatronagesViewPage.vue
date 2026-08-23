@@ -19,7 +19,7 @@
  */
 import { computed, onMounted, ref, shallowRef } from 'vue'
 import { useRoute } from 'vue-router'
-import { JqmPage } from '@/components/jqm'
+import { JqmPage, vJqmListview } from '@/components/jqm'
 import PatronageRows from '@/components/PatronageRows.vue'
 import { useBackHref } from '@/composables/useBackHref'
 import { reportErrorOn } from '@/domain/errors'
@@ -67,6 +67,7 @@ onMounted(async () => {
   <JqmPage id="administration-user-patronages-view" title="Patronages" :ready="loaded">
     <h3 id="administration-user-patronages-heading">{{ heading }}</h3>
     <ul
+      v-jqm-listview
       id="administration-user-patronages-list"
       data-role="listview"
       data-inset="true"

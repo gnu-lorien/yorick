@@ -11,7 +11,7 @@
  * OTHER page, so this list has never actually been filterable. Reproduced.
  */
 import { onMounted } from 'vue'
-import { JqmPage } from '@/components/jqm'
+import { JqmPage, vJqmListview } from '@/components/jqm'
 import PatronageRows from '@/components/PatronageRows.vue'
 import { useBackHref } from '@/composables/useBackHref'
 import { usePatronages } from '@/composables/usePatronages'
@@ -25,6 +25,7 @@ onMounted(load)
 <template>
   <JqmPage id="administration-patronages-view-csv" title="Patronages" :ready="loaded">
     <ul
+      v-jqm-listview
       id="administration-patronages-view-csv-list"
       data-role="listview"
       data-inset="true"

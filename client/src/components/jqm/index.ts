@@ -17,6 +17,7 @@ export { default as JqmHeader } from './JqmHeader.vue'
 export { default as JqmListDivider } from './JqmListDivider.vue'
 export { default as JqmListItem } from './JqmListItem.vue'
 export { default as JqmListview } from './JqmListview.vue'
+export { default as JqmSearchInput } from './JqmSearchInput.vue'
 export { default as JqmLoader } from './JqmLoader.vue'
 export { default as JqmPage } from './JqmPage.vue'
 export { default as JqmPopup } from './JqmPopup.vue'
@@ -25,3 +26,9 @@ export { default as JqmSlider } from './JqmSlider.vue'
 export { default as JqmTable } from './JqmTable.vue'
 export { default as JqmTd } from './JqmTd.vue'
 export { default as JqmTextInput } from './JqmTextInput.vue'
+
+/**
+ * jQuery Mobile's listview enhancement. A directive rather than a component,
+ * because what it writes depends on each item's own contents -- see the file.
+ */
+export { vJqmListview, enhanceListview } from './enhanceListview'

@@ -42,6 +42,7 @@
  * this app ever calls it.
  */
 import { computed, ref, watch } from 'vue'
+import { JqmCheckbox } from '@/components/jqm'
 import type { Character } from '@/domain/Character'
 import { useUiStore } from '@/stores/ui'
 
@@ -143,12 +144,9 @@ async function submit() {
         <div class="form-group preview">
           <label class="control-label">&nbsp;</label>
           <div class="controls">
-            <div class="checkbox">
-              <label>
-                <input v-model="preview" type="checkbox" name="preview" @change="touch" />
-                Live Preview Changes
-              </label>
-            </div>
+            <JqmCheckbox v-model="preview" name="preview" @update:model-value="touch">
+              Live Preview Changes
+            </JqmCheckbox>
           </div>
         </div>
 

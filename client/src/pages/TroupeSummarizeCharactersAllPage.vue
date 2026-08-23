@@ -48,7 +48,7 @@
  */
 import { computed, onMounted, ref, shallowRef } from 'vue'
 import { useRoute } from 'vue-router'
-import { JqmPage } from '@/components/jqm'
+import { JqmCheckbox, JqmPage, JqmSearchInput, JqmSelect, vJqmListview } from '@/components/jqm'
 import CharacterSummary from '@/components/CharacterSummary.vue'
 import { useBackHref } from '@/composables/useBackHref'
 import { reportErrorOn } from '@/domain/errors'
@@ -239,68 +239,52 @@ onMounted(async () => {
     <div id="sections">
       <form @submit.prevent>
         <label for="summarize-category">Category</label>
-        <div class="ui-select">
-          <div class="ui-btn ui-icon-carat-d ui-btn-icon-right ui-corner-all ui-shadow">
-            <span>{{ categoryName }}</span>
-            <select id="summarize-category" v-model="category" name="category">
+        <JqmSelect id="summarize-category" v-model="category" name="category">
               <optgroup v-for="group in CATEGORY_GROUPS" :key="group.label" :label="group.label">
                 <option v-for="entry in group.options" :key="entry[0]" :value="entry[0]">
                   {{ entry[1] }}
                 </option>
               </optgroup>
-            </select>
-          </div>
-        </div>
+            </JqmSelect>
 
         <label for="summarize-antecedence">NPC, PC, Primary, or Secondary</label>
-        <div class="ui-select">
-          <div class="ui-btn ui-icon-carat-d ui-btn-icon-right ui-corner-all ui-shadow">
-            <span>{{ ANTECEDENCE_OPTIONS.find((o) => o.value === antecedence)?.label }}</span>
-            <select id="summarize-antecedence" v-model="antecedence" name="antecedence">
+        <JqmSelect id="summarize-antecedence" v-model="antecedence" name="antecedence">
               <option v-for="o in ANTECEDENCE_OPTIONS" :key="o.value" :value="o.value">
                 {{ o.label }}
               </option>
-            </select>
-          </div>
-        </div>
+            </JqmSelect>
 
         <label for="summarize-resulttype">Which sort of results to show?</label>
-        <div class="ui-select">
-          <div class="ui-btn ui-icon-carat-d ui-btn-icon-right ui-corner-all ui-shadow">
-            <span>{{ RESULT_TYPE_OPTIONS.find((o) => o.value === resulttype)?.label }}</span>
-            <select id="summarize-resulttype" v-model="resulttype" name="resulttype">
+        <JqmSelect id="summarize-resulttype" v-model="resulttype" name="resulttype">
               <option v-for="o in RESULT_TYPE_OPTIONS" :key="o.value" :value="o.value">
                 {{ o.label }}
               </option>
-            </select>
-          </div>
-        </div>
+            </JqmSelect>
 
-        <label for="summarize-playable">
-          <input id="summarize-playable" v-model="playable" type="checkbox" name="playable" />
+        <JqmCheckbox id="summarize-playable" v-model="playable" name="playable">
           Only show playable characters
-        </label>
+        </JqmCheckbox>
 
         <label for="summarize-format">Format</label>
-        <div class="ui-select">
-          <div class="ui-btn ui-icon-carat-d ui-btn-icon-right ui-corner-all ui-shadow">
-            <span>{{ FORMAT_OPTIONS.find((o) => o.value === format)?.label }}</span>
-            <select id="summarize-format" v-model="format" name="format">
-              <option v-for="o in FORMAT_OPTIONS" :key="o.value" :value="o.value">
-                {{ o.label }}
-              </option>
-            </select>
-          </div>
-        </div>
+        <JqmSelect
+          id="summarize-format"
+          v-model="format"
+          name="format"
+        >
+          <option v-for="o in FORMAT_OPTIONS" :key="o.value" :value="o.value">
+            {{ o.label }}
+          </option>
+        </JqmSelect>
       </form>
     </div>
 
     <form class="ui-filterable">
-      <input id="troupes-summarize-characters-filter" data-type="search" />
+      <JqmSearchInput id="troupes-summarize-characters-filter" />
     </form>
 
     <div id="troupe-summarize-characters-list">
       <ul
+        v-jqm-listview
         data-role="listview"
         data-inset="true"
         data-filter="true"

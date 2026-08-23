@@ -49,7 +49,7 @@
 import { computed, onMounted, onUnmounted, ref, shallowRef, useTemplateRef } from 'vue'
 import { useRoute } from 'vue-router'
 import { Network } from 'vis-network/standalone'
-import { JqmPage } from '@/components/jqm'
+import { JqmCheckbox, JqmPage } from '@/components/jqm'
 import { useBackHref } from '@/composables/useBackHref'
 import { reportErrorOn } from '@/domain/errors'
 import { troupeQuery } from '@/domain/Troupe'
@@ -242,11 +242,20 @@ async function makeRelationship() {
     <div id="relationships-network-select-characters">
       <fieldset data-role="controlgroup">
         <legend>Characters to display:</legend>
-        <!-- Inert in the original too: nothing reads these. -->
-        <template v-for="character in characters" :key="character.id">
-          <input type="checkbox" :name="`checkbox-${character.id}`" :id="`checkbox-${character.id}`" />
-          <label :for="`checkbox-${character.id}`">{{ character.get('name') }}</label>
-        </template>
+        <!--
+          Inert in the original too: nothing reads these. They are enhanced
+          anyway, because an unenhanced checkbox inside a themed fieldset is a
+          visible break in the page whether or not it does anything.
+        -->
+        <JqmCheckbox
+          v-for="character in characters"
+          :key="character.id"
+          :id="`checkbox-${character.id}`"
+          :name="`checkbox-${character.id}`"
+          :model-value="false"
+        >
+          {{ character.get('name') }}
+        </JqmCheckbox>
       </fieldset>
     </div>
   </JqmPage>

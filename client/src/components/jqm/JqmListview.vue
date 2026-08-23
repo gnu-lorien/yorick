@@ -9,14 +9,21 @@
  * changed -- a call that appears throughout the old views and is a frequent
  * source of "the list rendered but looks wrong" bugs.
  *
- * Here the rounding is CSS-driven off `:first-child`/`:last-child` where the
- * theme allows and applied by `JqmListItem` otherwise, so a list that changes
- * reactively is always correct with no refresh call anywhere.
+ * That enhancement is `v-jqm-listview` here -- see `enhanceListview.ts` for why
+ * it has to be a directive rather than markup, and for the rules it applies. It
+ * re-runs on every update, so a list that changes reactively is always correct
+ * and there is no refresh call to forget.
+ *
+ * The corner rounding in particular is not optional: jQM's stylesheet contains
+ * no `:first-child` selectors at all, so without `ui-first-child` /
+ * `ui-last-child` an inset list has square corners.
  *
  * `filter` reproduces `data-filter="true"`: jQM injected a search box above the
  * list and hid non-matching `<li>`s. Twelve templates ask for it.
  */
 import { computed, provide, ref } from 'vue'
+import JqmSearchInput from './JqmSearchInput.vue'
+import { vJqmListview } from './enhanceListview'
 
 const props = withDefaults(
   defineProps<{
@@ -48,16 +55,9 @@ const classes = computed(() => [
 
 <template>
   <form v-if="filter" class="ui-filterable" role="search" @submit.prevent>
-    <input
-      :id="filterId"
-      v-model="query"
-      type="search"
-      data-type="search"
-      class="ui-input-text ui-body-inherit ui-corner-all ui-shadow-inset"
-      :placeholder="filterPlaceholder"
-    />
+    <JqmSearchInput :id="filterId" v-model="query" :placeholder="filterPlaceholder" />
   </form>
-  <ul :class="classes" data-role="listview">
+  <ul v-jqm-listview :class="classes" data-role="listview">
     <slot :query="query" />
   </ul>
 </template>

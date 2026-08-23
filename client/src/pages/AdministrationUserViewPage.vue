@@ -33,7 +33,7 @@
  */
 import { computed, onMounted, ref, shallowRef } from 'vue'
 import { useRoute } from 'vue-router'
-import { JqmCheckbox, JqmPage } from '@/components/jqm'
+import { JqmCheckbox, JqmPage, JqmSearchInput, vJqmListview } from '@/components/jqm'
 import { useBackHref } from '@/composables/useBackHref'
 import { getUsersById, requestPasswordResetFor, type IdentityUser } from '@/domain/cloud'
 import { reportErrorOn } from '@/domain/errors'
@@ -174,10 +174,11 @@ async function resetPassword() {
         alone makes this region look dead.
       -->
       <form class="ui-filterable">
-        <input id="patronage-list-filter" data-type="search" />
+        <JqmSearchInput id="patronage-list-filter" />
       </form>
       <div id="patronage-list-region">
         <ul
+          v-jqm-listview
           id="patronage-list"
           data-role="listview"
           data-inset="true"

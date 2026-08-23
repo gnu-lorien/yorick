@@ -29,6 +29,7 @@
  * what makes it hold when someone types the URL.
  */
 import { computed } from 'vue'
+import { vJqmListview } from '@/components/jqm'
 import Parse from '@/parse'
 import { remainingPicks, type VampireCreation } from '@/domain/VampireCreation'
 import { trackAll } from '@/parse/reactivity'
@@ -85,6 +86,7 @@ const groups = computed(() => {
 
 <template>
   <ul
+    v-jqm-listview
     data-role="listview"
     data-inset="true"
     class="ui-listview ui-listview-inset ui-corner-all ui-shadow"

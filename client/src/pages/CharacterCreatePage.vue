@@ -22,7 +22,7 @@
  */
 import { computed, onMounted, shallowRef } from 'vue'
 import { useRoute } from 'vue-router'
-import { JqmPage } from '@/components/jqm'
+import { JqmPage, vJqmListview } from '@/components/jqm'
 import CreationPool from '@/components/create/CreationPool.vue'
 import { useBackHref } from '@/composables/useBackHref'
 import { get_character, type Character } from '@/domain/Character'
@@ -174,6 +174,7 @@ const meritFlawRatings = descending(1, 0)
 
         <div id="ccv-simpletext">
           <ul
+            v-jqm-listview
             v-for="st in textAttributes"
             :key="st.name"
             data-role="listview"

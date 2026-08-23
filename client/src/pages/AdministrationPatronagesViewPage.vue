@@ -10,7 +10,7 @@
  * thing from a patron proving their own status.
  */
 import { onMounted } from 'vue'
-import { JqmPage } from '@/components/jqm'
+import { JqmPage, JqmSearchInput, vJqmListview } from '@/components/jqm'
 import PatronageRows from '@/components/PatronageRows.vue'
 import { useBackHref } from '@/composables/useBackHref'
 import { usePatronages } from '@/composables/usePatronages'
@@ -27,9 +27,10 @@ onMounted(load)
       <li><a href="#administration/patronages/new">Add New Patronage</a></li>
     </ul>
     <form class="ui-filterable">
-      <input id="patronages-filter" data-type="search" />
+      <JqmSearchInput id="patronages-filter" />
     </form>
     <ul
+      v-jqm-listview
       id="administration-patronages-view-list"
       data-role="listview"
       data-inset="true"
