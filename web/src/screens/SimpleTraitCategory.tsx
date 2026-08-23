@@ -5,6 +5,7 @@ import { useLoading } from '@/jqm/Loader';
 import { useBackButton } from '@/shell/backButton';
 import { loadCharacter } from '@/parse/character/load';
 import { traitsIn } from '@/parse/character/traits';
+import { SimpleTraitNew } from './SimpleTraitNew';
 import { registerScreen, type ScreenProps } from './registry';
 
 /**
@@ -75,4 +76,18 @@ export function SimpleTraitCategory({ route }: ScreenProps) {
   );
 }
 
-registerScreen('simpletraits', SimpleTraitCategory);
+/**
+ * The `simpletraits` route, which is two screens sharing one handler.
+ *
+ * `simpletraits/:category/:cid/:type` is two independent `if` blocks in the
+ * legacy -- `"all"` lists what the character holds, `"new"` offers what it
+ * could take -- with no `else`, so an unrecognised type leaves the app exactly
+ * where it was. That is preserved: `SimpleTraitCategory` renders nothing for
+ * anything but `"all"`.
+ */
+export function SimpleTraits({ route }: ScreenProps) {
+  if (route.named['type'] === 'new') return <SimpleTraitNew route={route} />;
+  return <SimpleTraitCategory route={route} />;
+}
+
+registerScreen('simpletraits', SimpleTraits);

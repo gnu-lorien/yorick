@@ -6,8 +6,8 @@ import { useLoading } from '@/jqm/Loader';
 import { useBackButton } from '@/shell/backButton';
 import { reportError, clearError } from '@/shell/reportError';
 import { navigate } from '@/router/router';
-import { Parse } from '@/parse/init';
-import { Description } from '@/parse/models/Description';
+import type { Description } from '@/parse/models/Description';
+import { fetchDescriptions } from '@/parse/descriptions';
 import { loadCharacter } from '@/parse/character/load';
 import { updateText, unpickText } from '@/parse/character/traits';
 import { registerScreen, type ScreenProps } from './registry';
@@ -25,14 +25,22 @@ import { registerScreen, type ScreenProps } from './registry';
  * -- `data-filter="true"` on the listview, with no `data-input`, so jQM builds
  * its own search box rather than binding to one already on the page.
  *
+ * The creation wizard reaches the same picker by a second route,
+ * `charactercreatepicksimpletext`. The legacy hands the view its return hash as
+ * an argument -- `register(c, category, target, "#charactercreate/" + c.id)` --
+ * and nothing else about the two calls differs, so that argument is all this
+ * reproduces.
+ *
  * @compare #simpletext/clans/clan/9cYrGGv2w3/pick
+ * @compare #charactercreate/simpletext/clans/clan/9cYrGGv2w3/pick
  */
 export function SimpleTextPick({ route }: ScreenProps) {
   const category = route.named['category'] ?? '';
   const target = route.named['target'] ?? '';
   const cid = route.named['cid'] ?? '';
+  const returnTo = returnHashFor(route.entry.handler, cid);
 
-  useBackButton(`#character?${cid}`);
+  useBackButton(returnTo);
 
   const { show, hide } = useLoading();
   const [busy, setBusy] = useState(false);
@@ -43,12 +51,11 @@ export function SimpleTextPick({ route }: ScreenProps) {
     enabled: !!cid,
     queryFn: async () => {
       const loaded = await loadCharacter(cid, [category]);
-      const descriptions: Description[] = [];
-      // `each`, not `find`: a category can hold hundreds of rows and the query
-      // limit would silently truncate the list of things a player may pick.
-      await new Parse.Query(Description).equalTo('category', category).each((description) => {
-        descriptions.push(description);
-      });
+      // Sorted, not merely fetched. The legacy reads these through
+      // DescriptionCollection, whose comparator is (order, name); a raw query
+      // returns them in whatever order the server chose, which the DOM
+      // comparison cannot see because every row has the same shape.
+      const descriptions: Description[] = await fetchDescriptions(category);
       return { ...loaded, descriptions };
     },
   });
@@ -74,7 +81,7 @@ export function SimpleTextPick({ route }: ScreenProps) {
     try {
       await updateText(data!.character, target, name);
       clearError();
-      navigate(`#character?${cid}`);
+      navigate(returnTo);
     } catch (error) {
       // A refusal here is a real one -- a Kith grant running out of Art picks,
       // for instance -- and used to leave the picker sitting there with the
@@ -151,17 +158,32 @@ export function SimpleTextPick({ route }: ScreenProps) {
 }
 
 /**
+ * Where the two routes that share a screen go when they are done.
+ *
+ * The sheet, or back into the creation wizard. The legacy encodes this by
+ * passing a different hash to `register`; the handler name is the only thing
+ * that distinguishes the two calls, so it is what this reads.
+ */
+function returnHashFor(handler: string, cid: string): string {
+  return handler.startsWith('charactercreate') ? `#charactercreate/${cid}` : `#character?${cid}`;
+}
+
+/**
  * Clear a free-text field and go back to the sheet.
  *
- * Ports `simpletextunpick`. It renders nothing -- the legacy handler has no
- * `changePage` at all, it just unsets the field and moves the hash -- so this
- * is an effect and a null render.
+ * Ports `simpletextunpick`, and `charactercreateunpicksimpletext`, which is the
+ * same three steps with the wizard as its destination. Neither renders anything
+ * -- the legacy handlers have no `changePage` at all, they unset the field and
+ * move the hash -- so this is an effect and a null render.
  */
 export function SimpleTextUnpick({ route }: ScreenProps) {
   const target = route.named['target'] ?? '';
   const cid = route.named['cid'] ?? '';
   const category = route.named['category'] ?? '';
+  const returnTo = returnHashFor(route.entry.handler, cid);
   const { show, hide } = useLoading();
+
+  useBackButton(returnTo);
 
   useEffect(() => {
     let cancelled = false;
@@ -170,7 +192,7 @@ export function SimpleTextUnpick({ route }: ScreenProps) {
       try {
         const { character } = await loadCharacter(cid, [category]);
         await unpickText(character, target);
-        if (!cancelled) navigate(`#character?${cid}`);
+        if (!cancelled) navigate(returnTo);
       } catch (error) {
         if (!cancelled) reportError(error, "Couldn't unpick that");
       } finally {
@@ -180,10 +202,12 @@ export function SimpleTextUnpick({ route }: ScreenProps) {
     return () => {
       cancelled = true;
     };
-  }, [cid, category, target, show, hide]);
+  }, [cid, category, target, returnTo, show, hide]);
 
   return null;
 }
 
 registerScreen('simpletextpick', SimpleTextPick);
 registerScreen('simpletextunpick', SimpleTextUnpick);
+registerScreen('charactercreatepicksimpletext', SimpleTextPick);
+registerScreen('charactercreateunpicksimpletext', SimpleTextUnpick);

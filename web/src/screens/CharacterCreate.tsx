@@ -1,16 +1,19 @@
-import { Fragment, useEffect } from 'react';
+import { Fragment, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Page } from '@/jqm/Page';
 import { Listview, ListItem, Divider } from '@/jqm/Listview';
 import { useLoading } from '@/jqm/Loader';
 import { useBackButton } from '@/shell/backButton';
-import { showError } from '@/shell/reportError';
+import { navigate } from '@/router/router';
+import { reportError, showError } from '@/shell/reportError';
 import { loadCharacter } from '@/parse/character/load';
 import {
+  completeCharacterCreation,
   fetchAllCreationElements,
   picksIn,
   remainingIn,
   remainingPicks,
+  unpickFromCreation,
 } from '@/parse/character/creation';
 import type { Character } from '@/parse/models/Character';
 import type { Venue } from '@/parse/venues/types';
@@ -361,4 +364,90 @@ export function CharacterCreate({ route }: ScreenProps) {
   );
 }
 
+/**
+ * Hand a creation pick back, then return to the wizard.
+ *
+ * Ports `charactercreateunpicksimpletrait`. Like the two text-unpick routes it
+ * renders nothing: the legacy handler shows the spinner, does the work and
+ * moves the hash, with no `changePage` anywhere in it.
+ *
+ * The ref is what keeps the work from happening twice. React runs an effect
+ * twice under StrictMode, and this one destroys a trait and credits a pool
+ * counter -- running it again would credit the counter a second time for a
+ * trait that is already gone.
+ */
+export function CharacterCreateUnpickSimpleTrait({ route }: ScreenProps) {
+  const category = route.named['category'] ?? '';
+  const cid = route.named['cid'] ?? '';
+  const stid = route.named['stid'] ?? '';
+  const pickIndex = parseInt(route.named['i'] ?? '', 10) || 0;
+  const { show, hide } = useLoading();
+  const started = useRef(false);
+
+  useBackButton(`#charactercreate/${cid}`);
+
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    show();
+    void (async () => {
+      try {
+        const { character, venue } = await loadCharacter(cid, [category]);
+        await unpickFromCreation(character, venue, category, stid, pickIndex);
+        navigate(`#charactercreate/${cid}`);
+      } catch (error) {
+        reportError(error, "Couldn't unpick that");
+      } finally {
+        hide();
+      }
+    })();
+  }, [cid, category, stid, pickIndex, show, hide]);
+
+  return null;
+}
+
+/**
+ * Mark creation finished and go to the sheet.
+ *
+ * Ports `charactercreatecomplete`. The legacy wraps both the work and the
+ * navigation in `ifCurrent`, because doing otherwise let a superseded
+ * invocation navigate as though creation had completed -- which dispatched
+ * another route and superseded whichever invocation was actually going to do
+ * the work, so two overlapping completions cancelled each other and the record
+ * was never marked. The ref here is the same guard for the same reason: run
+ * once, and let the navigation be part of what runs once.
+ *
+ * A failure `alert`s in the legacy and returns to the wizard. The alert is the
+ * error banner here, which is what every other screen uses.
+ */
+export function CharacterCreateComplete({ route }: ScreenProps) {
+  const cid = route.named['cid'] ?? '';
+  const { show, hide } = useLoading();
+  const started = useRef(false);
+
+  useBackButton(`#charactercreate/${cid}`);
+
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    show();
+    void (async () => {
+      try {
+        const { character } = await loadCharacter(cid, []);
+        await completeCharacterCreation(character);
+        navigate(`#character?${cid}`);
+      } catch (error) {
+        reportError(error, "Couldn't complete character creation");
+        navigate(`#charactercreate/${cid}`);
+      } finally {
+        hide();
+      }
+    })();
+  }, [cid, show, hide]);
+
+  return null;
+}
+
 registerScreen('charactercreate', CharacterCreate);
+registerScreen('charactercreateunpicksimpletrait', CharacterCreateUnpickSimpleTrait);
+registerScreen('charactercreatecomplete', CharacterCreateComplete);

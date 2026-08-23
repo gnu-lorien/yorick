@@ -46,6 +46,9 @@ export function AboutScreen(_: ScreenProps) {
 /**
  * The privacy notice.
  *
+ * Ports views/PrivacyPolicyView.js, which does nothing but drop that template
+ * into the page.
+ *
  * The text is imported from templates/privacy-policy.html rather than
  * transcribed into JSX. It is a legal notice with an effective date on it, and
  * two copies of it in one repository is how they end up disagreeing. The file
