@@ -107,7 +107,10 @@ router.beforeEach(async (to, from) => {
         const { get_character } = await import('@/domain/Character')
         await get_character(cid)
       } catch (error) {
-        promiseFailReport(error)
+        // Reported, not just logged: the reader is about to stay on a page
+        // that looks like nothing happened, and "nothing happened" is exactly
+        // what a swallowed refusal looks like.
+        void reportError(error, meta.requiresReadableCharacter).catch(() => {})
         return false
       }
     }

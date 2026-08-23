@@ -22,6 +22,11 @@ import { get_character, characterFor, type Character, type CharacterCache } from
 import { getLatestPatronage } from '@/domain/Patronage'
 import { ALL_VENUES, venueFor, type VenueKey, type VenueStrategy } from '@/domain/venues'
 import { registerTestModules } from '@/testing/app-api'
+import {
+  CharacterObject,
+  ExperienceNotationObject,
+  SimpleTraitObject,
+} from '@/parse/classes'
 import Papa from 'papaparse'
 import Parse from '@/parse'
 import lodash from 'lodash'
@@ -89,8 +94,24 @@ function withParseCompat<T>(promise: Promise<T>): CompatPromise<T> {
 }
 
 /** One venue, wearing the shape `Model` had in the AMD app. */
+/**
+ * The venue module the suite reaches for, as a CONSTRUCTOR.
+ *
+ * `models/Vampire.js` exported the result of `Parse.Object.extend("Vampire",
+ * ...)`, so specs use it three ways: as a namespace (`Vampire.create(...)`), as
+ * a constructor (`new Model()`), and as a query target (`new
+ * Parse.Query(Vampire)`). A plain object satisfies only the first, and the
+ * other two fail in ways that read like application bugs -- "A ParseQuery must
+ * be constructed with a ParseObject or class name", or a bare object with no
+ * model methods on it.
+ *
+ * So the facade is a function with `className` on it, and calling it builds a
+ * real `CharacterObject` with this venue's `type` already set. All three venues
+ * answer to className "Vampire" on purpose: they share one table, and splitting
+ * them is the thing this migration must never do.
+ */
 function venueFacade(venue: VenueStrategy) {
-  return {
+  const statics = {
     /** `Model.create(name)`. */
     create(name: string): CompatPromise<Character> {
       return withParseCompat(
@@ -138,6 +159,25 @@ function venueFacade(venue: VenueStrategy) {
     /** Wrap an already-fetched row as a character of this venue. */
     characterFor,
   }
+
+  /**
+   * `new Vampire()` -- a character of this venue with the methods installed.
+   *
+   * `installCharacterMethods` has already run at bootstrap (`main.ts`), so the
+   * behaviour is on the prototype; this only has to stamp the `type`, which is
+   * what every venue-routed method dispatches on.
+   */
+  function VenueClass(this: unknown, attributes?: Record<string, unknown>) {
+    const object = characterFor(new CharacterObject(attributes))
+    // `TYPE_ATTRIBUTE` is what the venue stamps on a character it creates;
+    // Vampire's is `undefined`, which is exactly how a vampire is stored.
+    if (venue.TYPE_ATTRIBUTE !== undefined) object.set('type', venue.TYPE_ATTRIBUTE)
+    return object
+  }
+  // All three venues share the "Vampire" table on purpose; see `@/parse/classes`.
+  VenueClass.className = 'Vampire'
+
+  return Object.assign(VenueClass, statics)
 }
 
 const VENUE_MODULE_PATHS: Record<string, VenueKey> = {
@@ -153,7 +193,62 @@ const VENUE_MODULE_PATHS: Record<string, VenueKey> = {
  * would be one more thing that can differ between the build a developer tests
  * and the build the suite runs, and this costs a few hundred bytes.
  */
+/**
+ * The Backbone collection shape the suite reads off a character.
+ *
+ * `Character.js` kept `recorded_changes` and `approvals` as `Parse.Collection`s
+ * ON the character, and specs read `c.recorded_changes.models.length` straight
+ * after awaiting the fetch. Here that state lives on `CharacterExperience` as
+ * plain arrays behind a `ShallowRef`, which is the right shape for rendering
+ * and the wrong shape for those call sites.
+ *
+ * So the character gets read-only accessors that present the arrays the way a
+ * collection did. They are defined here, not in the domain, because nothing in
+ * the application wants them -- adding a second name for the same data to the
+ * model itself would be inviting the next reader to pick the wrong one.
+ */
+function installBackboneCollectionShims(): void {
+  const proto = CharacterObject.prototype as unknown as Record<string, unknown>
+
+  /*
+   * `get_experience_notations()` resolved with a COLLECTION, and specs read
+   * `ens.models.length` off it before handing the same value straight back to
+   * `_propagate_experience_notation_change`. The port resolves with an array,
+   * which is the right shape for everything in the application; this adds
+   * `models` to the resolved array so both readings work on the same object.
+   */
+  const notations = proto.get_experience_notations as (this: Character) => Promise<unknown[]>
+  if (!(proto as { __notationsShimmed?: boolean }).__notationsShimmed) {
+    ;(proto as { __notationsShimmed?: boolean }).__notationsShimmed = true
+    proto.get_experience_notations = async function (this: Character) {
+      const rows = await notations.call(this)
+      if (!Object.prototype.hasOwnProperty.call(rows, 'models')) {
+        Object.defineProperty(rows, 'models', { get: () => rows, enumerable: false })
+      }
+      return rows
+    }
+  }
+  for (const [name, read] of [
+    ['recorded_changes', (c: Character) => c.experience.recordedChanges.value],
+    ['approvals', (c: Character) => c.experience.approvals.value],
+  ] as const) {
+    if (name in proto) continue
+    Object.defineProperty(proto, name, {
+      get(this: Character) {
+        const models = read(this) as readonly unknown[]
+        return {
+          models,
+          length: models.length,
+          at: (i: number) => models[i],
+          last: () => models[models.length - 1],
+        }
+      },
+    })
+  }
+}
+
 export function installTestModules(): void {
+  installBackboneCollectionShims()
   const modules: Record<string, unknown> = {}
 
   for (const [path, key] of Object.entries(VENUE_MODULE_PATHS)) {
@@ -179,6 +274,18 @@ export function installTestModules(): void {
    * edge cases, instead of through a second parser that might disagree.
    */
   modules['papaparse'] = Papa
+
+  /*
+   * The two model modules a spec constructs directly.
+   *
+   * `models/SimpleTrait.js` and `models/ExperienceNotation.js` were
+   * `Parse.Object.extend` results, so a spec both `new`s them and hands them to
+   * `Parse.Query`. `@/parse/classes` registers the same classNames for the app,
+   * so publishing the registered classes gives the suite the same objects the
+   * application uses rather than a lookalike.
+   */
+  modules['app/models/SimpleTrait'] = SimpleTraitObject
+  modules['app/models/ExperienceNotation'] = ExperienceNotationObject
   modules['underscore'] = lodash
   modules['lodash'] = lodash
 

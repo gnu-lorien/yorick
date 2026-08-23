@@ -538,6 +538,35 @@ export interface CharacterMethods {
     options: ExperienceNotationOptions | VenueExperienceNotationOptions,
   ): Promise<unknown>
   get_experience_notations(): Promise<readonly Parse.Object[]>
+  /**
+   * The character's own timeline and approvals.
+   *
+   * `Character.js` exposed these ON the character, and the approval screen and
+   * the history slider both call them that way. Here the state lives on
+   * `CharacterExperience`; these delegate, so `character.get_recorded_changes()`
+   * means what it always did.
+   */
+  get_recorded_changes(): Promise<readonly unknown[]>
+  get_approvals(): Promise<readonly unknown[]>
+  /**
+   * The venue's creation-pool bookkeeping for one changed trait.
+   *
+   * `Vampire.js` and its two twins defined this ON the character. Here the
+   * rule lives on the venue strategy and `update_trait` calls it through
+   * `this.venue`; this delegator exists because it is also part of the model's
+   * public surface -- a caller with a character in hand should not have to know
+   * which venue it belongs to in order to book a trait against its pools.
+   */
+  update_creation_rules_for_changed_trait(
+    category: string,
+    modified_trait: Parse.Object,
+    freeValue: number | undefined,
+  ): Promise<unknown>
+  /** `Character._propagate_experience_notation_change` -- the balance recompute. */
+  _propagate_experience_notation_change(
+    notations: readonly unknown[],
+    startIndex: number,
+  ): readonly unknown[]
   wait_on_current_experience_update(): Promise<unknown>
 }
 
@@ -2024,6 +2053,37 @@ const characterMethods: CharacterMethods & ThisType<Character> = {
 
   get_experience_notations(): Promise<readonly Parse.Object[]> {
     return this.experience.get_experience_notations() as Promise<readonly Parse.Object[]>
+  },
+
+  get_recorded_changes(): Promise<readonly unknown[]> {
+    return this.experience.get_recorded_changes() as Promise<readonly unknown[]>
+  },
+
+  get_approvals(): Promise<readonly unknown[]> {
+    return this.experience.get_approvals() as Promise<readonly unknown[]>
+  },
+
+  _propagate_experience_notation_change(
+    notations: readonly unknown[],
+    startIndex: number,
+  ): readonly unknown[] {
+    return this.experience._propagate_experience_notation_change(
+      notations as never,
+      startIndex,
+    ) as readonly unknown[]
+  },
+
+  update_creation_rules_for_changed_trait(
+    category: string,
+    modified_trait: Parse.Object,
+    freeValue: number | undefined,
+  ): Promise<unknown> {
+    return this.venue.update_creation_rules_for_changed_trait(
+      this as unknown as VenueCharacter,
+      category,
+      modified_trait as never,
+      freeValue,
+    ) as Promise<unknown>
   },
 
   wait_on_current_experience_update(): Promise<unknown> {

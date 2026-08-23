@@ -11,16 +11,17 @@
  * on submit is worse than being told up front. The route table now marks this
  * `gate: 'admin'` like everything it links to.
  *
- * The list is a plain `<ul
-        v-jqm-listview>` in the original, not a `data-role="listview"`, so
- * it renders unstyled here too.
+ * The menu is an inset listview. It was a plain `<ul>` with no `data-role`, so
+ * jQuery Mobile left it alone and the administration front door rendered as
+ * bullet-point links while `#player-options`, one click away, was a listview of
+ * full-width buttons. Fixed upstream in `index.html:137`; matched here.
  */
 import { JqmPage, vJqmListview } from '@/components/jqm'
 
 const DESTINATIONS = [
   { href: '#troupes', label: 'Troupes' },
   { href: '#administration/characters/all', label: 'Characters' },
-  { href: '#administration/characters/summarize', label: 'SummarizeCharacters' },
+  { href: '#administration/characters/summarize', label: 'Summarize Characters' },
   { href: '#administration/users/all', label: 'Users' },
   { href: '#administration/patronages', label: 'Patronages' },
   { href: '#administration/patronagescsv', label: 'Patronages CSV' },
@@ -36,7 +37,7 @@ const DESTINATIONS = [
 
 <template>
   <JqmPage id="administration" title="Administration">
-    <ul>
+    <ul v-jqm-listview data-role="listview" data-inset="true" class="ui-listview ui-listview-inset ui-corner-all ui-shadow">
       <li v-for="d in DESTINATIONS" :key="d.href">
         <a :href="d.href">{{ d.label }}</a>
       </li>

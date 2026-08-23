@@ -247,8 +247,21 @@ async function submit() {
 
     <div class="ui-body ui-body-a ui-corner-all">
       <h3>Roles</h3>
+      <!--
+        `RolesView` is a `CollectionView` with `tagName: 'div'` rendered INTO
+        the region, so the roles sit one level down: `#user-roles-available >
+        div > div`. The nesting is what the regression test counts, and it is
+        also what `> div` alone would silently satisfy with zero rows.
+
+        `role.get("name")`, not `role.attributes.attributes.name`. Parse 1.5
+        wrapped a `Parse.Object` added to a Backbone collection, so the doubled
+        path resolved; under parse@8 it is `undefined` and the section rendered
+        its heading above nothing.
+      -->
       <div id="user-roles-available">
-        <div v-for="role in roles" :key="role.id">The one: {{ role.get('name') }}</div>
+        <div>
+          <div v-for="role in roles" :key="role.id">The one: {{ role.get('name') }}</div>
+        </div>
       </div>
     </div>
   </JqmPage>

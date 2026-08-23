@@ -85,6 +85,7 @@ import { shallowRef, type ShallowRef } from 'vue'
 import isEqual from 'lodash/isEqual'
 
 import Parse from '@/parse'
+import { experienceNotationQueryFor } from '@/domain/ExperienceNotation'
 import {
 
   ApprovalObject,
@@ -901,10 +902,11 @@ export class CharacterExperience {
    */
   fetch_experience_notations(): Promise<readonly ExperienceNotationLike[]> {
     this._experienceNotationsFetch = queue(this._experienceNotationsFetch, async () => {
-      const q = new Parse.Query(ExperienceNotationObject)
-      q.equalTo('owner', this.character as unknown as Parse.Object)
-        .addDescending('entered')
-        .addDescending('createdAt')
+      // The shared builder, not a second copy of the same query -- it is where
+      // the `limit(1000)` lives, and a hand-rolled duplicate here is exactly
+      // how this fetch ended up capped at Parse's default page of 100 while
+      // the timeline's was not.
+      const q = experienceNotationQueryFor(this.character as unknown as Parse.Object)
       const found = (await q.find()) as unknown as ExperienceNotationLike[]
       // `fetch({reset: true})` -- replace, do not merge.
       this.notations.value = found.slice().sort(compare_experience_notations)
@@ -974,8 +976,14 @@ export class CharacterExperience {
     return this._propagateExperienceUpdate
   }
 
-  /** `_propagate_experience_notation_change`, with this instance's hooks bound. */
-  private _propagate_experience_notation_change(
+  /**
+   * `_propagate_experience_notation_change`, with this instance's hooks bound.
+   *
+   * Not private: `Character` delegates to it, because the legacy model exposed
+   * it under this exact name and the recompute is a legitimate thing to ask a
+   * character for -- `CharacterExperienceView` calls it on every notation edit.
+   */
+  _propagate_experience_notation_change(
     experience_notations: readonly ExperienceNotationLike[],
     index: number,
   ): Saveable[] {

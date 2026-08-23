@@ -100,23 +100,31 @@ export async function update_creation_rules_for_changed_trait(
     return character
   }
 
-  const creations = await Parse.Object.fetchAllIfNeeded([
-    character.get('creation') as Parse.Object,
-  ])
+  /*
+   * `.filter(Boolean)` is `_.compact`, and it is load-bearing.
+   *
+   * parse@8's `fetchAllIfNeeded` reads `.className` off every member of the
+   * list, so `[undefined]` throws a TypeError SYNCHRONOUSLY -- before the
+   * `creation` guard below is ever reached. `fetchAllIfNeeded([])` resolves
+   * with `[]`, which the guard then handles.
+   */
+  const creations = await Parse.Object.fetchAllIfNeeded(
+    [character.get('creation') as Parse.Object | undefined].filter(Boolean) as Parse.Object[],
+  )
   const creation = creations[0]
-  if (creation && creation.get('completed')) {
+
+  /*
+   * `!creation`, not `creation &&`.
+   *
+   * A character with no creation record is not an error to report -- it is a
+   * character that never entered the wizard, and there is simply no
+   * creation-time bookkeeping to update. This used to reject, which turned a
+   * no-op into a failed `update_trait`. Fixed upstream (legacy defect #9) and
+   * matched here.
+   */
+  if (!creation || creation.get('completed')) {
     // R22 -- see the note above.
     return character
-  }
-  if (!creation) {
-    // The source called `creation.addUnique` unguarded on the next line, so a
-    // character with no creation row rejected with a TypeError. Kept as a
-    // rejection with a message that says what happened; the caller's handling
-    // (a failed `update_trait`) is unchanged.
-    throw new Parse.Error(
-      Parse.Error.OBJECT_NOT_FOUND,
-      'No creation record to book this trait against',
-    )
   }
 
   const stepName = `${category}_${freeValue}_remaining`

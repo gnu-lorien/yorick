@@ -223,10 +223,21 @@ async function submit() {
         <h1>Staff</h1>
         <div id="troupe-staff">
           <ul>
-            <li v-for="(user, i) in staff" :key="user.id ?? i">
-              {{ user.get('role') }}: {{ user.get('username') }} {{ user.get('email') }}
-              {{ user.get('realname') }}
-            </li>
+            <!--
+              No email column, on purpose.
+              
+              It used to print `user.get("email")` between the username and the
+              real name, and it was blank on every row without exception:
+              `get_troupe_staff` builds each staffer through `identity_of`,
+              which copies an allowlist, and `IDENTITY_INCLUDES_EMAIL` is false
+              deliberately. parse-server also withholds another user's address
+              from every non-master read. So the column could only ever render
+              as a double space -- which is exactly how the defect was found.
+
+              Do NOT bring it back by flipping `IDENTITY_INCLUDES_EMAIL`: that
+              publishes staff addresses to anyone who can read the troupe.
+            -->
+            <li v-for="(user, i) in staff" :key="user.id ?? i">{{ user.get('role') }}: {{ user.get('username') }} {{ user.get('realname') }}</li>
           </ul>
         </div>
         <a

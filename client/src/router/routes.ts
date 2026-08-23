@@ -59,8 +59,13 @@ export interface YorickRouteMeta {
    * empty approval screen to look at, because the screen never came up. With
    * one component per route that has to be a navigation guard: the fetch runs
    * first and the navigation is abandoned if it fails.
+   *
+   * The value is the message the refusal is reported under, because the old
+   * handlers each named their own -- `ReportError.on("Couldn't open the
+   * approval page")` and friends. A refusal the reader cannot read is the
+   * defect this whole mechanism exists to avoid.
    */
-  requiresReadableCharacter?: true
+  requiresReadableCharacter?: string
   /** The Backbone handler this route came from, for tracing back. */
   handler: string
 }
@@ -554,7 +559,7 @@ export const routes: RouteRecordRaw[] = [
       pattern: "character/:cid/approval",
       pageId: "character-approval",
       title: "Character Approval",
-      requiresReadableCharacter: true,
+      requiresReadableCharacter: "Couldn't open the approval page",
       gate: "user",
       handler: "characterapproval",
     } satisfies YorickRouteMeta,

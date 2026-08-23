@@ -164,7 +164,21 @@ const textAttributes = computed(() => {
   <JqmPage id="character" title="Character">
     <template v-if="character">
       <div id="insertheader">
-        <CharacterSummary :character="character" />
+        <!--
+          The wrapper carries the character's OWN id and venue class.
+
+          `new CharacterListItem(this.model)` passed a `Parse.Object` where
+          `Backbone.View` expects an options bag, so the view constructor took
+          `id` and `className` off the model -- the objectId and the Parse
+          className. That is where these two attributes come from, and a test
+          pins them: memoising that sub-view froze the wrapper at whichever
+          character was opened FIRST, so a werewolf's details rendered inside
+          `<div id="<a vampire's objectId>" class="Vampire">`. Rebuilding per
+          character is free here, but the attributes still have to be right.
+        -->
+        <div :id="character.id" :class="character.className">
+          <CharacterSummary :character="character" />
+        </div>
       </div>
 
       <div>

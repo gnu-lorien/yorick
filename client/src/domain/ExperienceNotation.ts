@@ -76,6 +76,17 @@ export function experienceNotationQueryFor(
     .equalTo('owner', owner)
     .addDescending('entered')
     .addDescending('createdAt')
+    /*
+     * `limit(1000)`, because the running balance is computed over the WHOLE
+     * ledger and Parse's default page is 100.
+     *
+     * Without it a character with more than a hundred notations had its
+     * balance recomputed from the newest hundred and the rest silently
+     * discarded -- the totals simply came out wrong, with nothing to say so.
+     * The same ceiling the timeline query uses; a character past a thousand
+     * entries is a real limit, recorded rather than raised.
+     */
+    .limit(1000)
 }
 
 /**

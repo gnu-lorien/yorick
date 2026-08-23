@@ -46,8 +46,20 @@ const props = withDefaults(
     hrefFor?: (troupeId: string) => string
     /** The search box's id, from `data-input` in the original template. */
     filterId?: string
+    /**
+     * Whether to render the filter box.
+     *
+     * The directory and the three pick screens have one; the quick-access list
+     * on `#player-options` does not -- it is a shortcut to two or three
+     * troupes, and `PlayerOptionsView` renders it through a bare CollectionView.
+     */
+    filter?: boolean
   }>(),
-  { hrefFor: (id: string) => `#troupe/${id}/characters/all`, filterId: 'troupes-list-filter' },
+  {
+    hrefFor: (id: string) => `#troupe/${id}/characters/all`,
+    filterId: 'troupes-list-filter',
+    filter: true,
+  },
 )
 
 const rows = computed(() =>
@@ -71,7 +83,7 @@ const rows = computed(() =>
 </script>
 
 <template>
-  <JqmListview filter :filter-id="filterId" v-slot="{ query }">
+  <JqmListview :filter="filter" :filter-id="filterId" v-slot="{ query }">
     <li
       v-for="row in rows"
       :key="row.id"

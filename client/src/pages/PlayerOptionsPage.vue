@@ -30,7 +30,8 @@
  * race with itself.
  */
 import { computed, onMounted, ref } from 'vue'
-import { JqmListItem, JqmListview, JqmPage } from '@/components/jqm'
+import { JqmPage } from '@/components/jqm'
+import TroupeList from '@/components/TroupeList.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRolesStore } from '@/stores/roles'
 import { useTroupesStore } from '@/stores/troupes'
@@ -93,18 +94,15 @@ onMounted(async () => {
     <div v-if="showsQuickAccess" id="troupe-characters-quick-access">
       <h3>Troupe View All Characters</h3>
       <p v-if="loadingTroupes">Loading Your Troupes...</p>
-      <JqmListview>
-        <JqmListItem
-          v-for="troupe in myTroupes"
-          :key="troupe.id"
-          :href="`#troupe/${troupe.id}/characters/all`"
-          thumb
-        >
-          <img :src="(troupe as any).get_thumbnail_sync?.(128)" class="ui-li-thumb" alt="" />
-          <h2>{{ troupe.get('name') }}</h2>
-          <p>{{ troupe.get('location') }}</p>
-        </JqmListItem>
-      </JqmListview>
+      <!--
+        The same rows as the troupes directory, through the same component.
+        `templates/troupe-list-entry.html` is what both render, so a shortcut
+        row and a directory row are the same thing -- including the
+        `a.troupe-listing` class and the `backendId` the E2E suite finds a
+        specific troupe by. No filter box: this is a shortcut to two or three
+        troupes, not a directory.
+      -->
+      <TroupeList :troupes="myTroupes" :filter="false" />
     </div>
   </JqmPage>
 </template>
