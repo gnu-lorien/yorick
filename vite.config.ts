@@ -20,7 +20,27 @@ import vue from '@vitejs/plugin-vue'
  */
 export default defineConfig({
   root: fileURLToPath(new URL('./client', import.meta.url)),
-  plugins: [vue()],
+  plugins: [
+    vue({
+      /*
+       * Keep template whitespace, because the templates being ported did.
+       *
+       * Vue's default is `condense`: whitespace between elements that contains
+       * a newline is removed entirely. Underscore templates removed nothing, so
+       * a heading and the value under it -- written on separate lines in the
+       * source template -- produced "Morality Humanity", while the same markup
+       * in a `.vue` file produces "MoralityHumanity".
+       *
+       * That is not cosmetic here. Twenty-odd E2E assertions read a printed
+       * sheet or a table cell as whitespace-normalised text, so the space
+       * between a label and its value is part of the observable output. Fixing
+       * it case by case means finding every one of them; preserving whitespace
+       * makes the whole class of difference go away, and it is also the more
+       * faithful setting for a migration whose brief is to keep the look.
+       */
+      template: { compilerOptions: { whitespace: 'preserve' } },
+    }),
+  ],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./client/src', import.meta.url)),
