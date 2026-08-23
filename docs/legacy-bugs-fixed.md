@@ -2,7 +2,7 @@
 
 Companion to `legacy-bugs-found-during-react-port.md` (written on the React
 port branch, `claude/migrate-project-react-69c438`). That document catalogues
-fifteen defects in `public/scripts/`; this one records what was done about
+seventeen defects in `public/scripts/`; this one records what was done about
 each, and where the resolution differs from what it prescribed.
 
 Every entry is covered by a test. Two files hold them:
@@ -10,12 +10,13 @@ Every entry is covered by a test. Two files hold them:
 - `test/legacy-bug-regressions.test.js` — 20 tests, `npm run test:node`, about
   150ms. Anything decidable without a browser: collection ordering, the
   clan-rule page size, template guards, markup shape.
-- `e2e/legacy-bug-regressions.spec.js` — 20 tests, `npx playwright test
+- `e2e/legacy-bug-regressions.spec.js` — 22 tests, `npx playwright test
   e2e/legacy-bug-regressions.spec.js`, about a minute. Anything that needs a
   rendered page and a real server.
 
 Both suites were run against the **unfixed** sources before being trusted.
-Twelve of the twenty node tests and fifteen of the twenty E2E tests fail there.
+Twelve of the twenty node tests and seventeen of the twenty-two E2E tests fail
+there.
 The rest are deliberate controls — a correct-behaviour anchor beside each
 defect, so a test cannot pass by breaking the thing next to it.
 
@@ -37,8 +38,10 @@ defect, so a test cannot pass by breaking the thing next to it.
 | 11 | `data-role="listview" data-inset="true"`, label spaced | `public/index.html` |
 | 12 | `query.limit(1000)` on the collection's own query | `collections/BNSMETV1_ClanRules.js` |
 | 13 | Not fixed, by design. Reason recorded at the call site and pinned by a test | `routers/mobileRouter.js` |
-| 14 (mine) | `<%= name %>` instead of `<%= attributes.name %>`. Not in the document — found here; see below | `views/UserSettingsProfileView.js` |
-| 14 (theirs), tested as **#15** | Stopped writing `transform_description` onto the router-cached character | `views/CharacterApprovalView.js` |
+| 14 | Stopped writing `transform_description` onto the router-cached character | `views/CharacterApprovalView.js` |
+| 15 | `limit(1000)` on both experience-ledger fetches | `models/Character.js`, `views/CharacterExperienceView.js` |
+| 16 | Guarded `listview("refresh")` after writing the rows | `views/CharactersListView.js` |
+| **R1** | `<%= name %>` instead of `<%= attributes.name %>`. Not in the document — found here; see below | `views/UserSettingsProfileView.js` |
 
 ## Where this departs from the document
 
@@ -76,14 +79,13 @@ nothing, and here it was literally logging `{}`. A third test pins that
 failure path on its own, because with the guard in place the first two tests
 never reach it.
 
-**The document's #14 is tested here as #15, and there is a numbering clash to
-be aware of.** This file's #14 — the profile page's Roles section — was found
-while writing these tests and is not in the document. The document later gained
-its own #14, the leaked diff markers. Rather than renumber a landed test, the
-document's #14 is `#15` in the spec file, and both are called out in the table
-above. Anyone reconciling the two lists should read by description, not number.
+**The spec's numbers now match the document's, with one marked exception.** The
+profile page's Roles section was found while writing these tests and is not in
+the document; it briefly held the number 14, and was relabelled **R1** when the
+document claimed 14 for the leaked diff markers. Every other number in
+`e2e/legacy-bug-regressions.spec.js` is the document's own.
 
-**The document's #14 is real, but its visible symptom is timing-dependent and I
+**#14 is real, but its visible symptom is timing-dependent and I
 could not reproduce it as written.** The document reports 3 `fa-minus` and 3
 `fa-plus` in `#history-sheet` after approval-then-history. On my fixture the
 markers never reached the DOM. What is measurable, and what the test asserts,
@@ -115,6 +117,45 @@ constructs it. Left untouched rather than "fixed", because editing dead code to
 look maintained is how it gets mistaken for the live path — the same trap the
 document's own "Not bugs" section records. If it is ever revived, both defects
 come back with it.
+
+**#15 is the worst thing in the document, and the fix raises the ceiling
+rather than removing it — deliberately.** The measurement, on a character built
+with 111 notations worth 140 XP:
+
+```
+rows on server   111        true total earned  140
+loaded by app    100        recomputed total   100
+```
+
+Forty XP gone, and `_finalize_triggered_experience_notation_changes` saves that
+number onto the character. Unlike #12, which only mispriced a purchase, this
+rewrites the ledger.
+
+`Parse.Query.each` would page with no ceiling at all, and it is the idiom this
+codebase already uses elsewhere — but it refuses a query carrying a sort, and
+the order here is load-bearing: `entered` descending with `createdAt` as the
+tiebreak. `ExperienceNotationCollection`'s comparator sorts on `entered` alone,
+so rows entered at the same instant would fall back to whatever order the pages
+arrived in, and their running balances would move with it. On a path that
+computes balances, exact ordering is worth more than an unbounded fetch, so
+this is `limit(1000)` as the document prescribes. A character would need a
+thousand separate XP awards to reach it.
+
+The document names two sites and both are fixed, but only one is live:
+`CharacterExperienceView.update_collection_query_and_fetch` has no caller
+anywhere in the app — its own comment says so. It is a public method on a live
+view, which is exactly the kind of thing that gets wired up later, so it is
+disarmed rather than left.
+
+**#16's prescribed fix needed a guard.** The document suggests
+`.listview("refresh")` on the line that writes the rows. Unguarded that throws
+on the first render: the route calls `register()` — and so `render()` — before
+`changePage` enhances the page, and the jQuery UI widget bridge raises "cannot
+call methods on listview prior to initialization" when the widget does not
+exist yet. Guarded on `$list.data("mobile-listview")`, which is absent on that
+first pass and present on every later one. `enhanceWithin()`, which the other
+41 views call, would not work here at all: it skips an element that is already
+enhanced, and the `<ul>` is — only `refresh` re-walks the rows.
 
 **#9's prescribed fix is necessary but not sufficient, and the failure it
 describes happens earlier than stated.** The document says a character with no
@@ -172,20 +213,21 @@ None of this can be done from this branch, which carries no `web/`.
 - The React port reproduces most of this behaviour on purpose, and
   `npm run compare:dom` asserts the two front ends render the same DOM. Every
   screen touched here will now diverge — correctly. `#administration` (#11),
-  the profile page (#3 and #14), the troupe staff list (#10) and the character
-  sheet header (#4) are the visible ones.
+  the profile page (#3 and R1), the troupe staff list (#10), the character
+  sheet header (#4) and the character roster's rounded ends (#16) are the
+  visible ones.
 - `docs/react-migration/README.md` lists which divergences are currently
-  deliberate. Five of them have just gone away: the port's divergence on #0
+  deliberate. Six of them have just gone away: the port's divergence on #0
   (it guards `transformedForRange`, legacy crashed), on #1
   (it renders the troupe shortcuts, legacy did not), on #7 (it reports a troupe
-  failure, legacy did not), on #9 (it returns early, legacy crashed) and on the
-  document's #14 (React holds no state between screens, so it drew the plain
-  sheet). Their
+  failure, legacy did not), on #9 (it returns early, legacy crashed), on #14
+  (React holds no state between screens, so it drew the plain sheet) and on #16
+  (it always emits the position classes). Their
   `@compare-known` markers should be dropped when this lands.
 
-## #14 — the profile page's Roles section, found while writing these tests
+## R1 — the profile page's Roles section, found while writing these tests
 
-Not one of the thirteen. `views/UserSettingsProfileView.js`'s `RoleView`
+Not in the document at all. `views/UserSettingsProfileView.js`'s `RoleView`
 rendered `_.template("The one: <%= attributes.name %>")`, and Marionette hands
 a template `model.toJSON()` (`serializeModel`, `backbone.marionette.js:1708`).
 A parse@8 `Parse.Role`'s `toJSON()` is the flat attribute bag —

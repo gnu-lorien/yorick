@@ -155,12 +155,13 @@ test.describe('Legacy bugs found during the React port', () => {
   });
 
   // -------------------------------------------------------------------------
-  // #15 The approval screen left diff markers on every sheet drawn afterwards
+  // #14 The approval screen left diff markers on every sheet drawn afterwards
   // -------------------------------------------------------------------------
   //
-  // The document numbers this one 14; it is 15 here because this file already
-  // had a #14 - the profile page's Roles section - which is not in the
-  // document at all. See docs/legacy-bugs-fixed.md.
+  // Numbers here match the document's. The one exception is `#R1`, the profile
+  // page's Roles section, which was found while writing these tests and is not
+  // in the document at all - it briefly held the number 14 and was relabelled
+  // when the document claimed that number for this entry.
   //
   // `update_override_character_and_transform` wrote `transform_description`
   // onto `self.model`, and the router memoises that character across routes
@@ -183,7 +184,7 @@ test.describe('Legacy bugs found during the React port', () => {
   // a flaky test of a real bug; calling the renderer is deterministic and
   // tests the same thing one layer down.
 
-  test('#15 the approval screen leaves no diff on the cached character', async ({ page }) => {
+  test('#14 the approval screen leaves no diff on the cached character', async ({ page }) => {
     await loginAsAdmin(page);
 
     const character = await runInApp(page, ['app/models/Vampire'], `
@@ -255,6 +256,161 @@ test.describe('Legacy bugs found during the React port', () => {
   });
 
   // -------------------------------------------------------------------------
+  // #15 The experience ledger was fetched 100 rows at a time, and the balances
+  //     recomputed against the truncated list
+  // -------------------------------------------------------------------------
+  //
+  // `Character.fetch_experience_notations` ran a plain `find()` with no limit,
+  // so it took the server's default page of 100. That collection is the one
+  // `_propagate_experience_notation_change` walks to rebuild every row's
+  // running `earned`/`spent`, and it then writes the newest row's totals onto
+  // the character and saves them. Truncated, the oldest rows are absent from
+  // the walk entirely: the seed falls off the end, becomes a zeroed default,
+  // and the character's totals are rebuilt as though its earlier history never
+  // happened.
+  //
+  // Measured before the fix, on the fixture this test builds:
+  //
+  //   rows on server                111        true total earned  140
+  //   loaded by the app             100        recomputed total   100
+  //
+  // Forty XP gone, saved, and nothing said. Worse than #12's clan rules, which
+  // only mispriced a purchase - this rewrites the ledger itself.
+
+  test('#15 a ledger longer than one server page is loaded and totalled whole', async ({ page }) => {
+    test.setTimeout(180000);
+    await loginAsAdmin(page);
+
+    // 110 extra notations worth 1 XP each, written through saveAll rather than
+    // `add_experience_notation` - the latter re-propagates and saves the whole
+    // ledger on every call, which is O(n^2) and would take minutes here.
+    // All are newer than the 30 XP creation entry, so the creation entry is
+    // what falls off the end of a 100-row page.
+    const built = await runInApp(page,
+      ['app/models/Vampire', 'app/models/ExperienceNotation', 'parse'], `
+      var Vampire = mods[0], ExperienceNotation = mods[1], Parse = mods[2];
+      return Vampire.create_test_character("r15_ledger").then(function (v) {
+        var acl = v.get_me_acl();
+        var rows = [];
+        for (var i = 0; i < 110; i++) {
+          var en = new ExperienceNotation({
+            entered: new Date(arg.baseTime + (i + 1) * 60000),
+            reason: "ledger fixture " + i,
+            earned: 0, spent: 0,
+            alteration_earned: 1, alteration_spent: 0,
+            owner: v
+          });
+          en.setACL(acl);
+          rows.push(en);
+        }
+        return Parse.Object.saveAll(rows).then(function () { return { id: v.id }; });
+      });
+    `, { baseTime: Date.now() });
+
+    // Ground truth, read back from the server with an explicit high limit.
+    const truth = await runInApp(page,
+      ['app/models/Vampire', 'app/models/ExperienceNotation', 'parse'], `
+      var Vampire = mods[0], ExperienceNotation = mods[1], Parse = mods[2];
+      return Vampire.get_character(arg.id, "all").then(function (c) {
+        var q = new Parse.Query(ExperienceNotation);
+        q.equalTo("owner", c).limit(1000);
+        return q.find().then(function (rows) {
+          var sum = 0;
+          rows.forEach(function (r) { sum += (r.get("alteration_earned") || 0); });
+          return { rows: rows.length, totalEarned: sum };
+        });
+      });
+    `, { id: built.id });
+
+    // The fixture has to actually cross the page boundary or this proves
+    // nothing at all.
+    expect(truth.rows, 'the fixture must exceed one server page of 100')
+      .toBeGreaterThan(100);
+
+    const app = await runInApp(page, ['app/models/Vampire'], `
+      return mods[0].get_character(arg.id, "all").then(function (c) {
+        return c.get_experience_notations().then(function (ens) {
+          var loaded = ens.models.length;
+          // The full recompute, exactly as a notation edit triggers it.
+          c._propagate_experience_notation_change(ens, loaded - 1);
+          return { loaded: loaded, earned: c.get("experience_earned") };
+        });
+      });
+    `, { id: built.id });
+
+    expect(app.loaded, 'the whole ledger must be loaded, not the first page')
+      .toBe(truth.rows);
+    expect(app.earned, 'the running total must be rebuilt from the whole ledger')
+      .toBe(truth.totalEarned);
+  });
+
+  // -------------------------------------------------------------------------
+  // #16 Character lists lost their rounded ends after the first visit
+  // -------------------------------------------------------------------------
+  //
+  // `CharactersListView.render` wrote fresh `<li>`s into the `<ul>` and
+  // re-enhanced nothing. jQuery Mobile enhances a page once, on `pagecreate`,
+  // which happens after the first batch of rows is already in place - so the
+  // first visit looks right. On any later render jQM does not touch the page
+  // again and the new rows never receive `ui-first-child` / `ui-last-child`,
+  // the classes that round the top and bottom of an inset list.
+  //
+  // Measured before the fix, with `#characters?all` and
+  // `#administration/characters/all` both rendering into `#characters-all`:
+  //
+  //   first visit    li.ui-li-has-thumb.ui-first-child … .ui-last-child
+  //   after the second render   li.ui-li-has-thumb   (bare, both ends)
+
+  test('#16 character rows keep their rounded ends across repeat visits', async ({ page }) => {
+    await loginAsAdmin(page);
+
+    await runInApp(page, ['app/models/Vampire'], `
+      return mods[0].create_test_character("r16_a").then(function () {
+        return mods[0].create_test_character("r16_b");
+      });
+    `);
+
+    const readRows = () => page.evaluate(() => {
+      const lis = Array.from(
+        document.querySelectorAll('#characters-all ul[data-role="listview"] > li'));
+      return {
+        count: lis.length,
+        firstHasClass: lis.length ? lis[0].classList.contains('ui-first-child') : null,
+        lastHasClass: lis.length
+          ? lis[lis.length - 1].classList.contains('ui-last-child') : null
+      };
+    });
+
+    // First visit: this always worked - jQM enhances the page around the rows.
+    await navigateToHash(page, 'characters?all', '#characters-all');
+    await expect(page.locator('#characters-all ul[data-role="listview"] > li').first())
+      .toBeVisible({ timeout: 30000 });
+    const first = await readRows();
+    expect(first.count).toBeGreaterThan(0);
+    expect(first.firstHasClass, 'the first visit was never the broken one').toBe(true);
+    expect(first.lastHasClass).toBe(true);
+
+    // The admin roster renders into the SAME page element - a second render
+    // into an already-enhanced page, which is where it used to go wrong.
+    await navigateToHash(page, 'administration/characters/all', '#characters-all');
+    await expect(page.locator('#characters-all ul[data-role="listview"] > li').first())
+      .toBeVisible({ timeout: 30000 });
+    const second = await readRows();
+    expect(second.count).toBeGreaterThan(0);
+    expect(second.firstHasClass, 'rows lost ui-first-child on a repeat render').toBe(true);
+    expect(second.lastHasClass, 'rows lost ui-last-child on a repeat render').toBe(true);
+
+    // And back again, which is the path a player actually takes.
+    await navigateToHash(page, 'characters?all', '#characters-all');
+    await expect(page.locator('#characters-all ul[data-role="listview"] > li').first())
+      .toBeVisible({ timeout: 30000 });
+    const third = await readRows();
+    expect(third.count).toBeGreaterThan(0);
+    expect(third.firstHasClass).toBe(true);
+    expect(third.lastHasClass).toBe(true);
+  });
+
+  // -------------------------------------------------------------------------
   // #1 The start page's troupe shortcuts have been empty since Parse 8
   // -------------------------------------------------------------------------
   //
@@ -321,7 +477,7 @@ test.describe('Legacy bugs found during the React port', () => {
   });
 
   // -------------------------------------------------------------------------
-  // #14 The profile page's Roles section was silently empty
+  // #R1 The profile page's Roles section was silently empty
   // -------------------------------------------------------------------------
   //
   // Not one of the thirteen in the document - found while writing these tests,
@@ -343,7 +499,7 @@ test.describe('Legacy bugs found during the React port', () => {
   // construction, which is how these roles arrive. With `<%= name %>` the same
   // late add produced `<div>The one: Administrator</div>`.
 
-  test('#14 the profile page lists the roles the user actually holds', async ({ page }) => {
+  test('#R1 the profile page lists the roles the user actually holds', async ({ page }) => {
     await loginAsAdmin(page);
     await navigateToHash(page, 'profile', '#user-settings-profile');
 
@@ -354,7 +510,7 @@ test.describe('Legacy bugs found during the React port', () => {
     expect(await roles.locator('> div > div').count()).toBeGreaterThan(0);
   });
 
-  test('#14 a storyteller sees their troupe role too', async ({ page }) => {
+  test('#R1 a storyteller sees their troupe role too', async ({ page }) => {
     // sampast holds AST_WOad4CBTsG and nothing else, so this also proves the
     // section shows the CURRENT user's roles rather than a fixed string.
     await loginAsAST(page);
