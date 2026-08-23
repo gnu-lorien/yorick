@@ -92,6 +92,22 @@ export function App() {
     errorRegionOnNavigate(fragment);
   }, [fragment]);
 
+  // Every page opens at the top, which is what jQuery Mobile's `changePage`
+  // does on the way in (`_maybeDegradeTransition` -> `_cssTransition`, which
+  // calls `silentScroll(0)` unless the page names its own offset).
+  //
+  // React changes the hash and nothing moves the viewport, so a screen reached
+  // from halfway down a long page opened halfway down itself -- clicking a
+  // rating-4 skill in the creation wizard landed a quarter of the way into the
+  // list of skills.
+  //
+  // A screen that wants a different offset sets it after this: the creation
+  // wizard restores where the player was in a layout effect once its content
+  // has loaded, which is strictly later than this passive one.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [fragment]);
+
   if (!route) {
     // `#login` matches no route in either app, and in both it shows the login
     // page anyway. In the legacy that is jQuery Mobile, not Backbone: jQM's own

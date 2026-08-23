@@ -626,6 +626,54 @@ recorded as a deliberate divergence in `web/src/screens/CharactersList.tsx`.
 
 ---
 
+## 17. The character sheet's scroll-restore has never worked: three routes record the offset on the wrong object
+
+**`public/scripts/app/routers/mobileRouter.js:737, 1779, 1796`**
+
+`CharacterView` and `CharacterCreateViewNew` both carry the same helper:
+
+```js
+scroll_back_after_page_change: function() {
+    $(document).one("pagechange", function() {
+        var top = _.parseInt(self.backToTop);
+        $.mobile.silentScroll(top);
+    });
+}
+```
+
+It reads `backToTop` off **the view**, and `show_character_helper` calls it on
+`self.characterMainPage` (:858). But the three routes that leave the sheet
+record the offset on the character model instead:
+
+```js
+self.character.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
+```
+
+- `:1779` `simpletextpick`
+- `:1796` `simpletextunpick`
+- `:737`  `charactercreateunpicksimpletext`
+
+`self.characterMainPage.backToTop` is therefore never assigned,
+`_.parseInt(undefined)` is `NaN`, and `silentScroll(NaN)` moves nothing. The
+sheet always returns to the top.
+
+The wizard's copy works, because its three routes (`:632`, `:689`, `:705`)
+record on `self.characterCreateView` — the object the helper reads. That
+asymmetry within four lines of each other is what makes this look like a slip
+rather than a decision.
+
+**Fix:** record on the view: `self.characterMainPage.backToTop = ...` at the
+three sites above. Note that `:737` belongs to the *wizard*, not the sheet, so
+it should be `self.characterCreateView` — it is the odd one out of the four
+creation routes.
+
+**In the React port:** the wizard's restore is ported and works
+(`web/src/screens/CharacterCreate.tsx`). The sheet's is not, because what it
+ports to is a no-op. Fixing the legacy means deciding what the sheet *should*
+do, and then the React screen wants the same treatment the wizard got.
+
+---
+
 ## Not bugs — checked and cleared
 
 Recorded so nobody spends time on them again.
@@ -663,10 +711,11 @@ be the live path is how the above happened — but it is a tidy-up, not a defect
 4. **#3**, **#8**, **#11** — visible and small.
 5. **#14** — one line to delete, on a screen built to show what changed.
 6. **#16** — one call to add, on the screen players use most.
-7. **#15** and **#12** — before either list grows past 100.
-8. **#9**, **#2**, **#10** — tidy-ups with no user-visible effect today.
-9. **#6** and **#13** — decide whether they are defects at all before touching
-   them.
+7. **#17** — three assignments, on a convenience players notice every time.
+8. **#15** and **#12** — before either list grows past 100.
+9. **#9**, **#2**, **#10** — tidy-ups with no user-visible effect today.
+10. **#6** and **#13** — decide whether they are defects at all before touching
+    them.
 
 ## Before you change any of these
 

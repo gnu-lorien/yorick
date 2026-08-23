@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Page } from '@/jqm/Page';
 import { Listview, ListItem, Divider } from '@/jqm/Listview';
@@ -210,6 +210,27 @@ function PoolSection({
   );
 }
 
+/**
+ * Where the wizard was scrolled to when the player last left it.
+ *
+ * Ports `scroll_back_after_page_change` and the `backToTop` the picker routes
+ * set before they navigate. The wizard is a long page and every pick is a round
+ * trip off it, so without this a player who picks their rating-4 skill halfway
+ * down is returned to the top and has to find their place again on every pick.
+ *
+ * The legacy records the offset in the *picker's* route handler, reading the
+ * scroll position before `changePage` moves off the wizard. React has no such
+ * moment -- the picker mounts after the navigation -- so the wizard records its
+ * own position on the way out instead, which is the same number taken from the
+ * only side that reliably knows it.
+ *
+ * Module-level, and deliberately not reset: `backToTop` lives on the router's
+ * memoised view for the life of the page, so the legacy restores the last
+ * recorded position on *any* return to the wizard, not only on a return from a
+ * pick. Reproduced.
+ */
+let rememberedScrollTop: number | null = null;
+
 export function CharacterCreate({ route }: ScreenProps) {
   const cid = route.named['cid'] ?? '';
   useBackButton(`#character?${cid}`);
@@ -240,6 +261,34 @@ export function CharacterCreate({ route }: ScreenProps) {
   const character = data?.character;
   const venue = data?.venue;
   const creation = character?.get('creation') as Parse.Object | undefined;
+  const ready = !!(character && venue && creation);
+
+  // Record on the way out.
+  //
+  // `useLayoutEffect`, because its cleanup runs while the wizard's DOM is still
+  // in the document. A passive effect's cleanup runs after the page has been
+  // torn down and replaced, by which point the browser has already clamped the
+  // scroll offset to the height of whatever came next -- usually zero, since a
+  // picker for three attributes is a very short page.
+  useLayoutEffect(() => {
+    return () => {
+      rememberedScrollTop = window.scrollY;
+    };
+  }, []);
+
+  // Restore once there is a page tall enough to scroll.
+  //
+  // Keyed on `ready` rather than on mount: the wizard renders an empty page
+  // until the character loads, and scrolling a page with no content in it
+  // clamps to zero and loses the offset for good. A layout effect puts this
+  // before the browser paints, so the player never sees the top of the page
+  // first.
+  const restored = useRef(false);
+  useLayoutEffect(() => {
+    if (!ready || restored.current || rememberedScrollTop === null) return;
+    restored.current = true;
+    window.scrollTo(0, rememberedScrollTop);
+  }, [ready]);
 
   // Nothing at all until the character is loaded, which is what the legacy page
   // holds too: `#character-create` is an empty `div[role="main"]` until
