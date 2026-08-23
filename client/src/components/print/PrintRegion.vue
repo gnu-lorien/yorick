@@ -111,10 +111,23 @@ const willpowerTotal = computed(() => {
 /** Blood per turn by generation, from `print/blood.html`. */
 const BLOOD_PER_TURN: Record<number, number> = { 1: 10, 2: 12, 3: 15, 4: 20, 5: 30 }
 
+/**
+ * `character.generation()` -- the CHARACTER's method, not the venue's.
+ *
+ * `print/blood.html` calls it directly, and it is `raw_generation() || 1`, so
+ * the floor is 1 and never 0. Reading it off the venue strategy instead found
+ * nothing there (`generation` is built per character in
+ * `venues/vampire.ts`, not exported on the strategy) and the `?? 0` fallback
+ * turned that into a silent wrong answer: `BLOOD_PER_TURN[0]` is undefined, so
+ * every printed Vampire sheet read "Blood / 0" instead of "Blood 10 / 1".
+ *
+ * Unguarded, as the source is: `BloodView` is Vampire's region alone, and a
+ * werewolf reaching it is a bug worth a TypeError rather than a plausible
+ * number.
+ */
 const generation = computed(() => {
   trackAll()
-  const c = props.character as unknown as { venue?: { generation?: (ch: unknown) => number } }
-  return c.venue?.generation?.(props.character) ?? 0
+  return (props.character as unknown as { generation(): number }).generation()
 })
 
 const morality = computed(() => {

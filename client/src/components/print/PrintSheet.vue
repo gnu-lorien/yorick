@@ -17,7 +17,7 @@
  * entirely against jQuery Mobile class names -- one more reason the stylesheet
  * had to survive the migration intact.
  */
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { TransformDescription } from '@/domain/print'
 import { PRINT_REGIONS, type PrintRegionEntry } from '@/domain/printRegions'
 import { venueOf } from '@/parse/classes'
@@ -28,9 +28,40 @@ import PrintRegion from '@/components/print/PrintRegion.vue'
 const props = defineProps<{
   character: Parse.Object
   transformDescription?: readonly TransformDescription[]
+  /** Percent, applied to this sheet alone. Omit to use the sheet's own control. */
+  fontSize?: number
   /** The troupe print screen's "Exclude Extended Print Text" checkbox. */
   excludeExtended?: boolean
+  /**
+   * Suppress the per-sheet print settings form.
+   *
+   * `CharactersPrintView`'s CollectionView passes `no_print_settings_form: true`
+   * to every child and hands them ONE shared `print_options` instead, because a
+   * font-size control per character on a fifty-character print run is noise.
+   * A single sheet renders its own.
+   */
+  noPrintSettingsForm?: boolean
 }>()
+
+/**
+ * This sheet's own print settings.
+ *
+ * `CharacterPrintView.initialize` created a `print_options` model per view
+ * (font_size 100, exclude_extended false) and `setup` replaced it only when the
+ * caller passed one. So the single-character sheet owns its settings and the
+ * troupe run shares the screen's; the props are that override.
+ *
+ * `match_font_size` set the font size on the VIEW's own element, so it scales
+ * one sheet rather than the page -- which is what makes it useful on a run of
+ * many.
+ */
+const localFontSize = ref(100)
+const localExcludeExtended = ref(false)
+
+const FONT_SIZES = [50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150]
+
+const fontSize = computed(() => props.fontSize ?? localFontSize.value)
+const excluded = computed(() => props.excludeExtended ?? localExcludeExtended.value)
 
 /**
  * The already-fetched `extended_print_text`, or nothing.
@@ -77,9 +108,39 @@ function specFor(region: string) {
 </script>
 
 <template>
-  <div role="main" class="ui-content force-printing-page-break">
+  <div
+    role="main"
+    class="ui-content force-printing-page-break"
+    :style="{ fontSize: fontSize + '%' }"
+  >
     <div id="cpp-settings" class="hidden-when-printing">
-      <slot name="settings" />
+      <slot name="settings">
+        <form v-if="!noPrintSettingsForm" class="backform form-horizontal" @submit.prevent>
+          <div class="form-group font_size">
+            <label class="control-label">Font Size</label>
+            <div class="controls">
+              <select v-model.number="localFontSize" class="form-control" name="font_size">
+                <option v-for="size in FONT_SIZES" :key="size" :value="size">{{ size }}%</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group exclude_extended">
+            <label class="control-label">&nbsp;</label>
+            <div class="controls">
+              <div class="checkbox">
+                <label>
+                  <input
+                    v-model="localExcludeExtended"
+                    type="checkbox"
+                    name="exclude_extended"
+                  />
+                  Exclude Extended Print Text
+                </label>
+              </div>
+            </div>
+          </div>
+        </form>
+      </slot>
     </div>
 
     <div id="cpp-header">
@@ -216,7 +277,7 @@ function specFor(region: string) {
     -->
     <div id="cpp-extended-print-text" class="ui-content">
       <slot name="extended-print-text">
-        <span v-if="!excludeExtended" v-html="extendedPrintText"></span>
+        <span v-if="!excluded" v-html="extendedPrintText"></span>
       </slot>
     </div>
   </div>

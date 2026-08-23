@@ -84,13 +84,18 @@ onMounted(async () => {
     :content="false"
     :ready="loaded"
   >
-    <div :style="{ fontSize: printOptions.fontSize + '%' }">
-      <PrintSheet
-        v-for="character in characters"
-        :key="character.id"
-        :character="character"
-        :exclude-extended="printOptions.excludeExtended"
-      />
-    </div>
+    <!--
+      `no_print_settings_form` on every child, with the screen's own settings
+      passed down: a font-size control per character on a fifty-character run
+      is noise, and the one on the select-to-print screen is the control.
+    -->
+    <PrintSheet
+      v-for="character in characters"
+      :key="character.id"
+      :character="character"
+      :font-size="printOptions.fontSize"
+      :exclude-extended="printOptions.excludeExtended"
+      no-print-settings-form
+    />
   </JqmPage>
 </template>

@@ -119,12 +119,28 @@ onMounted(load)
 // param change; it is here so paging cannot silently show a stale page.
 watch([start, changeBy], load)
 
-const previousHref = computed(
-  () => `#character/${cid.value}/log/${Math.max(0, start.value - changeBy.value)}/10`,
-)
-const nextHref = computed(
-  () => `#character/${cid.value}/log/${start.value + changeBy.value}/10`,
-)
+/**
+ * The pager, as BUTTONS rather than links.
+ *
+ * `index.html:862` renders `<button class="previous">` / `<button class="next">`
+ * and `CharacterLogView` binds `click` to them; the E2E suite clicks
+ * `#character-log button.next` by that exact selector. An anchor would look and
+ * behave the same to a person and be invisible to the suite, which is the kind
+ * of difference that turns a passing port into a lie.
+ *
+ * The step is off the URL, not off component state -- `startFromUrl()` in the
+ * source -- so the hash stays the single authority for which page is showing.
+ * The trailing `/10` is the source's too: paging always resets the page size,
+ * whatever the current one is.
+ */
+function previous() {
+  window.location.hash =
+    `#character/${cid.value}/log/${Math.max(0, start.value - changeBy.value)}/10`
+}
+
+function next() {
+  window.location.hash = `#character/${cid.value}/log/${start.value + changeBy.value}/10`
+}
 
 /** A recorded `0` renders as `0`, never as an empty cell. */
 function formatEntry(log: VampireChange, entry: string): string {
@@ -149,8 +165,8 @@ function formatEntry(log: VampireChange, entry: string): string {
 <template>
   <JqmPage id="character-log" title="Character Log" :ready="loaded">
     <h1>{{ name }}</h1>
-    <a class="previous ui-btn ui-btn-icon-left" :href="previousHref">Previous</a>
-    <a class="next ui-btn ui-btn-icon-left" :href="nextHref">Next</a>
+    <button class="previous ui-btn ui-btn-icon-left" @click="previous">Previous</button>
+    <button class="next ui-btn ui-btn-icon-left" @click="next">Next</button>
 
     <JqmTable id="table-column-toggle" class="ui-responsive table-stroke" :columns="[...HEADERS]">
       <thead>

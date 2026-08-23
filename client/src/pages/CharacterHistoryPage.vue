@@ -115,12 +115,26 @@ function applyPicked() {
   const c = character.value
   if (!c) return
   const selectedId = logs.value[picked.value]?.id
-  // Every change NEWER than the selected one, oldest-first.
+  /*
+   * Every change NEWER than the selected one, NEWEST FIRST.
+   *
+   * `takeRightWhile(changes, m => m.id != selectedId).reverse()`: the recorded
+   * changes are ascending, `takeRightWhile` returns the newest run still
+   * ascending, and the `.reverse()` is what hands them over newest-first --
+   * which is the order `get_transformed` undoes them in, and the only order
+   * that works.
+   *
+   * Undoing an update means writing its `old_value` back. Two edits to the same
+   * trait, 5 -> 6 -> 7, undone newest-first give 6 then 5; undone oldest-first
+   * they give 5 then 6, and the sheet ends up showing a value the character
+   * never had at that point in its history. Measured exactly that: a
+   * pre-raise snapshot read Physical 6 where it should read 5.
+   */
   const toApply: Parse.Object[] = []
   for (let i = logs.value.length - 1; i >= 0; i--) {
     const log = logs.value[i]
     if (!log || log.id === selectedId) break
-    toApply.unshift(log)
+    toApply.push(log)
   }
   const transformed = c.experience.get_transformed(toApply as never)
   // Show the character AT this point, not a diff.
