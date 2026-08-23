@@ -18,7 +18,7 @@ import { routes, type YorickRouteMeta } from './routes'
 import { extraRoutes } from './extra-routes'
 import { compilePattern, formatPattern, hashToPath, normaliseHash, type HashPattern } from './backbone-hash'
 import { useAuthStore } from '@/stores/auth'
-import { reportError } from '@/domain/errors'
+import { promiseFailReport, reportError } from '@/domain/errors'
 import Parse from '@/parse'
 
 /** Compiled patterns, in route-table order, which is Backbone's match order. */
@@ -80,6 +80,28 @@ router.beforeEach(async (to) => {
   const meta = to.meta as unknown as YorickRouteMeta
   const auth = useAuthStore()
 
+  /*
+   * `get_character` ran BEFORE `changePage`, so a character the caller cannot
+   * read never brought the page up at all. Reproduced as a guard rather than as
+   * an empty screen, because an empty approval screen and a refused one look
+   * the same to a reader and mean very different things.
+   *
+   * The fetch is not wasted: `get_character` is what the page itself calls a
+   * moment later, and the SDK answers the second call from the same session.
+   */
+  if (meta.requiresReadableCharacter) {
+    const cid = to.params.cid
+    if (typeof cid === 'string' && cid) {
+      try {
+        const { get_character } = await import('@/domain/Character')
+        await get_character(cid)
+      } catch (error) {
+        promiseFailReport(error)
+        return false
+      }
+    }
+  }
+
   if (meta.gate === 'none') return true
 
   if (!auth.isLoggedIn) {
@@ -122,6 +144,23 @@ router.beforeEach(async (to) => {
       ).catch(() => {})
       return { name: 'home', replace: true }
     }
+  }
+
+  /*
+   * The bare `if (is_ad) { ... }` gate, with no `else`.
+   *
+   * Aborting the navigation is what "the handler did nothing" means here: the
+   * page the user was already on stays mounted and on screen, no banner
+   * appears, and the address bar keeps whatever they typed. Redirecting home
+   * instead would be a friendlier app and a different one.
+   */
+  if (meta.gate === 'admin-silent') {
+    try {
+      await auth.refreshAdminStatus()
+    } catch {
+      // As above: fall through to the flag we already have.
+    }
+    if (!auth.isAdmin) return false
   }
 
   return true

@@ -195,7 +195,7 @@ async function resetPassword() {
 
     <div class="ui-body ui-body-a ui-corner-all">
       <h3>Profile</h3>
-      <form id="abs-form" @submit.prevent="submitProfile">
+      <form id="abs-form" class="backform form-horizontal" @submit.prevent="submitProfile">
         <label>Real Name</label>
         <div class="ui-input-text ui-body-inherit ui-corner-all ui-shadow-inset">
           <input type="text" name="realname" :value="realname" readonly />
@@ -224,10 +224,31 @@ async function resetPassword() {
           Administrator
         </JqmCheckbox>
 
-        <button id="submit" type="submit" class="ui-btn ui-shadow ui-corner-all">Update</button>
-        <p v-if="submitMessage" :class="submitStatus === 'error' ? 'error' : 'success'">
-          {{ submitMessage }}
-        </p>
+        <!--
+          Backform's `ButtonControl`: `button[name=submit]` with a sibling
+          `span.status` carrying `text-success` / `text-danger`. That is the
+          only feedback this form gives -- the submit handler writes the ROLE's
+          `users` relation and never touches the user row -- so the message is
+          how an administrator knows whether the privilege actually moved.
+          `access-control.spec.js:387` reads both the text and the class.
+        -->
+        <div class="form-group submit">
+          <label class="control-label">&nbsp;</label>
+          <div class="controls">
+            <button id="submit" type="submit" name="submit" class="btn">Update</button>
+            <span
+              class="status"
+              :class="
+                submitStatus === 'error'
+                  ? 'text-danger'
+                  : submitStatus === 'success'
+                    ? 'text-success'
+                    : ''
+              "
+              >{{ submitMessage }}</span
+            >
+          </div>
+        </div>
       </form>
     </div>
 

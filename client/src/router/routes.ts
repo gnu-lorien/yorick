@@ -14,6 +14,13 @@
  * in `index.html`. It is preserved on the rendered element because
  * `activePageId` in the E2E helpers reads it to decide where the app is.
  *
+ * A handler that reaches a character through `get_character` is gated `user`,
+ * because `get_character` itself begins with `enforce_logged_in()`
+ * (`mobileRouter.js:1571`) -- the gate is one call down rather than on the
+ * handler's own first line, which is why it is easy to read those routes as
+ * ungated. `access-control.spec.js:390` walks a logged-out visitor through
+ * fifteen of them and expects the login page every time.
+ *
  * `gate` mirrors what the handler enforced: `admin` called `enforce_admin`,
  * `user` called `enforce_logged_in`, and `none` was reachable signed out.
  * Handlers that reached a character through `get_character` were gated by that
@@ -29,8 +36,31 @@ export interface YorickRouteMeta {
   pageId: string | null
   /** The page's `data-title`, shown in the fixed header. */
   title: string
-  /** Which auth gate the original handler applied. */
-  gate: 'none' | 'user' | 'admin'
+  /**
+   * Which auth gate the original handler applied.
+   *
+   * `admin` is `enforce_admin()` followed by `admin_route_failed`: the refusal
+   * is reported in the banner and the user is sent home.
+   *
+   * `admin-silent` is the OTHER shape the same check took, and the difference
+   * is observable. `administration_user` and `administration_user_patronages`
+   * wrap their whole body in a bare `if (is_ad) { ... }` with no `else`, so a
+   * non-administrator's navigation simply does nothing: no message, no
+   * redirect, and the page they were already on stays on screen.
+   * `access-control.spec.js` 384 and 385 assert exactly that, against the page
+   * they parked on first.
+   */
+  gate: 'none' | 'user' | 'admin' | 'admin-silent'
+  /**
+   * The route reaches a character through `get_character` before rendering.
+   *
+   * Those handlers called `changePage` INSIDE the fetch's success branch, so a
+   * character the caller cannot read left them where they were -- there was no
+   * empty approval screen to look at, because the screen never came up. With
+   * one component per route that has to be a navigation guard: the fetch runs
+   * first and the navigation is abandoned if it fails.
+   */
+  requiresReadableCharacter?: true
   /** The Backbone handler this route came from, for tracing back. */
   handler: string
 }
@@ -284,7 +314,7 @@ export const routes: RouteRecordRaw[] = [
       pattern: "charactercreate/:cid",
       pageId: "character-create",
       title: "Create Character",
-      gate: "none",
+      gate: "user",
       handler: "charactercreate",
     } satisfies YorickRouteMeta,
   },
@@ -380,7 +410,7 @@ export const routes: RouteRecordRaw[] = [
       pattern: "character/:cid/print",
       pageId: "printable-sheet",
       title: "Printable Sheet",
-      gate: "none",
+      gate: "user",
       handler: "characterprint",
     } satisfies YorickRouteMeta,
   },
@@ -392,7 +422,7 @@ export const routes: RouteRecordRaw[] = [
       pattern: "character/:cid/costs",
       pageId: "character-costs",
       title: "Character Costs",
-      gate: "none",
+      gate: "user",
       handler: "charactercosts",
     } satisfies YorickRouteMeta,
   },
@@ -404,7 +434,7 @@ export const routes: RouteRecordRaw[] = [
       pattern: "character/:cid/log/:start/:changeBy",
       pageId: "character-log",
       title: "Character Log",
-      gate: "none",
+      gate: "user",
       handler: "characterlog",
     } satisfies YorickRouteMeta,
   },
@@ -416,7 +446,7 @@ export const routes: RouteRecordRaw[] = [
       pattern: "character/:cid/history/:id",
       pageId: "character-history",
       title: "Character History",
-      gate: "none",
+      gate: "user",
       handler: "characterhistory",
     } satisfies YorickRouteMeta,
   },
@@ -428,7 +458,7 @@ export const routes: RouteRecordRaw[] = [
       pattern: "character/:cid/portrait",
       pageId: "character-portrait",
       title: "Profile",
-      gate: "none",
+      gate: "user",
       handler: "characterportrait",
     } satisfies YorickRouteMeta,
   },
@@ -524,7 +554,8 @@ export const routes: RouteRecordRaw[] = [
       pattern: "character/:cid/approval",
       pageId: "character-approval",
       title: "Character Approval",
-      gate: "none",
+      requiresReadableCharacter: true,
+      gate: "user",
       handler: "characterapproval",
     } satisfies YorickRouteMeta,
   },
@@ -536,7 +567,7 @@ export const routes: RouteRecordRaw[] = [
       pattern: "character/:cid/rename",
       pageId: "character-rename",
       title: "Rename Character",
-      gate: "none",
+      gate: "user",
       handler: "characterrename",
     } satisfies YorickRouteMeta,
   },
@@ -548,7 +579,7 @@ export const routes: RouteRecordRaw[] = [
       pattern: "character/:cid/approved",
       pageId: "character-print-no-approval",
       title: "Print Approval",
-      gate: "none",
+      gate: "user",
       handler: "character_show_approved",
     } satisfies YorickRouteMeta,
   },
@@ -560,7 +591,7 @@ export const routes: RouteRecordRaw[] = [
       pattern: "character/:cid/extendedprinttext",
       pageId: "extended-print-text",
       title: "Additional Printed Text",
-      gate: "none",
+      gate: "user",
       handler: "character_extended_print_text",
     } satisfies YorickRouteMeta,
   },
@@ -572,7 +603,7 @@ export const routes: RouteRecordRaw[] = [
       pattern: "character/:cid/backgroundlt",
       pageId: "long-text",
       title: "Long Text",
-      gate: "none",
+      gate: "user",
       handler: "character_background_long_text",
     } satisfies YorickRouteMeta,
   },
@@ -584,7 +615,7 @@ export const routes: RouteRecordRaw[] = [
       pattern: "character/:cid/noteslt",
       pageId: "long-text",
       title: "Long Text",
-      gate: "none",
+      gate: "user",
       handler: "character_notes_long_text",
     } satisfies YorickRouteMeta,
   },
@@ -596,7 +627,7 @@ export const routes: RouteRecordRaw[] = [
       pattern: "character/:cid/experience/:start/:changeBy",
       pageId: "experience-notations-all",
       title: "Experience Notations",
-      gate: "none",
+      gate: "user",
       handler: "characterexperience",
     } satisfies YorickRouteMeta,
   },
@@ -812,7 +843,7 @@ export const routes: RouteRecordRaw[] = [
       pattern: "administration/user/:id",
       pageId: "administration-user-view",
       title: "User View",
-      gate: "user",
+      gate: "admin-silent",
       handler: "administration_user",
     } satisfies YorickRouteMeta,
   },
@@ -824,7 +855,7 @@ export const routes: RouteRecordRaw[] = [
       pattern: "administration/patronages/user/:id",
       pageId: "administration-user-patronages-view",
       title: "Patronages",
-      gate: "admin",
+      gate: "admin-silent",
       handler: "administration_user_patronages",
     } satisfies YorickRouteMeta,
   },
