@@ -104,6 +104,7 @@
     "verify:routes": "node web/scripts/verify-route-parity.mjs",
     "migration:status": "node web/scripts/migration-status.mjs",
     "compare:dom": "node web/scripts/compare-dom.mjs",
+    "test:e2e:react": "node e2e/run-react.js",
     "generate:venues": "node web/scripts/generate-venue-data.mjs"
   }
 }

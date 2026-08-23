@@ -5,10 +5,14 @@ the same Parse server as the existing app, and it is meant to be
 indistinguishable from it: same screens, same URLs, same markup, same
 stylesheet.
 
-Until it reaches parity, both front ends exist side by side and neither
-disturbs the other. `dist/` still holds the committed build of the legacy app,
-which is what Netlify deploy previews serve; the React app builds to
-`dist-react/`.
+All 75 of the legacy router's handlers are ported, and 55 of 59 checked screens
+match the legacy DOM exactly; the other four differ for reasons written down
+below and in the screens themselves. What is left before the flip is the
+Playwright suite -- see `e2e-parity-plan.md`.
+
+Until then both front ends exist side by side and neither disturbs the other.
+`dist/` still holds the committed build of the legacy app, which is what Netlify
+deploy previews serve; the React app builds to `dist-react/`.
 
 ## Running both
 
@@ -97,14 +101,18 @@ npm run migration:status
 ```
 
 Counts registered screens against the legacy router's 75 routed handlers and
-lists what remains, grouped by the page it renders.
+lists what remains, grouped by the page it renders. It also checks every legacy
+view file for a React screen that names it, which is a different question from
+the handler count and catches what the handler count cannot: `simpletraits`
+dispatches to two views on one route, so it read as ported while 368 lines of
+`SimpleTraitNewView.js` had no counterpart at all.
 
 Beyond those, the real safety net is the existing Playwright suite: 24,386 lines
 across 21 spec files. Its jQuery Mobile coupling is concentrated in
 `e2e/helpers/jqm-helpers.js` and `e2e/helpers/popup-trace.js` rather than spread
 through the specs, and the React screens keep the page ids and `ui-page-active`
 that those helpers wait on. Pointing the suite at the React app is the parity
-gate, and it has not been done yet.
+gate, and it is what remains -- see `e2e-parity-plan.md`.
 
 ## Adding a screen
 
@@ -112,7 +120,9 @@ gate, and it has not been done yet.
    handler; `web/src/router/screenMap.ts` names the page id and the arguments.
 2. Write the component in `web/src/screens/`, rendering a `<Page>` with that
    page id. Keep every id and class the E2E suite selects on.
-3. Register it in `web/src/screens/index.ts` under the legacy handler name.
+3. End the file with `registerScreen('<handler>', Component)`. `index.ts` globs
+   the directory, so there is no shared list to edit and no conflict with
+   whoever is writing the screen next to yours.
 4. `npm run compare:dom -- "#the/url"` until it matches.
 
 The generated files -- `routeTable.ts`, `screenMap.ts`, `pageTitles.ts` -- are

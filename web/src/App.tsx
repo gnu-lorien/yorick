@@ -9,6 +9,7 @@ import { titleFor } from '@/router/pageTitles';
 import { useSession, useLogOut, type Session } from '@/parse/session';
 import { useBackTarget } from '@/shell/backButton';
 import { errorRegionOnNavigate } from '@/shell/reportError';
+import { useScreenGeneration } from '@/shell/testBridge';
 import { screenFor } from '@/screens/registry';
 import { NotMigrated, NoRoute } from '@/screens/NotMigrated';
 import { LoginScreen } from '@/screens/Login';
@@ -40,6 +41,9 @@ const PUBLIC_HANDLERS = new Set(['signup', 'about', 'privacy_policy', 'resetpass
 export function App() {
   const route = useHashRoute();
   const session = useSession();
+  // Bumped only by the E2E bridge, to remount a screen without a navigation.
+  // See shell/testBridge.ts.
+  const generation = useScreenGeneration();
 
   // Tell the error banner where we are. A failure that redirects must carry its
   // message to wherever the user lands, or the message is never read; the next
@@ -77,7 +81,15 @@ export function App() {
 
   return (
     <Shell session={session} pageId={pageId}>
-      {Screen ? <Screen route={route} /> : <NotMigrated route={route} />}
+      {Screen ? (
+        // Keyed on the generation ALONE, not on the fragment. Keying on the
+        // fragment too would remount every screen on every navigation, which
+        // is a real behaviour change -- moving between two characters would
+        // stop reusing the mounted sheet -- smuggled in under a test hook.
+        <Screen key={generation} route={route} />
+      ) : (
+        <NotMigrated route={route} />
+      )}
     </Shell>
   );
 }

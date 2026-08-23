@@ -575,7 +575,7 @@ async function readTraits(page, characterId, category, venue = 'Vampire') {
   const { module } = resolveVenue(venue);
   return runInApp(page, [module], `
     return mods[0].get_character(arg.id, [arg.category]).then(function (c) {
-      return _.map(c.get(arg.category) || [], function (t) {
+      return (c.get(arg.category) || []).map(function (t) {
         return {
           id: t.id,
           name: t.get("name"),
@@ -594,8 +594,8 @@ async function readCharacterTexts(page, characterId, venue = 'Vampire') {
   return runInApp(page, [module], `
     return mods[0].get_character(arg.id, []).then(function (c) {
       var out = {};
-      _.each(c.all_text_attributes(), function (t) {
-        out[t] = _.isUndefined(c.get(t)) ? null : c.get(t);
+      c.all_text_attributes().forEach(function (t) {
+        out[t] = c.get(t) === undefined ? null : c.get(t);
       });
       return out;
     });
@@ -617,11 +617,11 @@ async function readCreation(page, characterId, venue = 'Vampire') {
       return c.fetch_all_creation_elements().then(function () {
         var cr = c.get("creation");
         var out = {};
-        _.each(_.keys(cr.attributes), function (k) {
+        Object.keys(cr.attributes).forEach(function (k) {
           var v = cr.get(k);
-          if (_.isArray(v)) { out[k] = v.length; }
-          else if (_.isDate(v)) { out[k] = v.toISOString(); }
-          else if (_.isObject(v) && v.id) { out[k] = v.id; }
+          if (Array.isArray(v)) { out[k] = v.length; }
+          else if (v instanceof Date) { out[k] = v.toISOString(); }
+          else if (v && typeof v === 'object' && v.id) { out[k] = v.id; }
           else { out[k] = v; }
         });
         return out;
@@ -636,7 +636,7 @@ async function readInClanDisciplines(page, characterId) {
     return mods[0].get_character(arg.id, "all").then(function (c) {
       return {
         clan: c.get("clan") || null,
-        inClan: _.without(c.get_in_clan_disciplines(), undefined),
+        inClan: c.get_in_clan_disciplines().filter(function (d) { return d !== undefined; }),
         generation: c.generation(),
         hasGeneration: c.has_generation()
       };
@@ -659,7 +659,7 @@ async function readAffinities(page, characterId) {
         breed: c.get("wta_breed") || null,
         auspice: c.get("wta_auspice") || null,
         tribe: c.get("wta_tribe") || null,
-        affinities: _.without(c.get_affinities(), undefined)
+        affinities: c.get_affinities().filter(function (a) { return a !== undefined; })
       };
     });
   `, { id: characterId });
@@ -681,7 +681,7 @@ async function readArtAffinities(page, characterId) {
     return mods[0].get_character(arg.id, "all").then(function (c) {
       return {
         kith: c.get("ctdbs_kith") || null,
-        affinities: _.without(c.get_arts_affinities(), undefined)
+        affinities: c.get_arts_affinities().filter(function (a) { return a !== undefined; })
       };
     });
   `, { id: characterId });

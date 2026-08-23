@@ -616,7 +616,7 @@ test.describe('Task 12b - Werewolf lifecycle and dual audit log', () => {
 
     const categories = await runInApp(memberPage, ['app/models/Werewolf'], `
       return mods[0].get_character(arg.id, []).then(function (c) {
-        return _.map(c.all_simpletrait_categories(), function (e) { return e[0]; });
+        return c.all_simpletrait_categories().map(function (e) { return e[0]; });
       });
     `, { id: cid });
     expect(categories.length, 'the Werewolf model declares its categories').toBeGreaterThan(20);

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import './styles';
 import { installPrintStylesheet } from './styles';
 import { initParse } from './parse/init';
+import { installTestBridge } from './shell/testBridge';
 import { App } from './App';
 
 /**
@@ -36,6 +37,7 @@ const queryClient = new QueryClient({
 
 installPrintStylesheet();
 initParse();
+installTestBridge(queryClient);
 
 const container = document.getElementById('root');
 if (!container) throw new Error('#root is missing from index.html');

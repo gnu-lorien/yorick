@@ -300,7 +300,7 @@
 
 const { test, expect } = require('@playwright/test');
 const { loginAsAdmin } = require('./helpers/auth');
-const { navigateToHash, waitForActivePage, activePageId, normalize } = require('./helpers/jqm-helpers');
+const { navigateToHash, waitForActivePage, activePageId, normalize, runInApp } = require('./helpers/jqm-helpers');
 const {
   createCompletedCharacter,
   openCreation,
@@ -1523,15 +1523,15 @@ test.describe('Task 8c - Changeling Creation In The UI', () => {
     // purchase itself was free (test 236's defect).
     const seemingTrait = (await readTraits(page, cid, 'ctdbs_backgrounds', 'Changeling')).find((t) => t.name === XP_BACKGROUND_NAME);
     expect(seemingTrait).toMatchObject({ name: XP_BACKGROUND_NAME, value: XP_BACKGROUND_VALUE });
-    const seeming = await page.evaluate((id) => {
-      return window.require ? new Promise((resolve, reject) => {
-        window.require(['app/models/ChangelingBetaSlice'], (Model) => {
-          Model.get_character(id, ['ctdbs_backgrounds']).then((c) => {
-            resolve({ seeming: c.seeming(), hasSeeming: c.has_seeming() });
-          }).fail(reject);
-        });
-      }) : null;
-    }, cid);
+    // Through `runInApp` rather than a hand-rolled `window.require`, so this
+    // reaches the models on either front end. The defensive `window.require ?
+    // ... : null` this replaced returned null on any app without RequireJS,
+    // which is an assertion that silently stops asserting.
+    const seeming = await runInApp(page, ['app/models/ChangelingBetaSlice'], `
+      return mods[0].get_character(arg.id, ['ctdbs_backgrounds']).then(function (c) {
+        return { seeming: c.seeming(), hasSeeming: c.has_seeming() };
+      });
+    `, { id: cid });
     expect(seeming).toEqual({ seeming: XP_BACKGROUND_VALUE, hasSeeming: true });
 
     // Also passes: "Seeming" is listed on the live sheet under Backgrounds,
