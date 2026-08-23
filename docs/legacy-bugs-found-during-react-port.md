@@ -681,51 +681,69 @@ do, and then the React screen wants the same treatment the wizard got.
 
 ---
 
-## 18. The patronage list loses its rounded ends the same way #16's roster did
+## 18. Seven more lists lose their rounded ends, the same way #16's roster did
 
-**`public/scripts/app/views/PatronagesView.js`, rendering into
-`public/scripts/app/templates/user-settings-profile.html:14`**
+Swept after #16's fix landed, by asking one question of every list in the app:
+does anything write `<li>`s into a `data-role="listview"` after jQuery Mobile has
+enhanced it, without re-enhancing?
 
-Found after #16's fix landed, by the DOM comparison: `#profile` matches on its
-own and differs when the harness has already visited another screen in the same
-browser page.
+**`CharactersListView.js` is the only view in the app that gets this right**, and
+only because #16 fixed it. Seven others do not.
 
-The markup is an enhanced list:
+### The five patronage lists
 
-```html
-<ul id="usp-patronage-list" data-role="listview" data-inset="true" ...>
-```
+All five are a `Marionette.CollectionView` bound straight to an enhanced `<ul>`.
+A CollectionView appends its own children, so the rows arrive with nothing
+touching the list afterwards and never receive `ui-first-child` /
+`ui-last-child` — the classes that round the top and bottom of an inset list.
 
-and `PatronagesView` is a `Marionette.CollectionView` bound straight to it
-(`UserSettingsProfileView.js:160`, `el: "#usp-patronage-list"`). A CollectionView
-appends its children itself, so the rows arrive without anything re-enhancing
-the list — exactly #16, in a view #16's fix did not touch.
+| Where | The list |
+|---|---|
+| `views/UserSettingsProfileView.js:160` | `#usp-patronage-list` — Patronage on `#profile` |
+| `views/AdministrationUserView.js:162` | `#patronage-list` — the admin user detail page |
+| `routers/mobileRouter.js:985` | `#administration-user-patronages-list` |
+| `routers/mobileRouter.js:1020` | `#administration-patronages-view-list` |
+| `routers/mobileRouter.js:1055` | `#administration-patronages-view-csv-list` (`PatronagesCSVView`) |
 
-The timing is the same too, and it is why this looks intermittent: the first
-visit to `#profile` writes its rows before `pagecreate`, so jQuery Mobile
-enhances them along with the rest of the page and they get `ui-first-child` /
-`ui-last-child`. Any later visit renders into an already-enhanced `<ul>` and the
-rows come out bare.
+Four of the five `<ul>`s are declared in `index.html` (lines 941, 969, 981, 989),
+so they are enhanced once at `pagecreate` and every row that arrives afterwards
+is bare. The fifth, `#usp-patronage-list`, lives in
+`templates/user-settings-profile.html` and is created per render, so whether it
+looks right is a race between the patronage fetch and the page enhancement —
+which is why `#profile` compares clean sometimes and not others.
 
-**Fix:** the same guarded call #16 took, after the collection has rendered:
+### The two filterable rosters
+
+`views/CharactersSummarizeListView.js:121` and
+`views/CharactersSelectToPrintView.js:120` both *do* call something — but they
+call `enhanceWithin()`, and `enhanceWithin` skips an element that is already
+enhanced. Their `<ul>` is the CollectionView's own element, enhanced on the
+first render and never again, while `filterwith` replaces every row through
+`collection.reset(...)` (`:353` and `:307`).
+
+So these two look right until the reader changes a filter, and lose their
+rounded ends from the first change onwards. That is the same distinction #16's
+fix records: `refresh` re-walks the rows, `enhanceWithin` does not.
+
+### The fix, everywhere
+
+The guarded call #16 took, after the rows are in:
 
 ```js
-var $list = this.$el;
 if ($list.data("mobile-listview")) {
     $list.listview("refresh");
 }
 ```
 
-The guard is not optional — the first render happens before the page is
-enhanced, and the widget bridge throws if the widget does not exist yet.
-
-**Worth a sweep rather than a spot fix.** #16 and #18 are the same defect in two
-of the app's Marionette lists; whatever else renders into a `data-role="listview"`
-after `pagecreate` has the same problem.
+The guard is not optional. The first render can happen before the page is
+enhanced, and the widget bridge throws "cannot call methods on listview prior to
+initialization" if the widget does not exist yet.
 
 **In the React port:** React always emits the position classes, which is what
-the legacy does on a first visit. `web/src/screens/Profile.tsx` carries a
-`@compare-known` marker for this.
+the legacy does on a first render. `web/src/screens/Profile.tsx` carries the one
+`@compare-known` marker, for `#usp-patronage-list`. The other six do not need
+one: four are on screens the comparison harness reaches cold, and the two
+rosters are only wrong after a filter change, which the harness does not make.
 
 ---
 
@@ -767,7 +785,7 @@ be the live path is how the above happened — but it is a tidy-up, not a defect
 5. **#14** — one line to delete, on a screen built to show what changed.
 6. **#16** — one call to add, on the screen players use most.
 7. **#17** — three assignments, on a convenience players notice every time.
-8. **#18** — with #16, as one sweep of the Marionette lists.
+8. **#18** — seven lists, one shared fix. #16 already did the eighth.
 9. **#15** and **#12** — before either list grows past 100.
 10. **#9**, **#2**, **#10** — tidy-ups with no user-visible effect today.
 11. **#6** and **#13** — decide whether they are defects at all before touching

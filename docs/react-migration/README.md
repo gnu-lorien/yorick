@@ -162,10 +162,12 @@ any change to `mobileRouter.js` or `index.html`; do not edit them by hand.
 Eighteen, catalogued in `docs/legacy-bugs-found-during-react-port.md`. Entries
 #0-#17 are **fixed on main** -- see `docs/legacy-bugs-fixed.md` -- and the port
 has followed each of them across, so the two front ends agree again. Only #18 is
-still open: the patronage list on `#profile` loses its position classes on any
-visit but the first, which is #16's defect in a Marionette list #16's fix did
-not reach. `web/src/screens/Profile.tsx` carries the one remaining
-`@compare-known` marker for it.
+still open, and it is seven lists rather than one: a sweep after #16's fix found
+that `CharactersListView` is the only view in the app that re-enhances a listview
+after writing rows into it. The five patronage lists and the two filterable
+rosters do not. `web/src/screens/Profile.tsx` carries the one remaining
+`@compare-known` marker, for the only one of the seven the comparison harness
+can see.
 
 The port used to diverge deliberately in two places -- the start page's troupe
 shortcuts, which the legacy rendered empty, and the profile page's dead Facebook
