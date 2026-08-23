@@ -96,5 +96,10 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     include: ['src/**/*.spec.ts'],
+    /*
+     * Every spec runs on the app's Parse configuration rather than the SDK's
+     * defaults, which are the opposite on all four counts. See the file.
+     */
+    setupFiles: ['src/testing/vitest.setup.ts'],
   },
 } as any)

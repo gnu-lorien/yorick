@@ -302,7 +302,7 @@ describe('the object state controller and unsaved edits', () => {
       })
     })
 
-    it('unfetches the child (single instance OFF) -- the wrap this port lacks', () => {
+    it('keeps the child fetched (single instance OFF, via the re-attach wrap)', () => {
       underSingleInstance(false, () => {
         const character = withFetchedChild('sav2')
         expect(character.get('creation').get('remaining_skills')).toBe(3)
@@ -310,15 +310,54 @@ describe('the object state controller and unsaved edits', () => {
         applySaveResponse(character)
 
         /*
-         * If this assertion ever starts failing, a re-attach wrap has been
-         * added and this test should be inverted rather than deleted -- the
-         * point is to pin WHICH behaviour is in force, because the editing flow
-         * reads through exactly this pointer after a save.
+         * Per-object state alone would leave this undefined -- that is what the
+         * SDK does, and it is what this test asserted before
+         * `installSaveReattachment` existed. The wrap is the only reason the
+         * editing flow survives, so this is the test that guards it.
          */
         expect(
           character.get('creation').get('remaining_skills'),
-          'per-object state drops the fetched child unless the save response is re-attached',
-        ).toBeUndefined()
+          'the save response must not unfetch a child already loaded',
+        ).toBe(3)
+        expect(character.get('creation').get('completed')).toBe(false)
+      })
+    })
+
+    it('keeps ARRAY-valued children fetched, which is how this first showed up', () => {
+      /*
+       * The measured symptom on the Backbone client
+       * (`parse-compat/events.js:385`): saving one attribute change on a
+       * completed Vampire left `attributes` holding three DATALESS
+       * SimpleTraits, so the listing rendered three rows of " x" and the next
+       * `update_trait` could not find the trait it was handed.
+       *
+       * Array columns are the common case in this app -- every trait category
+       * is one -- so they get their own test rather than riding on the scalar.
+       */
+      underSingleInstance(false, () => {
+        const character = fetched('Vampire', 'sav3', {
+          attributes_physical: [
+            { __type: 'Object', className: 'SimpleTrait', objectId: 't1', name: 'Strength', value: 3 },
+            { __type: 'Object', className: 'SimpleTrait', objectId: 't2', name: 'Dexterity', value: 2 },
+          ],
+        })
+
+        ;(
+          character as unknown as { _handleSaveResponse: (r: unknown, s: number) => void }
+        )._handleSaveResponse(
+          {
+            updatedAt: '2026-08-23T00:00:00.000Z',
+            attributes_physical: [
+              { __type: 'Pointer', className: 'SimpleTrait', objectId: 't1' },
+              { __type: 'Pointer', className: 'SimpleTrait', objectId: 't2' },
+            ],
+          },
+          200,
+        )
+
+        const traits = character.get('attributes_physical') as Parse.Object[]
+        expect(traits.map((t) => t.get('name'))).toEqual(['Strength', 'Dexterity'])
+        expect(traits.map((t) => t.get('value'))).toEqual([3, 2])
       })
     })
   })
