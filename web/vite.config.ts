@@ -1,6 +1,34 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+
+/**
+ * The assets the app names as bare runtime strings rather than importing.
+ *
+ * There is exactly one, and it is the portrait fallback every listing reaches
+ * for: `thumbnailUrl` returns `"head_skull.png"` when a character, troupe or
+ * referendum has no portrait. A string is not an import, so the bundler cannot
+ * see it, and without this the build is not self-contained -- which is why the
+ * E2E harness mounts `public/` behind it (PUBLIC_FALLBACK in index.js).
+ *
+ * Everything else resolves already: the jQuery Mobile icons are inlined as
+ * data URIs, and the logo is a real import. `public/css/vis.css` names
+ * `img/network/*.png`, which do not exist anywhere in this repository -- they
+ * 404 in the legacy app too -- so they are not copied and not missed.
+ */
+const RUNTIME_ASSETS = ['head_skull.png'];
+
+function copyRuntimeAssets(from: string): Plugin {
+  return {
+    name: 'yorick-runtime-assets',
+    generateBundle() {
+      for (const name of RUNTIME_ASSETS) {
+        this.emitFile({ type: 'asset', fileName: name, source: readFileSync(resolve(from, name)) });
+      }
+    },
+  };
+}
 
 /**
  * The React front end.
@@ -18,7 +46,7 @@ import { resolve } from 'node:path';
  */
 export default defineConfig({
   root: __dirname,
-  plugins: [react()],
+  plugins: [react(), copyRuntimeAssets(resolve(__dirname, '../public'))],
   resolve: {
     alias: {
       // The jQuery Mobile stylesheet and its icon sprites are shared with the

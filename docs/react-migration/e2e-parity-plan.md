@@ -144,6 +144,48 @@ instead: "Available 30" in the experience table and "Morality Humanity" on the
 printed sheet both come from a newline in the template, and both are asserted by
 name.
 
+## The full run, both stacks
+
+Measured on a quiet machine at two workers, with the config's own reporters
+(passing `--reporter=list` on the command line REPLACES the reporter array, so
+no `runs/*.json` is written and `test:diff` has nothing to compare):
+
+```
+npm run test:diff -- runs/legacy.json runs/react.json
+
+    0  NEW-FAIL   regressions
+    0  new-pass   fixed, or baseline was flaky
+  449  same-pass
+    0  same-fail
+    0  added
+    0  removed
+    2  skipped
+    1  flaky
+```
+
+Legacy takes 13.9 minutes, React 6.3.
+
+An earlier four-worker run reported one test at 1.1 hours -- impossible against
+a 120-second per-test timeout, and the tell that the machine, not the app, was
+the problem: a dev server, a Vite server and two stale E2E backends were still
+running alongside four workers. Cleaned up and re-run, the same five specs were
+124/124. Treat any run with implausible per-test times as unmeasured.
+
+## One open flake, React only
+
+`troupes.spec.js` 140 -- "A stranger user not in the troupe cannot open the
+troupe roster" -- has flaked in both full React runs and in neither legacy run.
+It passes three times out of three when the file is run on its own at one
+worker, so it is load-dependent, and it recovers on Playwright's retry.
+
+The cause is not known, and three green repeats are not an explanation. What
+fails is `expect('#troupe .troupe-view-characters').toHaveCount(0)`, which
+retries for fifteen seconds -- so the storyteller-only "View Characters" link is
+present for a stranger for that whole window, which is a permissions-shaped
+symptom rather than a timing one. A stale React session is ruled out: the login
+helper's `logout()` does a full `page.goto('/')` and module state resets with
+it.
+
 ## Still to do
 
 - `popup-trace.js` hooks `app/views/CharacterExperienceView` through
@@ -151,4 +193,4 @@ name.
   hook in React. It is diagnostic-only and already guarded, so it degrades to a
   no-op rather than failing; rewriting it against the DOM is worth doing only if
   a popup timing problem actually appears on the React side.
-- A full clean run of both stacks, compared with `npm run test:diff`.
+- Finding out what troupes 140 is actually doing.
