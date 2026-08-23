@@ -45,6 +45,23 @@ export const useUiStore = defineStore('ui', () => {
     if (pending.value === 0) loaderText.value = ''
   }
 
+  /**
+   * Re-label the spinner without claiming another unit of work.
+   *
+   * `$.mobile.loading("show", {text: ...})` mid-task was a RE-show, not a
+   * nested one: it replaced the label and left the count alone. Calling
+   * `beginWork` for it instead -- which `CharacterNewPage` did -- incremented
+   * `pending` with nothing to ever decrement it, so the spinner stayed up for
+   * the rest of the session.
+   *
+   * That was invisible while the spinner had no CSS to show it and the E2E
+   * helper could not detect it. Once both were fixed it turned every later
+   * `waitForJqmLoader` into a full timeout.
+   */
+  function progress(text: string) {
+    if (text) loaderText.value = text
+  }
+
   /** Run an async task with the spinner up, releasing it however it ends. */
   async function runWork<T>(task: () => Promise<T>, text = ''): Promise<T> {
     beginWork(text)
@@ -72,6 +89,7 @@ export const useUiStore = defineStore('ui', () => {
     errorMessage,
     beginWork,
     endWork,
+    progress,
     runWork,
     reportError,
     clearError,

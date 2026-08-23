@@ -54,7 +54,7 @@ async function create() {
       venueFor(type.value).create(name.value, {
         get_latest_patronage: getLatestPatronage,
         get_character: (id: string) => get_character(id) as never,
-        progress: (text: string) => ui.beginWork(text),
+        progress: (text: string) => ui.progress(text),
       } as never),
     )
     window.location.hash = `#character?${(character as { id?: string }).id}`
