@@ -54,9 +54,31 @@ async function waitForAppReady(page, timeout = DEFAULT_TIMEOUT) {
   }, { timeout });
 }
 
-/** Wait for the jQuery Mobile loading spinner to clear. */
+/**
+ * Wait for the jQuery Mobile loading spinner to clear.
+ *
+ * `ui-loading` on `<html>` is the authoritative signal, and it is the same one
+ * in both front ends: jQuery Mobile's `$.mobile.loading` toggles it
+ * (jquery.mobile-1.4.5.js:1494) and `JqmLoader.vue` toggles it. It has to be a
+ * class on the root rather than anything about the spinner element, because the
+ * stylesheet's only rule that reveals the spinner is `.ui-loading .ui-loader`.
+ *
+ * The element checks below it are kept as a fallback, but one of them was
+ * silently disabling this whole helper: `.ui-loader` is `position: fixed`
+ * (themes/default/jquery.mobile-1.4.5.min.css), and a fixed element's
+ * `offsetParent` is ALWAYS null -- so `loader.offsetParent === null` read as
+ * "cleared" the entire time the spinner was on screen, and every call here
+ * returned on its first poll. The suite has therefore never actually waited for
+ * a request to finish; it has been racing the app and winning on timing.
+ *
+ * That surfaced on troupe creation against the Vue client: the helper returned
+ * while the form was still saving, the next navigation read an empty directory,
+ * and the form's own redirect then landed on top of the page the navigation was
+ * waiting for.
+ */
 async function waitForJqmLoader(page, timeout = 15000) {
   await page.waitForFunction(() => {
+    if (document.documentElement.classList.contains('ui-loading')) return false;
     const loader = document.querySelector('.ui-loader');
     if (!loader) return true;
     const style = window.getComputedStyle(loader);

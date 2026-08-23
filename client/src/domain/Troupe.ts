@@ -79,6 +79,42 @@ export function createTroupe(attributes?: Record<string, unknown>): Troupe {
   return troupe
 }
 
+/**
+ * The columns the directory listing reads, and no more.
+ *
+ * This query runs for every user who opens the directory, so selecting more
+ * would hand every player the full contents of every troupe record.
+ */
+const LIST_FIELDS = ['id', 'name', 'portrait', 'shortdescription', 'location', 'staffemail']
+
+/**
+ * Every troupe the caller can see, optionally narrowed.
+ *
+ * `narrow` is `TroupesListView.register`'s second argument: the three
+ * pick-a-troupe screens passed a function that constrained `objectId` to (or
+ * away from) the character's own membership.
+ *
+ * This lives here rather than in the list component because the component
+ * renders inside a page whose `ready` gate is what decides when the page goes
+ * live -- so a component that fetched on mount could never report the result
+ * that ungates it. See the note on `ready` in `JqmPage.vue`.
+ */
+export async function fetchTroupeList(
+  narrow?: (query: Parse.Query) => void,
+): Promise<Troupe[]> {
+  const query = new Parse.Query('Troupe')
+  query.select(...LIST_FIELDS)
+  query.include('portrait')
+  narrow?.(query)
+  const found: Troupe[] = []
+  // `each` rather than `find`: it pages the whole class with no limit, which is
+  // what the original relied on to list every troupe.
+  await query.each((t) => {
+    found.push(t as Troupe)
+  })
+  return found
+}
+
 /** One staff member as `get_troupe_staff` returns them. */
 export interface TroupeStaffMember extends Parse.User {
   /** The title the Cloud function attached; not a stored column. */
@@ -106,6 +142,85 @@ export async function getTroupeStaff(troupe: Troupe): Promise<TroupeStaffMember[
     staff: TroupeStaffMember[]
   }
   return payload.staff
+}
+
+/**
+ * Create a troupe's three staff roles and give the troupe over to its LST.
+ *
+ * `TroupeNewView.js` did this inline in a submit handler, in four chained saves.
+ * The order and the ACLs are exactly the source's, because they are the whole
+ * permission model for a troupe and nothing else writes them:
+ *
+ *  1. `LST_<id>`, `AST_<id>` and `Narrator_<id>` are minted. Each is
+ *     world-readable, writable by nobody, and additionally read/write by
+ *     Administrator -- and each contains the Administrator role, so an
+ *     administrator IS a member of every troupe role.
+ *  2. The nesting widens as it goes down: AST's ACL also grants LST, and
+ *     Narrator's grants both LST and AST. So an LST can edit the AST roster and
+ *     the narrator roster; an AST can edit only the narrator roster.
+ *  3. The three are saved BEFORE they are nested inside each other, because a
+ *     `Parse.Role` cannot contain an unsaved role -- which is why there are two
+ *     `saveAll` calls over the same three objects rather than one.
+ *  4. Finally the troupe's own ACL gains LST read AND write. Until that last
+ *     save the troupe is writable only by Administrators; this is what hands it
+ *     to its head storyteller.
+ *
+ * A role is a `_Role` row, and `_Role` is not client-writable in a locked-down
+ * Parse Server -- so this whole cascade only succeeds for an administrator. The
+ * source's failure branch (log it and go to `#administration`) is preserved at
+ * the call site.
+ */
+export async function provisionTroupeRoles(troupe: Troupe): Promise<Troupe> {
+  const adminQuery = new Parse.Query(Parse.Role)
+  adminQuery.equalTo('name', 'Administrator')
+  const adminRole = await adminQuery.first()
+
+  const base = () => {
+    const acl = new Parse.ACL()
+    acl.setPublicReadAccess(true)
+    acl.setPublicWriteAccess(false)
+    acl.setRoleReadAccess('Administrator', true)
+    acl.setRoleWriteAccess('Administrator', true)
+    return acl
+  }
+
+  const lstAcl = base()
+  const lstRole = new Parse.Role('LST_' + troupe.id, lstAcl)
+
+  const astAcl = base()
+  astAcl.setRoleReadAccess(lstRole, true)
+  astAcl.setRoleWriteAccess(lstRole, true)
+  const astRole = new Parse.Role('AST_' + troupe.id, astAcl)
+
+  const narratorAcl = base()
+  narratorAcl.setRoleReadAccess(lstRole, true)
+  narratorAcl.setRoleWriteAccess(lstRole, true)
+  narratorAcl.setRoleReadAccess(astRole, true)
+  narratorAcl.setRoleWriteAccess(astRole, true)
+  const narratorRole = new Parse.Role('Narrator_' + troupe.id, narratorAcl)
+
+  /*
+   * `adminRole` can be undefined -- the query is a `first()`. Parse 1.5's
+   * `relation.add(undefined)` was a silent no-op; the modern SDK throws. The
+   * guard keeps a database with no Administrator role from turning troupe
+   * creation into a TypeError, which is what the source did.
+   */
+  if (adminRole) {
+    for (const role of [lstRole, astRole, narratorRole]) role.getRoles().add(adminRole)
+  }
+
+  await Parse.Object.saveAll([lstRole, astRole, narratorRole])
+
+  astRole.getRoles().add(lstRole)
+  narratorRole.getRoles().add([lstRole, astRole])
+  await Parse.Object.saveAll([lstRole, astRole, narratorRole])
+
+  const acl = troupe.getACL()
+  if (acl) {
+    acl.setRoleReadAccess(lstRole, true)
+    acl.setRoleWriteAccess(lstRole, true)
+  }
+  return (await troupe.save()) as Troupe
 }
 
 /** The three role lookups, keyed by title. A title with no role maps to `undefined`. */
