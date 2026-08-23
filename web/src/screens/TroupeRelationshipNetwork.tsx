@@ -10,6 +10,7 @@ import { Parse } from '@/parse/init';
 import { Character } from '@/parse/models/Character';
 import { Troupe } from '@/parse/models/Troupe';
 import { loadVis, NETWORK_OPTIONS, type VisEdge, type VisNetwork, type VisNode } from '@/vis/loadVis';
+import { reportNetworkView } from '@/shell/testBridge';
 import { registerScreen, type ScreenProps } from './registry';
 
 /**
@@ -101,11 +102,29 @@ export function TroupeRelationshipNetwork({ route }: ScreenProps) {
     );
     networkRef.current = network;
     network.on('selectNode', (params) => setSelected(params.nodes));
+
+    // Published for the E2E suite, which has nowhere else to look: vis.js draws
+    // into a canvas, so the graph is not in the DOM at all. The legacy suite
+    // reads the same three fields off the router's memoised view. See
+    // shell/testBridge.ts.
+    reportNetworkView({ data: { nodes: data.nodes, edges: data.edges }, network, selected_nodes: [] });
+
     return () => {
+      reportNetworkView(null);
       network.destroy();
       networkRef.current = null;
     };
   }, [data]);
+
+  // `selected_nodes` on the published view, kept in step with the selection.
+  useEffect(() => {
+    if (!networkRef.current) return;
+    reportNetworkView({
+      data: { nodes: data?.nodes ?? [], edges: data?.edges ?? [] },
+      network: networkRef.current,
+      selected_nodes: selected,
+    });
+  }, [selected, data]);
 
   /**
    * Join the selected nodes up.

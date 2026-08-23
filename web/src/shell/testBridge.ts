@@ -26,6 +26,10 @@ import { requireModules } from './e2eModelApi';
  *   `.ui-loader` `position: fixed`, so `offsetParent` is null whether it is
  *   showing or not, and every such check quietly passes. This answers the
  *   question directly -- any tracked work, any query in flight.
+ * - `tcrnv` is the relationship network's live state. It is the one screen with
+ *   nothing in the DOM to assert against -- vis.js draws into a canvas -- so
+ *   the suite reads the graph from the view, and on the legacy side it does
+ *   that through the router's memoised `tcrnv`. Same three fields, same name.
  * - `require` answers the module names the suite's `runInApp` asks for. That is
  *   how it does fixture setup and assertion read-back -- through the app's own
  *   models rather than the UI -- and `e2eModelApi.ts` says why it keeps the
@@ -42,6 +46,7 @@ export interface YorickTestBridge {
   redispatch(): void;
   hardReset(): void;
   busy(): boolean;
+  tcrnv: NetworkView | null;
   require(
     names: string[],
     callback: (...mods: unknown[]) => void,
@@ -53,6 +58,20 @@ let generation = 0;
 const listeners = new Set<() => void>();
 let queryClient: QueryClient | null = null;
 let loadingCount = 0;
+
+/** What the relationship network publishes for the E2E suite. See `tcrnv`. */
+export interface NetworkView {
+  data: { nodes: unknown[]; edges: unknown[] };
+  network: unknown;
+  selected_nodes: string[];
+}
+
+let bridge: YorickTestBridge | null = null;
+
+/** Called by the relationship network on mount, and with null on unmount. */
+export function reportNetworkView(view: NetworkView | null): void {
+  if (bridge) bridge.tcrnv = view;
+}
 
 /** The spinner's nesting count, reported by LoadingProvider. See `busy`. */
 export function reportLoading(count: number): void {
@@ -92,7 +111,7 @@ export function useScreenGeneration(): number {
  */
 export function installTestBridge(client: QueryClient): void {
   queryClient = client;
-  const bridge: YorickTestBridge = {
+  bridge = {
     react: true,
     redispatch() {
       void queryClient?.invalidateQueries();
@@ -103,6 +122,7 @@ export function installTestBridge(client: QueryClient): void {
       bump();
     },
     busy: () => loadingCount > 0 || (queryClient?.isFetching() ?? 0) > 0,
+    tcrnv: null,
     require: requireModules,
   };
   (window as unknown as { __yorick: YorickTestBridge }).__yorick = bridge;

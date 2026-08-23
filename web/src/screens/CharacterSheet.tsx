@@ -45,9 +45,16 @@ import { registerScreen, type ScreenProps } from './registry';
  * for the changeling -- with that single wrapper id the only difference.
  */
 export function CharacterSheet({ route }: ScreenProps) {
-  // `character?:id` puts the id in a named slot, not the query string: the "?"
-  // in that pattern is literal. See router/backboneRoutes.ts.
-  const id = route.named['id'] ?? route.named['cid'] ?? '';
+  // Which slot holds the character depends on the route, and `cid` has to win.
+  //
+  //   character?:id                  id  -- the "?" is literal, not a query
+  //   administration/character/:id   id
+  //   troupe/:id/character/:cid      id is the TROUPE, cid is the character
+  //
+  // Reading `id` first sent the troupe's id to `loadCharacter`, which answered
+  // "Object not found" and bounced back to the roster -- so the troupe route
+  // could never open a sheet at all.
+  const id = route.named['cid'] ?? route.named['id'] ?? '';
   const backUrl = backUrlFor(route);
   useBackButton(backUrl);
 

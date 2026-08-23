@@ -5,6 +5,8 @@ import { useLoading } from '@/jqm/Loader';
 import { Parse } from '@/parse/init';
 import { useSession } from '@/parse/session';
 import { Troupe } from '@/parse/models/Troupe';
+import { loadCharacter } from '@/parse/character/load';
+import { joinTroupe } from '@/parse/character/troupeMembership';
 import { navigate } from '@/router/router';
 import { useBackButton } from '@/shell/backButton';
 import { showError } from '@/shell/reportError';
@@ -34,22 +36,18 @@ import { registerScreen, type ScreenProps } from './registry';
  * a long-lived singleton reused across routes -- and does not port, because
  * React mounts this component per navigation and re-renders from props.
  *
- * NOT YET PORTED, and the one behavioural gap here: `character_join_troupe`
- * renders the troupe but does not join it. The join is
- * `Character.join_troupe` (models/Character.js:1064), which is
- * `initialize_troupe_membership` plus `update_troupe_acls` -- a relation walk
- * followed by a rewrite of the character's ACL and every SimpleTrait and
- * ExperienceNotation it owns. That belongs on the Character model, not in a
- * screen, and web/src/parse/models/Character.ts does not have it yet. Until it
- * does, arriving at this URL shows the troupe without adding the character to
- * it. `character_show_troupe`, which is the same route minus the join, is
- * complete.
+ * `character_join_troupe` does the join before it renders, which is what makes
+ * it a different route from `character_show_troupe` rather than a synonym. The
+ * work is `Character.join_troupe` (models/Character.js:1064) --
+ * `initialize_troupe_membership` plus `update_troupe_acls`, a relation walk
+ * followed by a rewrite of the character's ACL and of every SimpleTrait and
+ * ExperienceNotation it owns -- and it lives in
+ * parse/character/troupeMembership.ts, not here.
  *
- * The two character routes also skip the `get_character(cid)` the handlers
- * open with. For `show` the fetched character is assigned and never used
- * (mobileRouter.js:1939-1943), so the only thing lost is that a character that
- * fails to load no longer redirects; `join` needs it, and will get it with the
- * join.
+ * `character_show_troupe` skips the `get_character(cid)` its handler opens
+ * with, because the fetched character is assigned and never used
+ * (mobileRouter.js:1939-1943); the only thing lost is that a character which
+ * fails to load no longer redirects. `join` genuinely needs it and does it.
  *
  * Only the writable URL is declared below. The read-only one was checked by
  * hand -- `#character/9cYrGGv2w3/troupe/qvtD2RxzGG/show` matches -- and is left
@@ -93,6 +91,18 @@ export function TroupeScreen({ route }: ScreenProps) {
         // what the page waits on.
         const loaded = await track(new Parse.Query(Troupe).get(troupeId));
         if (cancelled) return;
+
+        // The join, before the render. The handler's order is
+        // `get_character` -> fetch the troupe -> `join_troupe` -> show the
+        // page, and it matters: the page is the confirmation that the join
+        // happened, so it must not appear first.
+        if (handler === 'character_join_troupe' && characterId) {
+          const { character } = await track(loadCharacter(characterId));
+          if (cancelled) return;
+          await track(joinTroupe(character, loaded));
+          if (cancelled) return;
+        }
+
         setTroupe(loaded);
         setFields(fieldsOf(loaded));
       } catch (error) {
@@ -108,8 +118,15 @@ export function TroupeScreen({ route }: ScreenProps) {
         }
         // The character routes do redirect: `.fail(function () {
         // window.location.hash = "#character?" + cid; })` followed by
-        // `.fail(PromiseFailReport)` -- report, then leave.
-        showError(error, "Couldn't load the troupe");
+        // `.fail(PromiseFailReport)` -- report, then leave. A join that is
+        // refused lands here too, which is the behaviour: no page, and back to
+        // the character.
+        showError(
+          error,
+          handler === 'character_join_troupe'
+            ? "Couldn't join that troupe"
+            : "Couldn't load the troupe",
+        );
         navigate(`#character?${characterId}`);
       }
     })();
