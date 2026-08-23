@@ -174,17 +174,33 @@ running alongside four workers. Cleaned up and re-run, the same five specs were
 ## One open flake, React only
 
 `troupes.spec.js` 140 -- "A stranger user not in the troupe cannot open the
-troupe roster" -- has flaked in both full React runs and in neither legacy run.
-It passes three times out of three when the file is run on its own at one
-worker, so it is load-dependent, and it recovers on Playwright's retry.
+troupe roster" -- has failed on the first attempt of all three full React runs
+and of no legacy run. It always passes on the retry, and it has never been
+reproduced in isolation: 3/3 at one worker, and 3/3 more at two workers with the
+whole file repeated.
 
-The cause is not known, and three green repeats are not an explanation. What
-fails is `expect('#troupe .troupe-view-characters').toHaveCount(0)`, which
-retries for fifteen seconds -- so the storyteller-only "View Characters" link is
-present for a stranger for that whole window, which is a permissions-shaped
-symptom rather than a timing one. A stale React session is ruled out: the login
-helper's `logout()` does a full `page.goto('/')` and module state resets with
-it.
+What is established, and it rules out the easy explanations:
+
+- The login completes. The trace shows `loginAs` filling the form as
+  sampstranger and its `Parse.User.current().get('username') === 'sampstranger'`
+  wait resolving before the navigation.
+- The failure is not a race against rendering. `toHaveCount(0)` retries for
+  fifteen seconds and the log reads `33 x locator resolved to 1 element` -- the
+  storyteller-only link is present for that whole window.
+- The captured page snapshot says "Log Out devuser", which looks damning and is
+  not: the trace shows it was taken during the `afterAll` hook, which logs in as
+  devuser to clean up. The snapshot is later than the failure.
+- No `_User` write appears anywhere in the trace, so the start page's
+  storyteller recompute never changed the flag.
+- Instrumented at the point of the assertion, under the same two-worker load,
+  the answer is always `{username: sampstranger, st: false, ad: false, links: 0}`
+  -- which is the passing case, six times out of six.
+
+So the input to the decision (`session.storyteller || session.admin`) is right
+whenever it can be observed, and the cause of the failing case is not known.
+Both the "stale React session" and the "wrong user" theories are dead. It stays
+recorded rather than explained, and Playwright reports it as flaky rather than
+passing, so it cannot quietly disappear.
 
 ## Still to do
 
