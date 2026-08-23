@@ -81,6 +81,21 @@ installTestModules()
 
 startHashSync()
 
-router.isReady().then(() => {
-  ;(window as unknown as { __yorickReady: boolean }).__yorickReady = true
-})
+/*
+ * Settled, not succeeded.
+ *
+ * A guard can abort the FIRST navigation -- a deep link to a character the
+ * visitor cannot read is exactly that -- and `isReady()` rejects when the
+ * initial navigation fails. Chaining only `.then` left the flag unset forever,
+ * so `waitForAppReady` timed out and the harness reported a dead app when what
+ * had actually happened was a refusal working correctly.
+ *
+ * The app IS ready either way: it is mounted, the router is live, and the next
+ * navigation will render. The flag says "bootstrapped", not "showing something".
+ */
+router
+  .isReady()
+  .catch(() => {})
+  .then(() => {
+    ;(window as unknown as { __yorickReady: boolean }).__yorickReady = true
+  })
