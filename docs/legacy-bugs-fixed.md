@@ -10,12 +10,12 @@ Every entry is covered by a test. Two files hold them:
 - `test/legacy-bug-regressions.test.js` — 20 tests, `npm run test:node`, about
   150ms. Anything decidable without a browser: collection ordering, the
   clan-rule page size, template guards, markup shape.
-- `e2e/legacy-bug-regressions.spec.js` — 24 tests, `npx playwright test
+- `e2e/legacy-bug-regressions.spec.js` — 25 tests, `npx playwright test
   e2e/legacy-bug-regressions.spec.js`, about a minute. Anything that needs a
   rendered page and a real server.
 
 Both suites were run against the **unfixed** sources before being trusted.
-Twelve of the twenty node tests and nineteen of the twenty-four E2E tests fail
+Twelve of the twenty node tests and twenty of the twenty-five E2E tests fail
 there.
 The rest are deliberate controls — a correct-behaviour anchor beside each
 defect, so a test cannot pass by breaking the thing next to it.
@@ -41,7 +41,7 @@ defect, so a test cannot pass by breaking the thing next to it.
 | 14 | Stopped writing `transform_description` onto the router-cached character | `views/CharacterApprovalView.js` |
 | 15 | `limit(1000)` on both experience-ledger fetches | `models/Character.js`, `views/CharacterExperienceView.js` |
 | 16 | Guarded `listview("refresh")` after writing the rows | `views/CharactersListView.js` |
-| 17 | Record the scroll offset on the view that reads it; `withCharacterCreateView()` added to the wizard's odd one out | `routers/mobileRouter.js` |
+| 17 | Record the scroll offset on the view that reads it; `withCharacterCreateView()` added to the wizard's odd one out; new `restore_scroll_after_page_change` that waits for the sheet's height | `routers/mobileRouter.js`, `views/CharacterView.js` |
 | **R1** | `<%= name %>` instead of `<%= attributes.name %>`. Not in the document — found here; see below | `views/UserSettingsProfileView.js` |
 
 ## Where this departs from the document
@@ -185,24 +185,34 @@ exists would have written to `undefined` for anyone reaching the route before
 the wizard had been opened. Both halves are applied, and a test drives the
 route from a cold reload to prove it.
 
-**The visible restore is still broken, and that is a second defect, not this
-one.** With 400 correctly recorded, on return to the sheet:
+**The recording was only half of it: the restore raced the render, and that
+needed fixing too.** With 400 correctly recorded, on return to the sheet:
 
 ```
-t+0      scrollY 0, scrollable room   81   (backToTop already consumed)
+t+0      scrollY 0, scrollable room   81   (offset already consumed)
 t+8000   scrollY 0, scrollable room 1879
 ```
 
-`show_character_helper` arms the restore on `pagechange`, and jQuery Mobile
-fires that while the sheet is still growing, so `silentScroll(400)` runs
-against an 81px page and goes nowhere; nothing re-runs once the sheet has its
-full height. Sometimes the render wins the race and it works, which is why an
-assertion on the scroll position would be a flaky test of a real bug. The tests
-therefore pin the recording — which is what #17 describes and is fully
-deterministic — and this is left recorded rather than papered over. Making the
-restore actually fire is a change to the shared
-`scroll_back_after_page_change` helper, which the wizard also uses and where it
-currently works; that is a decision, not a slip.
+`show_character_helper` armed the restore on `pagechange`, which jQuery Mobile
+fires before the sheet has finished growing — so `silentScroll(400)` ran
+against an 81px page and went nowhere, and nothing ran again once the sheet had
+its height. Occasionally the render won the race and it worked, which made the
+behaviour *inconsistent* rather than merely absent: the same navigation
+restored sometimes and not others.
+
+The fix waits for the sheet to be tall enough before scrolling, bounded at 40
+attempts of 50ms so a sheet that never gets there stops trying, and bailing if
+the reader has scrolled for themselves rather than yanking the page from under
+them. Measured after: 6 of 6 return trips landed on exactly the recorded
+offset.
+
+There is **no shared helper**, contrary to what I said when I first raised
+this. Each view carries its own copy — `CharacterView.js`,
+`CharacterCreateViewNew.js`, and an older `CharacterCreateView.js`. The new
+`restore_scroll_after_page_change` is a new method on `CharacterView` alone;
+neither create view is touched, so nothing here can reach the wizard's
+restore, which works as it is. The sheet's own now-unused
+`scroll_back_after_page_change` is removed rather than left as dead code.
 
 **#9's prescribed fix is necessary but not sufficient, and the failure it
 describes happens earlier than stated.** The document says a character with no

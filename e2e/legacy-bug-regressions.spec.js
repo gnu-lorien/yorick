@@ -41,6 +41,40 @@ async function gotoHashUnchecked(page, hash) {
   await waitForJqmLoader(page);
 }
 
+/**
+ * Open a character sheet, scroll down it, and leave through a text picker.
+ * Returns the offset that was scrolled to.
+ *
+ * Shared by the two #17 tests. The waits are the whole difficulty: the sheet
+ * grows as Marionette fills its regions, so scrolling too early silently lands
+ * at 0, and the sheet's own restore fires on `pagechange` and would drag the
+ * page back under us if it landed after our scroll.
+ */
+async function scrollSheetAndLeave(page, characterId) {
+  await navigateToHash(page, 'character?' + characterId, '#character');
+  await expect(page.locator('#character #insertheader')).toBeVisible({ timeout: 30000 });
+  await page.waitForFunction(
+    () => document.documentElement.scrollHeight - window.innerHeight > 200,
+    { timeout: 30000 });
+  // Let the sheet's own restore fire and consume its offset before we scroll.
+  await page.waitForTimeout(1500);
+
+  const offset = await page.evaluate(() => {
+    const room = document.documentElement.scrollHeight - window.innerHeight;
+    const target = Math.min(400, Math.floor(room / 2));
+    window.scrollTo(0, target);
+    return target;
+  });
+  expect(offset, 'the sheet must be scrollable for this to mean anything')
+    .toBeGreaterThan(50);
+  await page.waitForFunction((y) => Math.abs(window.scrollY - y) <= 2, offset,
+    { timeout: 15000 });
+
+  await gotoHashUnchecked(page, '#simpletext/archetype/archetype/' + characterId + '/pick');
+  await waitForActivePage(page, 'simpletext-new');
+  return offset;
+}
+
 test.describe('Legacy bugs found during the React port', () => {
 
   // -------------------------------------------------------------------------
@@ -445,40 +479,9 @@ test.describe('Legacy bugs found during the React port', () => {
       });
     `);
 
-    await navigateToHash(page, 'character?' + character.id, '#character');
-    await expect(page.locator('#character #insertheader')).toBeVisible({ timeout: 30000 });
-
-    // The sheet has to actually be scrollable, and it grows as Marionette
-    // fills its regions - scrolling before it is tall enough silently lands at
-    // 0 and the test proves nothing. Wait for the room, then take an offset
-    // that fits inside it.
-    await page.waitForFunction(
-      () => document.documentElement.scrollHeight - window.innerHeight > 200,
-      { timeout: 30000 });
-
-    // Let the sheet's own restore fire first. `show_character_helper` arms a
-    // one-shot `pagechange` handler that silentScrolls to the last recorded
-    // offset and then zeroes it; if it lands after we scroll, it drags the
-    // page back to 0 and the route below records 0. Measured: without this the
-    // recorded offset came back 0 with everything else correct.
-    await page.waitForTimeout(1500);
-
-    const OFFSET = await page.evaluate(() => {
-      const room = document.documentElement.scrollHeight - window.innerHeight;
-      const target = Math.min(400, Math.floor(room / 2));
-      window.scrollTo(0, target);
-      return target;
-    });
-    expect(OFFSET, 'the sheet must be scrollable for this to mean anything')
-      .toBeGreaterThan(50);
-    await page.waitForFunction((y) => Math.abs(window.scrollY - y) <= 2, OFFSET,
-      { timeout: 15000 });
-
-    // Leave the sheet through `simpletextpick`, one of the two routes that
+    // Leaves the sheet through `simpletextpick`, one of the two routes that
     // record the offset.
-    await gotoHashUnchecked(page,
-      '#simpletext/archetype/archetype/' + character.id + '/pick');
-    await waitForActivePage(page, 'simpletext-new');
+    const OFFSET = await scrollSheetAndLeave(page, character.id);
 
     const recorded = await page.evaluate(() => ({
       onTheView: window.router.characterMainPage.backToTop,
@@ -489,21 +492,46 @@ test.describe('Legacy bugs found during the React port', () => {
     expect(recorded.onTheRouteHandler,
       'nothing should be written onto the `character` route handler').toBeUndefined();
 
-    // Deliberately NOT asserting the scroll position on return.
+    // The restore itself is asserted by the next test.
+  });
+
+  test('#17 the sheet returns to where the reader left it', async ({ page }) => {
+    // The other half, and a second defect on top of the recording.
     //
-    // The offset now reaches the object that reads it, which is all #17 is
-    // about, and the assertions above pin that deterministically. Whether it
-    // then MOVES the page is a separate defect: `show_character_helper` arms
-    // the restore on `pagechange`, and jQuery Mobile fires that while the
-    // sheet is still growing. Measured on return, with 400 correctly recorded:
+    // `restore_scroll_after_page_change` used to be `scroll_back_after_page_
+    // change`, which scrolled the instant `pagechange` fired. jQuery Mobile
+    // fires that before the sheet has finished growing. Measured on return,
+    // with 400 correctly recorded:
     //
-    //   t+0      scrollY 0, scrollable room   81   (backToTop already consumed)
+    //   t+0      scrollY 0, scrollable room   81   (offset already consumed)
     //   t+8000   scrollY 0, scrollable room 1879
     //
-    // `silentScroll(400)` against an 81px page goes nowhere, and nothing
-    // re-runs once the sheet has grown. Sometimes the render wins the race and
-    // it works; asserting it here would be a flaky test of a real second bug.
-    // Recorded in docs/legacy-bugs-fixed.md rather than papered over.
+    // `silentScroll(400)` against an 81px page goes nowhere, and nothing ran
+    // again once the sheet had its height. Occasionally the render won the
+    // race and it worked, which made the old behaviour inconsistent rather
+    // than merely absent. Waiting for the height first: 6 of 6 return trips
+    // landed on exactly the recorded offset.
+    await loginAsAdmin(page);
+
+    const character = await runInApp(page, ['app/models/Vampire'], `
+      return mods[0].create_test_character("r17_restore").then(function (v) {
+        return { id: v.id };
+      });
+    `);
+
+    const OFFSET = await scrollSheetAndLeave(page, character.id);
+
+    // Back to the sheet. The restore waits for the sheet to be tall enough,
+    // so this is now deterministic rather than a race.
+    await gotoHashUnchecked(page, '#character?' + character.id);
+    await waitForActivePage(page, 'character');
+    await page.waitForFunction((y) => Math.abs(window.scrollY - y) <= 5, OFFSET,
+      { timeout: 30000 });
+
+    // And the offset is consumed, so the next visit starts clean rather than
+    // re-scrolling to a stale position.
+    expect(await page.evaluate(() => window.router.characterMainPage.backToTop))
+      .toBe(0);
   });
 
   test('#17 the wizard unpick route records on the wizard view, from cold', async ({ page }) => {

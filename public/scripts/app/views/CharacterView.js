@@ -8,20 +8,78 @@ define([
     "../views/CharacterListItem"
 ], function( $, Backbone, CharacterListItem) {
 
+    // How long to keep waiting for the sheet to grow tall enough to restore
+    // the reader's scroll position. 40 x 50ms is two seconds, comfortably past
+    // the ~500ms the regions take to fill and short enough that a sheet which
+    // never gets there stops trying while the reader is still on the page.
+    var SCROLL_RESTORE_MAX_ATTEMPTS = 40;
+    var SCROLL_RESTORE_INTERVAL_MS = 50;
+    // Anything past this counts as the reader having scrolled themselves.
+    var SCROLL_RESTORE_TOP_SLACK = 2;
+
     // Extends Backbone.View
     var View = Backbone.View.extend( {
 
         // The View Constructor
         initialize: function() {
-            _.bindAll(this, "scroll_back_after_page_change");
+            _.bindAll(this, "restore_scroll_after_page_change");
         },
 
-        scroll_back_after_page_change: function() {
+        /**
+         * Return the sheet to the offset the router recorded, once it is tall
+         * enough to go there.
+         *
+         * Replaces this view's own `scroll_back_after_page_change`, which
+         * scrolled immediately on `pagechange` and therefore almost never
+         * worked. jQuery Mobile fires that event before the sheet has finished
+         * growing: measured on return from a text picker, with 400 correctly
+         * recorded, the page was 81px scrollable at `pagechange` and 1879px a
+         * moment later. `silentScroll(400)` against 81px goes nowhere, and
+         * nothing ran again once the sheet had its height - so the sheet
+         * usually landed at the top, and occasionally, when the render won the
+         * race, did not. Inconsistent either way.
+         *
+         * Deliberately a NEW method on this view rather than an edit to the
+         * one the creation wizard uses. The wizard has its own copy in
+         * `CharacterCreateViewNew.js` where the immediate scroll works, and
+         * that file is not touched: nothing here can reach it.
+         *
+         * Bounded, because "wait until it is tall enough" must not become
+         * "spin forever" on a sheet that never gets there - a character whose
+         * content shrank, say. On giving up the user is left at the top, which
+         * is where they were anyway.
+         */
+        restore_scroll_after_page_change: function() {
             var self = this;
             $(document).one("pagechange", function() {
                 var top = _.parseInt(self.backToTop);
-                $.mobile.silentScroll(top);
+                // Consumed on sight, exactly as before: a stale offset must
+                // not be reused by the next visit.
                 self.backToTop = 0;
+                if (!_.isFinite(top) || top <= 0) {
+                    return;
+                }
+
+                var attempts = 0;
+                var attempt = function () {
+                    attempts++;
+                    // If the reader has scrolled for themselves, they have
+                    // taken over and we must not yank the page from under
+                    // them. A fresh page change starts at the top, so anything
+                    // else means a real scroll happened.
+                    if (window.scrollY > SCROLL_RESTORE_TOP_SLACK) {
+                        return;
+                    }
+                    var room = document.documentElement.scrollHeight - window.innerHeight;
+                    if (room >= top) {
+                        $.mobile.silentScroll(top);
+                        return;
+                    }
+                    if (attempts < SCROLL_RESTORE_MAX_ATTEMPTS) {
+                        _.delay(attempt, SCROLL_RESTORE_INTERVAL_MS);
+                    }
+                };
+                attempt();
             });
         },
 

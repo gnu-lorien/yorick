@@ -884,7 +884,7 @@ define([
             self.get_character(id).done(self.ifCurrent(function (m) {
                 self.characterMainPage.model = m;
                 self.characterMainPage.render();
-                self.characterMainPage.scroll_back_after_page_change();
+                self.characterMainPage.restore_scroll_after_page_change();
                 $.mobile.changePage("#character", { reverse: false, changeHash: false });
             })).then(function () {
                 $.mobile.loading("hide");
@@ -1867,7 +1867,7 @@ define([
                 // `router.characterMainPage.backToTop` was 0.
                 //
                 // `show_character_helper` calls
-                // `self.characterMainPage.scroll_back_after_page_change()`,
+                // `self.characterMainPage.restore_scroll_after_page_change()`,
                 // and that helper reads `self.backToTop` off the view - so the
                 // sheet has always scrolled back to the top instead of to
                 // where the user left it. The wizard's equivalent routes work,
