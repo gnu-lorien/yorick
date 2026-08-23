@@ -30,6 +30,7 @@
  */
 import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import moment from 'moment'
 import { JqmPage, JqmPopup, JqmTable, JqmTd } from '@/components/jqm'
 import { useBackHref } from '@/composables/useBackHref'
 import { get_character, type Character } from '@/domain/Character'
@@ -39,6 +40,21 @@ import { useUiStore } from '@/stores/ui'
 
 const route = useRoute()
 const ui = useUiStore()
+
+/** `CharacterExperienceView.js:14`. */
+const MOMENT_FORMAT = 'L LTS'
+
+/**
+ * The per-cell reflow labels, by CELL index -- not by column index.
+ *
+ * Every logical column occupies TWO cells here: an edit button and the value.
+ * jQuery Mobile matched `<td>`s against `<thead>`'s `<th>`s positionally, and
+ * this table's head is an alternating (empty, name) pair per column, so the
+ * name lands on the value cell and the button cell gets nothing. That is why
+ * `xp-history.spec.js:632` reads cell 9 and expects "Available 39" rather than
+ * a bare number.
+ */
+const CELL_LABELS = ['', 'Date', '', 'Reason', '', 'Earned?', '', 'Spent?', '', 'Available', '']
 
 const HEADERS = ['entered', 'reason', 'alteration_earned', 'alteration_spent', 'available'] as const
 const PRETTY = ['Date', 'Reason', 'Earned?', 'Spent?', 'Available'] as const
@@ -82,11 +98,21 @@ type Row = {
   running: number
 }
 
+/**
+ * `moment(d).format("L LTS")` -- the format the table shows and the popup
+ * round-trips, in the app's `en` locale `MM/DD/YYYY h:mm:ss A`.
+ *
+ * The date is a TIME, not a day. `#date-input` is a plain text box with
+ * moment doing the parsing (`CharacterExperienceView.js:103`), and the seconds
+ * in it are load-bearing: the ledger is sorted by `entered`, and
+ * `xp-history.spec.js` distinguishes rows entered within the same minute.
+ * Rendering a day and re-parsing it as midnight -- which an
+ * `<input type="date">` forces -- would collapse those into one instant and
+ * make the running-balance order a coin toss.
+ */
 function formatDate(value: unknown): string {
   if (!(value instanceof Date)) return value === undefined || value === null ? '' : String(value)
-  // `moment(d).format('YYYY-MM-DD')`, which is what the date popup round-trips.
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`
+  return moment(value).format(MOMENT_FORMAT)
 }
 
 const allNotations = computed(() => {
@@ -210,8 +236,15 @@ async function submitEntered() {
   const c = character.value
   const en = editing.value && notationFor(editing.value.id)
   if (!c || !en) return
-  const parsed = new Date(dateInput.value + 'T00:00:00')
-  if (Number.isNaN(parsed.getTime())) return
+  const entered = moment(dateInput.value, MOMENT_FORMAT)
+  /*
+   * An unparseable date closes nothing and changes nothing, exactly as the
+   * source left it: it had a `setCustomValidity` call commented out with the
+   * note that validating that way would mean watching for `change` to clear it
+   * again. So the popup simply stays open and the user tries again.
+   */
+  if (!entered.isValid()) return
+  const parsed = entered.toDate()
   editing.value = null
   // No save: the propagation this triggers writes this row.
   await ui.runWork(() => c.experience.set_experience_notation_attributes(en, { entered: parsed }))
@@ -313,7 +346,7 @@ watch([start, changeBy], () => {
       >
     </template>
 
-    <JqmTable id="table-column-toggle" class="ui-responsive table-stroke">
+    <JqmTable id="table-column-toggle" class="ui-responsive table-stroke" :columns="CELL_LABELS">
       <thead>
         <tr>
           <template v-for="(h, i) in PRETTY" :key="h">
@@ -330,22 +363,22 @@ watch([start, changeBy], () => {
             index 9 is the running Available.
           -->
           <tr>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td>{{ row.earned }}</td>
-            <td></td>
-            <td>{{ row.spent }}</td>
-            <td></td>
-            <td>{{ row.running }}</td>
-            <td></td>
+            <JqmTd :index="0" />
+            <JqmTd :index="1" />
+            <JqmTd :index="2" />
+            <JqmTd :index="3" />
+            <JqmTd :index="4" />
+            <JqmTd :index="5">{{ row.earned }}</JqmTd>
+            <JqmTd :index="6" />
+            <JqmTd :index="7">{{ row.spent }}</JqmTd>
+            <JqmTd :index="8" />
+            <JqmTd :index="9">{{ row.running }}</JqmTd>
+            <JqmTd :index="10" />
           </tr>
           <!-- The value row: an edit button then the value, per column. -->
           <tr>
-            <template v-for="h in HEADERS" :key="h">
-              <td style="padding-right: 0px">
+            <template v-for="(h, i) in HEADERS" :key="h">
+              <JqmTd :index="i * 2" style="padding-right: 0px">
                 <a
                   v-if="EDITABLE.has(h)"
                   href="#"
@@ -356,16 +389,16 @@ watch([start, changeBy], () => {
                   @click.prevent="openEditor(h, row.notationId)"
                   >Edit</a
                 >
-              </td>
-              <td>
+              </JqmTd>
+              <JqmTd :index="i * 2 + 1">
                 <template v-if="h === 'available'">{{ row.running }}</template>
                 <template v-else-if="h === 'entered'">{{ row.entered }}</template>
                 <template v-else-if="h === 'reason'">{{ row.reason }}</template>
                 <template v-else-if="h === 'alteration_earned'">{{ row.alterationEarned }}</template>
                 <template v-else>{{ row.alterationSpent }}</template>
-              </td>
+              </JqmTd>
             </template>
-            <td>
+            <JqmTd :index="10">
               <a
                 href="#"
                 class="experience-notation-delete ui-btn ui-icon-delete ui-btn-icon-notext ui-corner-all ui-btn-inline"
@@ -373,7 +406,7 @@ watch([start, changeBy], () => {
                 @click.prevent="deleteNotation(row.notationId)"
                 >Delete</a
               >
-            </td>
+            </JqmTd>
           </tr>
         </template>
       </tbody>
@@ -386,7 +419,7 @@ watch([start, changeBy], () => {
     >
       <form id="edit-entered-popup-form" @submit.prevent="submitEntered">
         <div style="padding: 10px 20px">
-          <input id="date-input" v-model="dateInput" type="date" data-inline="true" />
+          <input id="date-input" v-model="dateInput" type="text" data-inline="true" />
           <button
             type="submit"
             class="ui-btn ui-corner-all ui-shadow ui-btn-b ui-btn-icon-left ui-icon-check"

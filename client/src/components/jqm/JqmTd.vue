@@ -25,8 +25,15 @@ const label = computed(() => {
 </script>
 
 <template>
+  <!--
+    The space after the label is not cosmetic. jQuery Mobile INSERTED the `<b>`
+    in front of a text node that already began with the template's own newline
+    and indent, so the cell's text content read "Available 39". Vue condenses
+    template whitespace away, and four E2E helpers read these cells as
+    whitespace-normalised text -- without the space they read "Available39".
+  -->
   <td>
-    <b v-if="label" class="ui-table-cell-label">{{ label }}</b>
-    <slot />
+    <b v-if="label" class="ui-table-cell-label">{{ label }}</b
+    ><template v-if="label">{{ ' ' }}</template><slot />
   </td>
 </template>

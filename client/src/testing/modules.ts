@@ -22,6 +22,7 @@ import { get_character, characterFor, type Character, type CharacterCache } from
 import { getLatestPatronage } from '@/domain/Patronage'
 import { ALL_VENUES, venueFor, type VenueKey, type VenueStrategy } from '@/domain/venues'
 import { registerTestModules } from '@/testing/app-api'
+import Papa from 'papaparse'
 import Parse from '@/parse'
 import lodash from 'lodash'
 
@@ -170,6 +171,14 @@ export function installTestModules(): void {
 
   modules['app/domain/venues'] = { ALL_VENUES, venueFor }
   modules['parse'] = Parse
+  /*
+   * `papaparse`, because `helpers/descriptions.js:readBulkEditorRows` parses
+   * the bulk editor's textarea with the APP's copy rather than one of its own.
+   * That is deliberate on the suite's part: "what the table shows" is then read
+   * exactly the way the app produces it, with the same options and the same
+   * edge cases, instead of through a second parser that might disagree.
+   */
+  modules['papaparse'] = Papa
   modules['underscore'] = lodash
   modules['lodash'] = lodash
 
