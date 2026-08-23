@@ -26,6 +26,7 @@ import { JqmListItem, JqmListview, JqmPage, vJqmListview } from '@/components/jq
 import CharacterSummary from '@/components/CharacterSummary.vue'
 import SheetTile from '@/components/SheetTile.vue'
 import { useBackHref } from '@/composables/useBackHref'
+import { useScrollRestore } from '@/composables/useScrollRestore'
 import { get_character, type Character } from '@/domain/Character'
 import { reportErrorOn } from '@/domain/errors'
 import { trackAll } from '@/parse/reactivity'
@@ -62,6 +63,10 @@ const backHref = computed(() => {
 })
 
 useBackHref(backHref)
+
+// Return to where the reader was before they took a side trip to pick, unpick
+// or change something. See `useScrollRestore`.
+useScrollRestore(character)
 
 onMounted(async () => {
   try {

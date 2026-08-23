@@ -19,6 +19,7 @@ import { extraRoutes } from './extra-routes'
 import { compilePattern, formatPattern, hashToPath, normaliseHash, type HashPattern } from './backbone-hash'
 import { useAuthStore } from '@/stores/auth'
 import { promiseFailReport, reportError } from '@/domain/errors'
+import { rememberScroll } from '@/composables/useScrollRestore'
 import Parse from '@/parse'
 
 /** Compiled patterns, in route-table order, which is Backbone's match order. */
@@ -76,9 +77,19 @@ export function pathForHash(hash: string): string | null {
  */
 let suppressHashWrite = false
 
-router.beforeEach(async (to) => {
+router.beforeEach(async (to, from) => {
   const meta = to.meta as unknown as YorickRouteMeta
   const auth = useAuthStore()
+
+  /*
+   * Stash where the reader is before the page changes under them.
+   *
+   * This guard runs while the OUTGOING page is still on screen, which is the
+   * only moment its scroll offset can be read. Doing it here rather than in
+   * each departing route is what stops a new side trip from silently forgetting
+   * to. `useScrollRestore` puts it back.
+   */
+  if (from.fullPath && from.fullPath !== to.fullPath) rememberScroll(from.fullPath)
 
   /*
    * `get_character` ran BEFORE `changePage`, so a character the caller cannot
@@ -164,6 +175,23 @@ router.beforeEach(async (to) => {
   }
 
   return true
+})
+
+/**
+ * Guard: a new screen starts at the top.
+ *
+ * `$.mobile.changePage` scrolled to the top of the incoming page, and losing
+ * that is not neutral -- the browser keeps the outgoing page's offset, so
+ * opening the trait picker from halfway down the creation wizard rendered the
+ * picker already scrolled past its own first options. Measured at 938px into a
+ * list whose first entry was at 0.
+ *
+ * This runs BEFORE the incoming component is created, so a page that restores a
+ * remembered position (`useScrollRestore`) still wins: its restore is driven by
+ * data arriving, which is strictly later.
+ */
+router.afterEach(() => {
+  window.scrollTo(0, 0)
 })
 
 /** Guard: keep the address bar in the Backbone format after every navigation. */

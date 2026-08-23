@@ -25,6 +25,7 @@ import { useRoute } from 'vue-router'
 import { JqmPage, vJqmListview } from '@/components/jqm'
 import CreationPool from '@/components/create/CreationPool.vue'
 import { useBackHref } from '@/composables/useBackHref'
+import { useScrollRestore } from '@/composables/useScrollRestore'
 import { get_character, type Character } from '@/domain/Character'
 import { reportErrorOn } from '@/domain/errors'
 import { venueOf } from '@/parse/classes'
@@ -49,6 +50,9 @@ useBackHref(() => `#character?${cid.value}`)
  * the ref only has to hold the reference.
  */
 const character = shallowRef<Character | null>(null)
+// Return to where the reader was before they took a side trip to pick, unpick
+// or change something. See `useScrollRestore`.
+useScrollRestore(character)
 
 onMounted(async () => {
   try {

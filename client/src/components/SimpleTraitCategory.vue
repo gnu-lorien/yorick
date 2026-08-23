@@ -13,6 +13,7 @@ import { computed, onMounted, ref, shallowRef } from 'vue'
 import { useRoute } from 'vue-router'
 import { JqmPage } from '@/components/jqm'
 import { useBackHref } from '@/composables/useBackHref'
+import { useScrollRestore } from '@/composables/useScrollRestore'
 import { get_character, type Character } from '@/domain/Character'
 import { reportErrorOn } from '@/domain/errors'
 import Parse from '@/parse'
@@ -47,6 +48,10 @@ const character = shallowRef<Character | null>(null)
  * the note in `JqmPage.vue`.
  */
 const loaded = ref(false)
+
+// Return to where the reader was before adding, changing or specialising a
+// trait -- this list is long and every one of those is a route of its own.
+useScrollRestore(loaded)
 
 onMounted(async () => {
   try {
