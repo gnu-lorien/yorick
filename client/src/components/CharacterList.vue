@@ -30,6 +30,8 @@ import CharacterSummary from '@/components/CharacterSummary.vue'
 const props = withDefaults(
   defineProps<{
     characters: readonly Parse.Object[]
+    /** See `CharacterSummary`: off for a player's own roster, on elsewhere. */
+    showOwner?: boolean
     /** Where a row links to, given the character's id. */
     hrefFor?: (characterId: string) => string
     /** Reproduces `data-filter="true"` on the list. */
@@ -88,7 +90,7 @@ const rows = computed(() =>
         :backendId="row.id"
         class="ui-btn ui-btn-icon-right ui-icon-carat-r character-list-item"
       >
-        <CharacterSummary :character="row.character" :portrait-link="false" />
+        <CharacterSummary :character="row.character" :portrait-link="false" :show-owner="showOwner" />
       </a>
     </li>
   </JqmListview>

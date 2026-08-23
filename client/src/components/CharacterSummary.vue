@@ -45,6 +45,21 @@ const props = defineProps<{
    * original's two templates differ on exactly this line.
    */
   portraitLink?: boolean
+  /**
+   * Whether to name the owner.
+   *
+   * A player's own roster must NOT: every row has the same owner, so the line
+   * is redundant and it crowds the row. A list that is mostly other people's
+   * characters -- the administration roster, a troupe's -- must, because there
+   * the owner is the point.
+   *
+   * Stated rather than inferred. The Backbone app got the same result by
+   * accident: nothing hydrated the pointer on a personal roster, so the line
+   * rendered empty. Leaving it to whether a pointer happens to be hydrated is
+   * how a display decision becomes a side effect of an unrelated fetch, which
+   * is exactly what went wrong once already.
+   */
+  showOwner?: boolean
 }>()
 
 const attr = (name: string) => (track(props.character).get(name) as string | undefined) ?? ''
@@ -114,6 +129,8 @@ const ownerLine = computed<string | null | undefined>(() => {
   <img v-else-if="thumbnail" :src="thumbnail" class="character-link-portrait" alt="" />
   <h2>{{ name }}</h2>
   <p v-for="(line, i) in lines" :key="i">{{ line }}</p>
-  <p v-if="ownerLine === null">DELETED</p>
-  <p v-else-if="ownerLine">{{ ownerLine }}</p>
+  <template v-if="showOwner !== false">
+    <p v-if="ownerLine === null">DELETED</p>
+    <p v-else-if="ownerLine">{{ ownerLine }}</p>
+  </template>
 </template>

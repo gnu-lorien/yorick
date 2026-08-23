@@ -128,9 +128,15 @@ onMounted(async () => {
     <ul>
       <li><a href="#characternew">Add New Character</a></li>
     </ul>
+    <!--
+      The owner line is shown on the ADMIN listing and hidden on a player's
+      own: every row of your own roster has the same owner, so naming it is
+      redundant and crowds the row. See `CharacterSummary`.
+    -->
     <CharacterList
       :characters="characters"
       :href-for="hrefFor"
+      :show-owner="isAdminListing"
       filter
       filter-id="characters-filter"
     />
