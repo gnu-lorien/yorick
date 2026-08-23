@@ -108,6 +108,16 @@ async function save() {
     clearError()
     window.location.hash = duringCreation.value ? wizardHref.value : listHref.value
   } catch (error) {
+    /*
+     * The `console.log` is kept alongside the banner, not replaced by it.
+     *
+     * It was the ONLY trace of a rejected rename before the banner existed, and
+     * `traits-lifecycle.spec.js:246` asserts both halves: that the refusal is
+     * readable on the page, and that it is still in the console for whoever is
+     * debugging one. Dropping the log would make the test's first half pass and
+     * its second fail, which is the wrong lesson to teach.
+     */
+    console.log("Couldn't specialize trait because of " + JSON.stringify(error))
     await reportError(error, "Couldn't rename this trait").catch(() => {})
     window.location.hash = cancelHref.value
   }

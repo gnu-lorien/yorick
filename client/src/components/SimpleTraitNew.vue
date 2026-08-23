@@ -39,6 +39,9 @@ import {
   type Description,
 } from '@/domain/Description'
 import { reportErrorOn } from '@/domain/errors'
+import { get_character, type Character } from '@/domain/Character'
+import { trackAll } from '@/parse/reactivity'
+import type Parse from '@/parse'
 import { useUiStore } from '@/stores/ui'
 
 const route = useRoute()
@@ -60,6 +63,7 @@ useBackHref(() => `#simpletraits/${category.value}/${cid.value}/all`)
  * the ref only has to hold the reference.
  */
 const descriptions = shallowRef<Description[]>([])
+const character = shallowRef<Character | null>(null)
 
 /**
  * False until this page's data is in hand.
@@ -83,8 +87,39 @@ const requiresSpecialization = computed(
     ),
 )
 
+/**
+ * The options this character can still take.
+ *
+ * `_.contains(traitNames, model.get("name"))` -- a description whose name is
+ * already the name of a trait the character owns is not offered again.
+ *
+ * The `_.without(requireSpecializations)` is what makes a specializable trait
+ * repeatable, and it works by a detail that is easy to lose: an owned
+ * specialized trait is stored under its FULL name ("Retainers: Night Guard"),
+ * which never equals the description's name ("Retainers"), so it never matched
+ * in the first place. The `without` covers the other case -- a specializable
+ * trait taken with no specialization at all -- and keeps that from locking the
+ * option out for good.
+ *
+ * The in-clan, affinity and gift-ladder rules from the same view are NOT here:
+ * `#simpletrait-new` calls `register(c, category)` with no `filterRule`
+ * (`mobileRouter.js:1825`), and those branches belong to the creation wizard's
+ * own copy of this screen.
+ */
+const ownedNames = computed(() => {
+  const c = character.value
+  if (!c) return new Set<string>()
+  trackAll()
+  const owned = (c.get(category.value) as Parse.Object[] | undefined) ?? []
+  const names = new Set(owned.map((t) => t.get('name') as string))
+  for (const name of requiresSpecialization.value) names.delete(name)
+  return names
+})
+
+const available = computed(() => descriptions.value.filter((d) => !ownedNames.value.has(d.get('name') as string)))
+
 const rows = computed(() =>
-  descriptions.value.map((d) => {
+  available.value.map((d) => {
     const name = (d.get('name') as string) ?? ''
     const rawValue = d.get('value')
     const hasValue = rawValue !== undefined && rawValue !== null && rawValue !== ''
@@ -101,9 +136,16 @@ const rows = computed(() =>
 
 onMounted(async () => {
   try {
-    descriptions.value = await ui.runWork(() =>
-      fetchDescriptions(descriptionQueryForCategory(category.value)),
-    )
+    await ui.runWork(async () => {
+      // The character is needed BEFORE the list renders: without it every
+      // option shows, including the ones already taken.
+      const [found, c] = await Promise.all([
+        fetchDescriptions(descriptionQueryForCategory(category.value)),
+        get_character(cid.value, [category.value]),
+      ])
+      descriptions.value = found
+      character.value = c
+    })
   } catch (error) {
     await reportErrorOn("Couldn't list the available options")(error).catch(() => {})
   } finally {
