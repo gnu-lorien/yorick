@@ -79,7 +79,7 @@ export function SimpleTextPick({ route }: ScreenProps) {
     setBusy(true);
     show();
     try {
-      await updateText(data!.character, target, name);
+      await updateText(data!.character, data!.venue, target, name);
       clearError();
       navigate(returnTo);
     } catch (error) {
@@ -190,8 +190,8 @@ export function SimpleTextUnpick({ route }: ScreenProps) {
     show();
     void (async () => {
       try {
-        const { character } = await loadCharacter(cid, [category]);
-        await unpickText(character, target);
+        const { character, venue } = await loadCharacter(cid, [category]);
+        await unpickText(character, venue, target);
         if (!cancelled) navigate(returnTo);
       } catch (error) {
         if (!cancelled) reportError(error, "Couldn't unpick that");

@@ -95,6 +95,19 @@ export interface Venue {
   ensureCreationRulesExist(character: Character): Promise<void>;
 
   /**
+   * Set a free-text attribute, when the venue does more than store it.
+   *
+   * Only the changeling defines one, for `ctdbs_kith`: choosing a Kith grants
+   * its affinity Arts free and spends the Art creation pool, and repicking has
+   * to reconcile both rather than accumulate. `undefined` -- or a hook that
+   * returns false -- means "not mine", and the plain `updateText` runs.
+   */
+  applyText?(character: Character, target: string, value: unknown): Promise<boolean>;
+
+  /** The same for clearing one. See `applyText`. */
+  releaseText?(character: Character, target: string): Promise<boolean>;
+
+  /**
    * Spend a creation pool slot on a trait that has just changed.
    *
    * Ports `update_creation_rules_for_changed_trait`. Two guards in every venue

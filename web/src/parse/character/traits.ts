@@ -301,6 +301,25 @@ export async function removeTrait(
  */
 export async function updateText(
   character: Character,
+  venue: Venue,
+  target: string,
+  value: unknown,
+): Promise<void> {
+  // A venue may own this attribute outright -- the changeling's Kith does, and
+  // does a great deal more than store a string. `true` means it handled the
+  // whole thing, including the base behaviour below.
+  if (venue.applyText && (await venue.applyText(character, target, value))) return;
+  await baseUpdateText(character, target, value);
+}
+
+/**
+ * The plain version: store the value, mark it chosen in the creation record.
+ *
+ * Exported because a venue hook still has to do this part -- the changeling's
+ * Kith reconciles Arts around it and then stores the text like anything else.
+ */
+export async function baseUpdateText(
+  character: Character,
   target: string,
   value: unknown,
 ): Promise<void> {
@@ -316,7 +335,17 @@ export async function updateText(
 }
 
 /** Clear a free-text attribute and un-mark it in the creation record. */
-export async function unpickText(character: Character, target: string): Promise<void> {
+export async function unpickText(
+  character: Character,
+  venue: Venue,
+  target: string,
+): Promise<void> {
+  if (venue.releaseText && (await venue.releaseText(character, target))) return;
+  await baseUnpickText(character, target);
+}
+
+/** The plain version. See baseUpdateText for why this is separate. */
+export async function baseUnpickText(character: Character, target: string): Promise<void> {
   character.unset(target);
   await character.save();
 

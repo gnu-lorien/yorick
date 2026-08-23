@@ -2,7 +2,8 @@ import { Parse } from '../init';
 import type { Character } from '../models/Character';
 import { SimpleTrait } from '../models/SimpleTrait';
 import { addExperienceNotation } from '../character/experience';
-import { sumOfPicks } from '../character/creation';
+import { sumOfPicks, unpickFromCreation } from '../character/creation';
+import { baseUnpickText, baseUpdateText, updateTrait } from '../character/traits';
 import { venueData } from './data';
 import { MAX_TRAIT_LEVEL, type CostEngine, type Venue } from './types';
 
@@ -426,6 +427,138 @@ async function updateCreationRulesForChangedTrait(
 
 /* ----------------------------------------------------------------- venue -- */
 
+/* ------------------------------------------------------------------ kith -- */
+
+/**
+ * The Kith mechanic, which is the one place a venue owns a text attribute.
+ *
+ * Ports `update_text`, `unpick_text`, `_apply_kith`, `_check_kith_art_pool` and
+ * `_unpick_previous_arts` on models/ChangelingBetaSlice.js. Choosing a Kith
+ * grants its affinity Arts free AND spends the character's own Art creation
+ * picks -- that is the rule, not a side effect -- so a repick has to reconcile
+ * both, and an unpick has to hand both back.
+ */
+
+/** The Arts the character holds that answer to one of these names. */
+function ownedArtsNamed(character: Character, names: string[]): SimpleTrait[] {
+  const owned = (character.get('ctdbs_arts') as SimpleTrait[] | undefined) ?? [];
+  return owned.filter((art) => names.includes(art.name) || names.includes(art.baseName()));
+}
+
+/**
+ * Refuse a Kith the Art pool cannot pay for.
+ *
+ * The grant used to decrement regardless, so a three-Art Kith with the pool
+ * already spent drove `ctdbs_arts_1_remaining` to -2 and the creation could
+ * never be completed. Refusing is the honest answer; clamping would silently
+ * drop a grant the character is entitled to. Once creation is finished the
+ * counters are inert and no check applies.
+ *
+ * The outgoing Kith's Arts are destroyed first and hand their picks back, so
+ * they count towards what is available.
+ */
+async function checkKithArtPool(character: Character, kith: string): Promise<void> {
+  const pointer = character.get('creation') as Parse.Object | undefined;
+  if (!pointer) return;
+  const [creation] = await Parse.Object.fetchAllIfNeeded([pointer]);
+  if (!creation || creation.get('completed')) return;
+
+  const releasing = ownedArtsNamed(character, artsAffinities(character)).length;
+  const granting = artsAffinitiesForKith(kith).length;
+  const available = ((creation.get('ctdbs_arts_1_remaining') as number | undefined) ?? 0) + releasing;
+  if (granting > available) {
+    throw new Error(
+      `${kith} grants ${granting} Arts, but only ${available} Art pick` +
+        `${available === 1 ? '' : 's'} remain. Unpick an Art before choosing this Kith.`,
+    );
+  }
+}
+
+/** Destroy the named Arts and hand their creation picks back. */
+async function unpickPreviousArts(
+  character: Character,
+  venue: Venue,
+  names: string[],
+): Promise<void> {
+  if (!names.length) return;
+  for (const art of ownedArtsNamed(character, names)) {
+    if (art.id) await unpickFromCreation(character, venue, 'ctdbs_arts', art.id, 1);
+  }
+}
+
+/**
+ * Apply a Kith: reconcile the Arts, then store the text.
+ *
+ * The retained set is what stops an Art that is an affinity of *both* the
+ * outgoing and the incoming Kith being destroyed and immediately re-granted --
+ * two log rows for one Art within the same minute, which read as a duplicate
+ * because the log has no id column and `createdAt` is minute-granular.
+ *
+ * Retention is restricted to Arts the character already holds *for free*, which
+ * keeps it a matter of log noise and never of entitlement: an affinity the
+ * player unpicked by hand is not held, so the incoming Kith must still grant
+ * it; and an Art the player *paid* for before the Kith made it an affinity must
+ * still go through destroy-and-regrant, because that is what converts it to the
+ * free grant they are now entitled to.
+ *
+ * `checkKithArtPool`'s arithmetic is deliberately untouched by this: retention
+ * removes the same count from `granting` and from `releasing`.
+ */
+async function applyKith(character: Character, venue: Venue, value: unknown): Promise<void> {
+  const kith = String(value);
+  const owned = (character.get('ctdbs_arts') as SimpleTrait[] | undefined) ?? [];
+  await Parse.Object.fetchAllIfNeeded(owned.filter((art) => art?.id !== undefined));
+
+  await checkKithArtPool(character, kith);
+
+  const outgoing = artsAffinities(character);
+  const incoming = artsAffinitiesForKith(kith);
+  const retained = outgoing
+    .filter((name) => incoming.includes(name))
+    .filter((name) =>
+      ownedArtsNamed(character, [name]).some(
+        (art) => ((art.get('free_value') as number | undefined) ?? 0) > 0,
+      ),
+    );
+
+  await unpickPreviousArts(
+    character,
+    venue,
+    outgoing.filter((name) => !retained.includes(name)),
+  );
+  await character.save();
+  await baseUpdateText(character, 'ctdbs_kith', kith);
+
+  for (const art of incoming.filter((name) => !retained.includes(name))) {
+    await updateTrait(character, venue, {
+      nameOrTrait: art,
+      value: 1,
+      category: 'ctdbs_arts',
+      freeValue: 1,
+    });
+  }
+
+  const creation = character.get('creation') as Parse.Object | undefined;
+  if (creation) await creation.save();
+}
+
+/**
+ * Clear the Kith, and take its Arts back with it.
+ *
+ * This used to be a bare passthrough, so it cleared the text and left the
+ * granted Arts and the spent pool slots behind -- and with the Kith gone there
+ * was no route back to reclaim them. The affinities are read *before* the text
+ * is cleared, because they are derived from it.
+ */
+async function releaseKith(character: Character, venue: Venue): Promise<void> {
+  const owned = (character.get('ctdbs_arts') as SimpleTrait[] | undefined) ?? [];
+  await Parse.Object.fetchAllIfNeeded(owned.filter((art) => art?.id !== undefined));
+  await unpickPreviousArts(character, venue, artsAffinities(character));
+  await baseUnpickText(character, 'ctdbs_kith');
+  const creation = character.get('creation') as Parse.Object | undefined;
+  if (creation) await creation.save();
+}
+
 export interface ChangelingVenue extends Venue {
   costs: ChangelingCostEngine;
 }
@@ -450,4 +583,16 @@ export const changelingVenue: ChangelingVenue = {
   ensureCreationRulesExist,
   updateCreationRulesForChangedTrait,
   sumCreationCategories: SUM_CREATION_CATEGORIES,
+
+  async applyText(character, target, value) {
+    if (target !== 'ctdbs_kith') return false;
+    await applyKith(character, changelingVenue, value);
+    return true;
+  },
+
+  async releaseText(character, target) {
+    if (target !== 'ctdbs_kith') return false;
+    await releaseKith(character, changelingVenue);
+    return true;
+  },
 };
