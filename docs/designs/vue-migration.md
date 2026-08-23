@@ -199,8 +199,13 @@ calls it "the single biggest gap in what has been handed to you." So there was
 nothing to compare a Vue run against.
 
 There is now: `runs/vue-migration-baseline-legacy.json`, recorded against the
-current Backbone app on this branch — **447 passed, 0 regressions**. That is
+current Backbone app on this branch — **467 passed, 0 regressions**. That is
 useful whether or not this migration continues.
+
+Re-record it after adding or removing a spec. The gate refuses to return a
+verdict when the candidate's test count drifts more than ±9 from the baseline's
+("the suite that ran is not the suite the baseline recorded"), which is the
+check working: coverage numbers from a different corpus are not a comparison.
 
 ```bash
 E2E_BASE_PORT=2337 node gate.js --name <run> --baseline runs/vue-migration-baseline-legacy.json
@@ -208,7 +213,7 @@ E2E_BASE_PORT=2337 node gate.js --name <run> --baseline runs/vue-migration-basel
 
 ### Where it landed
 
-**PASS — all 447 tests that pass on the Backbone front end pass on the Vue one**,
+**PASS — all 467 tests that pass on the Backbone front end pass on the Vue one**,
 with 0 flaky in a clean run, plus 227 unit tests in `client/src/**/*.spec.ts`.
 Every route in `mobileRouter.js` is ported; no `TODO(port)` remains.
 
@@ -240,6 +245,30 @@ looks like a detail and is not:
   looked ungated. Thirteen character routes were open to a logged-out visitor.
 - **`if (is_ad) { ... }` with no `else` is a third kind of gate**, observably
   different from the one that reports and redirects.
+
+### What 447 passing tests did not tell me
+
+The suite asserts behaviour and text. Nothing in it asserted that a control is
+STYLED — and the port shipped a bare browser filter box, a character sheet whose
+tiles were blue underlined links, and an unstyled font-size dropdown, with every
+test green. A human found all three by looking at the screen.
+
+The cause was not a missing stylesheet, which is the natural first guess and the
+one I had to disprove: the `<link>` tags are byte-identical to the Backbone
+app's. jQuery Mobile's JAVASCRIPT builds the markup its CSS styles, and I had
+reproduced that markup by hand — correctly for buttons and checkboxes, not at
+all for listview items, and not for the wrapper `<div>` that a search box's
+styling lives on. jQM's 1.4.5 stylesheet contains no `:first-child` selectors
+and no rule matching a bare `<select>`, so an unenhanced control is not slightly
+off; it is unstyled.
+
+`e2e/jqm-enhancement.spec.js` closes that gap, and it runs against BOTH front
+ends: jQM's own JavaScript is the specification, so a failure on the legacy
+client means the invariant is wrong rather than the app. It found one genuine
+inconsistency in the original on its first run — `EditRules` never calls
+`enhanceWithin()`, so the rule editor's category select is unstyled while the
+identical control on the Descriptions screen is not — which is recorded in the
+spec as a reviewed difference rather than silently skipped.
 
 ## Ports
 
