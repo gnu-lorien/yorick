@@ -206,6 +206,41 @@ useful whether or not this migration continues.
 E2E_BASE_PORT=2337 node gate.js --name <run> --baseline runs/vue-migration-baseline-legacy.json
 ```
 
+### Where it landed
+
+**PASS — all 447 tests that pass on the Backbone front end pass on the Vue one**,
+with 0 flaky in a clean run, plus 227 unit tests in `client/src/**/*.spec.ts`.
+Every route in `mobileRouter.js` is ported; no `TODO(port)` remains.
+
+The gate is what found nearly every defect below, and the ones it did not find
+came from running the SAME probe against both front ends and diffing the output.
+That technique is worth naming: reasoning from the source told me what the code
+was supposed to do, and comparing live output told me what it actually did. The
+printed sheet reading `Blood / 0` instead of `Blood 10 / 1`, and the missing
+per-sheet print settings form, were both invisible to the first method.
+
+A sample of what a faithful port turned out to require, kept because each one
+looks like a detail and is not:
+
+- **A progress label is not another unit of work.** `ui.beginWork` used as a
+  progress callback incremented a counter nothing decremented, so the spinner
+  stayed up for the session. Invisible until the spinner had CSS that could show
+  it — then it cost 38 passing tests.
+- **`waitForJqmLoader` never waited, for either front end.** `.ui-loader` is
+  `position: fixed`, a fixed element's `offsetParent` is always null, and the
+  helper read that as "cleared". The suite had been racing the app and winning
+  on timing.
+- **Vue condenses template whitespace; underscore did not.** A heading and the
+  value on the next line rendered `MoralityHumanity` instead of
+  `Morality Humanity`. That is observable output — twenty-odd assertions read a
+  sheet as whitespace-normalised text — so the compiler is set to `preserve`.
+- **The history replay undid changes in the wrong order.** Order only matters
+  when one trait was edited twice, and then it decides the answer.
+- **`get_character` IS the login gate**, one call down from the handlers that
+  looked ungated. Thirteen character routes were open to a logged-out visitor.
+- **`if (is_ad) { ... }` with no `else` is a third kind of gate**, observably
+  different from the one that reports and redirects.
+
 ## Ports
 
 This worktree runs on its own block, because `main` and the React worktree may be
@@ -238,7 +273,13 @@ select a deployment. Vite selects the same table entry from
   format-3 lockfile, let alone build Vite 7. This is unresolved and is not
   visible from inside the repo.
 - **Landing.** ~26,000 lines of front end against a repository with no CI. The
-  E2E suite is the review signal; there is no second one.
+  E2E suite is the review signal; there is no second one — and it is a good one,
+  but it is not a complete one. It exercises what it was written to exercise;
+  a screen it never opens is a screen nobody has checked.
+- **What the suite does not cover.** `#victims?all` renders three words and is
+  reachable only by typing the hash. `#category?:type` throws in the Backbone
+  app for every input and does nothing here. Neither is tested, because neither
+  does anything.
 - **Production is `greensboro`**, which shares a January 2020 merge base with
   `main` and pins node 14. A Vue 3 build has no path onto it. The realistic
   failure mode for this work is not a crash — it is completion without
