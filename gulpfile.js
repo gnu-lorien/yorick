@@ -140,3 +140,79 @@ gulp.task('patron', gulp.series('clean', 'minify-html', 'copy-print-templates', 
 gulp.task('heroku', gulp.series('clean', 'minify-html', 'copy-print-templates', 'copy-referendum-templates', 'copy-html-templates', 'copy-create-templates', 'minify-css', 'images', 'minify-js', 'copy-parse-sdk', 'siteconfig-heroku', 'appbust', 'indexbust'));
 
 gulp.task('greensboro', gulp.series('clean', 'minify-html', 'copy-print-templates', 'copy-referendum-templates', 'copy-html-templates', 'copy-create-templates', 'minify-css', 'images', 'minify-js', 'copy-parse-sdk', 'siteconfig-greensboro', 'appbust', 'indexbust'));
+// ---------------------------------------------------------------------------
+// The Vue 3 front end
+// ---------------------------------------------------------------------------
+//
+// Everything above builds the Backbone app: gulp reads `public/`, minifies it,
+// rewrites one line of `siteconfig.js` to pick a deployment, and writes `dist/`.
+// None of that applies here. The Vue client is a Vite build, and Vite already
+// does the minifying, the hashing and the asset copying, so this task is a
+// wrapper rather than a pipeline -- it exists so `gulp vue3` sits beside
+// `gulp patron` and friends and a deploy has one obvious command to run.
+//
+// Two things it deliberately does NOT share with them:
+//
+//   - It writes `dist-vue3/`, never `dist/`. `dist/` is tracked, is what the
+//     production deploy publishes, and currently holds a 2021 build. A preview
+//     of a rewritten front end must not be able to destroy it, so the output
+//     directory is a different word rather than a flag on the same one.
+//   - It selects a deployment through `VITE_YORICK_TARGET` rather than by
+//     rewriting a source file, because `client/src/config/siteconfig.ts` reads
+//     that at build time from the same table `siteconfig.js` holds.
+//
+// The default target is `staging` (stagingapi.undergroundtheater.org). That is
+// a decision, not a fallback: this task exists to build previews, a preview is
+// something people click around in, and pointing one at the production API
+// means a stranger's click writes production data. Override it deliberately:
+//
+//     VITE_YORICK_TARGET=patron npx gulp vue3
+//
+// Leaving it unset entirely is the one thing that must not happen -- an unset
+// target resolves to `ConfigC9`, a Cloud9 host that has not existed for years,
+// and the app would load perfectly and fail every request.
+
+var childProcess = require('child_process');
+
+var VUE3_OUT_DIR = 'dist-vue3';
+
+/** Run an npm script, inheriting stdio so the build log is the build log. */
+function runNpmScript(script, extraEnv) {
+    return new Promise(function (resolve, reject) {
+        // `npm` is `npm.cmd` on Windows, and since the CVE-2024-27980 fix Node
+        // refuses to spawn a `.cmd` at all without a shell -- it fails with a
+        // bare `EINVAL` that says nothing about why. So Windows gets a shell
+        // and everything else does not, which keeps the argument vector
+        // literal on the platforms where it can be.
+        var isWindows = process.platform === 'win32';
+        var child = childProcess.spawn(isWindows ? 'npm.cmd' : 'npm', ['run', script], {
+            stdio: 'inherit',
+            shell: isWindows,
+            env: Object.assign({}, process.env, extraEnv)
+        });
+        child.on('error', reject);
+        child.on('close', function (code) {
+            if (code === 0) {
+                resolve();
+            } else {
+                reject(new Error('npm run ' + script + ' exited with ' + code));
+            }
+        });
+    });
+}
+
+gulp.task('clean-vue3', function () {
+    return gulp.src(VUE3_OUT_DIR, {read: false, allowEmpty: true})
+        .pipe(clean());
+});
+
+gulp.task('build-vue3', function () {
+    return runNpmScript('build:vue', {
+        YORICK_BUILD_OUT_DIR: VUE3_OUT_DIR,
+        VITE_YORICK_TARGET: process.env.VITE_YORICK_TARGET || 'staging'
+    });
+});
+
+// `build:vue` type-checks before it bundles, so a type error fails the deploy
+// rather than shipping a preview that is quietly wrong.
+gulp.task('vue3', gulp.series('clean-vue3', 'build-vue3'));

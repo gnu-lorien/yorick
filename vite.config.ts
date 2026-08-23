@@ -71,8 +71,20 @@ export default defineConfig({
    * app reaches parity.
    */
   build: {
+    /*
+     * `YORICK_BUILD_OUT_DIR` names a directory relative to the repo root and
+     * wins over everything, which is how `gulp vue3` puts a deploy preview in
+     * `dist-vue3/` without going anywhere near the tracked `dist/`.
+     */
     outDir: fileURLToPath(
-      new URL(process.env.YORICK_BUILD_TO_DIST ? './dist' : './client/dist', import.meta.url),
+      new URL(
+        process.env.YORICK_BUILD_OUT_DIR
+          ? './' + process.env.YORICK_BUILD_OUT_DIR
+          : process.env.YORICK_BUILD_TO_DIST
+            ? './dist'
+            : './client/dist',
+        import.meta.url,
+      ),
     ),
     emptyOutDir: true,
     sourcemap: true,

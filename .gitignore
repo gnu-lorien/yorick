@@ -120,6 +120,10 @@ toimport/
 # app in the tree and make every build a diff.
 client/dist/
 
+# The Netlify preview build (`gulp vue3`). Built on the deploy, never tracked --
+# unlike `dist/`, which is.
+dist-vue3/
+
 # Captured Playwright JSON runs, compared by diff-runs.js. Local artefacts.
 runs/
 

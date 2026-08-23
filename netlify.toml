@@ -1,0 +1,74 @@
+# Netlify build for the Vue 3 front end.
+#
+# WHAT IT PUBLISHES
+#
+# `dist-vue3/`, built here by Netlify with `npx gulp vue3`. Not `dist/`, which
+# is tracked, holds a 2021 build of the Backbone app, and is what the production
+# deploy publishes. Two different directories rather than a flag on one, so no
+# preview build can reach the artifact production is serving.
+#
+# The output is self-contained: Vite emits `index.html`, hashed `assets/`, and
+# everything under `client/public/` — the jQuery Mobile stylesheet, the logos,
+# the skull. Verified by serving the directory on its own with no dev server:
+# 15 requests, zero 4xx.
+#
+# WHY THE SETTINGS ARE SCOPED TO PREVIEW CONTEXTS
+#
+# `command` and `publish` live under `[context.deploy-preview]` and
+# `[context.branch-deploy]`, not under a bare `[build]`. Netlify reads its
+# configuration from the commit it is building, so a bare `[build]` block would
+# be harmless today — this file only exists on the Vue branch — and would
+# silently redirect PRODUCTION to the Vue app the day somebody merges. Scoping
+# it means `[context.production]` is untouched: after a merge, production keeps
+# building exactly as the site's own settings say, and switching it over stays a
+# deliberate act rather than a side effect.
+#
+# So: previews build the Vue app, production does not, and merging this branch
+# does not change that by itself.
+#
+# NO SPA REDIRECT, ON PURPOSE
+#
+# Every route in this app is a hash — `#character?abc123`, `#troupes` — so `/`
+# is the only path the server is ever asked for and a catch-all rewrite would
+# buy nothing. It would cost something, though: `/*  /index.html  200` also
+# swallows requests for assets that are genuinely missing, turning a broken
+# build into a page that renders and misbehaves instead of a 404 that says so.
+
+[context.deploy-preview]
+  command = "npx gulp vue3"
+  publish = "dist-vue3"
+
+[context.branch-deploy]
+  command = "npx gulp vue3"
+  publish = "dist-vue3"
+
+[context.deploy-preview.environment]
+  # `package.json` engines allow 20.19+, 22.13+ or 24.11+. "22" tracks the
+  # newest 22.x, which satisfies that and keeps getting security patches.
+  NODE_VERSION = "22"
+
+  # Netlify can run the install with NODE_ENV=production, and `vite`, `gulp` and
+  # `vue-tsc` are all devDependencies — without this the build fails at the
+  # first command with "gulp: not found".
+  NPM_FLAGS = "--include=dev"
+
+  # `mongodb-memory-server` is a devDependency of the E2E suite and its
+  # postinstall downloads a MongoDB binary. Nothing in this build needs a
+  # database; skipping it saves a ~100MB download on every deploy and removes a
+  # network dependency that has no business failing a front-end build.
+  MONGOMS_DISABLE_POSTINSTALL = "1"
+
+  # The staging API, deliberately. A preview is something people click around
+  # in, and clicking around this app writes data — characters, XP, approvals.
+  # Pointed at `patron` this would be strangers editing live records.
+  #
+  # Leaving it unset is NOT a safe default: an unset target resolves to
+  # `ConfigC9`, a Cloud9 host that has not existed for years, and the app would
+  # load perfectly and then fail every single request.
+  VITE_YORICK_TARGET = "staging"
+
+[context.branch-deploy.environment]
+  NODE_VERSION = "22"
+  NPM_FLAGS = "--include=dev"
+  MONGOMS_DISABLE_POSTINSTALL = "1"
+  VITE_YORICK_TARGET = "staging"
