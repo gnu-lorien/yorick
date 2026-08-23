@@ -5,8 +5,15 @@
       "name": "yorick",
       "runtimeExecutable": "node",
       "runtimeArgs": [".claude/dev-with-mongo.js"],
-      "port": 41337,
-      "url": "http://localhost:41337"
+      "port": 42337,
+      "url": "http://localhost:42337"
+    },
+    {
+      "name": "yorick-vue",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:vue"],
+      "port": 5273,
+      "url": "http://localhost:5273"
     }
   ]
 }

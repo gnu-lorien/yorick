@@ -113,6 +113,13 @@ toimport/
 *master_key*
 *.un~
 
+# The Vue client's build output.
+#
+# `vite build` writes here; only `npm run publish:vue` writes to the tracked
+# `dist/` that Netlify serves. Committing this would put two copies of the built
+# app in the tree and make every build a diff.
+client/dist/
+
 # Captured Playwright JSON runs, compared by diff-runs.js. Local artefacts.
 runs/
 
