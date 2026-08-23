@@ -7,6 +7,7 @@ import {
   healthLevels,
   willpowerBoxCount,
 } from '@/parse/character/approvals';
+import { getFetchedLongText } from '@/parse/character/longTexts';
 import { generation, morality } from '@/parse/venues/vampire';
 import { seeming } from '@/parse/venues/changeling';
 import {
@@ -433,7 +434,16 @@ export function PrintSheet({
   // screen builds a transformed copy showing the state at a chosen change.
   const shown = ctx.character;
   const layout = layoutFor(shown.venue, shown.get('wta_tribe') as string | undefined);
-  const extended = shown.get('extended_print_text') as string | undefined;
+  // `self.model.get_fetched_long_text("extended_print_text")`, then `.get("text")`.
+  //
+  // NOT a character attribute. Long texts are rows of their own class, cached on
+  // the character by `fetchLongText`; reading `character.get(...)` returns
+  // undefined forever, so the extended text simply never appeared on a printed
+  // sheet. Read off `shown` rather than the sheet's own character, because that
+  // is what the original does -- on the approval screen the model IS the
+  // transformed copy, and a copy with nothing cached renders nothing.
+  const extendedRow = getFetchedLongText(shown, 'extended_print_text');
+  const extended = extendedRow?.get('text') as string | undefined;
 
   const body: React.ReactNode = (
     <>
