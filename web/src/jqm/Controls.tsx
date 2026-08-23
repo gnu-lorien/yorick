@@ -225,13 +225,28 @@ export function Select({ label, buttonText, id, children, className, ...rest }: 
 export interface CheckableProps extends Omit<NativeInput, 'checked'> {
   label: ReactNode;
   checked?: boolean;
+  /**
+   * Extra classes for the wrapper div, not the input.
+   *
+   * The position classes belong on the wrapper, and a controlgroup written out
+   * by hand -- the relationship network's fieldset -- has to put them there
+   * itself, since `Controlgroup` is what normally injects them.
+   */
+  wrapperClassName?: string;
 }
 
-function Checkable({ kind, label, checked, id, ...rest }: CheckableProps & { kind: 'checkbox' | 'radio' }) {
+function Checkable({
+  kind,
+  label,
+  checked,
+  id,
+  wrapperClassName,
+  ...rest
+}: CheckableProps & { kind: 'checkbox' | 'radio' }) {
   const generated = useId();
   const inputId = id ?? generated;
   return (
-    <div className={`ui-${kind}`}>
+    <div className={cx(`ui-${kind}`, wrapperClassName)}>
       <label
         htmlFor={inputId}
         className={cx(

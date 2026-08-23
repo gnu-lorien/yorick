@@ -29,6 +29,12 @@ export default defineConfig({
       // The logo and the Underground Theater artwork, shared with the legacy
       // app for the same reason as the CSS.
       '@legacy-img': resolve(__dirname, '../public'),
+      // vis.js 4.11, the graph library behind the relationship network. It is
+      // vendored rather than on npm: the published 4.x packages have moved on
+      // and the network's look is version-specific, so the port loads the same
+      // file the legacy app loads. It is a UMD bundle, so it goes in through a
+      // script tag rather than an import -- see jqm/vis.ts.
+      '@legacy-lib': resolve(__dirname, '../public/scripts/lib'),
       '@': resolve(__dirname, 'src'),
     },
   },

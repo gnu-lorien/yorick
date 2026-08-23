@@ -66,6 +66,21 @@ export class Character extends Parse.Object {
     return file?.url() ?? 'head_skull.png';
   }
 
+  /**
+   * The same URL, fetching the portrait pointer if it is still a stub.
+   *
+   * `get_thumbnail` in models/Character.js. The relationship network is its one
+   * caller, and it needs the round trip because the troupe character query does
+   * not `include("portrait")`.
+   */
+  async fetchThumbnailUrl(size: number): Promise<string> {
+    const portrait = this.get('portrait') as Parse.Object | undefined;
+    if (!portrait) return 'head_skull.png';
+    const fetched = await portrait.fetch();
+    const file = fetched.get(`thumb_${size}`) as Parse.File | undefined;
+    return file?.url() ?? 'head_skull.png';
+  }
+
   /* --------------------------------------------------------- expiration -- */
   /*
    * From helpers/ExpirationMixin.js, which Vampire, Troupe and Patronage all
