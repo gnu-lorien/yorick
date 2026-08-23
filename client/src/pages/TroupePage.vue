@@ -6,11 +6,15 @@
  * `templates/troupe-staff-list.html` and
  * `templates/troupe-portrait-display.html`.
  *
- * Four routes render it: `#troupe/:id`, and the three character-scoped ones
- * (`#character/:cid/troupe/:tid/show|join|leave`) that act on membership first
- * and then show the troupe. The character-scoped routes are read-only -- the
- * source constructed the view with no `writable` argument, so `!!undefined` --
- * and their back button goes to the character, not the directory.
+ * Three routes render it: `#troupe/:id`, and the two character-scoped ones
+ * (`#character/:cid/troupe/:tid/show` and `.../join`) that act on membership
+ * first and then show the troupe. `.../leave` is NOT one of them: it goes back
+ * to the character instead, which is right, because after leaving this page
+ * would be showing a troupe the character is no longer in.
+ *
+ * The character-scoped routes are read-only -- the source constructed the view
+ * with no `writable` argument, so `!!undefined` -- and their back button goes to
+ * the character, not the directory.
  *
  * ## `writable` is the storyteller flag, not the troupe's ACL
  *
@@ -120,20 +124,16 @@ onMounted(async () => {
   try {
     await ui.runWork(async () => {
       /*
-       * Membership first, then show. `character_join_troupe` and
-       * `character_leave_troupe` do their work before rendering, and both send
-       * the user back to the character on failure rather than showing a troupe
-       * whose roster does not reflect what they just asked for.
+       * Join first, then show. `character_join_troupe` does its work before
+       * rendering, and sends the user back to the character on failure rather
+       * than showing a troupe whose roster does not reflect what they asked
+       * for. Its sibling `leave` is an action route, not this page -- see
+       * `CharacterLeaveTroupeAction.vue` for why the two differ.
        */
-      if (
-        cid.value &&
-        (handler.value === 'character_join_troupe' || handler.value === 'character_leave_troupe')
-      ) {
+      if (handler.value === 'character_join_troupe') {
         const character = await get_character(cid.value)
         const target = await troupeQuery().get(troupeId.value)
-        await (handler.value === 'character_join_troupe'
-          ? character.join_troupe(target)
-          : character.leave_troupe(target))
+        await character.join_troupe(target)
       }
 
       const found = await troupeQuery().get(troupeId.value)
