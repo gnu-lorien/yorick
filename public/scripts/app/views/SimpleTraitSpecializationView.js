@@ -107,6 +107,16 @@ define([
                 "model": this.simpletrait,
                 "name": this.simpletrait.get_base_name(),
                 "specialization": this.simpletrait.get_specialization(),
+                // May be `undefined`, and the template guards for it.
+                //
+                // The query behind this collection is
+                // `equalTo("category", category).startsWith("name", base_name)`,
+                // so a trait whose base name matches no Description row in its
+                // category yields an empty collection and `first()` is
+                // `undefined`. The template used to read `.attributes` off it
+                // unguarded, which rendered a broken page rather than an empty
+                // help line. See `script#simpleTraitSpecialization` in
+                // public/index.html.
                 "description": this.collection.first()
             } );
 

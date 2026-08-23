@@ -68,9 +68,30 @@ define([
             self._updateTroupeWrapper = self._updateTroupeWrapper.always(function () {
                 var troupes = [];
                 _.each(self.roles.models, function(role) {
-                    var id = role.attributes.attributes.name;
-                    id = id.split('_');
-                    id = id[1];
+                    // `role.get("name")`, not `role.attributes.attributes.name`.
+                    //
+                    // Under Parse 1.5 a Parse.Object added to a Backbone
+                    // collection was wrapped, so the doubled path resolved.
+                    // Under parse@8 (see lib/parse-compat/collection.js, which
+                    // teaches Backbone that a Parse.Object IS a model) the
+                    // object is stored as itself, `role.attributes` is the
+                    // plain attribute bag, and `.attributes` on that is
+                    // undefined -- so this threw inside a promise callback,
+                    // the exception was swallowed, `self.troupes.reset` never
+                    // ran, and the "Troupe View All Characters" section
+                    // rendered its heading above an empty list for every
+                    // storyteller and admin.
+                    var name = role.get("name");
+                    if (!name) {
+                        return;
+                    }
+                    // Troupe roles are "<ROLE>_<troupeId>"; the global roles
+                    // (Administrator, SiteAdministrator) carry no underscore
+                    // and name no troupe.
+                    var id = name.split('_')[1];
+                    if (!id) {
+                        return;
+                    }
                     var matching_troupe = TroupeHelper.channel.reqres.request("get", id);
                     if (matching_troupe)
                         troupes.push(matching_troupe);

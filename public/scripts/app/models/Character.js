@@ -23,6 +23,19 @@ define([
     "../helpers/ReportError"
 ], function( _, $, Parse, SimpleTrait, VampireChange, VampireCreation, VampireChangeCollection, ExperienceNotationCollection, ExperienceNotation, BNSMETV1_VampireCosts, PromiseFailReport, ExpirationMixin, UserChannel, FauxSimpleTrait, Approvals, Approval, LongText, ReportError ) {
 
+    /**
+     * How many experience notations to fetch in one go.
+     *
+     * Well above any real ledger - a character would need a thousand separate
+     * XP awards to reach it - and far above the server's default page of 100,
+     * which is what silently truncated the walk that rebuilds every row's
+     * running balance. See `fetch_experience_notations`.
+     *
+     * `views/CharacterExperienceView.js` carries the same limit on its own
+     * copy of this query; the two must move together.
+     */
+    var EXPERIENCE_NOTATION_FETCH_LIMIT = 1000;
+
     // The Model constructor
     var instance_methods = _.extend({
         /**
@@ -518,6 +531,33 @@ define([
             self._experienceNotationsFetch = self._experienceNotationsFetch.always(function () {
                 var q = new Parse.Query(ExperienceNotation);
                 q.equalTo("owner", self).addDescending("entered").addDescending("createdAt");
+                // The WHOLE ledger, not the server's default page of 100.
+                //
+                // This is the collection `_propagate_experience_notation_change`
+                // walks to rebuild every row's running `earned`/`spent`, and it
+                // then writes the newest row's totals onto the character and
+                // saves them. Truncated, the oldest rows are simply absent from
+                // the walk: the seed falls off the end, becomes a zeroed
+                // `_default_experience_notation()`, and the character's totals
+                // are rebuilt as though its earlier history never happened.
+                //
+                // Measured before this line existed, on a character with 111
+                // notations worth 140 XP: the app loaded 100 and recomputed
+                // `experience_earned` as 100. Forty XP gone, saved, and nothing
+                // said. That is worse than #12's clan rules, which only mispriced
+                // a purchase - this rewrites the ledger itself.
+                //
+                // A raised ceiling, not a removed one, and deliberately so.
+                // `Parse.Query.each` would page without any ceiling, but it
+                // refuses a query carrying a sort, and the order here is
+                // load-bearing: `entered` descending with `createdAt` as the
+                // tiebreak. The collection's own comparator sorts on `entered`
+                // alone, so rows entered at the same instant would fall back to
+                // whatever order the pages arrived in, and their running
+                // balances would change with it. On a path that computes
+                // balances, keeping the ordering exact is worth more than
+                // removing the ceiling.
+                q.limit(EXPERIENCE_NOTATION_FETCH_LIMIT);
                 self.experience_notations.query = q;
                 return self.experience_notations.fetch({reset: true});
             });

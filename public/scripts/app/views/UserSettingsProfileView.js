@@ -6,7 +6,6 @@ define([
     "parse",
     "backform",
     "../forms/UserForm",
-    "text!../templates/profile-facebook-account.html",
     "../helpers/PromiseFailReport",
     "../helpers/InjectAuthData",
     "marionette",
@@ -14,7 +13,7 @@ define([
     "../collections/Patronages",
     "text!../templates/user-settings-profile.html",
     "text!../templates/paypal-button.html"
-], function ($, Backbone, Parse, Backform, UserForm, profile_facebook_account_html, PromiseFailReport, InjectAuthData, Marionette, PatronagesView, Patronages, user_settings_profile_html, paypal_button_html) {
+], function ($, Backbone, Parse, Backform, UserForm, PromiseFailReport, InjectAuthData, Marionette, PatronagesView, Patronages, user_settings_profile_html, paypal_button_html) {
 
     var View = Marionette.ItemView.extend({
         tagName: 'form',
@@ -82,51 +81,20 @@ define([
         }
     });
 
-    var FacebookLinkButtonView = Marionette.ItemView.extend({
-        tagName: 'div',
-        template: _.template(profile_facebook_account_html),
-
-        events: {
-            "click #facebook-unlink": "unlink",
-            "click #facebook-link": "link",
-        },
-
-        unlink: function (e) {
-            var view = this;
-            e.preventDefault();
-            view.undelegateEvents();
-
-            Parse.User.current().set("authData", {"facebook": null});
-            Parse.User.current().save().then(function () {
-                view.delegateEvents();
-                view.render();
-            }).fail(PromiseFailReport);
-        },
-
-        link: function (e) {
-            var view = this;
-            e.preventDefault();
-            view.undelegateEvents();
-
-            Parse.FacebookUtils.link(Parse.User.current(), "email").then(function (user) {
-                return hello('facebook').api('/me');
-            }).then(function (r) {
-                view.delegateEvents();
-                view.render();
-                var user = Parse.User.current();
-                if (!user.has("email"))
-                    user.set("email", r.email);
-                if (!user.has("realname"))
-                    user.set("realname", r.name);
-                InjectAuthData(user);
-                return user.save();
-            }).fail(PromiseFailReport);
-        },
-
-        onRender: function() {
-            this.$el.enhanceWithin();
-        }
-    });
+    // `FacebookLinkButtonView` used to live here, rendering a "Link Account to
+    // Facebook" button into `#facebook-account-linking`.
+    //
+    // It could not work. Its click handler called `Parse.FacebookUtils.link`,
+    // and `app/loadall.js` deliberately no longer calls
+    // `Parse.FacebookUtils.init()` -- under parse@8 that throws "The Facebook
+    // JavaScript SDK must be loaded before calling init" during bootstrap and
+    // takes the whole router down with it, so every route 404s. The template
+    // also asked `Parse.FacebookUtils.isLinked()` which side of the button to
+    // draw. So the control painted and did nothing.
+    //
+    // Removed rather than repaired, matching the decision already taken for
+    // Facebook login (loadall.js:18) and the state greensboro already ships,
+    // where these buttons are hidden.
 
     var PaypalButton = Marionette.ItemView.extend({
         tagName: 'div',
@@ -138,9 +106,29 @@ define([
         },
     });
     
+    // `name`, not `attributes.name`.
+    //
+    // Marionette hands a template `model.toJSON()` (`serializeModel`,
+    // backbone.marionette.js:1708), and a parse@8 Parse.Role's `toJSON()` is
+    // the flat attribute bag - `{createdAt, updatedAt, name, users, roles,
+    // ACL, objectId}`, measured - with no `attributes` key on it. lodash
+    // compiles a template body inside `with (obj)`, so a key that is not there
+    // is a bare undeclared identifier and the render died with a
+    // ReferenceError: "attributes is not defined".
+    //
+    // Nothing surfaced. The throw happened inside the `q.each` callback in
+    // `setup` below, so the Parse chain caught it and rejected, and
+    // `.fail(PromiseFailReport)` logged `Error in promise {}` - a
+    // ReferenceError has no enumerable own properties, so JSON.stringify
+    // renders it as an empty object and even the log said nothing.
+    //
+    // Measured on the running app as devuser, who holds Administrator: the
+    // Roles section of #profile rendered `<div></div>` and the role name was
+    // simply absent. The same defect class as PlayerOptionsView's troupe
+    // shortcuts - see docs/legacy-bugs-fixed.md.
     var RoleView = Marionette.ItemView.extend({
         template: function (serialized_model) {
-            return _.template("The one: <%= attributes.name %>")(serialized_model);
+            return _.template("The one: <%= name %>")(serialized_model);
         }
     });
     
@@ -154,7 +142,6 @@ define([
         template: _.template(user_settings_profile_html),
         regions: {
             profile: "#user-settings-profile-abs-form",
-            facebook: "#facebook-account-linking",
             patronage: "#usp-patronage-list-region",
             paypal: "#usp-paypal-button",
             roles: "#user-roles-available"
@@ -168,7 +155,6 @@ define([
             var options = self.options || {};
             self.render();
             self.showChildView('profile', new View(), options);
-            self.showChildView('facebook', new FacebookLinkButtonView(), options);
             self.showChildView('paypal', new PaypalButton(), options);
             self.showChildView('patronage', new PatronagesView({
                 el: "#usp-patronage-list",

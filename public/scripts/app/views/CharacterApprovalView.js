@@ -315,8 +315,37 @@ define([
             var self = this;
             var c, td, described_character;
             if (self.picked.has("right")) {
-                var right_id = self.model.recorded_changes.at(self.picked.get("right"));
-                right_id = right_id.id || right_id.cid || null;
+                // The timeline can be EMPTY, and then `right` is -1.
+                //
+                // `register` sets it to `recorded_changes.models.length - 1`,
+                // so a character with no non-experience change rows gives -1,
+                // `at(-1)` is `undefined`, and reading `.id` off it threw
+                // `TypeError: Cannot read properties of undefined (reading
+                // 'id')`. The route's tail is a bare `.fail(PromiseFailReport)`
+                // and its `loading("hide")` sat inside the `.then()`, so the
+                // user was left on the splash screen with the hash changed,
+                // `#character-approval` never rendered, `ui-loading` stuck on
+                // <html>, and nothing said but `Error in promise {}`.
+                //
+                // Measured on the running app against `char_sampprivate`,
+                // which seed_db.js writes straight into Mongo with no change
+                // rows: rowCount 0, rightIndex -1, and exactly that TypeError.
+                //
+                // NOT "every character that has just been created", which is
+                // what this looked like from the source. `Vampire.create`
+                // seeds Humanity, three health levels and Willpower, so a
+                // freshly created character has five rows and opens fine -
+                // measured. What has an empty timeline is a character whose
+                // change rows do not exist at all: fixtures written directly
+                // to the database, and anything imported or migrated without
+                // its history.
+                //
+                // A null id matches nothing, so the whole (empty) timeline is
+                // undone and the sheet shows the character as at creation,
+                // which is the right answer for a character with no recorded
+                // changes.
+                var picked_change = self.model.recorded_changes.at(self.picked.get("right"));
+                var right_id = picked_change ? (picked_change.id || picked_change.cid || null) : null;
                 var changesToApply = _.chain(self.model.recorded_changes.models).takeRightWhile(function (model) {
                     return model.id != right_id;
                 }).reverse().value();
@@ -336,7 +365,36 @@ define([
                     trait.fake.is_deleted = true;
                     c.set(trait.category, _.union(c.get(trait.category), [trait.fake]));
                 });
-                self.model.transform_description = td;
+                // Only the CLONE gets the description, never `self.model`.
+                //
+                // `self.model` is the character itself, and the router
+                // memoises that object across routes (`_character`), so a
+                // description written onto it outlives the screen that made
+                // it. `helpers/VampirePrintHelper.js` switches on
+                // `this.model.transform_description` to decide whether to draw
+                // a value plainly or as "old struck through in red, new in
+                // green", so the next sheet drawn from the cached character
+                // inherits this screen's diff and paints markers that mean
+                // nothing there.
+                //
+                // Measured: after visiting this screen,
+                // `router._character.transform_description` held 7 entries,
+                // and the history sheet's own attributes view - which
+                // renders from the cached object, `model === router._character`
+                // - returned
+                //   "<span ...><i class='fa fa-minus'></i>2</span>
+                //    <span ...><i class='fa fa-plus'></i>4</span>"
+                // for a trait whose value had simply been raised to 4. Whether
+                // those markers reach the DOM depends on when that view last
+                // rendered, which is why this survived: it shows up only after
+                // a particular navigation.
+                //
+                // The line is not load-bearing - the sheet renders `c`, which
+                // `setup_regions` picks via `override.get("character")`. Five
+                // routes in mobileRouter.js (`characterprint`,
+                // `character_show_approved`, and the three long-text routes)
+                // already carry a defensive `transform_description = []` to
+                // undo this; the history route is the one that does not.
                 if (c) {
                     c.transform_description = td;
                 }

@@ -50,8 +50,39 @@ define([
                 { "collection": this.collection,
                 "click_url": this.click_url} );
 
-            // Renders the view's template inside of the current div element
-            this.$el.find("ul[data-role='listview']").html(this.template);
+            // Renders the view's template inside of the current div element,
+            // then re-enhances the list.
+            //
+            // Without this the rows lose their rounded ends on every render
+            // after the first. jQuery Mobile enhances the whole page once, on
+            // `pagecreate`, which happens after the first batch of `<li>`s is
+            // already in the `<ul>` - so the first visit looks right. On any
+            // later render jQM does not touch the page again, and the freshly
+            // written rows never receive `ui-first-child` / `ui-last-child`,
+            // the classes that round the top and bottom of an inset list.
+            //
+            // Measured: first visit to `#characters?all` gives
+            // `li.ui-li-has-thumb.ui-first-child` and
+            // `li.ui-li-has-thumb.ui-last-child`; going on to
+            // `#administration/characters/all` and back - both render into
+            // `#characters-all` - gives bare `li.ui-li-has-thumb`.
+            //
+            // `listview("refresh")` rather than the `enhanceWithin()` the
+            // other 41 views call: `enhanceWithin` skips an element that is
+            // already enhanced, and the `<ul>` is. Only `refresh` re-walks the
+            // rows and re-applies the position classes.
+            //
+            // Guarded, because the first render runs BEFORE the page is
+            // enhanced - the route calls `register()` and only then
+            // `changePage` - and the jQuery UI widget bridge throws "cannot
+            // call methods on listview prior to initialization" if the widget
+            // does not exist yet. On that first pass there is nothing to
+            // refresh: `pagecreate` is about to enhance the rows anyway.
+            var $list = this.$el.find("ul[data-role='listview']");
+            $list.html(this.template);
+            if ($list.data("mobile-listview")) {
+                $list.listview("refresh");
+            }
 
             // Maintains chainability
             return this;
