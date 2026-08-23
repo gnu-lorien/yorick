@@ -226,6 +226,27 @@ async function submit() {
         const existing = usable ? await query.first() : undefined
         const target = existing ?? new Parse.Object(className.value)
 
+        /*
+         * Stamp the ACL on EVERY row this writes, new or existing.
+         *
+         * `Description`'s class-level permissions are wide open
+         * (`database_seed/_SCHEMA.json`); what protects an individual row is
+         * its own object ACL, and this handler is the only thing that sets it.
+         * Omitting it leaves the licensed reference data world-writable, and
+         * the denial it produces is Parse code 101 rather than 119 -- an
+         * ACL-scoped update simply finds nothing to update, so Parse hides the
+         * row's existence rather than naming the permission.
+         *
+         * Re-stamping a row that already has it is what the source did too,
+         * and it is what repairs a row saved before the ACL existed.
+         */
+        const acl = new Parse.ACL()
+        acl.setPublicReadAccess(true)
+        acl.setPublicWriteAccess(false)
+        acl.setRoleReadAccess('Administrator', true)
+        acl.setRoleWriteAccess('Administrator', true)
+        target.setACL(acl)
+
         for (const [key, value] of Object.entries(row)) {
           const coerced = coerceField(key, value)
           if (coerced !== undefined) target.set(key, coerced)
