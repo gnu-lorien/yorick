@@ -25,13 +25,31 @@ import { App } from './App';
  *
  * `retry: false` because a failed Parse request is almost always a permission
  * refusal or a validation error, and retrying those just delays the message.
- * `staleTime` of a minute matches how the originals behaved: they fetched once
- * and served the same collection for the rest of the session, and RoleWreqr
- * went further and refused to re-fetch at all unless the user id changed.
+ *
+ * `staleTime: 0` because that is what the legacy app does everywhere except
+ * those three singletons. Every route handler calls `get_character`, which
+ * re-fetches the row; nothing is served from a previous visit. A minute of
+ * staleness was tried here and is wrong in a way that is easy to miss: unpick a
+ * creation pick and go back to the wizard, and the restored slot is still
+ * missing, because the wizard's query was populated before the unpick and had
+ * not expired. The E2E suite caught it; the DOM comparison could not, because
+ * both apps render correct markup from different data.
+ *
+ * `gcTime: 0` is the same decision carried through. A stale-but-cached query
+ * still hands its old data back *immediately* and refetches behind it, so a
+ * screen revisited after a change renders the previous answer for a beat --
+ * the discipline picker showed the whole catalogue again after a clan was
+ * chosen, because that is what it had shown the last time. Dropping the cache
+ * when the last observer goes reproduces what the legacy actually does between
+ * routes, which is hold nothing: spinner, fetch, render.
+ *
+ * The three singletons opt out of both and keep their minute -- they really
+ * were fetched once and reused for the session. They set it themselves in
+ * data/queries.ts.
  */
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { retry: false, staleTime: 60_000, refetchOnWindowFocus: false },
+    queries: { retry: false, staleTime: 0, gcTime: 0, refetchOnWindowFocus: false },
   },
 });
 

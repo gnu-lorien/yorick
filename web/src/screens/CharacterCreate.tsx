@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Page } from '@/jqm/Page';
 import { Listview, ListItem, Divider } from '@/jqm/Listview';
@@ -187,7 +187,6 @@ function PoolSection({
           <ListItem
             key={`${i}-${trait.linkId()}`}
             href="javascript: void(0)"
-            icon={false}
             split={{
               href: `#charactercreate/simpletraits/${category}/${cid}/unpick/${trait.linkId()}/${i}`,
               title: 'Delete',
@@ -242,124 +241,106 @@ export function CharacterCreate({ route }: ScreenProps) {
   const venue = data?.venue;
   const creation = character?.get('creation') as Parse.Object | undefined;
 
+  // Nothing at all until the character is loaded, which is what the legacy page
+  // holds too: `#character-create` is an empty `div[role="main"]` until
+  // `setup()` renders into it. Emitting the empty region divs in the meantime
+  // looks harmless and is not -- anything watching for the page to stop being
+  // empty, the E2E suite included, sees ten divs and calls it rendered.
+  if (!character || !venue || !creation) {
+    return (
+      <Page id="character-create" title="Create Character" contentClassName="force-printing-page-break" />
+    );
+  }
+
   return (
     <Page id="character-create" title="Create Character" contentClassName="force-printing-page-break">
       <div id="ccv-description">
-        {character && creation ? (
-          <div>
-            <p>You have {creation.get('initial_xp')} initial XP to spend</p>
-            <p>Remaining steps for {character.name}</p>
-          </div>
-        ) : null}
+        <div>
+          <p>You have {creation.get('initial_xp')} initial XP to spend</p>
+          <p>Remaining steps for {character.name}</p>
+        </div>
       </div>
       <div id="ccv-simpletext">
-        {character && venue ? (
-          <div>
-            {venue.data.textAttributes.map(({ key, label }) => {
-              const value = character.get(key) as string | undefined;
-              const base = `#charactercreate/simpletext/${key}s/${key}/${character.id}`;
-              return (
-                <Listview inset key={key}>
-                  {value ? (
-                    <Divider>
-                      {label}
-                      <p>{value}</p>
-                    </Divider>
-                  ) : null}
-                  <ListItem href={`${base}/pick`}>
-                    {value ? 'Repick' : 'Pick'} {label}
+        <div>
+          {venue.data.textAttributes.map(({ key, label }) => {
+            const value = character.get(key) as string | undefined;
+            const base = `#charactercreate/simpletext/${key}s/${key}/${character.id}`;
+            return (
+              <Listview inset key={key}>
+                {value ? (
+                  <Divider>
+                    {label}
+                    <p>{value}</p>
+                  </Divider>
+                ) : null}
+                <ListItem href={`${base}/pick`}>
+                  {value ? 'Repick' : 'Pick'} {label}
+                </ListItem>
+                {value ? (
+                  <ListItem href={`${base}/unpick`} icon="delete">
+                    Unpick {label}
                   </ListItem>
-                  {value ? (
-                    <ListItem href={`${base}/unpick`} icon="delete">
-                      Unpick {label}
-                    </ListItem>
-                  ) : null}
-                </Listview>
-              );
-            })}
-          </div>
-        ) : null}
+                ) : null}
+              </Listview>
+            );
+          })}
+        </div>
       </div>
-      {character && venue && creation ? (
-        <>
-          <div id="ccv-next-one">
-            <div>
-              <PoolSection
-                section={ATTRIBUTES}
-                character={character}
-                venue={venue}
-                creation={creation}
-              />
-            </div>
-          </div>
-          <div id="ccv-next-two">
-            <div>
-              {FOCUSES.map((section) => (
-                <PoolSection
-                  key={section.heading}
-                  section={section}
-                  character={character}
-                  venue={venue}
-                  creation={creation}
-                />
-              ))}
-            </div>
-          </div>
-          <div id="ccv-next-three">
-            <div>
-              <PoolSection section={SKILLS} character={character} venue={venue} creation={creation} />
-            </div>
-          </div>
-          <div id="ccv-next-four">
-            <div>
-              <PoolSection
-                section={BACKGROUNDS}
-                character={character}
-                venue={venue}
-                creation={creation}
-              />
-            </div>
-          </div>
-          <div id="ccv-next-five">
-            <div>
-              <PoolSection
-                section={POWERS[venue.name]}
-                character={character}
-                venue={venue}
-                creation={creation}
-              />
-            </div>
-          </div>
-          <div id="ccv-next-six">
-            <div>
-              <PoolSection section={MERITS} character={character} venue={venue} creation={creation} />
-            </div>
-          </div>
-          <div id="ccv-next-seven">
-            <div>
-              <PoolSection section={FLAWS} character={character} venue={venue} creation={creation} />
-            </div>
-          </div>
-          <div id="ccv-next-eight">
-            <div>
-              <a href={`#charactercreate/complete/${character.id}`} className="ui-btn">
-                Complete Character Creation!
-              </a>
-            </div>
-          </div>
-        </>
-      ) : (
-        <Fragment>
-          <div id="ccv-next-one" />
-          <div id="ccv-next-two" />
-          <div id="ccv-next-three" />
-          <div id="ccv-next-four" />
-          <div id="ccv-next-five" />
-          <div id="ccv-next-six" />
-          <div id="ccv-next-seven" />
-          <div id="ccv-next-eight" />
-        </Fragment>
-      )}
+      <div id="ccv-next-one">
+        <div>
+          <PoolSection section={ATTRIBUTES} character={character} venue={venue} creation={creation} />
+        </div>
+      </div>
+      <div id="ccv-next-two">
+        <div>
+          {FOCUSES.map((section) => (
+            <PoolSection
+              key={section.heading}
+              section={section}
+              character={character}
+              venue={venue}
+              creation={creation}
+            />
+          ))}
+        </div>
+      </div>
+      <div id="ccv-next-three">
+        <div>
+          <PoolSection section={SKILLS} character={character} venue={venue} creation={creation} />
+        </div>
+      </div>
+      <div id="ccv-next-four">
+        <div>
+          <PoolSection section={BACKGROUNDS} character={character} venue={venue} creation={creation} />
+        </div>
+      </div>
+      <div id="ccv-next-five">
+        <div>
+          <PoolSection
+            section={POWERS[venue.name]}
+            character={character}
+            venue={venue}
+            creation={creation}
+          />
+        </div>
+      </div>
+      <div id="ccv-next-six">
+        <div>
+          <PoolSection section={MERITS} character={character} venue={venue} creation={creation} />
+        </div>
+      </div>
+      <div id="ccv-next-seven">
+        <div>
+          <PoolSection section={FLAWS} character={character} venue={venue} creation={creation} />
+        </div>
+      </div>
+      <div id="ccv-next-eight">
+        <div>
+          <a href={`#charactercreate/complete/${character.id}`} className="ui-btn">
+            Complete Character Creation!
+          </a>
+        </div>
+      </div>
     </Page>
   );
 }

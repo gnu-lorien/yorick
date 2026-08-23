@@ -441,7 +441,7 @@ export function CharacterCreatePickSimpleTrait({ route }: ScreenProps) {
   const { show, hide } = useLoading();
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState('');
-  const { data, error } = usePicker(cid, category, true);
+  const { data, error, isFetching } = usePicker(cid, category, true);
 
   // The pool check. It runs once the creation record is in hand, and a refusal
   // reports and returns to the wizard rather than rendering a picker that
@@ -450,9 +450,17 @@ export function CharacterCreatePickSimpleTrait({ route }: ScreenProps) {
   // decoration: a pool the venue never seeded has no counter at all, and a
   // missing counter must not read as an exhausted one -- that would refuse
   // every pick in a category the wizard offers freely.
+  //
+  // `!isFetching` is the other half, and it is not a nicety. A query with
+  // cached data hands it back immediately and refetches behind it, so on the
+  // first render of a return visit `remaining` is whatever it was last time --
+  // zero, if the slot was spent and has since been unpicked. Deciding on that
+  // value refuses a pick the player is entitled to and bounces them back to the
+  // wizard. The legacy has no equivalent because it fetches before it decides,
+  // every time.
   const creation = data?.character.get('creation') as Parse.Object | undefined;
   const remaining = creation?.get(`${category}_${freeValue}_remaining`);
-  const exhausted = typeof remaining === 'number' && remaining <= 0;
+  const exhausted = !isFetching && typeof remaining === 'number' && remaining <= 0;
 
   useEffect(() => {
     if (error) showError(error, "Couldn't open that pick");

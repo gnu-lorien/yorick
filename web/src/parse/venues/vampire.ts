@@ -1,5 +1,6 @@
 import { Parse } from '../init';
 import { addExperienceNotation } from '../character/experience';
+import { sumOfPicks } from '../character/creation';
 import type { Character } from '../models/Character';
 import { fauxTrait, type SimpleTrait } from '../models/SimpleTrait';
 import { venueData } from './data';
@@ -489,7 +490,7 @@ async function updateCreationRulesForChangedTrait(
     // count of picks, and it is recomputed from the list -- which by now
     // includes the trait just added -- rather than decremented.
     const picks = (creation.get(picksName) as SimpleTrait[] | undefined) ?? [];
-    const sum = picks.reduce((total, pick) => total + (pick.value ?? 0), 0);
+    const sum = await sumOfPicks(picks, trait);
     creation.set(remainingName, 7 - sum);
   } else {
     creation.increment(remainingName, -1);

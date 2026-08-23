@@ -13,7 +13,24 @@ import { Troupe, troupesQuery, troupeIdFromRoleName } from '@/parse/models/Troup
  *
  * That is what a query cache does, so these are queries. The behaviour worth
  * preserving is in the comments below; the plumbing is not.
+ *
+ * These three -- and only these three -- keep a `staleTime`. The app default is
+ * zero, matching the legacy's re-fetch-per-route; the originals here genuinely
+ * did fetch once and serve the same collection for the rest of the session, and
+ * RoleWreqr went further and refused to re-fetch at all unless the user id
+ * changed.
  */
+const SINGLETON_STALE_TIME = 60_000;
+
+/**
+ * Kept in the cache while nothing is observing them.
+ *
+ * The app default is zero -- see main.tsx -- so a query is dropped the moment
+ * its screen unmounts. These three are the exception the default exists to
+ * make possible: without a gcTime they would be re-fetched on every screen that
+ * asks, which is exactly the N+1 the Wreqr singletons were written to avoid.
+ */
+const SINGLETON_GC_TIME = 5 * 60_000;
 
 export const queryKeys = {
   troupes: ['troupes'] as const,
@@ -25,6 +42,8 @@ export const queryKeys = {
 export function useTroupes() {
   return useQuery({
     queryKey: queryKeys.troupes,
+    staleTime: SINGLETON_STALE_TIME,
+    gcTime: SINGLETON_GC_TIME,
     queryFn: async () => {
       const troupes: Troupe[] = [];
       // `each` rather than `find`: it pages through the whole class instead of
@@ -51,6 +70,8 @@ export function useCurrentRoles() {
   const user = Parse.User.current();
   return useQuery({
     queryKey: [...queryKeys.currentRoles, user?.id],
+    staleTime: SINGLETON_STALE_TIME,
+    gcTime: SINGLETON_GC_TIME,
     enabled: !!user,
     queryFn: async () => {
       const roles: Parse.Role[] = [];

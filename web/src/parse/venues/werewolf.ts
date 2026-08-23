@@ -4,6 +4,7 @@ import { Description } from '../models/Description';
 import type { SimpleTrait } from '../models/SimpleTrait';
 import { traitsIn } from '../character/traits';
 import { addExperienceNotation } from '../character/experience';
+import { sumOfPicks } from '../character/creation';
 import { venueData } from './data';
 import { MAX_TRAIT_LEVEL, type CostEngine, type Venue } from './types';
 
@@ -385,7 +386,7 @@ async function updateCreationRulesForChangedTrait(
     // recomputed from the values still in the list rather than decremented --
     // the trait's value may have changed since it was picked.
     const picks = (creation.get(picksName) as SimpleTrait[] | undefined) ?? [];
-    const sum = picks.reduce((total, pick) => total + (pick.value ?? 0), 0);
+    const sum = await sumOfPicks(picks, trait);
     creation.set(remainingName, SUM_POOL_BUDGET - sum);
   } else {
     creation.increment(remainingName, -1);

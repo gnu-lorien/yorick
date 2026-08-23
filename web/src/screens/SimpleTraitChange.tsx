@@ -50,30 +50,15 @@ export function SimpleTraitChange({ route }: ScreenProps) {
 
   const { show, hide } = useLoading();
   const { data, isFetching } = useQuery({
-    queryKey: ['character', cid, category],
+    // Its own key, not `['character', cid, category]`. That key belongs to the
+    // category listing, whose value has no `trait` in it -- sharing it would
+    // hand this screen the listing's cached shape and render nothing.
+    queryKey: ['character-trait', cid, category, bid, isNew, route.fragment],
     enabled: !!cid,
-    queryFn: () => loadCharacter(cid, [category]),
-  });
-
-  const { data: trait } = useQuery({
-    queryKey: ['trait', cid, category, bid, isNew, route.fragment],
-    enabled: !!data,
     queryFn: async () => {
-      const character = data!.character;
-      if (!isNew) return (await getTrait(character, category, bid ?? '')) ?? null;
-      // A brand-new trait, with its fields taken off the URL.
-      //
-      // Coerced, because SimpleTrait.validate rejects a non-finite `value` or
-      // `free_value`. Parse 1.5 constructed silently and never validated;
-      // parse@8 throws, and the throw arrives as "Can't create an invalid Parse
-      // Object" with no clue which field was wrong. A hand-typed or stale hash
-      // should land on a page, not kill the route.
-      return new SimpleTrait({
-        name: decodeURIComponent(route.named['name'] ?? ''),
-        value: Number.parseInt(route.named['value'] ?? '', 10) || 0,
-        free_value: Number.parseInt(route.named['free_value'] ?? '', 10) || 0,
-        category,
-      });
+      const loaded = await loadCharacter(cid, [category]);
+      const trait = isNew ? newTraitFromRoute(route, category) : await getTrait(loaded.character, category, bid ?? '');
+      return { ...loaded, trait: trait ?? null };
     },
   });
 
@@ -83,16 +68,45 @@ export function SimpleTraitChange({ route }: ScreenProps) {
     return hide;
   }, [isFetching, show, hide]);
 
-  if (!data || trait === undefined || trait === null) return null;
+  if (!data || !data.trait) return null;
   return (
     <Editor
       character={data.character}
       venue={data.venue}
-      trait={trait}
+      trait={data.trait}
       category={category}
       isNew={isNew}
     />
   );
+}
+
+/**
+ * The trait being edited, in the SAME query as the character that owns it.
+ *
+ * It used to be a second query, and that is a trap worth naming. `updateTrait`
+ * refuses a trait that is not in `character.get(category)` -- an identity check
+ * the legacy inherits from Parse 1.5's single-instance cache, where there was
+ * only ever one object per row. Single instance is off here, so the check holds
+ * only while the trait came out of *this* character object. Two queries mean
+ * two independent fetches: the character can be re-fetched into a new instance
+ * while the trait query, whose key did not change, keeps handing back a trait
+ * belonging to the old one. Saving then fails with "Provided trait not already
+ * in Vampire as expected", which says nothing about the real cause.
+ *
+ * One query, one character, one trait out of it.
+ */
+function newTraitFromRoute(route: ScreenProps['route'], category: string): SimpleTrait {
+  // Coerced, because SimpleTrait.validate rejects a non-finite `value` or
+  // `free_value`. Parse 1.5 constructed silently and never validated; parse@8
+  // throws, and the throw arrives as "Can't create an invalid Parse Object"
+  // with no clue which field was wrong. A hand-typed or stale hash should land
+  // on a page, not kill the route.
+  return new SimpleTrait({
+    name: decodeURIComponent(route.named['name'] ?? ''),
+    value: Number.parseInt(route.named['value'] ?? '', 10) || 0,
+    free_value: Number.parseInt(route.named['free_value'] ?? '', 10) || 0,
+    category,
+  });
 }
 
 function Editor({

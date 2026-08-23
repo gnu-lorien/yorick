@@ -2,6 +2,7 @@ import { Parse } from '../init';
 import type { Character } from '../models/Character';
 import { SimpleTrait } from '../models/SimpleTrait';
 import { addExperienceNotation } from '../character/experience';
+import { sumOfPicks } from '../character/creation';
 import { venueData } from './data';
 import { MAX_TRAIT_LEVEL, type CostEngine, type Venue } from './types';
 
@@ -410,7 +411,7 @@ async function updateCreationRulesForChangedTrait(
     // A sum pool: the counter is 7 minus the total of the values in it, not a
     // count of picks, so a 3-point Merit costs three of the seven.
     const picks = (creation.get(listName) as SimpleTrait[] | undefined) ?? [];
-    const sum = picks.reduce((total, pick) => total + (pick?.value ?? 0), 0);
+    const sum = await sumOfPicks(picks, trait);
     creation.set(stepName, 7 - sum);
   } else {
     creation.increment(stepName, -1);

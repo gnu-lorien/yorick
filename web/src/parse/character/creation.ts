@@ -31,6 +31,41 @@ import { getTrait, removeTrait } from './traits';
 const POOL_INDICES = Array.from({ length: 11 }, (_, i) => i - 1);
 
 /**
+ * What a sum pool has spent: the total of the values in its pick list.
+ *
+ * Two things make this more than `picks.reduce(...)`, and both are the same
+ * root cause -- Parse 1.5 kept one instance per row and parse@8 does not (see
+ * parse/init.ts for why single instance stays off).
+ *
+ * A pick is stored as a pointer, and an unfetched pointer's `value` is
+ * `undefined`. Under single instance the pointer *was* the trait already loaded
+ * on the character, so the sum was right without anyone fetching anything; here
+ * it came out zero, and every merit and flaw read as costing nothing while the
+ * pool never moved.
+ *
+ * And when a trait is being changed, the list holds a different instance of it,
+ * carrying the value the server still has rather than the one being saved. So
+ * the trait in hand is substituted for its stored twin -- which is also why it
+ * is not fetched: fetching would overwrite nothing, but it would waste a
+ * request, and an unsaved trait has no id to fetch by at all.
+ */
+export async function sumOfPicks(
+  picks: SimpleTrait[],
+  trait: SimpleTrait | undefined,
+): Promise<number> {
+  const stale = picks.filter(
+    (pick) => pick?.id !== undefined && pick.id !== trait?.id,
+  );
+  if (stale.length) await Parse.Object.fetchAllIfNeeded(stale);
+
+  return picks.reduce((total, pick) => {
+    const current =
+      trait !== undefined && pick?.id !== undefined && pick.id === trait.id ? trait : pick;
+    return total + (current?.value ?? 0);
+  }, 0);
+}
+
+/**
  * Hand a creation pool slot back if this trait is holding one.
  *
  * Ports `release_creation_pick_for_trait` (Character.js:42). The wizard's own
@@ -72,10 +107,11 @@ export async function releaseCreationPickForTrait(
     if (venue.sumCreationCategories.includes(category)) {
       // A sum pool: the counter is 7 minus the total of the values still in it,
       // not a count of picks. Recomputed from the list rather than decremented,
-      // because the trait's value may have changed since it was picked.
+      // because the trait's value may have changed since it was picked. The
+      // trait being released is already out of the list, so nothing is
+      // substituted for it.
       const remainingPicks = (creation.get(picksName) as SimpleTrait[] | undefined) ?? [];
-      const sum = remainingPicks.reduce((total, pick) => total + (pick.value ?? 0), 0);
-      creation.set(remainingName, 7 - sum);
+      creation.set(remainingName, 7 - (await sumOfPicks(remainingPicks, undefined)));
     } else {
       creation.increment(remainingName, 1);
     }
@@ -187,8 +223,7 @@ export async function unpickFromCreation(
   creation.remove(picksName, trait);
   if (venue.sumCreationCategories.includes(category)) {
     const remaining = (creation.get(picksName) as SimpleTrait[] | undefined) ?? [];
-    const sum = remaining.reduce((subtotal, pick) => subtotal + (pick.value ?? 0), 0);
-    creation.set(remainingName, 7 - sum);
+    creation.set(remainingName, 7 - (await sumOfPicks(remaining, undefined)));
   } else {
     creation.increment(remainingName, 1);
   }

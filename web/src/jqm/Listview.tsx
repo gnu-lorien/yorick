@@ -150,10 +150,18 @@ export function Listview({
 
         const { href, onClick, icon, split, children: content, className: liClass, id: liId } = child.props;
 
-        // Split row: a main action plus an icon-only alternate action.
+        // Split row: a main action plus an icon-only alternate action. The
+        // split icon comes from the `li`'s `data-icon` in the source markup, so
+        // it is written back there as well as onto the alternate anchor.
         if (split) {
           return (
-            <li key={child.key} id={liId} style={style} className={cx('ui-li-has-alt', pos, liClass)}>
+            <li
+              key={child.key}
+              id={liId}
+              data-icon={split.icon}
+              style={style}
+              className={cx('ui-li-has-alt', pos, liClass)}
+            >
               <a href={href ?? '#'} onClick={onClick} className="ui-btn">
                 {content}
               </a>
@@ -171,7 +179,13 @@ export function Listview({
         if (href !== undefined || onClick) {
           const iconName = icon === false ? null : (icon ?? 'carat-r');
           return (
-            <li key={child.key} id={liId} style={style} className={cx(pos, liClass)}>
+            <li
+              key={child.key}
+              id={liId}
+              data-icon={typeof icon === 'string' ? icon : undefined}
+              style={style}
+              className={cx(pos, liClass)}
+            >
               <a
                 href={href ?? '#'}
                 onClick={onClick}
