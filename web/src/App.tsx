@@ -40,7 +40,6 @@ const PUBLIC_HANDLERS = new Set(['signup', 'about', 'privacy_policy', 'resetpass
 export function App() {
   const route = useHashRoute();
   const session = useSession();
-  const logOut = useLogOut();
 
   // Tell the error banner where we are. A failure that redirects must carry its
   // message to wherever the user lands, or the message is never read; the next
@@ -50,14 +49,6 @@ export function App() {
   useEffect(() => {
     errorRegionOnNavigate(fragment);
   }, [fragment]);
-
-  // `logout` is a route, not a screen: the legacy handler logs out and sends
-  // the browser back to the start rather than rendering anything.
-  const isLogout = route?.entry.handler === 'logout';
-  useEffect(() => {
-    if (!isLogout) return;
-    void logOut().then(() => navigate('', { replace: true }));
-  }, [isLogout, logOut]);
 
   if (!route) {
     return (

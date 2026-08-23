@@ -38,13 +38,23 @@ const HELP = 'help-block';
 /**
  * The `<form>` the legacy views render their fields into.
  *
- * No class by default. `profile-form` looks like it belongs on every Backform
- * form and does not: it appears exactly once in the whole app, written into
- * index.html's `#user-reset-password` block, and PasswordReset.js uses it as a
- * selector to find the element it should render into. Every other Backform form
- * -- the print settings, the troupe form, the profile form -- renders into a
- * bare `<form>`. Callers that need it pass it.
+ * No class by default, because whether one appears depends on where the element
+ * came from rather than on Backform:
+ *
+ *   Backform BUILDS the form   `backform form-horizontal`, its own className
+ *                              (backform.js:62-63) -- the summarize screen.
+ *   A view renders INTO one    whatever the markup already said. That is most
+ *                              of them, and usually nothing at all.
+ *
+ * `profile-form` looks like it belongs on every Backform form and does not: it
+ * appears exactly once in the whole app, written into index.html's
+ * `#user-reset-password` block, where PasswordReset.js uses it as the selector
+ * for the element to render into.
+ *
+ * So the caller says. `BACKFORM_OWN_CLASS` is the built case.
  */
+export const BACKFORM_OWN_CLASS = 'backform form-horizontal';
+
 export function Form({
   children,
   onSubmit,
@@ -210,10 +220,23 @@ export interface SelectOption {
   disabled?: boolean;
 }
 
+export interface SelectOptionGroup {
+  label: string;
+  options: SelectOption[];
+}
+
 export interface SelectFieldProps {
   name: string;
   label?: ReactNode;
   options: SelectOption[];
+  /**
+   * Options grouped under `<optgroup>` labels, instead of a flat list.
+   *
+   * Backform has no builtin for this; the summarize screen defines an
+   * `OptGroupSelectControl` whose template is the ordinary select template with
+   * the option loop nested inside an optgroup loop. Same markup otherwise.
+   */
+  groups?: SelectOptionGroup[];
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
@@ -226,6 +249,7 @@ export function SelectField({
   name,
   label,
   options,
+  groups,
   value,
   onChange,
   disabled,
@@ -233,7 +257,8 @@ export function SelectField({
   extraClasses = [],
   id,
 }: SelectFieldProps) {
-  const selected = options.find((o) => o.value === value);
+  const flat = groups ? groups.flatMap((group) => group.options) : options;
+  const selected = flat.find((o) => o.value === value);
   return (
     <Group name={name} label={label}>
       {/* jQM's select: the div and span are the visible control, the real
@@ -269,11 +294,21 @@ export function SelectField({
             required={required}
             onChange={(e) => onChange(e.target.value)}
           >
-            {options.map((option) => (
-              <option key={option.value} value={option.value} disabled={option.disabled}>
-                {option.label}
-              </option>
-            ))}
+            {groups
+              ? groups.map((group) => (
+                  <optgroup label={group.label} key={group.label}>
+                    {group.options.map((option) => (
+                      <option key={option.value} value={option.value} disabled={option.disabled}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))
+              : options.map((option) => (
+                  <option key={option.value} value={option.value} disabled={option.disabled}>
+                    {option.label}
+                  </option>
+                ))}
           </select>
         </div>
       </div>
