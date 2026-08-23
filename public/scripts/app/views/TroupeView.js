@@ -143,6 +143,19 @@ define([
             // `rendered` is that missing signal. Callers that care can wait on
             // it; `render` still returns `this`, so Backbone chainability is
             // unchanged.
+            // No email column in `troupe-staff-list.html`, on purpose.
+            //
+            // It used to print `user.get("email")` between the username and
+            // the real name, and it was blank on every row without exception:
+            // `get_troupe_staff` builds each staffer through `identity_of`,
+            // which copies an allowlist of fields, and `cloud/main.js` sets
+            // `IDENTITY_INCLUDES_EMAIL = false` deliberately. parse-server
+            // also withholds another user's address from every non-master
+            // read. So the column could only ever render as a double space.
+            //
+            // Do NOT bring it back by flipping `IDENTITY_INCLUDES_EMAIL` -
+            // that publishes staff email addresses to anyone who can read the
+            // troupe.
             var staffRendered = self.troupe.get_staff().then(function (users) {
                 self.staff_template = _.template(troupe_staff_list_html)({collection: users});
                 self.$el.find("#troupe-staff").html(self.staff_template);

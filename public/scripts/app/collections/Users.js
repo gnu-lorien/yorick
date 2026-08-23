@@ -14,16 +14,13 @@ define([
             // the table again -- the thing this collection stopped doing.
         },
         
+        // Sorted by paidOn, always. See collections/Vampires.js for why the
+        // `sortbycreated` branch that used to sit here is gone: the flag was
+        // set on the array handed to `reset()`, never on the collection the
+        // comparator reads it off, so the branch was unreachable.
         comparator: function (left, right) {
-            var self = this;
-            var l, r;
-            if (_.has(self, "sortbycreated")) {
-                l = right.createdAt;
-                r = left.createdAt;
-            } else {
-                l = left.get("paidOn");
-                r = right.get("paidOn");
-            }
+            var l = left.get("paidOn");
+            var r = right.get("paidOn");
             if (_.gt(l, r)) {
                 return 1;
             } else if (_.lt(l, r)){
