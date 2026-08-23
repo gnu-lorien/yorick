@@ -17,7 +17,7 @@ import { registerScreen, type ScreenProps } from './registry';
  * The "Troupe View All Characters" region below the menu is ported too; see
  * TroupeQuickAccess at the bottom of this file.
  *
- * @compare-known (home) -- the legacy quick-access list is empty; see TroupeQuickAccess
+ * @compare (home)
  */
 export function PlayerOptions(_: ScreenProps) {
   const session = useSession();
@@ -82,25 +82,20 @@ export function PlayerOptions(_: ScreenProps) {
  * roles query behind it is a request every player would otherwise make on every
  * visit to the start page for a list that is always empty.
  *
- * THIS DIVERGES FROM THE LEGACY APP, DELIBERATELY, and it is the only place in
- * the migration that does.
- *
- * The legacy list is empty for everyone. It reads the role's name through a
- * doubled property path:
+ * This used to be the one place the port diverged on purpose. The legacy list
+ * was empty for everyone, because it read the role's name through a doubled
+ * property path:
  *
  *     var id = role.attributes.attributes.name;      PlayerOptionsView.js:71
  *
  * Under Parse 1.5 that resolved. Under parse@8 `role.attributes` is the plain
  * attribute bag, so `.attributes` on it is undefined, `id` is undefined, no
- * troupe is ever matched, and the section renders as a heading above an empty
- * <ul>. Measured against the running app with an account that holds
- * LST_<troupeId>: the role and the troupe are both in cache and the lookup
- * succeeds when done with `role.get("name")`, and fails through the path above.
- *
- * So this is a regression the Parse 8 upgrade introduced, not a feature that
- * was meant to be absent -- which is why it is not reproduced. Reproducing it
- * would mean writing code whose purpose is to render nothing. The legacy fix is
- * one word: `role.get("name")`.
+ * troupe is ever matched, and the section rendered as a heading above an empty
+ * `<ul>` -- a regression the Parse 8 upgrade introduced rather than a feature
+ * meant to be absent, which is why it was never reproduced here. That is legacy
+ * bug #1 and it is fixed: `role.get("name")`, plus skips for a role with no
+ * name and for a global role that names no troupe. Both sides render the
+ * shortcuts now.
  */
 function TroupeQuickAccess({ enabled }: { enabled: boolean }) {
   const { troupes, isLoading } = useMyTroupes();
@@ -112,7 +107,16 @@ function TroupeQuickAccess({ enabled }: { enabled: boolean }) {
       {isLoading && <p>Loading Your Troupes...</p>}
       <ul data-role="listview" className="ui-listview">
         {troupes.map((troupe, i) => (
-          <li key={troupe.id} className={cx('ul-li-has-thumb', positionClass(i, troupes.length))}>
+          // `ui-li-has-thumb` is jQuery Mobile's, added at enhancement to the
+          // `li` of any row holding an `img` that is not `ui-li-icon`
+          // (jquery.mobile-1.4.5.js:7580). `ul-li-has-thumb` -- one letter
+          // different -- is the template's own class. Both are on the row, and
+          // it took the legacy list actually rendering for the missing one to
+          // show up.
+          <li
+            key={troupe.id}
+            className={cx('ui-li-has-thumb', 'ul-li-has-thumb', positionClass(i, troupes.length))}
+          >
             <a
               // `name` and `backendid` are not React anchor props -- `name` is
               // deprecated on <a> and `backendid` was never standard -- but

@@ -113,7 +113,9 @@ export function TroupeScreen({ route }: ScreenProps) {
           // you were on, with nothing said anywhere. The banner is the one
           // deliberate addition, and it does not redirect, so the screen still
           // behaves as the original does.
-          showError(error, "Couldn't load the troupe");
+          // `ReportError.on("Couldn't open that troupe")` (mobileRouter.js:2299),
+          // which legacy bug #7 added and the regression spec pins.
+          showError(error, "Couldn't open that troupe");
           return;
         }
         // The character routes do redirect: `.fail(function () {
@@ -125,7 +127,7 @@ export function TroupeScreen({ route }: ScreenProps) {
           error,
           handler === 'character_join_troupe'
             ? "Couldn't join that troupe"
-            : "Couldn't load the troupe",
+            : "Couldn't open that troupe",
         );
         navigate(`#character?${characterId}`);
       }
@@ -322,12 +324,20 @@ export function TroupeScreen({ route }: ScreenProps) {
               <ul>
                 {staff.map((user) => (
                   <li key={user.id}>
-                    {/* `role` is smuggled onto the user by the get_troupe_staff
-                        Cloud function, and `email` is never returned to a
-                        client for another user -- so that slot is reliably
-                        blank and the line reads "LST: devuser  ". Kept
-                        verbatim; the template prints all four unconditionally. */}
-                    {`${user.get('role') ?? ''}: ${user.get('username') ?? ''} ${user.get('email') ?? ''} ${user.get('realname') ?? ''}`}
+                    {/* Three fields, not four. `role` is smuggled onto the user
+                        by the get_troupe_staff Cloud function; `email` used to
+                        be printed between the username and the real name and
+                        was blank on every row without exception, because
+                        `identity_of` copies an allowlist and cloud/main.js sets
+                        `IDENTITY_INCLUDES_EMAIL = false` -- and parse-server
+                        withholds another user's address from any non-master
+                        read anyway. So it could only ever render as a double
+                        space. That is legacy bug #10, now fixed on both sides.
+
+                        Do not bring it back by flipping
+                        `IDENTITY_INCLUDES_EMAIL`: that publishes staff email
+                        addresses to anyone who can read the troupe. */}
+                    {`${user.get('role') ?? ''}: ${user.get('username') ?? ''} ${user.get('realname') ?? ''}`}
                   </li>
                 ))}
               </ul>

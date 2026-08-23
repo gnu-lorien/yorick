@@ -1,9 +1,16 @@
 # Bugs found in the legacy front end while porting it to React
 
-Everything here is in `public/scripts/` on this branch **today**. None of it is
+> **Most of this is fixed.** Entries #0-#17 landed on `main` in
+> `docs/legacy-bugs-fixed.md`, along with two more found while writing the
+> regression tests. What is left open here is **#18**, found after those fixes
+> by the DOM comparison. The rest is kept as the record of what was measured and
+> why, because the fixes cite it.
+
+Everything here was in `public/scripts/` when it was written. None of it was
 fixed by the React migration — the porting rule is that a migration which also
 changes behaviour cannot be reviewed, because every diff then has two possible
-explanations. The two places React deliberately diverges are marked as such.
+explanations. The port has since followed each fix across, which is a separate
+change from the port itself and reviewable as one.
 
 This document is meant to be handed to a session that will fix them in the
 legacy app. Each entry gives the file and line, what actually happens, how it
@@ -674,6 +681,54 @@ do, and then the React screen wants the same treatment the wizard got.
 
 ---
 
+## 18. The patronage list loses its rounded ends the same way #16's roster did
+
+**`public/scripts/app/views/PatronagesView.js`, rendering into
+`public/scripts/app/templates/user-settings-profile.html:14`**
+
+Found after #16's fix landed, by the DOM comparison: `#profile` matches on its
+own and differs when the harness has already visited another screen in the same
+browser page.
+
+The markup is an enhanced list:
+
+```html
+<ul id="usp-patronage-list" data-role="listview" data-inset="true" ...>
+```
+
+and `PatronagesView` is a `Marionette.CollectionView` bound straight to it
+(`UserSettingsProfileView.js:160`, `el: "#usp-patronage-list"`). A CollectionView
+appends its children itself, so the rows arrive without anything re-enhancing
+the list — exactly #16, in a view #16's fix did not touch.
+
+The timing is the same too, and it is why this looks intermittent: the first
+visit to `#profile` writes its rows before `pagecreate`, so jQuery Mobile
+enhances them along with the rest of the page and they get `ui-first-child` /
+`ui-last-child`. Any later visit renders into an already-enhanced `<ul>` and the
+rows come out bare.
+
+**Fix:** the same guarded call #16 took, after the collection has rendered:
+
+```js
+var $list = this.$el;
+if ($list.data("mobile-listview")) {
+    $list.listview("refresh");
+}
+```
+
+The guard is not optional — the first render happens before the page is
+enhanced, and the widget bridge throws if the widget does not exist yet.
+
+**Worth a sweep rather than a spot fix.** #16 and #18 are the same defect in two
+of the app's Marionette lists; whatever else renders into a `data-role="listview"`
+after `pagecreate` has the same problem.
+
+**In the React port:** React always emits the position classes, which is what
+the legacy does on a first visit. `web/src/screens/Profile.tsx` carries a
+`@compare-known` marker for this.
+
+---
+
 ## Not bugs — checked and cleared
 
 Recorded so nobody spends time on them again.
@@ -712,9 +767,10 @@ be the live path is how the above happened — but it is a tidy-up, not a defect
 5. **#14** — one line to delete, on a screen built to show what changed.
 6. **#16** — one call to add, on the screen players use most.
 7. **#17** — three assignments, on a convenience players notice every time.
-8. **#15** and **#12** — before either list grows past 100.
-9. **#9**, **#2**, **#10** — tidy-ups with no user-visible effect today.
-10. **#6** and **#13** — decide whether they are defects at all before touching
+8. **#18** — with #16, as one sweep of the Marionette lists.
+9. **#15** and **#12** — before either list grows past 100.
+10. **#9**, **#2**, **#10** — tidy-ups with no user-visible effect today.
+11. **#6** and **#13** — decide whether they are defects at all before touching
     them.
 
 ## Before you change any of these

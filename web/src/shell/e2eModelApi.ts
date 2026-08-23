@@ -1,8 +1,17 @@
+import { Parse } from '@/parse/init';
 import { Character, type VenueName } from '@/parse/models/Character';
+import { SimpleTrait } from '@/parse/models/SimpleTrait';
+import { characterAcl } from '@/parse/character/acl';
+import { fetchRecordedChanges } from '@/parse/character/recordedChanges';
+import {
+  EXPERIENCE_NOTATION_CLASS,
+  fetchExperienceNotations,
+  recomputeRunningBalances,
+} from '@/parse/character/experience';
+import { venueByName } from '@/parse/venues';
 import { loadCharacter, type Categories } from '@/parse/character/load';
 import { createCharacter } from '@/parse/character/create';
 import { updateTrait } from '@/parse/character/traits';
-import type { SimpleTrait } from '@/parse/models/SimpleTrait';
 import {
   fetchAllCreationElements,
   isBeingCreated,
@@ -49,6 +58,19 @@ type LegacyCharacter = Character & {
   seeming(): number;
   has_seeming(): boolean;
   add_experience_notation(options: Record<string, unknown>): Promise<unknown>;
+  get_me_acl(): Parse.ACL;
+  get_experience_notations(): Promise<{ models: Parse.Object[] }>;
+  _propagate_experience_notation_change(
+    notations: { models: Parse.Object[] },
+    index: number,
+  ): void;
+  get_recorded_changes(): Promise<Parse.Object[]>;
+  recorded_changes: { models: Parse.Object[] };
+  update_creation_rules_for_changed_trait(
+    category: string,
+    trait: SimpleTrait,
+    freeValue: number,
+  ): Promise<void>;
   update_trait(
     nameOrTrait: string | SimpleTrait,
     value?: number,
@@ -76,6 +98,26 @@ function decorate(character: Character, venue: Venue): LegacyCharacter {
   decorated.seeming = () => seeming(character);
   decorated.has_seeming = () => hasSeeming(character);
   decorated.add_experience_notation = (options) => addExperienceNotation(character, options);
+  decorated.get_me_acl = () => characterAcl(character);
+  // The ledger, newest first, wrapped in the `{ models }` shape the legacy's
+  // Backbone collection had -- which is what the suite reads off it.
+  decorated.get_experience_notations = async () => ({
+    models: await fetchExperienceNotations(character),
+  });
+  decorated._propagate_experience_notation_change = (notations, index) => {
+    recomputeRunningBalances(character, notations.models, index);
+  };
+  // `get_recorded_changes()` resolves, and leaves the rows on
+  // `character.recorded_changes.models` -- a Backbone collection in the
+  // original, and the shape the suite reads afterwards.
+  decorated.recorded_changes = { models: [] };
+  decorated.get_recorded_changes = async () => {
+    const rows = await fetchRecordedChanges(character);
+    decorated.recorded_changes = { models: rows };
+    return rows;
+  };
+  decorated.update_creation_rules_for_changed_trait = (category, trait, freeValue) =>
+    venue.updateCreationRulesForChangedTrait(character, category, trait, freeValue);
   // Positional, matching the legacy signature the suite calls it with. `wait`
   // is the fifth argument and is dropped: it told the legacy model to await its
   // own save queue, which `updateTrait` does unconditionally.
@@ -99,14 +141,28 @@ function decorate(character: Character, venue: Venue): LegacyCharacter {
   return decorated;
 }
 
-/** One legacy venue module: the two statics the suite calls on it. */
+/**
+ * One legacy venue module: a constructor with statics hung off it.
+ *
+ * `new Model()` has to work, because the suite builds a bare character that
+ * never entered the wizard -- `#9`'s fixture is exactly "a model with no
+ * creation record". A constructor may return an object and `new` will use it,
+ * which is how a plain factory stands in for the legacy's `Parse.Object.extend`
+ * subclass without giving `Character` a second identity.
+ */
 function venueModule(venueName: VenueName) {
-  return {
-    async create(name: string) {
-      const character = await createCharacter(name, venueName);
-      const { venue } = await loadCharacter(character.id!, []);
-      return decorate(character, venue);
-    },
+  function Model(this: unknown) {
+    return decorate(new Character(), venueByName(venueName));
+  }
+
+  async function create(name: string) {
+    const character = await createCharacter(name, venueName);
+    const { venue } = await loadCharacter(character.id!, []);
+    return decorate(character, venue);
+  }
+
+  return Object.assign(Model, {
+    create,
     async get_character(id: string, categories?: Categories) {
       const { character, venue } = await loadCharacter(id, categories);
       return decorate(character, venue);
@@ -121,9 +177,9 @@ function venueModule(venueName: VenueName) {
     create_test_character(nameappend?: string) {
       const name =
         'karmacharactertest' + (nameappend ?? '') + Math.random().toString(36).slice(2);
-      return this.create(name);
+      return create(name);
     },
-  };
+  });
 }
 
 /**
@@ -137,6 +193,13 @@ const MODULES: Record<string, unknown> = {
   'app/models/Vampire': venueModule('Vampire'),
   'app/models/Werewolf': venueModule('Werewolf'),
   'app/models/ChangelingBetaSlice': venueModule('ChangelingBetaSlice'),
+  // The SDK itself, for the bodies that build their own queries.
+  parse: Parse,
+  'app/models/SimpleTrait': SimpleTrait,
+  // The legacy declares a subclass; the port never needed one, because the
+  // ledger is only ever read through `parse/character/experience.ts`. The
+  // suite constructs rows directly, so it gets the registered class.
+  'app/models/ExperienceNotation': Parse.Object.extend(EXPERIENCE_NOTATION_CLASS),
   papaparse: {
     parse(text: string) {
       const { fields, rows, errors } = parseCsv(text);

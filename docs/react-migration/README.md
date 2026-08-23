@@ -159,51 +159,18 @@ any change to `mobileRouter.js` or `index.html`; do not edit them by hand.
 
 ## Bugs found while porting
 
-None of these are fixed here. All are in the legacy app today, and changing
-behaviour during a port is how a migration stops being reviewable -- every diff
-would then have two possible explanations.
+Eighteen, catalogued in `docs/legacy-bugs-found-during-react-port.md`. Entries
+#0-#17 are **fixed on main** -- see `docs/legacy-bugs-fixed.md` -- and the port
+has followed each of them across, so the two front ends agree again. Only #18 is
+still open: the patronage list on `#profile` loses its position classes on any
+visit but the first, which is #16's defect in a Marionette list #16's fix did
+not reach. `web/src/screens/Profile.tsx` carries the one remaining
+`@compare-known` marker for it.
 
-The exception is noted below: one of them cannot be reproduced without writing
-code whose purpose is to render nothing.
-
-**The start page's troupe shortcuts have been empty since the Parse 8 upgrade.**
-`PlayerOptionsView.js:71` reads a role's name through a doubled property path:
-
-```js
-var id = role.attributes.attributes.name;
-```
-
-Under Parse 1.5 that resolved. Under parse@8 `role.attributes` is the plain
-attribute bag, so `.attributes` on it is undefined, `id` is undefined, no troupe
-is ever matched, and "Troupe View All Characters" renders as a heading above an
-empty list -- for every user, including storytellers who staff a troupe.
-Measured against the running app with an account holding `LST_<troupeId>`: both
-the role and the troupe are in cache, and the lookup succeeds through
-`role.get("name")` and fails through the path above.
-
-This is the one place the React app deliberately diverges. The legacy fix is one
-word.
-
-**A dead Facebook button still paints on the profile page.**
-`FacebookLinkButtonView` renders "Link Account to Facebook", whose click handler
-calls `Parse.FacebookUtils.link()` -- but `app/loadall.js` deliberately no
-longer calls `Parse.FacebookUtils.init()`, because under parse@8 it throws
-during bootstrap and takes the router down with it. The button cannot work. Not
-ported; the region div is kept and its contents are not.
-
-**`sortbycreated` has never worked.** Five call sites in `mobileRouter.js` set
-it on a local array, while the collection comparators in `Vampires.js`,
-`Patronages.js` and `Users.js` read it off the collection. `reset()` copies the
-array's elements, not its properties, so the branch is dead and every listing
-has always sorted by name. Confirmed against the running app with `devuser`, the
-one account it is supposed to apply to.
-
-**A player's own roster never shows the owner line.**
-`character-list-item.html` prints the owner when `owner.get("username")` is
-truthy, but `get_user_characters` does not `include("owner")`, so the pointer is
-a stub and the line is skipped. It renders in the admin and troupe listings,
-which hydrate owners through `UserWreqr`. The React app reproduces this, and
-would have diverged silently if single-instance mode had been left on.
+The port used to diverge deliberately in two places -- the start page's troupe
+shortcuts, which the legacy rendered empty, and the profile page's dead Facebook
+button. Both are gone: the legacy renders the shortcuts now, and the Facebook
+section was removed rather than repaired.
 
 ## Two things about jQuery Mobile worth knowing
 

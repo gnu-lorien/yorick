@@ -49,22 +49,16 @@ import { registerScreen, type ScreenProps } from './registry';
  * red or green: this screen shows a past state, not a diff. The approval screen
  * is the one that shows a diff, and it passes a description.
  *
- * @compare-known #character/9cYrGGv2w3/history/0 -- legacy paints stale diff markers here after the approval screen has been visited
+ * @compare #character/9cYrGGv2w3/history/0
  *
- * That marker is order-dependent, and the order is the ordinary one. Visited on
- * its own this screen matches the legacy DOM exactly. Visited after
- * `#character/:cid/approval` -- Back, then History, which is a normal click path
- * -- the legacy sheet grows red and green change markers that do not belong on
- * it, because CharacterApprovalView writes its diff onto the *shared cached
- * character* (`self.model.transform_description = td`) rather than onto the
- * clone it renders. The router memoises that character across routes, so the
- * next screen to draw a sheet inherits the description.
- *
- * Measured: after opening the approval page and then this one by hash,
- * `router._character.transform_description` holds 4 entries and `#history-sheet`
- * renders 3 `fa-minus` and 3 `fa-plus` markers. React holds no such shared
- * state, so it draws the plain sheet this screen is supposed to show. Recorded
- * as legacy bug #14.
+ * This used to be order-dependent, and the order was the ordinary one. Visited
+ * on its own the screen matched; visited after `#character/:cid/approval` --
+ * Back, then History, a normal click path -- the legacy sheet grew red and
+ * green change markers that did not belong on it, because CharacterApprovalView
+ * wrote its diff onto the *shared cached character* rather than onto the clone
+ * it rendered, and the router memoises that character across routes. That is
+ * legacy bug #14 and it is fixed; React holds no state between screens, so it
+ * always drew the plain sheet and now both agree.
  */
 export function CharacterHistoryScreen({ route }: ScreenProps) {
   const cid = route.named['cid'];

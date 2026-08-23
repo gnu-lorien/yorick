@@ -3,6 +3,7 @@ import { Page } from '@/jqm/Page';
 
 import { useLoading } from '@/jqm/Loader';
 import { useBackButton } from '@/shell/backButton';
+import { useScrollMemory } from '@/shell/scrollMemory';
 import { showError } from '@/shell/reportError';
 import { Fragment, useEffect } from 'react';
 import type { Character } from '@/parse/models/Character';
@@ -82,6 +83,12 @@ export function CharacterSheet({ route }: ScreenProps) {
     showError(error, "Couldn't open that character");
     navigate(backUrl);
   }, [error, backUrl]);
+
+  // Back to where the reader was before they left for a text picker. The sheet
+  // consumes its offset -- `self.backToTop = 0` on sight, so a stale one cannot
+  // be reused -- and waits for the page to grow tall enough, which the wizard
+  // does not need to. See shell/scrollMemory.ts.
+  useScrollMemory({ key: 'character', ready: !!data, consume: true, waitForHeight: true });
 
   if (!data) return <Page id="character" title="Character" />;
   return <Sheet character={data.character} venue={data.venue} />;

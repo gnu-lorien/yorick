@@ -8,6 +8,7 @@ import { useLoading } from '@/jqm/Loader';
 import { showError } from '@/shell/reportError';
 import { useBackButton } from '@/shell/backButton';
 import { Parse } from '@/parse/init';
+import { useCurrentRoles } from '@/data/queries';
 import { registerScreen, type ScreenProps } from './registry';
 
 /**
@@ -17,19 +18,27 @@ import { registerScreen, type ScreenProps } from './registry';
  * forms/UserForm.js, templates/user-settings-profile.html and
  * templates/patronage-list-item.html.
  *
- * The legacy LayoutView is five regions inside one template: the profile form,
- * the Facebook link button, the PayPal donate button, the patronage list and
- * the roles list. Each region's child view rendered into a `div` that the
- * template already contained, so the region divs -- `#user-settings-profile-abs-form`,
- * `#facebook-account-linking`, `#usp-paypal-button`,
- * `#usp-patronage-list-region`, `#user-roles-available` -- are part of the DOM
- * this has to reproduce, not scaffolding of the old framework.
+ * The legacy LayoutView is four regions inside one template: the profile form,
+ * the PayPal donate button, the patronage list and the roles list. Each
+ * region's child view rendered into a `div` that the template already
+ * contained, so the region divs -- `#user-settings-profile-abs-form`,
+ * `#usp-paypal-button`, `#usp-patronage-list-region`, `#user-roles-available`
+ * -- are part of the DOM this has to reproduce, not scaffolding of the old
+ * framework.
+ *
+ * There were five. The Facebook section is gone: legacy bug #3 removed the
+ * region, its view and its template rather than repairing a button whose click
+ * handler called a `Parse.FacebookUtils` that `loadall.js` deliberately never
+ * initialises. The port used to keep the empty region div and omit the button,
+ * which was the one place this screen diverged on purpose; both sides now have
+ * neither.
  *
  * The handler calls `UserChannel.get_users()` before showing the page. That is
  * a `_User` find, which parse-server now refuses, and this screen does not need
  * it: see the comment on `ownerOf` below.
  *
- * @compare-known #profile -- the dead Facebook link button is not ported; see below
+ * @compare-known #profile -- legacy patronage rows lose their first/last classes
+ * once another screen has been visited in the same page; see legacy bug #18
  */
 export function Profile(_: ScreenProps) {
   // mobileRouter.js:368 -- `self.set_back_button("#")`, before the fetch.
@@ -42,21 +51,6 @@ export function Profile(_: ScreenProps) {
         <div id="user-settings-profile-abs-form">
           <ProfileForm />
         </div>
-      </div>
-      <hr />
-      <div className="ui-body ui-body-a ui-corner-all">
-        <h3>Facebook</h3>
-        {/* Deliberately empty. Facebook login was removed rather than migrated
-            during the Parse 8 work -- see the comment in app/loadall.js:18,
-            which no longer calls `Parse.FacebookUtils.init()` because under
-            parse@8 it throws during bootstrap and takes the whole router down
-            with it. The legacy app still renders FacebookLinkButtonView into
-            this div, so it still paints a "Link Account to Facebook" button
-            whose click handler calls a `Parse.FacebookUtils` that was never
-            initialised. Porting a dead button is not porting behaviour, so the
-            region div is kept and its contents are not. This is the one place
-            #profile's DOM differs from the legacy app's on purpose. */}
-        <div id="facebook-account-linking" />
       </div>
       <hr />
       <div className="ui-body ui-body-a ui-corner-all">
@@ -467,33 +461,34 @@ function rowText(row: PatronageRow): string {
 /* ---------------------------------------------------------------- roles -- */
 
 /**
- * The Roles section, which has never listed a role.
+ * The Roles section.
  *
- * A third legacy bug found while porting, and reproduced rather than fixed for
- * the reason in the porting guide. What the code intends: query `_Role` for the
- * roles containing this user and print one line each. What it does:
+ * `RolesView` is a CollectionView with `tagName: 'div'` whose child is an
+ * ItemView rendering the literal `"The one: <name>"`, so the region holds one
+ * div wrapping one div per role -- and the wrapper is real DOM, not scaffolding.
  *
- *   RoleView.template  = _.template("The one: <%= attributes.name %>")
- *   Marionette's data  = model.toJSON(), which is the attributes, flattened
+ * This listed nothing at all until legacy bug R1 was fixed. The template read
+ * `attributes.name` while Marionette hands it `model.toJSON()`, which under
+ * parse@8 is the flat attribute bag with no `attributes` key; lodash compiles
+ * the body inside `with (obj)`, so the first role threw a ReferenceError inside
+ * the `q.each` callback, the rejection landed in `.fail(PromiseFailReport)`, and
+ * a ReferenceError has no enumerable own properties -- so even the log said
+ * `Error in promise {}`. The port reproduced the empty div rather than inventing
+ * a section the legacy did not show.
  *
- * so the template reads `attributes.name` off an object that has `name` at the
- * top level and no `attributes` key at all. `_.template` compiles that to a
- * bare `attributes` reference, so the first role throws a ReferenceError
- * *inside* the `q.each` callback in UserSettingsProfileView.js:187. The
- * rejection lands in `.fail(PromiseFailReport)`, which logs "Error in promise"
- * and nothing else, so the section is silently empty for everyone.
- *
- * Confirmed against the running app as devuser, who holds two roles
- * (`Administrator` and `LST_qvtD2RxzGG`): the query returns both and
- * `#user-roles-available` still renders an empty div.
- *
- * The query is therefore not made here either -- making it would be a
- * behaviour change whose only visible effect would be that the two apps
- * disagree. RolesView is a CollectionView with `tagName: 'div'`, so the empty
- * inner div it leaves behind is real DOM and is kept.
+ * Both sides list the roles now. `useCurrentRoles` is the same `_Role` query the
+ * view makes -- ask which roles contain this user, rather than asking each
+ * role's `_User` relation, which is a `_User` find and refused.
  */
 function RolesList() {
-  return <div />;
+  const { data } = useCurrentRoles();
+  return (
+    <div>
+      {(data ?? []).map((role) => (
+        <div key={role.id}>The one: {role.get('name') as string}</div>
+      ))}
+    </div>
+  );
 }
 
 function str(value: unknown): string {

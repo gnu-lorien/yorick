@@ -43,11 +43,18 @@ export interface ExperienceNotationOptions {
 /** The Parse class the ledger entries live in. */
 export const EXPERIENCE_NOTATION_CLASS = 'ExperienceNotation';
 
+/**
+ * Must match `EXPERIENCE_NOTATION_FETCH_LIMIT` in models/Character.js:37, where
+ * the reasoning is recorded.
+ */
+export const EXPERIENCE_NOTATION_FETCH_LIMIT = 1000;
+
 export function experienceNotationQuery(character: Character): Parse.Query {
   return new Parse.Query(EXPERIENCE_NOTATION_CLASS)
     .equalTo('owner', character)
     .addDescending('entered')
-    .addDescending('createdAt');
+    .addDescending('createdAt')
+    .limit(EXPERIENCE_NOTATION_FETCH_LIMIT);
 }
 
 /**
@@ -59,14 +66,18 @@ export function experienceNotationQuery(character: Character): Parse.Query {
  * an ordering while doing so. The order here is the whole point, since the
  * running balances are computed by walking the list.
  *
- * The second is fidelity. The legacy fetch is
- * `collection.fetch({reset: true})`, which is a plain `find()` taking the
- * server's default page of 100. So a character with more than 100 notations
- * loses the oldest ones -- and because `recomputeRunningBalances` walks exactly
- * this list, the totals would be recomputed against a truncated ledger rather
- * than merely displayed short. Reproduced rather than fixed, as everywhere
- * else; raising the limit is a behaviour change and belongs in its own commit.
- * Recorded as legacy bug #15.
+ * The second is the limit. Both apps used to take the server's default page of
+ * 100, so a character with more than 100 notations lost the oldest ones -- and
+ * because `recomputeRunningBalances` walks exactly this list, the totals were
+ * recomputed against a truncated ledger rather than merely displayed short.
+ * Measured on the legacy side at 111 notations worth 140 XP: it loaded 100 and
+ * rewrote `experience_earned` as 100. Forty XP gone, saved, and nothing said.
+ * That was legacy bug #15 and it is fixed on both sides now.
+ *
+ * A raised ceiling, not a removed one. `each()` would page without any ceiling
+ * but refuses a sorted query, and the order is load-bearing: `entered`
+ * descending with `createdAt` as the tiebreak, so rows entered at the same
+ * instant keep a stable position and their running balances with it.
  */
 export async function fetchExperienceNotations(character: Character): Promise<Parse.Object[]> {
   return experienceNotationQuery(character).find();

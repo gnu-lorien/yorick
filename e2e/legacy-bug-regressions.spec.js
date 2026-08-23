@@ -26,7 +26,8 @@ const {
   clearStuckLoader,
   activePageId,
   normalize,
-  runInApp
+  runInApp,
+  isReact
 } = require('./helpers/jqm-helpers');
 
 // Imported rather than written out, so the fixture and the test that depends on
@@ -35,6 +36,26 @@ const {
 const { PRIVATE_FIXTURE_CHARACTER_ID } = require('../seed_db');
 
 const ERROR_REGION = '#global-error-region';
+
+
+/**
+ * Skip a test that asserts against the legacy app's own internals.
+ *
+ * A few of these pin *where* a fix landed rather than what it does: a
+ * `backToTop` on a memoised Backbone view, a `transform_description` on the
+ * router's cached character, the router's own admin-check timestamp. Those are
+ * the mechanism of the legacy architecture, and the React port has no
+ * equivalent to point at -- which in two cases is exactly why it never had the
+ * bug. Where the *observable* behaviour can be asserted, it is, in a sibling
+ * test or a sibling assertion that runs on both.
+ *
+ * Skipped rather than shimmed: inventing a `window.router` for the React app so
+ * that a test can read a property off it would assert that the shim works, not
+ * that the app does.
+ */
+async function skipLegacyInternals(page, why) {
+  test.skip(await isReact(page), 'legacy internals: ' + why);
+}
 
 /** Set the hash directly and wait for the app to settle, without asserting where it lands. */
 async function gotoHashUnchecked(page, hash) {
@@ -222,6 +243,12 @@ test.describe('Legacy bugs found during the React port', () => {
 
   test('#14 the approval screen leaves no diff on the cached character', async ({ page }) => {
     await loginAsAdmin(page);
+    // React holds no character between screens, so there is no cache to leak
+    // onto -- which is why it never drew the stale markers. The rendered
+    // outcome is covered by `npm run compare:dom` on
+    // `#character/9cYrGGv2w3/history/0`, which used to be a declared
+    // divergence and is not any more.
+    await skipLegacyInternals(page, 'router-cached character and Marionette child views');
 
     const character = await runInApp(page, ['app/models/Vampire'], `
       return mods[0].create_test_character("r15_leak").then(function (v) {
@@ -473,6 +500,11 @@ test.describe('Legacy bugs found during the React port', () => {
 
   test('#17 the sheet records its scroll offset on the view that reads it', async ({ page }) => {
     await loginAsAdmin(page);
+    // Which object holds the offset is the legacy's own question: the React
+    // sheet records its own position on unmount, because no route handler runs
+    // before the navigation to read it from. What the fix achieves is asserted
+    // by the next test, which runs on both.
+    await skipLegacyInternals(page, 'backToTop on a memoised Backbone view');
 
     const character = await runInApp(page, ['app/models/Vampire'], `
       return mods[0].create_test_character("r17_scroll").then(function (v) {
@@ -531,8 +563,15 @@ test.describe('Legacy bugs found during the React port', () => {
 
     // And the offset is consumed, so the next visit starts clean rather than
     // re-scrolling to a stale position.
-    expect(await page.evaluate(() => window.router.characterMainPage.backToTop))
-      .toBe(0);
+    //
+    // Asserted through the legacy's own storage, so this half is legacy-only;
+    // the return trip above is the behaviour and it runs on both. React
+    // consumes too -- `consume: true` in web/src/shell/scrollMemory.ts -- but
+    // its store is a module-level map with nothing to point a page.evaluate at.
+    if (!(await isReact(page))) {
+      expect(await page.evaluate(() => window.router.characterMainPage.backToTop))
+        .toBe(0);
+    }
   });
 
   test('#17 the wizard unpick route records on the wizard view, from cold', async ({ page }) => {
@@ -546,6 +585,7 @@ test.describe('Legacy bugs found during the React port', () => {
     page.on('pageerror', (e) => pageErrors.push(e.message));
 
     await loginAsAdmin(page);
+    await skipLegacyInternals(page, 'a lazily-built Backbone view and its backToTop');
     const character = await runInApp(page, ['app/models/Vampire'], `
       return mods[0].create_test_character("r17_wizard").then(function (v) {
         return { id: v.id };
@@ -870,6 +910,10 @@ test.describe('Legacy bugs found during the React port', () => {
 
   test('#6 a stale "not an admin" cache does not keep a real admin out', async ({ page }) => {
     await loginAsAdmin(page);
+    // `lastadminchecktime` is the router's throttle on re-counting roles.
+    // React's guard is the session in App.tsx and has no such timestamp to
+    // poison.
+    await skipLegacyInternals(page, "the router's admin-check throttle");
     await navigateToHash(page, 'administration', '#administration');
 
     const state = await page.evaluate(() => {

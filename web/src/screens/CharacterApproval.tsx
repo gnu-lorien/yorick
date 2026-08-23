@@ -85,7 +85,12 @@ export function CharacterApproval({ route }: ScreenProps) {
         setPicked(picksForApproval(timeline, priorApprovals, priorApprovals.length));
       } catch (error) {
         if (cancelled) return;
-        showError(error, "Couldn't open that character's approvals");
+        // Wording matched to the legacy's, which is now
+        // `ReportError.on("Couldn't open the approval page")`
+        // (mobileRouter.js:483) and pinned by
+        // e2e/legacy-bug-regressions.spec.js. The banner text is the user-facing
+        // half of legacy bug #0, so the two apps should say the same thing.
+        showError(error, "Couldn't open the approval page");
       }
     })();
     return () => {
