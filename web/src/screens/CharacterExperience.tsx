@@ -100,10 +100,25 @@ export function CharacterExperience({ route }: ScreenProps) {
   const goto = (nextStart: number) =>
     navigate(`#character/${character.id}/experience/${nextStart}/${changeBy}`);
 
+  /**
+   * Do something to the ledger, then re-read it -- both under the spinner.
+   *
+   * The re-read has to be inside the guard, not after it. The legacy holds
+   * `$.mobile.loading("show")` across the whole chain, so the spinner is up
+   * until the table has actually been redrawn; hiding it between the save and
+   * the re-read leaves the *old* table on screen with nothing to say it is
+   * stale. It is not only cosmetic -- anything that waits for the spinner to
+   * clear before reading the table, the E2E suite included, reads the row it
+   * just edited and sees the value it had before.
+   */
   async function mutate(work: () => Promise<unknown>, context: string) {
     try {
-      await track(work());
-      await reload(character!);
+      await track(
+        (async () => {
+          await work();
+          await reload(character!);
+        })(),
+      );
     } catch (error) {
       reportError(error, context);
     }

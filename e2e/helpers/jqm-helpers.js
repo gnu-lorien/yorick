@@ -43,8 +43,29 @@ async function waitForAppReady(page, timeout = DEFAULT_TIMEOUT) {
   }, { timeout });
 }
 
-/** Wait for the jQuery Mobile loading spinner to clear. */
+/**
+ * Wait for the app to stop working.
+ *
+ * On the legacy front end that means the jQuery Mobile spinner, and the check
+ * is deliberately generous because several admin routes leave it up forever
+ * (see `clearStuckLoader`) -- a timeout here is swallowed rather than failing a
+ * test for a known UI bug.
+ *
+ * React answers directly instead, and it has to. The stylesheet gives
+ * `.ui-loader` `position: fixed`, which makes `offsetParent` null whether it is
+ * showing or not, so the DOM check below passes the moment it is asked. On the
+ * legacy app that is survivable -- its route handlers finish rendering before
+ * the promise chain resolves -- but React saves and re-renders asynchronously,
+ * so "the spinner is clear" was answering yes while the row being edited still
+ * held its old value.
+ */
 async function waitForJqmLoader(page, timeout = 15000) {
+  const react = await isReact(page);
+  if (react) {
+    await page.waitForFunction(() => !window.__yorick.busy(), { timeout })
+      .catch(() => { /* nothing was in flight */ });
+    return;
+  }
   await page.waitForFunction(() => {
     const loader = document.querySelector('.ui-loader');
     if (!loader) return true;

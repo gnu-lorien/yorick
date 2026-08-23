@@ -21,6 +21,11 @@ import { requireModules } from './e2eModelApi';
  * - `hardReset` is `hardReload` without the page load: several specs need a
  *   route handler to build a genuinely fresh view, which in the legacy app
  *   means defeating the router's memoised views.
+ * - `busy` is how a helper waits for the app to settle. The legacy signal is
+ *   jQuery Mobile's spinner, which cannot be used here: the stylesheet gives
+ *   `.ui-loader` `position: fixed`, so `offsetParent` is null whether it is
+ *   showing or not, and every such check quietly passes. This answers the
+ *   question directly -- any tracked work, any query in flight.
  * - `require` answers the module names the suite's `runInApp` asks for. That is
  *   how it does fixture setup and assertion read-back -- through the app's own
  *   models rather than the UI -- and `e2eModelApi.ts` says why it keeps the
@@ -36,6 +41,7 @@ export interface YorickTestBridge {
   react: true;
   redispatch(): void;
   hardReset(): void;
+  busy(): boolean;
   require(
     names: string[],
     callback: (...mods: unknown[]) => void,
@@ -46,6 +52,12 @@ export interface YorickTestBridge {
 let generation = 0;
 const listeners = new Set<() => void>();
 let queryClient: QueryClient | null = null;
+let loadingCount = 0;
+
+/** The spinner's nesting count, reported by LoadingProvider. See `busy`. */
+export function reportLoading(count: number): void {
+  loadingCount = count;
+}
 
 function bump(): void {
   generation += 1;
@@ -90,6 +102,7 @@ export function installTestBridge(client: QueryClient): void {
       queryClient?.clear();
       bump();
     },
+    busy: () => loadingCount > 0 || (queryClient?.isFetching() ?? 0) > 0,
     require: requireModules,
   };
   (window as unknown as { __yorick: YorickTestBridge }).__yorick = bridge;
