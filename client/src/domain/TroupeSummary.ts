@@ -63,6 +63,31 @@ export async function fetchTroupeSummaryCharacters(troupeId: string): Promise<Ch
   return found
 }
 
+/**
+ * Every character in the database, for the administration summary.
+ *
+ * `get_administrator_summarize_characters` (`mobileRouter.js:1408`). ONE query
+ * rather than the troupe version's two, carrying BOTH venues' trait columns,
+ * and gated only on `exists("owner")` -- so an archived character is absent.
+ * No long text is fetched: this screen never prints.
+ *
+ * The `owner` include is omitted for the same reason as everywhere else; the
+ * caller hydrates.
+ */
+export async function fetchAllSummaryCharacters(): Promise<Character[]> {
+  const query = new Parse.Query(CharacterObject)
+  query.exists('owner')
+  query.include('portrait')
+  for (const entry of venueFor('Vampire').ALL_SIMPLETRAIT_CATEGORIES) query.include(entry[0])
+  for (const entry of venueFor('Werewolf').ALL_SIMPLETRAIT_CATEGORIES) query.include(entry[0])
+
+  const found: Character[] = []
+  await query.each((character) => {
+    found.push(character as Character)
+  })
+  return found
+}
+
 /** The filter form's state, as `filterOptions` held it. */
 export interface SummaryFilter {
   category: string

@@ -36,8 +36,10 @@
  * `fillBackformInput` in the E2E helpers exists precisely because a bare
  * `.fill()` raises `input` and not `change`.
  *
- * `.status` / `text-success` / `text-error` are Backform's own status markup and
- * are what the suite reads for the success message.
+ * `.status` / `text-success` / `text-danger` are Backform's own status markup
+ * and are what the suite reads for the success message. `text-danger`, not
+ * `text-error`: the latter is Backform's `bootstrap2()` variant, and nothing in
+ * this app ever calls it.
  */
 import { computed, ref, watch } from 'vue'
 import type { Character } from '@/domain/Character'
@@ -158,7 +160,7 @@ async function submit() {
             </button>
             <span
               class="status"
-              :class="status === 'error' ? 'text-error' : status === 'success' ? 'text-success' : ''"
+              :class="status === 'error' ? 'text-danger' : status === 'success' ? 'text-success' : ''"
               >{{ message }}</span
             >
           </div>

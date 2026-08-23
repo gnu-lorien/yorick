@@ -10,6 +10,11 @@
  * and it is really a small report builder: five controls narrow the roster and
  * choose one of three renderings of the same rows.
  *
+ * Two routes render it: a troupe's roster, and
+ * `#administration/characters/summarize` over every character in the database.
+ * The admin one is a single query gated on `exists("owner")` and fetches no
+ * long text, because it never prints -- see `fetchAllSummaryCharacters`.
+ *
  * ## The two queries, and why they are not one
  *
  * Werewolves are fetched by `type == "Werewolf"` with Werewolf's trait columns
@@ -51,6 +56,7 @@ import {
   ANTECEDENCE_OPTIONS,
   RESULT_TYPE_OPTIONS,
   SUMMARY_CATEGORY_GROUPS,
+  fetchAllSummaryCharacters,
   fetchTroupeSummaryCharacters,
   matchesSummaryFilter,
   summaryCategoryName,
@@ -67,8 +73,10 @@ const ui = useUiStore()
 const usersStore = useUsersStore()
 
 const troupeId = computed(() => route.params.id as string)
+/** `#administration/characters/summarize` renders this page over every character. */
+const isAdminListing = computed(() => route.meta.handler === 'administration_characters_summarize')
 
-useBackHref(() => `#troupe/${troupeId.value}`)
+useBackHref(() => (isAdminListing.value ? '#administration' : `#troupe/${troupeId.value}`))
 
 const characters = shallowRef<Character[]>([])
 /** False until the roster is in hand; see the note in `JqmPage.vue`. */
@@ -208,7 +216,10 @@ const csvRows = computed(() => {
 onMounted(async () => {
   try {
     const found = await ui.runWork(
-      () => fetchTroupeSummaryCharacters(troupeId.value),
+      () =>
+        isAdminListing.value
+          ? fetchAllSummaryCharacters()
+          : fetchTroupeSummaryCharacters(troupeId.value),
       'Fetching all characters',
     )
     // Before the rows are shown, never after: `hydrate` writes through

@@ -13,7 +13,7 @@
  * `e2e/character-sheet.spec.js:182` drives exactly that sequence and asserts the
  * success text, so the ids and the button name are preserved.
  */
-import { computed, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, onMounted, ref, shallowRef } from 'vue'
 import { useRoute } from 'vue-router'
 import { JqmPage } from '@/components/jqm'
 import { useBackHref } from '@/composables/useBackHref'
@@ -53,15 +53,23 @@ onMounted(async () => {
   }
 })
 
-// Any edit re-enables the button and clears a previous success, matching
-// Backform's `change` handler.
-watch(name, () => {
+/**
+ * Backform's `change` handler, and it is bound to `change` on purpose.
+ *
+ * The form's own listener was `"change"`, delegated -- so the button unlocks
+ * when the field is committed, not on every keystroke. Watching the `name` ref
+ * instead looks equivalent and is not: loading the character writes the ref,
+ * which fires the watcher, and the button was enabled before the user had
+ * touched anything. `helpers/lifecycle.js:renameCharacter` asserts the disabled
+ * state first, for exactly this reason.
+ */
+function touch() {
   dirty.value = true
   if (status.value === 'success') {
     status.value = 'idle'
     message.value = ''
   }
-})
+}
 
 const submitDisabled = computed(() => !dirty.value || !character.value)
 
@@ -85,21 +93,45 @@ async function submit() {
 
 <template>
   <JqmPage id="character-rename" title="Rename Character">
-    <form id="character-rename-main" @submit.prevent="submit">
-      <label for="character-rename-name">Character Name</label>
-      <div class="ui-input-text ui-body-inherit ui-corner-all ui-shadow-inset">
-        <input id="character-rename-name" v-model="name" type="text" name="name" />
+    <!--
+      Backform's own markup: `form.backform.form-horizontal` holding one
+      `div.form-group` per field, each carrying the field NAME as a class
+      (`Control.render` does `.addClass(field.name)`). The status span and its
+      `text-success` / `text-danger` classes are `ButtonControl`'s, and
+      `helpers/lifecycle.js:renameCharacter` waits on exactly those two classes
+      to know the save has landed either way.
+
+      `text-danger` and not `text-error`: the latter is Backform's `bootstrap2()`
+      variant and nothing in this app calls it.
+    -->
+    <form id="character-rename-main" class="backform form-horizontal" @submit.prevent="submit">
+      <div class="form-group name">
+        <label class="control-label" for="character-rename-name">Character Name</label>
+        <div class="controls">
+          <input
+            id="character-rename-name"
+            v-model="name"
+            class="form-control"
+            type="text"
+            name="name"
+            @change="touch"
+          />
+        </div>
       </div>
-      <button
-        id="submit"
-        name="submit"
-        type="submit"
-        class="ui-btn ui-shadow ui-corner-all"
-        :disabled="submitDisabled"
-      >
-        Update
-      </button>
-      <p v-if="message" :class="status === 'error' ? 'error' : 'success'">{{ message }}</p>
+
+      <div class="form-group submit">
+        <label class="control-label">&nbsp;</label>
+        <div class="controls">
+          <button id="submit" type="submit" name="submit" class="btn" :disabled="submitDisabled">
+            Update
+          </button>
+          <span
+            class="status"
+            :class="status === 'error' ? 'text-danger' : status === 'success' ? 'text-success' : ''"
+            >{{ message }}</span
+          >
+        </div>
+      </div>
     </form>
   </JqmPage>
 </template>

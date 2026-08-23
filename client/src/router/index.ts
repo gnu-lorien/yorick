@@ -18,7 +18,8 @@ import { routes, type YorickRouteMeta } from './routes'
 import { extraRoutes } from './extra-routes'
 import { compilePattern, formatPattern, hashToPath, normaliseHash, type HashPattern } from './backbone-hash'
 import { useAuthStore } from '@/stores/auth'
-import { useUiStore } from '@/stores/ui'
+import { reportError } from '@/domain/errors'
+import Parse from '@/parse'
 
 /** Compiled patterns, in route-table order, which is Backbone's match order. */
 const allRoutes = [...routes, ...extraRoutes]
@@ -100,7 +101,25 @@ router.beforeEach(async (to) => {
       // through to the flag we already have.
     }
     if (!auth.isAdmin) {
-      useUiStore().reportError('Administrator access is required for that page.')
+      /*
+       * The BANNER, not the popup.
+       *
+       * `enforce_admin` rejected with a `Parse.Error(OPERATION_FORBIDDEN, ...)`
+       * and `admin_route_failed` handed it to `ReportError`, which is the
+       * inline `#global-error-region` -- the thing that survives the redirect
+       * and is still on screen when the user lands on the home page.
+       * `access-control.spec.js:381` reads exactly that region.
+       *
+       * The UI store's `reportError` is a different mechanism (a modal popup)
+       * used by screens that report an error and stay put. A refusal that
+       * navigates has to use the one that follows the navigation.
+       */
+      void reportError(
+        new Parse.Error(
+          Parse.Error.OPERATION_FORBIDDEN,
+          'Administrator access is required for that page.',
+        ),
+      ).catch(() => {})
       return { name: 'home', replace: true }
     }
   }
