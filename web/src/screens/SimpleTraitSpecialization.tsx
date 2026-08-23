@@ -99,8 +99,13 @@ function Editor({
       navigate(redirect);
     } catch (error) {
       // A colliding name is genuinely rejected -- the name never persists -- but
-      // until now the only trace was a console.log, which no player ever sees.
-      // Reported before the redirect; the banner follows it.
+      // until now the only trace was this console.log, which no player ever
+      // sees. Reported before the redirect; the banner follows it.
+      //
+      // The log is kept as well as the banner, and kept verbatim: it is what a
+      // developer greps for, and e2e/traits-lifecycle.spec.js asserts on this
+      // exact wording to prove the rejection reached *somewhere*.
+      console.log("Couldn't specialize trait because of " + JSON.stringify(error));
       setBusy(false);
       try {
         reportError(error, "Couldn't rename this trait");
