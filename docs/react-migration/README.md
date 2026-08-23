@@ -5,14 +5,42 @@ the same Parse server as the existing app, and it is meant to be
 indistinguishable from it: same screens, same URLs, same markup, same
 stylesheet.
 
-All 75 of the legacy router's handlers are ported, and 55 of 59 checked screens
-match the legacy DOM exactly; the other four differ for reasons written down
-below and in the screens themselves. What is left before the flip is the
-Playwright suite -- see `e2e-parity-plan.md`.
+All 75 of the legacy router's handlers are ported. 55 of 59 checked screens
+match the legacy DOM exactly -- the other four differ for reasons written down
+below and in the screens themselves -- and the Playwright suite reports 449
+same-pass with no regressions against the legacy app (`e2e-parity-plan.md`).
 
-Until then both front ends exist side by side and neither disturbs the other.
-`dist/` still holds the committed build of the legacy app, which is what Netlify
-deploy previews serve; the React app builds to `dist-react/`.
+The port is done. **The flip is not, and it is not mine to make** -- see below.
+
+Both front ends exist side by side and neither disturbs the other. The React app
+builds to `dist-react/`, which is self-contained; `dist/` still holds the
+committed build of the legacy app.
+
+## The flip is an owner decision, not a config change
+
+The plan was "build alongside, flip at the end", and the flip reads like one
+line: point `build.outDir` at `../dist` instead of `../dist-react`. It is not,
+because of what `dist/` actually is.
+
+`dist/` is not a preview artefact. It is the **production** build: `gulpfile.js`
+has a `siteconfig-greensboro` task that writes the production site config into
+it, and greensboro is production. `docs/runbooks/dependency-vulnerabilities.md`
+§2 says so explicitly, and records a decision already taken about it: `dist/` is
+deliberately stale, a *pre-Parse-8* build, left as it was because rebuilding it
+would ship the Parse 8 migration that production has not taken. Several
+browser-side security fixes are waiting behind that same decision.
+
+So overwriting `dist/` with the React build would do three things at once, only
+one of which is this migration: publish the rewrite, publish the Parse 8
+migration with it, and reverse a documented decision about when production takes
+that change. That is a deploy, and it wants an owner.
+
+What is ready for whoever makes it:
+
+- `dist-react/` is a complete, self-contained build. `npm run build:react`.
+- The suite runs against it unmodified -- `node e2e/run-react.js`.
+- The switch itself is `build.outDir` in `web/vite.config.ts`, plus deleting the
+  gulp build's output from `dist/`, which `emptyOutDir` does.
 
 ## Running both
 
