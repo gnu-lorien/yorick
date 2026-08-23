@@ -12,6 +12,10 @@ define([
 ], function( $, Backbone, moment, ExperienceNotation, ExperienceNotationCollection, VampireChangeCollection) {
 
     var MOMENT_FORMAT = "L LTS";
+
+    // Must match `EXPERIENCE_NOTATION_FETCH_LIMIT` in models/Character.js,
+    // where the reasoning is recorded.
+    var EXPERIENCE_NOTATION_FETCH_LIMIT = 1000;
     // Extends Backbone.View
     var View = Backbone.View.extend( {
 
@@ -224,6 +228,19 @@ define([
             var self = this;
             var q = new Parse.Query(ExperienceNotation);
             q.equalTo("owner", self.character).addDescending("entered").addDescending("createdAt");
+            // The whole ledger, matching `Character.fetch_experience_notations`,
+            // which is where the reasoning lives. `self.collection` IS the
+            // character's own `experience_notations` (see `register`), so a
+            // refetch here at the server's default page of 100 would truncate
+            // the very collection `_propagate_experience_notation_change`
+            // walks, and the character's saved totals would be rebuilt from a
+            // partial history.
+            //
+            // Nothing calls this method today - see the note above - so this
+            // is a trap disarmed rather than a bug fixed. It is a public method
+            // on a live view, which is exactly the kind of thing that gets
+            // wired up later.
+            q.limit(EXPERIENCE_NOTATION_FETCH_LIMIT);
             self.collection.query = q;
             return self.collection.fetch({reset: true});
         },
