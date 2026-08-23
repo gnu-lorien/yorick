@@ -207,12 +207,18 @@ function Editor({
       clearError();
       backToCategory();
     } catch (error) {
-      // Stay on the page, drop the spinner, and say what went wrong. A refused
-      // save used to report to trackJs and nothing else: the button simply
-      // stopped responding.
+      // Stay on the page and say what went wrong. A refused save used to report
+      // to trackJs and nothing else: the button simply stopped responding.
       setBusy(false);
-      hide();
       reportError(error, "Couldn't save this trait");
+    } finally {
+      // `finally`, not just the catch. The spinner is a nesting counter, so a
+      // success path that shows and never hides leaves it permanently up: the
+      // overlay swallows clicks, and every "wait for the app to settle" answers
+      // no forever. The legacy is saved from this by jQuery Mobile, whose page
+      // transition hides the spinner as a side effect; React navigates without
+      // touching it.
+      hide();
     }
   }
 

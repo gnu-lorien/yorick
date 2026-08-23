@@ -101,7 +101,6 @@ function Editor({
       // A colliding name is genuinely rejected -- the name never persists -- but
       // until now the only trace was a console.log, which no player ever sees.
       // Reported before the redirect; the banner follows it.
-      hide();
       setBusy(false);
       try {
         reportError(error, "Couldn't rename this trait");
@@ -109,6 +108,14 @@ function Editor({
         /* the banner is the point here, not the rethrow */
       }
       navigate(redirect);
+    } finally {
+      // `finally`, not just the catch. The spinner is a nesting counter, so a
+      // success path that shows and never hides leaves it permanently up: the
+      // overlay swallows clicks, and every "wait for the app to settle" answers
+      // no forever. The legacy is saved from this by jQuery Mobile, whose page
+      // transition hides the spinner as a side effect; React navigates without
+      // touching it.
+      hide();
     }
   }
 

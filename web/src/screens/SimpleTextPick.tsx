@@ -87,8 +87,15 @@ export function SimpleTextPick({ route }: ScreenProps) {
       // for instance -- and used to leave the picker sitting there with the
       // loader spinning and nothing said.
       setBusy(false);
-      hide();
       reportError(error, "Couldn't pick that");
+    } finally {
+      // `finally`, not just the catch. The spinner is a nesting counter, so a
+      // success path that shows and never hides leaves it permanently up: the
+      // overlay swallows clicks, and every "wait for the app to settle" answers
+      // no forever. The legacy is saved from this by jQuery Mobile, whose page
+      // transition hides the spinner as a side effect; React navigates without
+      // touching it.
+      hide();
     }
   }
 

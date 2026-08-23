@@ -514,8 +514,15 @@ export function CharacterCreatePickSimpleTrait({ route }: ScreenProps) {
       );
     } catch (e) {
       setBusy(false);
-      hide();
       reportError(e, "Couldn't pick that");
+    } finally {
+      // `finally`, not just the catch. The spinner is a nesting counter, so a
+      // success path that shows and never hides leaves it permanently up: the
+      // overlay swallows clicks, and every "wait for the app to settle" answers
+      // no forever. The legacy is saved from this by jQuery Mobile, whose page
+      // transition hides the spinner as a side effect; React navigates without
+      // touching it.
+      hide();
     }
   }
 
