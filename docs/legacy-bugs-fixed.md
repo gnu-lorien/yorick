@@ -2,7 +2,7 @@
 
 Companion to `legacy-bugs-found-during-react-port.md` (written on the React
 port branch, `claude/migrate-project-react-69c438`). That document catalogues
-seventeen defects in `public/scripts/`; this one records what was done about
+eighteen defects in `public/scripts/`; this one records what was done about
 each, and where the resolution differs from what it prescribed.
 
 Every entry is covered by a test. Two files hold them:
@@ -10,12 +10,12 @@ Every entry is covered by a test. Two files hold them:
 - `test/legacy-bug-regressions.test.js` — 20 tests, `npm run test:node`, about
   150ms. Anything decidable without a browser: collection ordering, the
   clan-rule page size, template guards, markup shape.
-- `e2e/legacy-bug-regressions.spec.js` — 22 tests, `npx playwright test
+- `e2e/legacy-bug-regressions.spec.js` — 24 tests, `npx playwright test
   e2e/legacy-bug-regressions.spec.js`, about a minute. Anything that needs a
   rendered page and a real server.
 
 Both suites were run against the **unfixed** sources before being trusted.
-Twelve of the twenty node tests and seventeen of the twenty-two E2E tests fail
+Twelve of the twenty node tests and nineteen of the twenty-four E2E tests fail
 there.
 The rest are deliberate controls — a correct-behaviour anchor beside each
 defect, so a test cannot pass by breaking the thing next to it.
@@ -41,6 +41,7 @@ defect, so a test cannot pass by breaking the thing next to it.
 | 14 | Stopped writing `transform_description` onto the router-cached character | `views/CharacterApprovalView.js` |
 | 15 | `limit(1000)` on both experience-ledger fetches | `models/Character.js`, `views/CharacterExperienceView.js` |
 | 16 | Guarded `listview("refresh")` after writing the rows | `views/CharactersListView.js` |
+| 17 | Record the scroll offset on the view that reads it; `withCharacterCreateView()` added to the wizard's odd one out | `routers/mobileRouter.js` |
 | **R1** | `<%= name %>` instead of `<%= attributes.name %>`. Not in the document — found here; see below | `views/UserSettingsProfileView.js` |
 
 ## Where this departs from the document
@@ -156,6 +157,52 @@ exist yet. Guarded on `$list.data("mobile-listview")`, which is absent on that
 first pass and present on every later one. `enhanceWithin()`, which the other
 41 views call, would not work here at all: it skips an element that is already
 enhanced, and the `<ul>` is — only `refresh` re-walks the rows.
+
+**#17's target is not the character model, and fixing it does not make the
+sheet's scroll restore work.** Two corrections, both measured.
+
+First, the document says the three routes "record the offset on the character
+model instead". They do not — the router has no `character` property. It
+resolves to the route handler `character: function (id)` further down the same
+file, so the offset was being written onto a *function*:
+
+```
+typeof router.character                "function"
+router.character === the route handler  true
+router.character.backToTop             400   <- where the offset landed
+router.characterMainPage.backToTop     0     <- what the helper reads back
+```
+
+That is also why nothing ever threw. (The document's `_.parseInt(undefined)`
+→ NaN is right only on the very first pass; the helper sets `self.backToTop = 0`
+after each use, so it is a hard 0 thereafter. Same outcome: always the top.)
+
+Second, the wizard's odd one out needed more than a changed target.
+`charactercreateunpicksimpletext` was the only one of the four wizard routes
+that never called `withCharacterCreateView()`, and that view is built lazily —
+so pointing it at `self.characterCreateView` without also ensuring the view
+exists would have written to `undefined` for anyone reaching the route before
+the wizard had been opened. Both halves are applied, and a test drives the
+route from a cold reload to prove it.
+
+**The visible restore is still broken, and that is a second defect, not this
+one.** With 400 correctly recorded, on return to the sheet:
+
+```
+t+0      scrollY 0, scrollable room   81   (backToTop already consumed)
+t+8000   scrollY 0, scrollable room 1879
+```
+
+`show_character_helper` arms the restore on `pagechange`, and jQuery Mobile
+fires that while the sheet is still growing, so `silentScroll(400)` runs
+against an 81px page and goes nowhere; nothing re-runs once the sheet has its
+full height. Sometimes the render wins the race and it works, which is why an
+assertion on the scroll position would be a flaky test of a real bug. The tests
+therefore pin the recording — which is what #17 describes and is fully
+deterministic — and this is left recorded rather than papered over. Making the
+restore actually fire is a change to the shared
+`scroll_back_after_page_change` helper, which the wizard also uses and where it
+currently works; that is a decision, not a slip.
 
 **#9's prescribed fix is necessary but not sufficient, and the failure it
 describes happens earlier than stated.** The document says a character with no

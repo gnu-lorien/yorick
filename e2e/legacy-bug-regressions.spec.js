@@ -22,6 +22,7 @@ const {
   waitForJqmLoader,
   waitForActivePage,
   navigateToHash,
+  hardReload,
   activePageId,
   normalize,
   runInApp
@@ -408,6 +409,144 @@ test.describe('Legacy bugs found during the React port', () => {
     expect(third.count).toBeGreaterThan(0);
     expect(third.firstHasClass).toBe(true);
     expect(third.lastHasClass).toBe(true);
+  });
+
+  // -------------------------------------------------------------------------
+  // #17 The character sheet's scroll-restore has never worked
+  // -------------------------------------------------------------------------
+  //
+  // `CharacterView.scroll_back_after_page_change` reads `backToTop` off the
+  // VIEW, and `show_character_helper` calls it on `self.characterMainPage`.
+  // But the routes that leave the sheet recorded the offset on
+  // `self.character` - and the router has no `character` property. It resolves
+  // to the ROUTE HANDLER `character: function (id)`, so the offset was stored
+  // on a function and never read again.
+  //
+  // Measured before the fix, leaving the sheet from an offset of 400:
+  //
+  //   typeof router.character                "function"
+  //   router.character === the route handler  true
+  //   router.character.backToTop             400      <- landed here
+  //   router.characterMainPage.backToTop     0        <- what is read back
+  //   scroll position on return              0
+  //
+  // The document describes the target as "the character model"; it is not,
+  // and the distinction is why nothing ever threw. It also reports
+  // `_.parseInt(undefined)` giving NaN - true only on the very first pass,
+  // because the helper sets `self.backToTop = 0` after each use. Either way
+  // the sheet always went back to the top.
+
+  test('#17 the sheet records its scroll offset on the view that reads it', async ({ page }) => {
+    await loginAsAdmin(page);
+
+    const character = await runInApp(page, ['app/models/Vampire'], `
+      return mods[0].create_test_character("r17_scroll").then(function (v) {
+        return { id: v.id };
+      });
+    `);
+
+    await navigateToHash(page, 'character?' + character.id, '#character');
+    await expect(page.locator('#character #insertheader')).toBeVisible({ timeout: 30000 });
+
+    // The sheet has to actually be scrollable, and it grows as Marionette
+    // fills its regions - scrolling before it is tall enough silently lands at
+    // 0 and the test proves nothing. Wait for the room, then take an offset
+    // that fits inside it.
+    await page.waitForFunction(
+      () => document.documentElement.scrollHeight - window.innerHeight > 200,
+      { timeout: 30000 });
+
+    // Let the sheet's own restore fire first. `show_character_helper` arms a
+    // one-shot `pagechange` handler that silentScrolls to the last recorded
+    // offset and then zeroes it; if it lands after we scroll, it drags the
+    // page back to 0 and the route below records 0. Measured: without this the
+    // recorded offset came back 0 with everything else correct.
+    await page.waitForTimeout(1500);
+
+    const OFFSET = await page.evaluate(() => {
+      const room = document.documentElement.scrollHeight - window.innerHeight;
+      const target = Math.min(400, Math.floor(room / 2));
+      window.scrollTo(0, target);
+      return target;
+    });
+    expect(OFFSET, 'the sheet must be scrollable for this to mean anything')
+      .toBeGreaterThan(50);
+    await page.waitForFunction((y) => Math.abs(window.scrollY - y) <= 2, OFFSET,
+      { timeout: 15000 });
+
+    // Leave the sheet through `simpletextpick`, one of the two routes that
+    // record the offset.
+    await gotoHashUnchecked(page,
+      '#simpletext/archetype/archetype/' + character.id + '/pick');
+    await waitForActivePage(page, 'simpletext-new');
+
+    const recorded = await page.evaluate(() => ({
+      onTheView: window.router.characterMainPage.backToTop,
+      onTheRouteHandler: window.router.character.backToTop
+    }));
+    expect(recorded.onTheView,
+      'the offset must be recorded on the view its helper reads').toBe(OFFSET);
+    expect(recorded.onTheRouteHandler,
+      'nothing should be written onto the `character` route handler').toBeUndefined();
+
+    // Deliberately NOT asserting the scroll position on return.
+    //
+    // The offset now reaches the object that reads it, which is all #17 is
+    // about, and the assertions above pin that deterministically. Whether it
+    // then MOVES the page is a separate defect: `show_character_helper` arms
+    // the restore on `pagechange`, and jQuery Mobile fires that while the
+    // sheet is still growing. Measured on return, with 400 correctly recorded:
+    //
+    //   t+0      scrollY 0, scrollable room   81   (backToTop already consumed)
+    //   t+8000   scrollY 0, scrollable room 1879
+    //
+    // `silentScroll(400)` against an 81px page goes nowhere, and nothing
+    // re-runs once the sheet has grown. Sometimes the render wins the race and
+    // it works; asserting it here would be a flaky test of a real second bug.
+    // Recorded in docs/legacy-bugs-fixed.md rather than papered over.
+  });
+
+  test('#17 the wizard unpick route records on the wizard view, from cold', async ({ page }) => {
+    // The odd one out, twice over: it belongs to the wizard's group of four
+    // but recorded the way the sheet's two did, and it was the only one of the
+    // four that never called `withCharacterCreateView()`. The second half only
+    // starts to matter once the first is fixed - pointing it at
+    // `characterCreateView` without ensuring the view exists would throw for
+    // anyone arriving here before the wizard had been opened.
+    const pageErrors = [];
+    page.on('pageerror', (e) => pageErrors.push(e.message));
+
+    await loginAsAdmin(page);
+    const character = await runInApp(page, ['app/models/Vampire'], `
+      return mods[0].create_test_character("r17_wizard").then(function (v) {
+        return { id: v.id };
+      });
+    `);
+
+    // Reload so the lazily-built wizard view genuinely does not exist yet.
+    await hardReload(page);
+    expect(await page.evaluate(() => !!window.router.characterCreateView),
+      'the fixture must start with no wizard view or this proves nothing').toBe(false);
+
+    pageErrors.length = 0;
+    await gotoHashUnchecked(page,
+      '#charactercreate/simpletext/archetype/archetype/' + character.id + '/unpick');
+    await waitForActivePage(page, 'character-create');
+
+    const state = await page.evaluate(() => ({
+      wizardViewExists: !!window.router.characterCreateView,
+      onTheWizardView: window.router.characterCreateView
+        ? window.router.characterCreateView.backToTop : null,
+      onTheRouteHandler: window.router.character.backToTop
+    }));
+
+    expect(pageErrors, 'the route must not throw when the wizard view is cold').toEqual([]);
+    expect(state.wizardViewExists,
+      'the route must ensure the view it records on exists').toBe(true);
+    expect(Number.isFinite(state.onTheWizardView),
+      'the offset must land on the wizard view as a number').toBe(true);
+    expect(state.onTheRouteHandler,
+      'nothing should be written onto the `character` route handler').toBeUndefined();
   });
 
   // -------------------------------------------------------------------------
