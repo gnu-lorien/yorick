@@ -129,7 +129,7 @@ function useSpinner(active: boolean, show: () => void, hide: () => void) {
  * As everywhere else, `owner` is NOT included -- see parse/users.ts -- and the
  * names are filled in afterwards.
  */
-async function fetchSummarizable(
+export async function fetchSummarizable(
   narrow: (query: Parse.Query<Character>) => Parse.Query<Character>,
 ): Promise<Character[]> {
   const categories = new Set<string>();
@@ -166,19 +166,54 @@ const DEFAULT_FILTERS: Filters = {
   format: 'pretty',
 };
 
-function SummarizeRoster({
-  characters,
-  href,
-}: {
+export interface SummarizeRosterProps {
   characters: Character[];
   href: (id: string) => string;
-}) {
+  /** The jQuery Mobile page this renders into. */
+  pageId?: string;
+  title?: string;
+  /** The id of the div wrapping the list. Differs between the two pages. */
+  listId?: string;
+  /** The search input's id, which each page declares for itself. */
+  filterId?: string;
+  /**
+   * Whether the filter form offers the format select.
+   *
+   * The two views declare different field lists: the summarize form has five
+   * fields, the select-to-print form has the first four. Its `filterOptions`
+   * still carries `format: "pretty"`, so the format is fixed rather than absent
+   * -- which is why this is a field-list switch and not a change of defaults.
+   */
+  showFormat?: boolean;
+  /** Rendered between the filter bar and the list -- the print options. */
+  betweenSections?: React.ReactNode;
+  /** Told the filtered set on every change, so a sibling screen can print it. */
+  onFilteredChange?: (characters: Character[]) => void;
+}
+
+export function SummarizeRoster({
+  characters,
+  href,
+  pageId = 'troupe-summarize-characters-all',
+  title = 'Troupe Characters',
+  listId = 'troupe-summarize-characters-list',
+  filterId = 'troupes-summarize-characters-filter',
+  showFormat = true,
+  betweenSections,
+  onFilteredChange,
+}: SummarizeRosterProps) {
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const set = <K extends keyof Filters>(key: K, value: Filters[K]) =>
     setFilters((current) => ({ ...current, [key]: value }));
 
   const sorted = useMemo(() => sortCharacters(characters), [characters]);
   const visible = useMemo(() => sorted.filter((c) => matches(c, filters)), [sorted, filters]);
+
+  // `get_filtered()` on the legacy view: the print screen reads it off the
+  // select-to-print view, which the router memoises between the two routes.
+  useEffect(() => {
+    onFilteredChange?.(visible);
+  }, [visible, onFilteredChange]);
 
   // The heading shown above each character's traits: the category's pretty
   // name, looked up across the venues in the order the legacy searches them --
@@ -200,7 +235,7 @@ function SummarizeRoster({
   }, [sorted, filters.category]);
 
   return (
-    <Page id="troupe-summarize-characters-all" title="Troupe Characters">
+    <Page id={pageId} title={title}>
       <div id="sections">
         {/* Backform builds this form itself rather than rendering into markup
             already on the page, so it carries its own className. */}
@@ -243,26 +278,32 @@ function SummarizeRoster({
             checked={filters.playable}
             onChange={(value) => set('playable', value)}
           />
-          <SelectField
-            name="format"
-            label="Format"
-            value={filters.format}
-            onChange={(value) => set('format', value as Format)}
-            options={[
-              { label: 'Pretty', value: 'pretty' },
-              { label: 'CSV', value: 'csv' },
-              { label: 'CSV with Trait Grouping', value: 'csvtraitgrouping' },
-            ]}
-          />
+          {showFormat ? (
+            <SelectField
+              name="format"
+              label="Format"
+              value={filters.format}
+              onChange={(value) => set('format', value as Format)}
+              options={[
+                { label: 'Pretty', value: 'pretty' },
+                { label: 'CSV', value: 'csv' },
+                { label: 'CSV with Trait Grouping', value: 'csvtraitgrouping' },
+              ]}
+            />
+          ) : null}
         </Form>
       </div>
 
+      {betweenSections}
+
       {/* The search box is in index.html and bound to nothing: the view's
           `filterable` calls are all commented out. Kept, because it is in the
-          DOM. */}
+          DOM. The select-to-print page declares no such box, so it passes no
+          filterId and this is skipped. */}
+      {filterId ? (
       <form className="ui-filterable" onSubmit={(e) => e.preventDefault()}>
         <div className="ui-input-search ui-body-inherit ui-corner-all ui-shadow-inset ui-input-has-clear">
-          <input id="troupes-summarize-characters-filter" data-type="search" readOnly />
+          <input id={filterId} data-type="search" readOnly />
           <a
             href="#"
             tabIndex={-1}
@@ -275,13 +316,14 @@ function SummarizeRoster({
           </a>
         </div>
       </form>
+      ) : null}
 
-      <div id="troupe-summarize-characters-list">
+      <div id={listId}>
         <ul
           data-role="listview"
           data-inset="true"
           data-filter="true"
-          data-input="#troupes-summarize-characters-filter"
+          data-input={`#${filterId}`}
           className="ui-listview ui-listview-inset ui-corner-all ui-shadow"
         >
           {visible.map((character, i) => (
