@@ -1,0 +1,87 @@
+@media print {
+    * {
+        transition: none !important
+    }
+
+    thead {
+        display: none
+    }
+
+    body {
+        margin: 0px !important;
+        overflow-x: initial !important;
+    }
+
+    .slidedown {
+        display: none !important;
+    }
+
+    .slideup {
+        display: none !important;
+    }
+
+    .ui-page-active {
+        padding-top: 0px !important;
+    }
+
+    .ui-bar {
+        margin: 1px !important;
+        padding: 1px !important;
+    }
+
+    .ui-content {
+        padding: 0px !important;
+    }
+
+    .ui-body {
+        padding: 0px !important;
+    }
+
+    .ui-navbar {
+        display: none !important;
+    }
+
+    @page {
+        margin-left: .25in;
+        margin-right: .25in;
+        margin-top: .25in;
+        margin-bottom: .25in;
+    }
+
+    body {
+        font-family: "Times New Roman";
+        font-size: 8pt;
+    }
+    h1 {
+        font-family: Arial;
+    }
+
+    h2 {
+        font-family: Arial;
+    }
+
+    h3 {
+        font-family: Arial;
+    }
+
+    h4 {
+        font-family: Arial;
+    }
+    
+    .force-printing-page-break {
+        page-break-after: always;
+        page-break-inside: avoid;
+    }
+    
+    div {
+        overflow:initial !important;
+    }
+    
+    .hidden-when-printing {
+        display: none;
+    }
+    
+    .hidden-when-printing > *{
+        display: none;
+    }
+}

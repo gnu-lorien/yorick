@@ -1,0 +1,95 @@
+<!doctype html>
+<!--
+    `ui-mobile` on the html element and `ui-mobile-viewport ui-overlay-a` on
+    the body element are not
+    decoration: jQuery Mobile's JavaScript set them at boot, and its stylesheet
+    gates real layout on them. The one that matters most is
+
+        .ui-mobile .ui-page-active { display: block; }
+
+    against a bare `.ui-page { display: none; }` -- so WITHOUT `ui-mobile` on an
+    ancestor, every page in the app renders with `display: none` and the screen
+    is blank. Measured, after exactly that happened here.
+
+    `ui-overlay-a` carries the page background, and `ui-mobile-viewport` the
+    box-sizing the fixed toolbars are positioned against. These are set
+    statically because nothing adds them any more.
+-->
+<html class="no-js ui-mobile" lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Yorick</title>
+    <meta name="description" content="A Character Database for Underground Theater">
+    <meta property="og:title" content="Yorick">
+    <meta property="og:image" content="https://patron.undergroundtheater.org/yorick_max.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!--
+        The jQuery Mobile 1.4.5 stylesheet, and only the stylesheet.
+
+        The migration to Vue drops jQuery Mobile's JavaScript entirely but keeps
+        its CSS, because that CSS is class-driven: `ui-btn`, `ui-listview`,
+        `ui-grid-c`, `ui-block-a` and friends style whatever markup carries
+        them. jQuery Mobile's script existed to *generate* that markup by
+        enhancing plainer HTML at runtime; Vue components emit the enhanced
+        markup directly, so the appearance is preserved with no jQuery, no
+        `.enhanceWithin()`, and no DOM mutation behind Vue's back.
+    -->
+    <link rel="stylesheet" href="css/themes/default/jquery.mobile-1.4.5.min.css">
+    <link rel="stylesheet" href="css/bootstrap-forms.css">
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.6.1/css/bootstrap-datepicker.standalone.css">
+    <link rel="stylesheet" href="css/printable_sheet.css" media="print">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="css/vis.min.css">
+    <link rel="stylesheet" href="css/nprogress.css">
+    <style>
+        #relationships-network {
+            width: 640px;
+            height: 480px;
+            border: 1px solid lightgray;
+            background-color: #333333;
+        }
+
+        .max-yorick-sizing {
+            max-width: 100%;
+            max-height: 90vh;
+        }
+    </style>
+
+    <!-- BEGIN TRACKJS -->
+    <script type="text/javascript">
+        window._trackJs = {
+            token: '8c029fff54d841498640d86379af7316',
+            // Off for local and loopback hosts.
+            //
+            // This used to test only for "localhost", but the E2E suite serves
+            // from 127.0.0.1, so TrackJS was live for every test run: errors
+            // were shipped to a third party, and -- worse for anyone debugging
+            // -- its wrapper re-threw them with its own stack, so a page error
+            // read as "at wrapError (tracker.js)" with every application frame
+            // gone. That cost real time during the Parse SDK migration.
+            enabled: !/^(localhost|127\.0\.0\.1|\[::1\])(:|$)/.test(window.location.host)
+        };
+    </script>
+    <script type="text/javascript" src="https://d2zah9y47r7bi2.cloudfront.net/releases/current/tracker.js"></script>
+    <!-- END TRACKJS -->
+</head>
+
+<body class="ui-mobile-viewport ui-overlay-a">
+    <!--
+        Shown until Vue mounts and removed by App.vue's first render, matching
+        what `main.js` did on jQuery Mobile's `pagecreate`.
+    -->
+    <div id="splashscreen">
+        <p style="visibility: visible">Loading...</p>
+        <img src="yorick_max.png" style="visibility: visible;" class="max-yorick-sizing" />
+    </div>
+
+    <div id="app"></div>
+
+    <script type="module" src="/src/main.ts"></script>
+</body>
+
+</html>
