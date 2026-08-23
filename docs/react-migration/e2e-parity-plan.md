@@ -155,15 +155,26 @@ npm run test:diff -- runs/legacy.json runs/react.json
 
     0  NEW-FAIL   regressions
     0  new-pass   fixed, or baseline was flaky
-  449  same-pass
+  471  same-pass
     0  same-fail
     0  added
     0  removed
-    2  skipped
+    6  skipped
     1  flaky
 ```
 
-Legacy takes 13.9 minutes, React 6.3.
+Legacy takes 14.4 minutes, React 5.9.
+
+The six skips are the two the suite has always carried plus four that
+`skipLegacyInternals` holds back on React -- they reach into `window.require` for
+a Backbone view, and there is nothing on the other side to reach for. The one
+flake is troupes 140, below.
+
+Five legacy tests print as failures in the list reporter and are neither failures
+nor flakes: they are `test.fail()`, standing records of legacy defects the port
+does not reproduce -- long-texts 286 is the printable sheet rendering only
+`extended_print_text`. The JSON report is the thing to read; it counts them
+expected.
 
 An earlier four-worker run reported one test at 1.1 hours -- impossible against
 a 120-second per-test timeout, and the tell that the machine, not the app, was
