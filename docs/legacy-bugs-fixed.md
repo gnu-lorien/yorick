@@ -10,12 +10,12 @@ Every entry is covered by a test. Two files hold them:
 - `test/legacy-bug-regressions.test.js` — 20 tests, `npm run test:node`, about
   150ms. Anything decidable without a browser: collection ordering, the
   clan-rule page size, template guards, markup shape.
-- `e2e/legacy-bug-regressions.spec.js` — 25 tests, `npx playwright test
+- `e2e/legacy-bug-regressions.spec.js` — 26 tests, `npx playwright test
   e2e/legacy-bug-regressions.spec.js`, about a minute. Anything that needs a
   rendered page and a real server.
 
 Both suites were run against the **unfixed** sources before being trusted.
-Twelve of the twenty node tests and twenty of the twenty-five E2E tests fail
+Twelve of the twenty node tests and twenty-one of the twenty-six E2E tests fail
 there.
 The rest are deliberate controls — a correct-behaviour anchor beside each
 defect, so a test cannot pass by breaking the thing next to it.
@@ -42,6 +42,7 @@ defect, so a test cannot pass by breaking the thing next to it.
 | 15 | `limit(1000)` on both experience-ledger fetches | `models/Character.js`, `views/CharacterExperienceView.js` |
 | 16 | Guarded `listview("refresh")` after writing the rows | `views/CharactersListView.js` |
 | 17 | Record the scroll offset on the view that reads it; `withCharacterCreateView()` added to the wizard's odd one out; new `restore_scroll_after_page_change` that waits for the sheet's height | `routers/mobileRouter.js`, `views/CharacterView.js` |
+| **R2** | Re-enhance the category select after `update_categories()` re-renders the form, in both views | `views/EditRules.js`, `views/DescriptionsView.js` |
 | **R1** | `<%= name %>` instead of `<%= attributes.name %>`. Not in the document — found here; see below | `views/UserSettingsProfileView.js` |
 
 ## Where this departs from the document
@@ -281,6 +282,59 @@ None of this can be done from this branch, which carries no `web/`.
   (React holds no state between screens, so it drew the plain sheet) and on #16
   (it always emits the position classes). Their
   `@compare-known` markers should be dropped when this lands.
+
+## R2 — the admin category select, reported from the port and misdiagnosed
+
+Not in the document. Reported from the React port as:
+
+> EditRules never calls `enhanceWithin()`, so the rule editor's category select
+> is unstyled while the identical control on the Descriptions screen is styled.
+
+That is not what happens, and the difference changes what the port should do.
+Measured on the running app, visiting a rule editor and the Descriptions screen
+in both orders:
+
+```
+rule editor first             enhanced
+Descriptions after it         NOT enhanced
+Descriptions first (reload)   NOT enhanced
+rule editor after it          NOT enhanced
+```
+
+The styling is **order-dependent, not screen-dependent**, and the reference
+point in the report — Descriptions being the styled one — is the case that is
+least often true. On a fresh load Descriptions is unstyled too.
+
+Three corrections:
+
+- `EditRules` **does** call `enhanceWithin()`, twice, in `setup()` and
+  `filterwith()`.
+- Those calls have never done anything. Both views declare
+  `el: "#administration-descriptions > div[data-role='main']"` and the markup
+  at `public/index.html:439` is `<div role="main">`. `data-role` does not
+  match, so `this.$el` is an empty set and `enhanceWithin()` is a no-op — in
+  `DescriptionsView` exactly as much as in `EditRules`.
+- The real mechanism is #16's again: `update_categories()` ends with
+  `form.render()`, which replaces the `<select>` and re-enhances nothing.
+  jQuery Mobile enhances a page once, on `pagecreate`; whichever screen
+  finishes rendering before that gets styled and every render afterwards is
+  raw. The two views also share an `el` and a page element, so visiting one
+  affects the other.
+
+Fixed by enhancing `form.$el` after the re-render, in **both** views. The
+broken `el` selector is deliberately left alone: repairing it would point
+`setup()`'s and `filterwith()`'s `enhanceWithin()` at the whole content area
+for the first time ever, which is far wider than this symptom warrants. It is
+recorded at both call sites so the next reader does not mistake those calls for
+working code.
+
+The test walks both orders, because one that visited a single screen would have
+passed against the bug half the time.
+
+**For the port:** there is no per-route difference to reproduce, and none to
+deliberately not reproduce. Rendering all six rule routes through one component
+is *more* faithful than the legacy behaviour, not less, and once this lands the
+two agree — so the divergence disappears rather than needing a note.
 
 ## R1 — the profile page's Roles section, found while writing these tests
 
