@@ -37,6 +37,8 @@ import { JqmCheckbox, JqmPage } from '@/components/jqm'
 import { useBackHref } from '@/composables/useBackHref'
 import { getUsersById, requestPasswordResetFor, type IdentityUser } from '@/domain/cloud'
 import { reportErrorOn } from '@/domain/errors'
+import { fetchPatronages, type Patronage } from '@/domain/Patronage'
+import PatronageRows from '@/components/PatronageRows.vue'
 import Parse from '@/parse'
 import { useUiStore } from '@/stores/ui'
 
@@ -48,6 +50,7 @@ useBackHref('#administration/users/all')
 
 const user = shallowRef<IdentityUser | null>(null)
 const roles = shallowRef<Parse.Role[]>([])
+const patronages = shallowRef<Patronage[]>([])
 
 /** Seeded from role membership, not from the cached `admininterface` flag. */
 const isAdministrator = ref(false)
@@ -86,6 +89,11 @@ onMounted(async () => {
       roles.value = held
       isAdministrator.value = held.some(
         (r) => r.get('name') === 'Administrator' || r.get('name') === 'SiteAdministrator',
+      )
+
+      const all = await fetchPatronages()
+      patronages.value = all.filter(
+        (p) => (p.get('owner') as { id?: string } | undefined)?.id === userId.value,
       )
     })
   } catch (error) {
@@ -157,17 +165,13 @@ async function resetPassword() {
         </a>
       </div>
       <!--
-        The list renders empty, as it does in the Backbone app.
+        This user's patronages, filtered in memory.
 
-        `AdministrationUserView` hands its `PatronagesView` a `Patronages`
-        collection and calls `render()` on it, but never fetches it and never
-        filters it by this user -- so the region has always been an empty list
-        with a filter box above it. `#administration/patronages/user/:id` is the
-        screen that actually lists one member's patronages.
-
-        Reproduced rather than "fixed": showing every patronage in the system
-        here, which is what an unfiltered fetch would do, would be a privacy
-        regression dressed up as a bug fix.
+        The ROUTE did this, not the view: `administration_user` fetched every
+        patronage and reset the child collection with
+        `_.select(patronages.models, "attributes.owner.id", id)`. The view on its
+        own only ever rendered an empty list, which is why reading the view
+        alone makes this region look dead.
       -->
       <form class="ui-filterable">
         <input id="patronage-list-filter" data-type="search" />
@@ -178,7 +182,12 @@ async function resetPassword() {
           data-role="listview"
           data-inset="true"
           class="ui-listview ui-listview-inset ui-corner-all ui-shadow"
-        ></ul>
+        >
+          <PatronageRows
+            :patronages="patronages"
+            :href-for="(id) => `#administration/patronage/${id}`"
+          />
+        </ul>
       </div>
     </div>
 
