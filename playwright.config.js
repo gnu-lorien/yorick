@@ -133,6 +133,24 @@ module.exports = defineConfig({
     env: {
       PORT: String(port),
 
+      // Which front end the suite drives.
+      //
+      // `index.js` serves whatever `PUBLIC_BASE` points at, so this one
+      // variable switches the whole suite between the legacy Backbone client in
+      // `public/` and the Vue build in `client/dist` -- without a spec file or
+      // a helper knowing which it got. The helpers detect the app by capability
+      // (`e2e/helpers/jqm-helpers.js#detectApp`), so the same 451 tests run
+      // against both.
+      //
+      // That is what makes a migration regression distinguishable from a defect
+      // that was always there: record a run against `legacy`, record one
+      // against `vue`, and diff them with `gate.js`.
+      ...(process.env.PUBLIC_BASE
+        ? { PUBLIC_BASE: process.env.PUBLIC_BASE }
+        : process.env.YORICK_E2E_CLIENT === 'vue'
+          ? { PUBLIC_BASE: require('path').join(__dirname, 'client', 'dist') }
+          : {}),
+
       // Each worker gets its own database name, not just its own port.
       //
       // When nothing is listening on 27017 every backend starts its own

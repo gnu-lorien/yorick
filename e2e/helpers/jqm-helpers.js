@@ -10,13 +10,46 @@
 
 const DEFAULT_TIMEOUT = parseInt(process.env.E2E_NAV_TIMEOUT || '20000', 10);
 
-/** Wait for RequireJS, jQuery Mobile, and the Parse SDK to finish bootstrapping. */
+/**
+ * Two front ends, one suite.
+ *
+ * The Vue client replaces jQuery Mobile's JavaScript and RequireJS but keeps
+ * the DOM contract this file is written against: one `.ui-page-active` element
+ * carrying the same page id, a `div[role="main"]` inside it, a `.ui-loader`
+ * while work is in flight, and the same hash URLs. So almost every helper below
+ * works unchanged against either app.
+ *
+ * The handful that cannot are the ones that reach for a library rather than for
+ * the DOM: bootstrapping (`window.jQuery.mobile`, `window.require`), the jQuery
+ * slider widget, and `runInApp`'s AMD module loading. Those branch on which app
+ * answered, so the suite can be run against the legacy app to capture a
+ * baseline and against the Vue app to compare -- which is the only way to tell a
+ * migration regression from a defect that was always there.
+ *
+ * Detection is by capability, not by configuration, so no spec file and no
+ * environment variable needs to know which app it is talking to.
+ */
+async function detectApp(page) {
+  return page.evaluate(() => {
+    if (window.__yorickApi || window.__yorickReady) return 'vue';
+    if (window.jQuery && window.jQuery.mobile) return 'legacy';
+    return 'unknown';
+  });
+}
+
+/** Wait for the front end -- either front end -- to finish bootstrapping. */
 async function waitForAppReady(page, timeout = DEFAULT_TIMEOUT) {
   await page.waitForFunction(() => {
+    // The Parse SDK is common to both and is what every fixture uses.
+    const parseReady = typeof window.Parse !== 'undefined' && !!window.Parse.applicationId;
+    if (!parseReady) return false;
+
+    // Vue client: mounted and the first navigation has resolved.
+    if (window.__yorickReady) return true;
+
+    // Legacy client: RequireJS and jQuery Mobile are both up.
     return typeof window.jQuery !== 'undefined' &&
            typeof window.jQuery.mobile !== 'undefined' &&
-           typeof window.Parse !== 'undefined' &&
-           !!window.Parse.applicationId &&
            typeof window.require === 'function';
   }, { timeout });
 }
@@ -97,7 +130,10 @@ async function navigateToHash(page, hash, targetSelector = null, timeout = DEFAU
     // The hash is already what we want, so no hashchange will fire and the
     // route handler would never run. Bouncing through a dummy hash to force one
     // races jQuery Mobile's transition queue and can strand the app mid
-    // transition, so drive Backbone's router directly instead.
+    // transition, so drive the router directly instead.
+    if (window.__yorickApi && window.__yorickApi.reload) {
+      return Promise.resolve(window.__yorickApi.reload(h)).then(() => null);
+    }
     return new Promise((resolve) => {
       window.require(['backbone'], function (Backbone) {
         Backbone.history.loadUrl(h);
@@ -144,14 +180,41 @@ async function hardReload(page, timeout = DEFAULT_TIMEOUT) {
   await waitForAppReady(page, timeout);
 }
 
-/** Set a jQuery Mobile slider and fire the change event the view listens for. */
+/**
+ * Set a slider and fire the events the view listens for.
+ *
+ * Both front ends render the slider's *original input* with the id the specs
+ * address -- jQuery Mobile re-typed `input[type=range]` to `type=number` in
+ * place and added `class=ui-slider-input`, and `JqmSlider.vue` emits exactly
+ * that markup -- so the selector is the same either way. What differs is how
+ * the change is announced: jQuery's `.trigger('change')` does not invoke a
+ * native listener, and Vue's `v-model` listens for `input`.
+ */
 async function setJqmSlider(page, selector, value) {
   await page.waitForSelector(selector, { state: 'attached' });
   await page.evaluate(({ sel, val }) => {
-    const el = window.jQuery(sel);
-    el.val(val);
-    try { el.slider('refresh'); } catch (e) { /* not enhanced as a slider */ }
-    el.trigger('change');
+    const node = document.querySelector(sel);
+
+    if (window.jQuery && window.jQuery.mobile) {
+      const el = window.jQuery(sel);
+      el.val(val);
+      try { el.slider('refresh'); } catch (e) { /* not enhanced as a slider */ }
+      el.trigger('change');
+      return;
+    }
+
+    if (!node) throw new Error('no element matches ' + sel);
+    // Assign through the native setter so Vue's own input tracking sees it;
+    // writing `.value` directly is enough for the DOM but a framework that
+    // patched the property would miss it.
+    const proto = node instanceof HTMLTextAreaElement
+      ? HTMLTextAreaElement.prototype
+      : HTMLInputElement.prototype;
+    const setter = Object.getOwnPropertyDescriptor(proto, 'value');
+    if (setter && setter.set) setter.set.call(node, String(val));
+    else node.value = String(val);
+    node.dispatchEvent(new Event('input', { bubbles: true }));
+    node.dispatchEvent(new Event('change', { bubbles: true }));
   }, { sel: selector, val: value });
 }
 
@@ -343,6 +406,10 @@ async function selectBackformOption(page, selectSelector, optionText) {
 async function clearStuckLoader(page) {
   await page.evaluate(() => {
     if (window.jQuery && window.jQuery.mobile) window.jQuery.mobile.loading('hide');
+    // Nothing to clear under the Vue client: its loader is a reference count
+    // released in a `finally`, so an early return cannot strand it the way an
+    // unmatched `$.mobile.loading("show")` could. Left callable so the spec
+    // files that guard against the legacy bug need no edit.
   });
 }
 
@@ -391,6 +458,37 @@ async function runInApp(page, modules, fnBody, arg) {
   return page.evaluate(({ modules, fnBody, arg }) => {
     return new Promise((resolve, reject) => {
       const fail = (e) => reject(new Error(e && e.message ? e.message : String(e)));
+
+      /*
+       * The Vue client has no RequireJS, so it publishes a module map keyed by
+       * the SAME AMD paths the specs already name -- `app/models/Vampire`,
+       * `app/views/CharacterExperienceView`, and so on. Keeping the keys means
+       * all 18 `runInApp` call sites are unchanged; only this lookup differs.
+       *
+       * A path the Vue app does not publish is a hard error naming the path,
+       * because the alternative is `mods[0]` being `undefined` and the failure
+       * surfacing as "cannot read property 'create' of undefined" somewhere
+       * else entirely.
+       */
+      if (window.__yorickApi && window.__yorickApi.modules) {
+        const map = window.__yorickApi.modules;
+        const missing = modules.filter((m) => !(m in map));
+        if (missing.length) {
+          fail(new Error('the Vue client publishes no test module for: ' + missing.join(', ')));
+          return;
+        }
+        let result;
+        try {
+          // eslint-disable-next-line no-new-func
+          result = new Function('mods', 'arg', fnBody)(modules.map((m) => map[m]), arg);
+        } catch (e) {
+          fail(e);
+          return;
+        }
+        Promise.resolve(result).then(resolve, fail);
+        return;
+      }
+
       window.require(modules, function () {
         const mods = Array.prototype.slice.call(arguments);
         let result;
@@ -414,6 +512,7 @@ async function runInApp(page, modules, fnBody, arg) {
 
 module.exports = {
   DEFAULT_TIMEOUT,
+  detectApp,
   waitForAppReady,
   waitForJqmLoader,
   activePageId,
