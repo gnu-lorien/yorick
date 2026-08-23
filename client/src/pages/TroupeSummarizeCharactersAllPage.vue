@@ -47,9 +47,15 @@ import { JqmPage } from '@/components/jqm'
 import CharacterSummary from '@/components/CharacterSummary.vue'
 import { useBackHref } from '@/composables/useBackHref'
 import { reportErrorOn } from '@/domain/errors'
-import { troupeQuery } from '@/domain/Troupe'
-import { venueFor } from '@/domain/venues'
-import { CharacterObject } from '@/parse/classes'
+import {
+  ANTECEDENCE_OPTIONS,
+  RESULT_TYPE_OPTIONS,
+  SUMMARY_CATEGORY_GROUPS,
+  fetchTroupeSummaryCharacters,
+  matchesSummaryFilter,
+  summaryCategoryName,
+  traitsIn,
+} from '@/domain/TroupeSummary'
 import type { Character } from '@/domain/Character'
 import { trackAll } from '@/parse/reactivity'
 import Parse from '@/parse'
@@ -78,25 +84,7 @@ const resulttype = ref('onlycat')
 const playable = ref(true)
 const format = ref<'pretty' | 'csv' | 'csvtraitgrouping'>('pretty')
 
-/** The category select's two optgroups, in the source's order. */
-const CATEGORY_GROUPS = [
-  { label: 'Vampire', options: venueFor('Vampire').ALL_SIMPLETRAIT_CATEGORIES },
-  { label: 'Werewolf', options: venueFor('Werewolf').ALL_SIMPLETRAIT_CATEGORIES },
-]
-
-const ANTECEDENCE_OPTIONS = [
-  { label: 'All', value: 'All' },
-  { label: 'NPC', value: 'NPC' },
-  { label: 'PC of any type', value: 'PC' },
-  { label: 'Primary PC', value: 'Primary' },
-  { label: 'Secondary PC', value: 'Secondary' },
-]
-
-const RESULT_TYPE_OPTIONS = [
-  { label: 'Only those with values in the category', value: 'onlycat' },
-  { label: 'Only those with no values in the category', value: 'nocat' },
-  { label: 'All', value: 'all' },
-]
+const CATEGORY_GROUPS = SUMMARY_CATEGORY_GROUPS
 
 const FORMAT_OPTIONS = [
   { label: 'Pretty', value: 'pretty' },
@@ -105,51 +93,26 @@ const FORMAT_OPTIONS = [
 ]
 
 /** The selected category's pretty name -- the heading a pretty row prints. */
-const categoryName = computed(() => {
-  for (const group of CATEGORY_GROUPS) {
-    const found = group.options.find((entry) => entry[0] === category.value)
-    if (found) return found[1]
-  }
-  return ''
-})
+const categoryName = computed(() => summaryCategoryName(category.value))
 
 /* --------------------------------------------------------------------- *
  * The filter itself -- `newfilter` in `filterwith`.
  * --------------------------------------------------------------------- */
 
 function traitsOf(character: Parse.Object): Parse.Object[] {
-  const value = character.get(category.value)
-  return Array.isArray(value) ? (value as Parse.Object[]) : []
+  return traitsIn(character, category.value)
 }
+
+const filterValues = computed(() => ({
+  category: category.value,
+  antecedence: antecedence.value,
+  resulttype: resulttype.value,
+  playable: playable.value,
+}))
 
 const visible = computed(() => {
   trackAll()
-  return characters.value.filter((character) => {
-    // An absent antecedence counts as "Primary", which is what makes the
-    // default PC filter include a character nobody has classified yet.
-    const a = (character.get('antecedence') as string) ?? 'Primary'
-    const wanted = antecedence.value
-    if (!wanted.startsWith('All')) {
-      if (wanted.startsWith('NPC')) {
-        if (!a.startsWith('NPC')) return false
-      } else if (wanted.startsWith('PC')) {
-        if (a.startsWith('NPC')) return false
-      } else if (!a.startsWith(wanted)) {
-        return false
-      }
-    }
-
-    if (resulttype.value.startsWith('onlycat')) {
-      if (!character.has(category.value)) return false
-      if (traitsOf(character).length === 0) return false
-    } else if (resulttype.value.startsWith('nocat')) {
-      if (character.has(category.value)) return false
-    }
-
-    if (playable.value && !character.has('owner')) return false
-
-    return true
-  })
+  return characters.value.filter((character) => matchesSummaryFilter(character, filterValues.value))
 })
 
 /** Every distinct trait name in the visible rows, sorted. `getColumnNames`. */
@@ -244,39 +207,14 @@ const csvRows = computed(() => {
 
 onMounted(async () => {
   try {
-    await ui.runWork(async () => {
-      const troupe = await troupeQuery().include('portrait').get(troupeId.value)
-      const found: Character[] = []
-
-      const werewolves = new Parse.Query(CharacterObject)
-      werewolves.equalTo('troupes', troupe)
-      werewolves.include('portrait')
-      werewolves.equalTo('type', 'Werewolf')
-      for (const entry of venueFor('Werewolf').ALL_SIMPLETRAIT_CATEGORIES) {
-        werewolves.include(entry[0])
-      }
-      await werewolves.each(async (character) => {
-        found.push(character as Character)
-        await (character as Character).get_long_text('extended_print_text')
-      })
-
-      const rest = new Parse.Query(CharacterObject)
-      rest.equalTo('troupes', troupe)
-      rest.include('portrait')
-      rest.notEqualTo('type', 'Werewolf')
-      for (const entry of venueFor('Vampire').ALL_SIMPLETRAIT_CATEGORIES) {
-        rest.include(entry[0])
-      }
-      await rest.each(async (character) => {
-        found.push(character as Character)
-        await (character as Character).get_long_text('extended_print_text')
-      })
-
-      // Before the rows are shown, never after: `hydrate` writes through
-      // `_finishFetch`, which fires no change event of its own.
-      await usersStore.hydrate(found, 'owner')
-      characters.value = found
-    }, 'Fetching all characters')
+    const found = await ui.runWork(
+      () => fetchTroupeSummaryCharacters(troupeId.value),
+      'Fetching all characters',
+    )
+    // Before the rows are shown, never after: `hydrate` writes through
+    // `_finishFetch`, which fires no change event of its own.
+    await usersStore.hydrate(found, 'owner')
+    characters.value = found
   } catch (error) {
     await reportErrorOn("Couldn't summarize that troupe's characters")(error).catch(() => {})
   } finally {
