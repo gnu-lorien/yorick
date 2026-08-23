@@ -85,7 +85,12 @@ onMounted(async () => {
     :ready="loaded"
   >
     <div :style="{ fontSize: printOptions.fontSize + '%' }">
-      <PrintSheet v-for="character in characters" :key="character.id" :character="character" />
+      <PrintSheet
+        v-for="character in characters"
+        :key="character.id"
+        :character="character"
+        :exclude-extended="printOptions.excludeExtended"
+      />
     </div>
   </JqmPage>
 </template>

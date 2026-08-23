@@ -47,7 +47,12 @@ onMounted(async () => {
     // `"all"` -- every trait category. The sheet prints the whole character, so
     // anything left unfetched renders as an empty section rather than as an
     // error, which is the worst kind of wrong on a document someone signs.
-    character.value = await ui.runWork(() => get_character(cid.value, 'all'))
+    character.value = await ui.runWork(async () => {
+      const c = await get_character(cid.value, 'all')
+      // The sheet prints this and nothing else would load it.
+      await c.fetch_long_text('extended_print_text')
+      return c
+    })
   } catch (error) {
     await reportErrorOn("Couldn't open the printable sheet")(error).catch(() => {})
   }

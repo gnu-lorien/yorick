@@ -28,7 +28,25 @@ import PrintRegion from '@/components/print/PrintRegion.vue'
 const props = defineProps<{
   character: Parse.Object
   transformDescription?: readonly TransformDescription[]
+  /** The troupe print screen's "Exclude Extended Print Text" checkbox. */
+  excludeExtended?: boolean
 }>()
+
+/**
+ * The already-fetched `extended_print_text`, or nothing.
+ *
+ * `get_fetched_long_text` is a CACHE read and never a fetch: the page that
+ * renders this sheet is responsible for having loaded the text first, which is
+ * the same contract the source's `ExtendedPrintTextView` had.
+ */
+const extendedPrintText = computed(() => {
+  trackAll()
+  const character = props.character as unknown as {
+    get_fetched_long_text?: (category: string) => { get(key: string): unknown } | null | undefined
+  }
+  const lt = character.get_fetched_long_text?.('extended_print_text')
+  return (lt?.get('text') as string) ?? ''
+})
 
 /**
  * The regions this character's venue asks for, with the one conditional slot
@@ -186,8 +204,20 @@ function specFor(region: string) {
       </div>
     </div>
 
+    <!--
+      The player's own extra text, rendered as markup exactly as `<%= %>` did.
+      `excludeExtended` is the troupe print screen's checkbox, shared through
+      `useTroupePrintStore`; the single-character sheet never sets it.
+
+      The source ran this text through `_.template(...)({character})`, so a
+      player could interpolate their own character into it. That is not
+      reproduced -- see the note in `LongTextEditor.vue` for why -- and the text
+      is rendered verbatim.
+    -->
     <div id="cpp-extended-print-text" class="ui-content">
-      <slot name="extended-print-text" />
+      <slot name="extended-print-text">
+        <span v-if="!excludeExtended" v-html="extendedPrintText"></span>
+      </slot>
     </div>
   </div>
 </template>
