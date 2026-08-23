@@ -15,7 +15,7 @@
  * it: port the view faithfully and drop the classes, and the sheet would render
  * correctly on screen and print with the navigation bar across the page.
  */
-import { computed, onMounted, ref, shallowRef } from 'vue'
+import { computed, onMounted, shallowRef } from 'vue'
 import { useRoute } from 'vue-router'
 import { JqmPage } from '@/components/jqm'
 import PrintSheet from '@/components/print/PrintSheet.vue'

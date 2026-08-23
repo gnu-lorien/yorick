@@ -20,7 +20,7 @@
  * from the venue, so a Werewolf sheet lists Gifts where a Vampire lists
  * Disciplines without this file knowing either word.
  */
-import { computed, onMounted, ref, shallowRef } from 'vue'
+import { computed, onMounted, shallowRef } from 'vue'
 import { useRoute } from 'vue-router'
 import { JqmListItem, JqmListview, JqmPage } from '@/components/jqm'
 import CharacterSummary from '@/components/CharacterSummary.vue'

@@ -20,7 +20,7 @@
  * out unlimited free traits through the normal UI, and the result is written
  * into the immutable audit log by server triggers.
  */
-import { computed, onMounted, ref, shallowRef } from 'vue'
+import { computed, onMounted, shallowRef } from 'vue'
 import { useRoute } from 'vue-router'
 import { JqmPage } from '@/components/jqm'
 import CreationPool from '@/components/create/CreationPool.vue'

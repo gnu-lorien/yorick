@@ -15,7 +15,7 @@
  * character list -- the original chained the navigation through `.always()`, so
  * a failure left them on the list rather than on a dead page.
  */
-import { computed, onMounted, ref, shallowRef } from 'vue'
+import { computed, onMounted, shallowRef } from 'vue'
 import { useRoute } from 'vue-router'
 import { JqmPage } from '@/components/jqm'
 import { useBackHref } from '@/composables/useBackHref'
