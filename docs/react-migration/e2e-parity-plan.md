@@ -43,6 +43,7 @@ deliberately small, and everything in it is there because a helper needs it:
 | `redispatch()` | `navigateToHash` to the hash you are already on. The legacy drives `Backbone.history.loadUrl`; React renders from the hash, so "go there again" means discard and refetch. |
 | `hardReset()` | `hardReload` without the page load. Drops the query cache, so a React run is not accidentally easier than a legacy one. |
 | `busy()` | Whether anything is in flight. See below. |
+| `tcrnv` | The relationship network's graph. It is the one screen with nothing in the DOM to assert against -- vis.js draws into a canvas -- and the legacy suite reads the same three fields off the router's memoised view of the same name. |
 | `require()` | The module names `runInApp` asks for. See below. |
 
 ## The spinner cannot be used as a signal, on either app
@@ -98,11 +99,34 @@ render correct markup and only the data behind it differed:
   failed the identity check inside `updateTrait`.
 - The Changeling Kith mechanic -- affinity Arts granted free, the Art creation
   pool spent, both reconciled on a repick -- had not been ported at all.
+- `character_join_troupe` rendered the troupe without joining it.
+- The character sheet read `id` where `troupe/:id/character/:cid` puts the
+  troupe, so that route could never open a sheet at all.
+- The extended print text never reached a printed sheet: it was read as a
+  character attribute, and long texts are rows of their own class.
+- Non-admins could open every one of the eighteen admin routes.
+- Four save paths showed the loading overlay and never hid it, which leaves it
+  up forever and swallows every subsequent click.
 - `data-icon` was missing from list rows. jQuery Mobile leaves it in place and
   the suite selects on it; attributes are exactly what `compare:dom` ignores.
 
+The spinner leak is also the reason a React run was *slow*: with the overlay
+stuck, every "wait for the app to settle" burned its full timeout. Fixing it
+took `xp-history.spec.js` from 9.3 minutes to 13.8 seconds -- faster than the
+same file against the legacy app, which takes 36.
+
+## Where the suite stands
+
+Green on both front ends, with no unexpected failures, in eighteen spec files:
+`access-control`, `administration`, `admin-patronage`, `admin-referendums`,
+`admin-rules`, `approvals`, `assets-rename-portrait`, `auth-profile`,
+`character-history`, `character-sheet`, `creation-vampire`,
+`creation-werewolf`, `creation-changeling`, `descriptions-by-creature`,
+`long-texts`, `traits-lifecycle`, `troupes` and `xp-history`.
+
 ## Still to do
 
+- The three `lifecycle-*` specs.
 - `popup-trace.js` hooks `app/views/CharacterExperienceView` through
   `window.require` to watch popups from inside the view. There is nothing to
   hook in React. It is diagnostic-only and already guarded, so it degrades to a
