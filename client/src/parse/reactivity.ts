@@ -31,6 +31,23 @@
  * invalidation the opt-in. That is the right way round for this app: the data
  * volumes are one character at a time, and a redundant re-render is invisible
  * where a missed one is a wrong character sheet.
+ *
+ * ## The rule that is easy to get wrong
+ *
+ * **Any computed that reads THROUGH a `Parse.Object` must call `track` or
+ * `trackAll` ITSELF.** It cannot inherit the subscription from an upstream
+ * computed.
+ *
+ * Vue 3.4+ compares a computed's new value against its old one and does not
+ * trigger dependents when they are `Object.is`-equal. A computed returning an
+ * ARRAY of Parse objects returns the same array reference when an attribute
+ * inside one of them changes -- the array did not move, an object in it did --
+ * so anything depending on it transitively never re-runs.
+ *
+ * Measured on the XP ledger: editing a notation's reason reached the server
+ * (`beforeSave` logged the new value) and the table went on showing the old one,
+ * because `rows` depended on `allNotations`, and `allNotations` -- which did
+ * call `trackAll()` -- kept returning the same array.
  */
 import { shallowRef, type ShallowRef } from 'vue'
 import Parse from 'parse'

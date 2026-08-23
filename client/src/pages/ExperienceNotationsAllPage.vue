@@ -111,8 +111,26 @@ const total = computed(() => allNotations.value.length)
  * R48: the route's `start`/`changeBy` were accepted and never used, so every
  * page showed the whole ledger. They page for real now.
  */
-const rows = computed<Row[]>(() =>
-  allNotations.value.slice(start.value, start.value + changeBy.value).map((en, i) => {
+const rows = computed<Row[]>(() => {
+  /*
+   * `trackAll()` HERE, not only in `allNotations`.
+   *
+   * Vue 3.4+ compares a computed's new value against its old one and does not
+   * trigger dependents when they are `Object.is`-equal. `allNotations` returns
+   * the SAME array reference when a notation's attribute changes -- the array
+   * did not move, an object inside it did -- so a computed that depended on it
+   * transitively never re-ran.
+   *
+   * Measured: editing a notation's reason reached the server (`beforeSave`
+   * logged the new value) and the table went on showing the old one.
+   *
+   * The rule this implies: any computed that reads THROUGH a Parse object must
+   * subscribe to the mutation counter itself. It cannot inherit the
+   * subscription from an upstream computed whose value is stable.
+   */
+  void revision.value
+  trackAll()
+  return allNotations.value.slice(start.value, start.value + changeBy.value).map((en, i) => {
     const earned = (en.get('earned') as number) ?? 0
     const spent = (en.get('spent') as number) ?? 0
     return {
@@ -129,8 +147,8 @@ const rows = computed<Row[]>(() =>
       // balance is earned minus spent.
       running: earned - spent,
     }
-  }),
-)
+  })
+})
 
 const totals = computed(() => {
   const c = character.value
