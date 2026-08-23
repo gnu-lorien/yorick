@@ -23,6 +23,7 @@ const {
   waitForActivePage,
   navigateToHash,
   hardReload,
+  clearStuckLoader,
   activePageId,
   normalize,
   runInApp
@@ -575,6 +576,80 @@ test.describe('Legacy bugs found during the React port', () => {
       'the offset must land on the wizard view as a number').toBe(true);
     expect(state.onTheRouteHandler,
       'nothing should be written onto the `character` route handler').toBeUndefined();
+  });
+
+  // -------------------------------------------------------------------------
+  // R2 The admin category select was styled or not depending on visit order
+  // -------------------------------------------------------------------------
+  //
+  // Not in the document. Reported from the React port as "EditRules never
+  // calls enhanceWithin(), so the rule editor's category select is unstyled
+  // while the identical control on the Descriptions screen is styled". That is
+  // not what happens, and the difference matters - see docs/legacy-bugs-fixed.md.
+  //
+  // `EditRules` does call `enhanceWithin()`, twice. Those calls have never done
+  // anything: both views declare `el: "#administration-descriptions >
+  // div[data-role='main']"` and the markup is `<div role="main">`, so `$el` is
+  // an empty set. What actually breaks the styling is `update_categories()`
+  // ending with `form.render()`, which replaces the `<select>` and re-enhances
+  // nothing - and jQuery Mobile enhances a page exactly once, on `pagecreate`.
+  //
+  // Measured before the fix, and the point is that it is not per-screen:
+  //
+  //   rule editor first             enhanced
+  //   Descriptions after it         NOT enhanced
+  //   Descriptions first (reload)   NOT enhanced
+  //   rule editor after it          NOT enhanced
+  //
+  // So `DescriptionsView` - the screen the report treats as correct - carries
+  // the identical omission and is fixed the same way. This test walks both
+  // orders, because a test that only visited one screen would have passed
+  // against the bug half the time.
+
+  test('R2 the admin category select is styled whatever the visit order', async ({ page }) => {
+    await loginAsAdmin(page);
+
+    const selectIsEnhanced = () => page.evaluate(() => {
+      const sel = document.querySelector(
+        '#administration-descriptions #descriptions-sections select');
+      if (!sel) return { found: false };
+      return {
+        found: true,
+        enhanced: !!sel.closest('.ui-select'),
+        optionCount: sel.options.length
+      };
+    });
+
+    const visit = async (route, label) => {
+      await navigateToHash(page, route, '#administration-descriptions');
+      // These admin routes hide their spinner only on the failure path, so the
+      // overlay would otherwise swallow the next navigation. See
+      // clearStuckLoader's note.
+      await page.waitForFunction(() => {
+        const sel = document.querySelector(
+          '#administration-descriptions #descriptions-sections select');
+        return !!sel && sel.options.length > 1;
+      }, { timeout: 30000 });
+      await clearStuckLoader(page);
+      const state = await selectIsEnhanced();
+      expect(state.found, `${label}: the category select should be rendered`).toBe(true);
+      expect(state.enhanced, `${label}: the category select is not jQM-enhanced`).toBe(true);
+      return state;
+    };
+
+    // Order A: a rule editor first, then Descriptions. The second visit is the
+    // one that used to come back raw.
+    await visit('administration/bnsmetv1_clan_rules', 'rule editor first');
+    const descriptionsSecond = await visit('administration/descriptions', 'Descriptions second');
+    // Descriptions has a category per Description row; the rule editors have a
+    // handful. Distinct counts prove the two screens really did both render.
+    expect(descriptionsSecond.optionCount).toBeGreaterThan(10);
+
+    // Order B: fresh app, Descriptions first, then two different rule editors.
+    await hardReload(page);
+    await visit('administration/descriptions', 'Descriptions first');
+    await visit('administration/bnsctdbs_kith_rules', 'kith rules second');
+    await visit('administration/bnsmetv1_ritual_rules', 'ritual rules third');
   });
 
   // -------------------------------------------------------------------------
