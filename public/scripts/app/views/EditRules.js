@@ -353,7 +353,39 @@ define([
                 so.push({ label: "All", value: "All" });
 
                 firstSelect.set("options", so);
-                return Parse.Promise.as(form.render());
+                form.render();
+                // Re-enhance, or the category select renders as a raw
+                // `<select>` with no jQuery Mobile styling.
+                //
+                // `form.render()` replaces the element, and jQuery Mobile
+                // enhances a page exactly once, on `pagecreate`. Whichever
+                // screen happened to finish rendering before that moment got a
+                // styled control and every render afterwards did not - so the
+                // same control was styled or not depending on the order the
+                // admin screens were visited, which is the same shape as #16.
+                //
+                // Measured, visiting a rule editor and the Descriptions screen
+                // in both orders:
+                //
+                //   rule editor first            enhanced
+                //   Descriptions after it        NOT enhanced
+                //   Descriptions first (reload)  NOT enhanced
+                //   rule editor after it         NOT enhanced
+                //
+                // So this was never "rules unstyled, Descriptions styled" -
+                // `DescriptionsView.update_categories` carries the identical
+                // omission and is fixed the same way.
+                //
+                // `form.$el`, NOT `this.$el`: this view's `el` is
+                // `#administration-descriptions > div[data-role='main']` and
+                // the markup at index.html is `<div role="main">`, so `$el` is
+                // an EMPTY set and the `enhanceWithin()` calls in `setup` and
+                // `filterwith` have never done anything. Repairing that
+                // selector would suddenly point them at the whole content area
+                // for the first time; that is a far wider change than this
+                // symptom warrants, so it is left alone and recorded here.
+                form.$el.enhanceWithin();
+                return Parse.Promise.as(form);
             })
         }
     });

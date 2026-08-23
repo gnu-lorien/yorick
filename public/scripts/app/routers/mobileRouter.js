@@ -480,8 +480,24 @@ define([
                 }).then(function () {
                     var activePage = $(".ui-page-active").attr("id");
                     var r = $.mobile.changePage("#character-approval", { reverse: false, changeHash: false });
+                }).fail(ReportError.on("Couldn't open the approval page"))
+                  .always(function () {
+                    // The loader comes down whichever way this ends.
+                    //
+                    // `hide()` used to sit inside the `.then()` above, so any
+                    // failure earlier in the chain left `ui-loading` stuck on
+                    // <html> - a full-page overlay that then swallows the next
+                    // click anywhere. Measured while this route still threw on
+                    // an empty timeline: splash screen, hash changed,
+                    // `htmlHasUiLoading: true`, and the only trace was
+                    // `PromiseFailReport`'s `Error in promise {}`.
+                    //
+                    // `.fail` BEFORE `.always`, deliberately: an `always`
+                    // handler that returns a plain value resolves the chain,
+                    // so a reporter hung after it never sees the failure. See
+                    // the note at the tail of helpers/ReportError.js.
                     $.mobile.loading("hide");
-                }).fail(PromiseFailReport);
+                });
             });
         },
 
@@ -733,8 +749,21 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#charactercreate/" + cid);
-            self.get_character(cid, [category]).then(function (character) {
-                self.character.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
+            // `withCharacterCreateView()` first, like its three siblings.
+            //
+            // This route was the odd one out twice over: it belongs to the
+            // wizard's group of four, but it recorded the scroll offset the
+            // way the sheet's two did - on `self.character`, which is the
+            // route handler function, not a character - and it was the only
+            // one of the four that did not ensure `characterCreateView`
+            // exists. The second half matters now that the first is fixed:
+            // the wizard view is built lazily, so without this the assignment
+            // below would land on `undefined` for anyone arriving here before
+            // `charactercreate` had run.
+            self.withCharacterCreateView().then(function () {
+                return self.get_character(cid, [category]);
+            }).then(function (character) {
+                self.characterCreateView.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
                 return character.unpick_text(target);
             }).then(function (c) {
                 window.location.hash = "#charactercreate/" + c.id;
@@ -855,7 +884,7 @@ define([
             self.get_character(id).done(self.ifCurrent(function (m) {
                 self.characterMainPage.model = m;
                 self.characterMainPage.render();
-                self.characterMainPage.scroll_back_after_page_change();
+                self.characterMainPage.restore_scroll_after_page_change();
                 $.mobile.changePage("#character", { reverse: false, changeHash: false });
             })).then(function () {
                 $.mobile.loading("hide");
@@ -1246,13 +1275,27 @@ define([
         get_user_characters: function () {
             var self = this;
             var c = [];
-            if (Parse.User.current().get("username") == "devuser") {
-                c.sortbycreated = true;
-            }
             var p = Parse.Promise.as([]);
             var q = new Parse.Query(Vampire);
             q.equalTo("owner", Parse.User.current());
             q.include("portrait");
+            // NO include("owner"), deliberately, and do not add one.
+            //
+            // `character-list-item.html` only prints the owner line when
+            // `owner.get("username")` is truthy, so without the include the
+            // pointer stays a stub and a player's own roster shows no owner
+            // line. That is almost certainly wanted - a player does not need
+            // their own name on every row of their own roster - and the admin
+            // and troupe listings differ because they hydrate owners through
+            // UserWreqr rather than through an include.
+            //
+            // The reason not to "fix" it with an include is the trap
+            // documented at models/Vampire.js's `get_character`: including the
+            // owner made parse-server DELETE the pointer when the owner was
+            // private, and `Character#get_me_acl` reads a missing owner as "no
+            // owner" and grants the CURRENT user read and write - so opening
+            // someone else's sheet rewrote its ACL to the viewer. If the owner
+            // line is ever wanted here, hydrate the owner separately.
             p = q.each(function (character) {
                 c.push(character);
             }).then(function () {
@@ -1269,9 +1312,6 @@ define([
                 includedeleted: false
             });
             var c = [];
-            if (Parse.User.current().get("username") == "devuser") {
-                c.sortbycreated = true;
-            }
             var p = Parse.Promise.as([]);
             var q = new Parse.Query(Vampire);
             q.equalTo("troupes", troupe);
@@ -1308,9 +1348,6 @@ define([
         get_troupe_summarize_characters: function (troupe, collection) {
             var self = this;
             var c = [];
-            if (Parse.User.current().get("username") == "devuser") {
-                c.sortbycreated = true;
-            }
             var p = Parse.Promise.as([]);
 
             var q = new Parse.Query(Werewolf);
@@ -1364,9 +1401,6 @@ define([
         get_administrator_characters: function () {
             var self = this;
             var c = [];
-            if (Parse.User.current().get("username") == "devuser") {
-                c.sortbycreated = true;
-            }
             var p = Parse.Promise.as([]);
 
             var q = new Parse.Query(Werewolf);
@@ -1408,9 +1442,6 @@ define([
         get_administrator_summarize_characters: function () {
             var self = this;
             var c = [];
-            if (Parse.User.current().get("username") == "devuser") {
-                c.sortbycreated = true;
-            }
             var p = Parse.Promise.as([]);
             var q = new Parse.Query(Vampire);
             //q.equalTo("owner", Parse.User.current());
@@ -1510,23 +1541,36 @@ define([
                 }
             }
             if (check_admin_status) {
-                self.lastadminchecktime = new Date();
-                var adminq = (new Parse.Query(Parse.Role)).equalTo("users", Parse.User.current()).equalTo("name", "Administrator");
-                var siteadminq = (new Parse.Query(Parse.Role)).equalTo("users", Parse.User.current()).equalTo("name", "SiteAdministrator");
-                var q = Parse.Query.or(adminq, siteadminq);
-                return q.count().then(function (count) {
-                    var isadministrator = count ? true : false;
-                    var user = Parse.User.current();
-                    if (user.get("admininterface") != isadministrator) {
-                        user.set("admininterface", isadministrator);
-                        InjectAuthData(user);
-                        return user.save();
-                    }
-                    return Parse.Promise.as(Parse.User.current());
-                });
+                return self.recount_admin_status();
             } else {
                 return Parse.Promise.as(Parse.User.current());
             }
+        },
+
+        /**
+         * Reconcile `admininterface` against the Administrator /
+         * SiteAdministrator roles, and remember when we last did.
+         *
+         * Extracted from `enforce_logged_in` so `enforce_admin` can force one
+         * on the refusal path without also re-rendering the header, the footer
+         * and the trackJs configuration a second time.
+         */
+        recount_admin_status: function () {
+            var self = this;
+            self.lastadminchecktime = new Date();
+            var adminq = (new Parse.Query(Parse.Role)).equalTo("users", Parse.User.current()).equalTo("name", "Administrator");
+            var siteadminq = (new Parse.Query(Parse.Role)).equalTo("users", Parse.User.current()).equalTo("name", "SiteAdministrator");
+            var q = Parse.Query.or(adminq, siteadminq);
+            return q.count().then(function (count) {
+                var isadministrator = count ? true : false;
+                var user = Parse.User.current();
+                if (user.get("admininterface") != isadministrator) {
+                    user.set("admininterface", isadministrator);
+                    InjectAuthData(user);
+                    return user.save();
+                }
+                return Parse.Promise.as(Parse.User.current());
+            });
         },
 
         /**
@@ -1549,9 +1593,31 @@ define([
                 if (Parse.User.current().get("admininterface")) {
                     return Parse.Promise.as(Parse.User.current());
                 }
-                return Parse.Promise.error(new Parse.Error(
-                    Parse.Error.OPERATION_FORBIDDEN,
-                    "Administrator access is required for that page."));
+                // The cached "no" may be up to five minutes old.
+                //
+                // `admininterface` is only reconciled against the
+                // Administrator / SiteAdministrator roles inside
+                // `enforce_logged_in`, and only when `lastadminchecktime` is
+                // more than 300000ms stale. That throttle exists so the
+                // recount is not a query on every single route, and it is
+                // worth keeping - but it also meant someone just promoted was
+                // refused for up to five minutes with no way to hurry it
+                // along.
+                //
+                // Recounting here costs one query and only on the path that
+                // was about to refuse anyway, so the throttle still does its
+                // job for the overwhelming majority of navigations. Note this
+                // only tightens the promotion side; a DEMOTED admin still sees
+                // the interface until the cache expires, which is cosmetic -
+                // the server's own ACLs are what actually refuse the writes.
+                return self.recount_admin_status().then(function () {
+                    if (Parse.User.current().get("admininterface")) {
+                        return Parse.Promise.as(Parse.User.current());
+                    }
+                    return Parse.Promise.error(new Parse.Error(
+                        Parse.Error.OPERATION_FORBIDDEN,
+                        "Administrator access is required for that page."));
+                });
             });
         },
 
@@ -1562,7 +1628,20 @@ define([
                 if (Parse.User.current()) {
                     // A logged-out visitor is already on #login courtesy of
                     // `enforce_logged_in`; do not bounce them again.
-                    window.location.hash = "";
+                    //
+                    // REPLACE, never push. `window.location.hash = ""` adds a
+                    // history entry, so a non-admin who opened #administration
+                    // was bounced to the start page with #administration still
+                    // behind them: pressing Back returned them to the admin
+                    // route, which refused and bounced them again. They could
+                    // not get back past it at all.
+                    //
+                    // `location.replace("#")` overwrites the current entry
+                    // instead of adding one, and - unlike
+                    // `history.replaceState` - it still fires the hashchange
+                    // that routes them to the start page, so what the user
+                    // sees is unchanged. Only the history entry differs.
+                    window.location.replace("#");
                 }
                 return ReportError(error, context);
             };
@@ -1776,7 +1855,25 @@ define([
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
             self.get_character(cid, [category]).then(function (c) {
-                self.character.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
+                // `characterMainPage`, which is the object that reads it back.
+                //
+                // This used to say `self.character`, and `self.character` is
+                // not the character - the router has no such property. It
+                // resolves to the ROUTE HANDLER `character: function (id)`
+                // further down this file, so the offset was quietly stored on
+                // a function and never looked at again. Measured: after
+                // leaving the sheet from a scroll offset of 400,
+                // `router.character.backToTop` was 400 and
+                // `router.characterMainPage.backToTop` was 0.
+                //
+                // `show_character_helper` calls
+                // `self.characterMainPage.restore_scroll_after_page_change()`,
+                // and that helper reads `self.backToTop` off the view - so the
+                // sheet has always scrolled back to the top instead of to
+                // where the user left it. The wizard's equivalent routes work,
+                // because they record on `self.characterCreateView`, the
+                // object their helper reads.
+                self.characterMainPage.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
                 return self.simpleTextNewView.register(c, category, target, "#character?" + c.id);
             }).then(function () {
                 $.mobile.changePage("#simpletext-new", { reverse: false, changeHash: false });
@@ -1793,7 +1890,9 @@ define([
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
             self.get_character(cid, [category]).then(function (character) {
-                self.character.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
+                // See `simpletextpick` above for why this is
+                // `characterMainPage` and not `self.character`.
+                self.characterMainPage.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
                 return character.unpick_text(target);
             }).then(function (c) {
                 window.location.hash = "#character?" + c.id;
@@ -2197,7 +2296,17 @@ define([
                     return self.troupeView.register(troupe, (is_st || is_ad));
                 }).then(function () {
                     $.mobile.changePage("#troupe", { reverse: false, changeHash: false });
-                }).always(function () {
+                }).fail(ReportError.on("Couldn't open that troupe"))
+                  .always(function () {
+                    // `.fail` BEFORE `.always`, deliberately. An `always`
+                    // handler that returns a plain value resolves the chain,
+                    // so a reporter hung after it never sees the failure -
+                    // the trap ReportError.js documents at its tail.
+                    //
+                    // Without this the chain had no failure handler at all: a
+                    // troupe that could not be fetched (wrong id, permission
+                    // refused, network) dropped the spinner and left the user
+                    // where they were, with the URL changed and nothing said.
                     $.mobile.loading("hide");
                 });
             });

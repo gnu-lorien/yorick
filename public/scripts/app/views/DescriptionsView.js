@@ -224,7 +224,21 @@ define([
                 so.push({ label: "All", value: "All" });
 
                 firstSelect.set("options", so);
-                return Parse.Promise.as(form.render());
+                form.render();
+                // Re-enhance after the re-render. See the long note on the
+                // same line in views/EditRules.js: `form.render()` replaces
+                // the category select, jQuery Mobile enhances a page only once
+                // on `pagecreate`, and these two views share both an `el` and
+                // a page element - so before this the control was styled or
+                // not depending purely on which admin screen was visited
+                // first.
+                //
+                // `form.$el`, not `this.$el`, for the reason recorded there:
+                // this view's `el` selector says `div[data-role='main']` and
+                // the markup says `<div role="main">`, so `this.$el` is empty
+                // and its `enhanceWithin()` calls do nothing.
+                form.$el.enhanceWithin();
+                return Parse.Promise.as(form);
             })
         }
     });
