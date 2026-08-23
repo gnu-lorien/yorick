@@ -264,11 +264,32 @@ off; it is unstyled.
 
 `e2e/jqm-enhancement.spec.js` closes that gap, and it runs against BOTH front
 ends: jQM's own JavaScript is the specification, so a failure on the legacy
-client means the invariant is wrong rather than the app. It found one genuine
-inconsistency in the original on its first run — `EditRules` never calls
-`enhanceWithin()`, so the rule editor's category select is unstyled while the
-identical control on the Descriptions screen is not — which is recorded in the
-spec as a reviewed difference rather than silently skipped.
+client means the invariant is wrong rather than the app. It found one real
+difference on its first run, and my first reading of that difference was wrong
+in a way worth recording, because it is the failure mode this whole document
+keeps circling: I inferred a mechanism from the source and one failing run
+instead of measuring it.
+
+What I claimed: `EditRules` never calls `enhanceWithin()`, so the rule editors
+are unstyled while the Descriptions screen is fine. What is actually true, from
+the owner measuring both visit orders on the running app: the styling is
+ORDER-dependent, not screen-dependent. Six admin routes share one screen, one
+`el` and one page element; `update_categories()` ends in `form.render()`, which
+replaces the `<select>` and re-enhances nothing; whichever screen renders before
+jQuery Mobile's one-time `pagecreate` gets a styled control and every render
+after that gets a raw one. On a fresh load Descriptions is unstyled too. Both
+views carry the omission identically, and both their `enhanceWithin()` calls are
+no-ops anyway — they select `div[data-role='main']` against markup that says
+`role="main"`.
+
+That inverts the conclusion. There is no per-route behaviour for the port to
+reproduce, and rendering all six routes through one component is MORE faithful
+than the legacy app, not a deviation from it: it does what the legacy does on
+the visit that happens to win, every time instead of sometimes. The spec's
+allowance now covers all six routes — allowing a subset would make it flake on
+the legacy client — and is marked temporary: the legacy side is being fixed to
+re-enhance after `update_categories()`, and deleting the block is the check that
+the fix worked.
 
 ## Ports
 

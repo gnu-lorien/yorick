@@ -88,27 +88,48 @@ async function unenhanced(page) {
 }
 
 /**
- * One reviewed difference, and the reason it is allowed rather than fixed.
+ * The bulk editor's category select, which the legacy app styles or not
+ * DEPENDING ON VISIT ORDER.
  *
- * The Backbone app leaves the rule editor's category select UNENHANCED: six
- * routes share that screen, `DescriptionsView` enhances its copy and `EditRules`
- * does not, so `#administration/descriptions` is styled and
- * `#administration/bnsmetv1_clan_rules` is not. That is a missed
- * `enhanceWithin()` in one of two views, not a decision.
+ * Six admin routes share one screen -- Descriptions and the five game-rule
+ * classes -- and on the Backbone side they also share one `el` and one page
+ * element. Measured on the running app, visiting them in both orders: whichever
+ * screen finishes rendering before jQuery Mobile's one-time `pagecreate`
+ * enhancement gets a styled control, and every render after that moment gets a
+ * raw one. On a fresh load Descriptions is unstyled too. So this is not
+ * "Descriptions is right and the rule editors are wrong" -- there is no
+ * per-screen rule here at all.
  *
- * The Vue port renders all six routes through ONE component -- faithfully, since
- * the router shared one view instance across them -- so it cannot reproduce the
- * inconsistency without deliberately un-styling a control based on which route
- * reached it. It is enhanced on all six. The port is therefore STRICTER than the
- * original here, in the one direction that cannot break anything, and this entry
- * records that rather than letting the spec quietly skip the page.
+ * The mechanism is `update_categories()` ending in `form.render()`, which
+ * replaces the `<select>` and re-enhances nothing. Both views carry that
+ * omission identically. Their `enhanceWithin()` calls cannot cover it either:
+ * both declare `el: "#administration-descriptions > div[data-role='main']"`
+ * while the markup is `<div role="main">` (index.html:439), so `this.$el` is an
+ * empty set and the call is a no-op in both.
+ *
+ * ALL SIX routes are allowed, not just the rule editors, precisely because
+ * which one is unstyled depends on the order this file happens to visit them.
+ * Allowing a subset would make this spec flake on the legacy client.
+ *
+ * The Vue port renders all six through one component and styles the control on
+ * every one of them. That is MORE faithful than the legacy behaviour, not a
+ * deviation from it: it is what the legacy app does on the visit that happens
+ * to win, every time instead of sometimes.
+ *
+ * TEMPORARY. The legacy side is being fixed to re-enhance after
+ * `update_categories()` re-renders, in both views. Once that lands the two
+ * front ends agree unconditionally and this whole block should be deleted --
+ * dropping it is the check that the fix worked.
  */
+const ORDER_DEPENDENT_ON_LEGACY = { selects: ['category'] };
+
 const LEGACY_GAPS = {
-  'administration/bnsmetv1_clan_rules': { selects: ['category'] },
-  'administration/bnsctdbs_kith_rules': { selects: ['category'] },
-  'administration/bnsmetv1_elder_discipline_rules': { selects: ['category'] },
-  'administration/bnsmetv1_technique_rules': { selects: ['category'] },
-  'administration/bnsmetv1_ritual_rules': { selects: ['category'] }
+  'administration/descriptions': ORDER_DEPENDENT_ON_LEGACY,
+  'administration/bnsmetv1_clan_rules': ORDER_DEPENDENT_ON_LEGACY,
+  'administration/bnsctdbs_kith_rules': ORDER_DEPENDENT_ON_LEGACY,
+  'administration/bnsmetv1_elder_discipline_rules': ORDER_DEPENDENT_ON_LEGACY,
+  'administration/bnsmetv1_technique_rules': ORDER_DEPENDENT_ON_LEGACY,
+  'administration/bnsmetv1_ritual_rules': ORDER_DEPENDENT_ON_LEGACY
 };
 
 function assertClean(report, hash, gaps = {}) {
