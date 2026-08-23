@@ -43,9 +43,9 @@ import { App } from './App';
  * when the last observer goes reproduces what the legacy actually does between
  * routes, which is hold nothing: spinner, fetch, render.
  *
- * The three singletons opt out of both and keep their minute -- they really
- * were fetched once and reused for the session. They set it themselves in
- * data/queries.ts.
+ * One query opts out and keeps a minute: the current user's roles, because
+ * RoleWreqr genuinely refuses to re-fetch within a session. It says so for
+ * itself in data/queries.ts.
  */
 const queryClient = new QueryClient({
   defaultOptions: {

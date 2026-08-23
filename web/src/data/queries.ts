@@ -14,23 +14,21 @@ import { Troupe, troupesQuery, troupeIdFromRoleName } from '@/parse/models/Troup
  * That is what a query cache does, so these are queries. The behaviour worth
  * preserving is in the comments below; the plumbing is not.
  *
- * These three -- and only these three -- keep a `staleTime`. The app default is
- * zero, matching the legacy's re-fetch-per-route; the originals here genuinely
- * did fetch once and serve the same collection for the rest of the session, and
- * RoleWreqr went further and refused to re-fetch at all unless the user id
- * changed.
- */
-const SINGLETON_STALE_TIME = 60_000;
-
-/**
- * Kept in the cache while nothing is observing them.
+ * Only the roles query is cached, and only because RoleWreqr genuinely refuses
+ * to re-fetch: `if (_.eq(self.last_user_id, Parse.User.current().id)) return`,
+ * so within one session it asks once and never again.
  *
- * The app default is zero -- see main.tsx -- so a query is dropped the moment
- * its screen unmounts. These three are the exception the default exists to
- * make possible: without a gcTime they would be re-fetched on every screen that
- * asks, which is exactly the N+1 the Wreqr singletons were written to avoid.
+ * Troupes are NOT cached, despite living in a "Wreqr". `get_troupes` runs its
+ * query every time it is called, and `PlayerOptionsView` calls it on every
+ * render; both listing views re-query on every `register` as well. Caching them
+ * here looked like faithfulness and was the opposite -- create a troupe and the
+ * directory that was supposed to list it served the version from before it
+ * existed.
  */
-const SINGLETON_GC_TIME = 5 * 60_000;
+const ROLES_STALE_TIME = 60_000;
+
+/** Kept in the cache while nothing observes it. See main.tsx for the default. */
+const ROLES_GC_TIME = 5 * 60_000;
 
 export const queryKeys = {
   troupes: ['troupes'] as const,
@@ -42,8 +40,6 @@ export const queryKeys = {
 export function useTroupes() {
   return useQuery({
     queryKey: queryKeys.troupes,
-    staleTime: SINGLETON_STALE_TIME,
-    gcTime: SINGLETON_GC_TIME,
     queryFn: async () => {
       const troupes: Troupe[] = [];
       // `each` rather than `find`: it pages through the whole class instead of
@@ -70,8 +66,8 @@ export function useCurrentRoles() {
   const user = Parse.User.current();
   return useQuery({
     queryKey: [...queryKeys.currentRoles, user?.id],
-    staleTime: SINGLETON_STALE_TIME,
-    gcTime: SINGLETON_GC_TIME,
+    staleTime: ROLES_STALE_TIME,
+    gcTime: ROLES_GC_TIME,
     enabled: !!user,
     queryFn: async () => {
       const roles: Parse.Role[] = [];

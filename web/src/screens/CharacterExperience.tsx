@@ -369,7 +369,7 @@ function LedgerTable({
                         it rendered a permanently blank cell under a column
                         headed "Available". The running balance is earned minus
                         spent. */}
-                    <CellLabel name={PRETTY_NAMES[HEADERS.indexOf(header)]!}>
+                    <CellLabel name={PRETTY_NAMES[HEADERS.indexOf(header)]!} padded>
                       {header === 'available' ? earned - spent : formatEntry(notation, header)}
                     </CellLabel>
                   </Fragment>
@@ -567,12 +567,32 @@ function EditPopups({
 
 registerScreen('characterexperience', CharacterExperience);
 
-/** A value cell, with the reflow label jQM gives it from its column header. */
-function CellLabel({ name, children }: { name: string; children?: React.ReactNode }) {
+/**
+ * A value cell, with the reflow label jQM gives it from its column header.
+ *
+ * `padded` reproduces template indentation, which sounds like nothing and is
+ * not. The delta row writes `<td><%= ... %></td>` on one line; the value row
+ * puts the expression on its own indented line, so its cells carry whitespace
+ * between the label jQM prepends and the value, and read as "Available 30"
+ * rather than "Available30". Anything reading the cell text raw sees the
+ * difference -- e2e/xp-history.spec.js asserts on exactly that string -- and
+ * the DOM comparison cannot, because text is what it ignores.
+ */
+function CellLabel({
+  name,
+  padded,
+  children,
+}: {
+  name: string;
+  padded?: boolean;
+  children?: React.ReactNode;
+}) {
   return (
     <td>
       <b className="ui-table-cell-label">{name}</b>
+      {padded ? ' ' : null}
       {children}
+      {padded ? ' ' : null}
     </td>
   );
 }
