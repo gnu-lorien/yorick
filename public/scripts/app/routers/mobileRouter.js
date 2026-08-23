@@ -749,8 +749,21 @@ define([
             var self = this;
             $.mobile.loading("show");
             self.set_back_button("#charactercreate/" + cid);
-            self.get_character(cid, [category]).then(function (character) {
-                self.character.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
+            // `withCharacterCreateView()` first, like its three siblings.
+            //
+            // This route was the odd one out twice over: it belongs to the
+            // wizard's group of four, but it recorded the scroll offset the
+            // way the sheet's two did - on `self.character`, which is the
+            // route handler function, not a character - and it was the only
+            // one of the four that did not ensure `characterCreateView`
+            // exists. The second half matters now that the first is fixed:
+            // the wizard view is built lazily, so without this the assignment
+            // below would land on `undefined` for anyone arriving here before
+            // `charactercreate` had run.
+            self.withCharacterCreateView().then(function () {
+                return self.get_character(cid, [category]);
+            }).then(function (character) {
+                self.characterCreateView.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
                 return character.unpick_text(target);
             }).then(function (c) {
                 window.location.hash = "#charactercreate/" + c.id;
@@ -1842,7 +1855,25 @@ define([
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
             self.get_character(cid, [category]).then(function (c) {
-                self.character.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
+                // `characterMainPage`, which is the object that reads it back.
+                //
+                // This used to say `self.character`, and `self.character` is
+                // not the character - the router has no such property. It
+                // resolves to the ROUTE HANDLER `character: function (id)`
+                // further down this file, so the offset was quietly stored on
+                // a function and never looked at again. Measured: after
+                // leaving the sheet from a scroll offset of 400,
+                // `router.character.backToTop` was 400 and
+                // `router.characterMainPage.backToTop` was 0.
+                //
+                // `show_character_helper` calls
+                // `self.characterMainPage.scroll_back_after_page_change()`,
+                // and that helper reads `self.backToTop` off the view - so the
+                // sheet has always scrolled back to the top instead of to
+                // where the user left it. The wizard's equivalent routes work,
+                // because they record on `self.characterCreateView`, the
+                // object their helper reads.
+                self.characterMainPage.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
                 return self.simpleTextNewView.register(c, category, target, "#character?" + c.id);
             }).then(function () {
                 $.mobile.changePage("#simpletext-new", { reverse: false, changeHash: false });
@@ -1859,7 +1890,9 @@ define([
             $.mobile.loading("show");
             self.set_back_button("#character?" + cid);
             self.get_character(cid, [category]).then(function (character) {
-                self.character.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
+                // See `simpletextpick` above for why this is
+                // `characterMainPage` and not `self.character`.
+                self.characterMainPage.backToTop = document.documentElement.scrollTop || document.body.scrollTop;
                 return character.unpick_text(target);
             }).then(function (c) {
                 window.location.hash = "#character?" + c.id;
