@@ -1,6 +1,8 @@
 import { Character, type VenueName } from '@/parse/models/Character';
 import { loadCharacter, type Categories } from '@/parse/character/load';
 import { createCharacter } from '@/parse/character/create';
+import { updateTrait } from '@/parse/character/traits';
+import type { SimpleTrait } from '@/parse/models/SimpleTrait';
 import {
   fetchAllCreationElements,
   isBeingCreated,
@@ -47,6 +49,15 @@ type LegacyCharacter = Character & {
   seeming(): number;
   has_seeming(): boolean;
   add_experience_notation(options: Record<string, unknown>): Promise<unknown>;
+  update_trait(
+    nameOrTrait: string | SimpleTrait,
+    value?: number,
+    category?: string,
+    freeValue?: number,
+    wait?: boolean,
+    experienceCostType?: string,
+    experienceCostModifier?: number,
+  ): Promise<SimpleTrait>;
 };
 
 function decorate(character: Character, venue: Venue): LegacyCharacter {
@@ -65,6 +76,26 @@ function decorate(character: Character, venue: Venue): LegacyCharacter {
   decorated.seeming = () => seeming(character);
   decorated.has_seeming = () => hasSeeming(character);
   decorated.add_experience_notation = (options) => addExperienceNotation(character, options);
+  // Positional, matching the legacy signature the suite calls it with. `wait`
+  // is the fifth argument and is dropped: it told the legacy model to await its
+  // own save queue, which `updateTrait` does unconditionally.
+  decorated.update_trait = (
+    nameOrTrait,
+    value,
+    category,
+    freeValue,
+    _wait,
+    experienceCostType,
+    experienceCostModifier,
+  ) =>
+    updateTrait(character, venue, {
+      nameOrTrait,
+      value,
+      category: category ?? '',
+      freeValue,
+      experienceCostType,
+      experienceCostModifier,
+    });
   return decorated;
 }
 
@@ -79,6 +110,18 @@ function venueModule(venueName: VenueName) {
     async get_character(id: string, categories?: Categories) {
       const { character, venue } = await loadCharacter(id, categories);
       return decorate(character, venue);
+    },
+    /**
+     * `create_test_character`, name and all.
+     *
+     * The random suffix is what keeps two runs from colliding, and the
+     * "karmacharactertest" prefix is what several specs and the seeding script
+     * recognise a throwaway character by, so both are reproduced exactly.
+     */
+    create_test_character(nameappend?: string) {
+      const name =
+        'karmacharactertest' + (nameappend ?? '') + Math.random().toString(36).slice(2);
+      return this.create(name);
     },
   };
 }

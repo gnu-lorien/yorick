@@ -29,7 +29,10 @@ import yorickLogo from '@legacy-img/yorick_256.png';
  * changing the hash, so there is no address the comparison harness could visit.
  * It is covered by the E2E suite's login flow instead.
  */
-export function LoginScreen(_: ScreenProps) {
+// Props are optional: App.tsx also renders this for the bare `#login` hash,
+// which matches no route and so has no `RouteMatch` to hand it. Nothing in here
+// reads the route.
+export function LoginScreen(_: Partial<ScreenProps>) {
   const logIn = useLogIn();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');

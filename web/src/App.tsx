@@ -55,6 +55,23 @@ export function App() {
   }, [fragment]);
 
   if (!route) {
+    // `#login` matches no route in either app, and in both it shows the login
+    // page anyway. In the legacy that is jQuery Mobile, not Backbone: jQM's own
+    // hashchange handler transitions to the element whose id matches the hash,
+    // which is how `enforce_logged_in`'s `changePage("#login")` and a
+    // hand-typed `#login` both land on the same screen.
+    //
+    // Only this one id is reproduced. jQM would do it for all 59 page ids, but
+    // every other one shows an *empty* page -- nothing has rendered into it --
+    // so a general rule would faithfully reproduce a blank screen and lose the
+    // "no such route" message that is more useful than either.
+    if (currentFragment() === 'login') {
+      return (
+        <Shell session={session}>
+          <LoginScreen />
+        </Shell>
+      );
+    }
     return (
       <Shell session={session}>
         <NoRoute fragment={currentFragment()} />

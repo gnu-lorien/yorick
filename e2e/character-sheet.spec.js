@@ -1,6 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { loginAsAdmin, loginAsMember, logout } = require('./helpers/auth');
-const { waitForAppReady, waitForJqmLoader, navigateToHash, setJqmSlider, submitJqmForm } = require('./helpers/jqm-helpers');
+const { waitForAppReady, waitForJqmLoader, navigateToHash, setJqmSlider, submitJqmForm, runInApp } = require('./helpers/jqm-helpers');
 
 test.describe('Core Character Management & Sheet Views E2E Suite', () => {
   let characterId;
@@ -37,28 +37,24 @@ test.describe('Core Character Management & Sheet Views E2E Suite', () => {
     // The 3 XP this costs (`BNSMETV1_VampireCosts.calculate_trait_cost`:
     // attributes are `(value - free_value) * 3`) is spent on a throwaway
     // character, and nothing in this file asserts its XP.
-    const charData = await page.evaluate(async () => {
-      return new Promise((resolve, reject) => {
-        require(['app/models/Vampire'], function (Vampire) {
-          Vampire.create_test_character('e2e_sheet_test').then(function (v) {
-            return v.update_trait('Physical', 1, 'attributes', 0, true).then(function () {
-              // Re-read rather than trusting the in-memory copy: parse-server
-              // omits an array field from the save response when the op did
-              // not change it, and parse@8 then applies the pending AddUnique
-              // to undefined -- see the long note in Character.update_trait.
-              return Vampire.get_character(v.id, ['attributes']);
-            });
-          }).then(function (fresh) {
-            const attributes = fresh.get('attributes') || [];
-            resolve({
-              id: fresh.id,
-              name: fresh.get('name'),
-              traitId: attributes.length > 0 ? attributes[0].id : null
-            });
-          }).fail(reject);
+    const charData = await runInApp(page, ['app/models/Vampire'], `
+      return mods[0].create_test_character('e2e_sheet_test').then(function (v) {
+        return v.update_trait('Physical', 1, 'attributes', 0, true).then(function () {
+          // Re-read rather than trusting the in-memory copy: parse-server
+          // omits an array field from the save response when the op did
+          // not change it, and parse@8 then applies the pending AddUnique
+          // to undefined -- see the long note in Character.update_trait.
+          return mods[0].get_character(v.id, ['attributes']);
         });
+      }).then(function (fresh) {
+        var attributes = fresh.get('attributes') || [];
+        return {
+          id: fresh.id,
+          name: fresh.get('name'),
+          traitId: attributes.length > 0 ? attributes[0].id : null
+        };
       });
-    });
+    `);
 
     characterId = charData.id;
     characterName = charData.name;
@@ -100,15 +96,11 @@ test.describe('Core Character Management & Sheet Views E2E Suite', () => {
 
   test('Character Creation View renders archetype, clan and trait slots', async ({ page }) => {
     // Create a new uncompleted character for creation view
-    const creationChar = await page.evaluate(async () => {
-      return new Promise((resolve, reject) => {
-        require(['app/models/Vampire'], function (Vampire) {
-          Vampire.create('Creation Test Char').then(function (v) {
-            resolve({ id: v.id, name: v.get('name') });
-          }).fail(reject);
-        });
+    const creationChar = await runInApp(page, ['app/models/Vampire'], `
+      return mods[0].create('Creation Test Char').then(function (v) {
+        return { id: v.id, name: v.get('name') };
       });
-    });
+    `);
 
     await navigateToHash(page, `charactercreate/${creationChar.id}`, '#character-create');
 
@@ -211,15 +203,11 @@ test.describe('Core Character Management & Sheet Views E2E Suite', () => {
 
   test('Character Delete View renders archive action and allows character deletion', async ({ page }) => {
     // Create an expendable character to delete
-    const deleteChar = await page.evaluate(async () => {
-      return new Promise((resolve, reject) => {
-        require(['app/models/Vampire'], function (Vampire) {
-          Vampire.create('Char To Delete').then(function (v) {
-            resolve({ id: v.id, name: v.get('name') });
-          }).fail(reject);
-        });
+    const deleteChar = await runInApp(page, ['app/models/Vampire'], `
+      return mods[0].create('Char To Delete').then(function (v) {
+        return { id: v.id, name: v.get('name') };
       });
-    });
+    `);
 
     await navigateToHash(page, `character/${deleteChar.id}/delete`, '#character-delete');
 

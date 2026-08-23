@@ -119,9 +119,28 @@ module.exports = async () => {
     );
   }
 
+  // Which front end each backend is actually serving.
+  //
+  // The two differ only in the server's document root, so nothing about a run
+  // says which one answered -- and a stale server on the right port is reused
+  // rather than replaced. Getting this wrong is not a visible failure, it is a
+  // clean-looking run of the wrong app, so it is asserted rather than assumed.
+  const wanted = process.env.E2E_FRONTEND === 'react' ? 'react' : 'legacy';
+  for (const [i, port] of ports.entries()) {
+    const html = await fetch(`${urlForIndex(i)}/index.html`).then((r) => r.text());
+    const served = html.includes('id="root"') ? 'react' : 'legacy';
+    if (served !== wanted) {
+      throw new Error(
+        `[e2e] the backend on ${port} is serving the ${served} front end, but this run ` +
+        `asked for ${wanted}. Playwright reuses a server already listening on the port ` +
+        `it wants, so stop that process and run again.`
+      );
+    }
+  }
+
   const first = results[0];
   console.log(
-    `[e2e] setup ok: ${ports.length} backend(s) on ${ports.join(', ')}, each seeded ` +
+    `[e2e] setup ok: ${wanted} front end, ${ports.length} backend(s) on ${ports.join(', ')}, each seeded ` +
     `independently; ${first.users} users; required description categories present ` +
     `(${REQUIRED_CATEGORIES.map((c) => c + '=' + first.counts[c]).join(', ')})`
   );

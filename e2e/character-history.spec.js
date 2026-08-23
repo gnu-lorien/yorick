@@ -1,6 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { loginAsAdmin, loginAsMember, logout } = require('./helpers/auth');
-const { waitForAppReady, waitForJqmLoader, navigateToHash, waitForJqmPopup, submitJqmForm } = require('./helpers/jqm-helpers');
+const { waitForAppReady, waitForJqmLoader, navigateToHash, waitForJqmPopup, submitJqmForm, runInApp } = require('./helpers/jqm-helpers');
 
 test.describe('Character History & XP Views E2E Suite', () => {
   let characterId;
@@ -11,15 +11,13 @@ test.describe('Character History & XP Views E2E Suite', () => {
     await loginAsAdmin(page);
 
     // Create a fresh test character
-    const charData = await page.evaluate(async () => {
-      return new Promise((resolve, reject) => {
-        require(['app/models/Vampire'], function (Vampire) {
-          Vampire.create_test_character('e2e_history').then(function (v) {
-            resolve({ id: v.id, name: v.get('name') });
-          }).fail(reject);
-        });
+    // Through `runInApp` rather than a bare in-page `require`, which is
+    // RequireJS and exists on only one of the two front ends.
+    const charData = await runInApp(page, ['app/models/Vampire'], `
+      return mods[0].create_test_character('e2e_history').then(function (v) {
+        return { id: v.id, name: v.get('name') };
       });
-    });
+    `);
 
     characterId = charData.id;
     characterName = charData.name;
