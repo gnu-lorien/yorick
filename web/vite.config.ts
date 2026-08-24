@@ -31,13 +31,35 @@ function copyRuntimeAssets(from: string): Plugin {
 }
 
 /**
+ * What a deployment build passes in.
+ *
+ * `gulp` builds every client listed in `clients.js` into one `dist/`, one at
+ * the root and the rest in subdirectories, so a deployment carries the legacy
+ * app and each port together and they can be compared side by side. It hands
+ * each port's build the same three values -- see the table in `clients.js`.
+ *
+ * All three have defaults, so `npm run dev:react` and `npm run build:react`
+ * still work with no environment at all: the root, `dist-react/`, and the
+ * development server.
+ *
+ * `YORICK_BASE` is the one that cannot be skipped for a real deployment. Vite
+ * writes it into every asset URL it emits, and a client mounted at `/react/`
+ * that asks for `/assets/index.js` gets the ROOT client's index.html back with
+ * a 200 and an HTML content type -- so the failure is not a 404 but a syntax
+ * error in the console, which is a much longer walk to the cause.
+ */
+const BASE = process.env.YORICK_BASE || '/';
+const OUT_DIR = process.env.YORICK_OUT_DIR || resolve(__dirname, '../dist-react');
+const SITE = process.env.YORICK_SITE || '';
+
+/**
  * The React front end.
  *
- * It builds to `dist-react/` rather than `dist/` for as long as the migration
- * runs: `dist/` holds the committed build of the legacy app, which Netlify
- * deploy previews serve and which is the only PR check this repo has. Pointing
- * this at `dist/` before parity would replace the app the previews show with a
- * half-migrated one. The flip is a one-line change here, made last.
+ * `dist-react/` is where it lands when nothing says otherwise, which is what
+ * every local build and the E2E harness use. A deployment build passes
+ * `YORICK_OUT_DIR` instead and it goes straight into `dist/<mount>`; the
+ * legacy client's files are never overwritten, because the two clients own
+ * different directories rather than taking turns over one.
  *
  * Ports come from `.claude/dev-react.js`, which owns this worktree's block:
  * 41500 legacy app + Parse API, 41501 this dev server. `/parse` is proxied to
@@ -46,6 +68,16 @@ function copyRuntimeAssets(from: string): Plugin {
  */
 export default defineConfig({
   root: __dirname,
+  base: BASE,
+  define: {
+    // Which Parse server this build talks to. The legacy client makes the same
+    // choice by rewriting a served file (`siteconfig-greensboro` and its three
+    // siblings run gulp-replace over `siteconfig.js`); a bundled app has no
+    // served file to rewrite, so the choice is baked in here instead. Empty
+    // means "decide at runtime from the hostname", which is the development
+    // behaviour and the default.
+    __YORICK_SITE__: JSON.stringify(SITE),
+  },
   plugins: [react(), copyRuntimeAssets(resolve(__dirname, '../public'))],
   resolve: {
     alias: {
@@ -74,8 +106,15 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: resolve(__dirname, '../dist-react'),
-    emptyOutDir: true,
+    outDir: OUT_DIR,
+    // Emptied here only when this build owns the directory. A deployment build
+    // is handed one that `gulp clean` has already cleared, and clearing it
+    // again is worse than redundant: a client mounted at the ROOT is handed
+    // `dist` itself, and emptying that deletes every other client's
+    // subdirectory. Measured -- `--root=react` built the legacy app into
+    // `dist/legacy` and then Vite removed it, leaving a deployment with one
+    // client in it and no error anywhere.
+    emptyOutDir: !process.env.YORICK_OUT_DIR,
     sourcemap: true,
   },
 });

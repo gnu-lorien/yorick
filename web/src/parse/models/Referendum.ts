@@ -1,4 +1,5 @@
 import { Parse } from '../init';
+import { PORTRAIT_FALLBACK } from '@/config/assets';
 
 /**
  * A referendum put to the membership, and the ballots cast in it.
@@ -47,7 +48,7 @@ export class Referendum extends Parse.Object {
   thumbnailUrl(size: number): string {
     const portrait = this.get('portrait') as Parse.Object | undefined;
     const file = portrait?.get(`thumb_${size}`) as Parse.File | undefined;
-    return file?.url() ?? 'head_skull.png';
+    return file?.url() ?? PORTRAIT_FALLBACK;
   }
 
   /** The text of one ballot option, or undefined if that slot is unset. */

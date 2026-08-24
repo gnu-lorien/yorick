@@ -16,7 +16,22 @@
  *
  * The Facebook fields are carried over but unused -- Facebook login was removed
  * during the Parse 8 migration, not migrated (see app/loadall.js).
+ *
+ * ## Choosing one, at build time
+ *
+ * The legacy client picks by having the deployed copy of `siteconfig.js`
+ * rewritten: `gulp greensboro` runs gulp-replace over its last line. A bundled
+ * app has no served file to rewrite, so the same choice arrives as a define --
+ * `YORICK_SITE=greensboro` on the build, which `web/vite.config.ts` turns into
+ * `__YORICK_SITE__`. Both are the same decision made in the same place: the
+ * gulp target that names the deployment.
+ *
+ * A build with no site named behaves exactly as before, which is what every
+ * local build and the E2E harness rely on.
  */
+
+/** Replaced at build time by `web/vite.config.ts`; '' means none was named. */
+declare const __YORICK_SITE__: string;
 
 export interface SiteConfig {
   serverURL: string;
@@ -49,11 +64,39 @@ const ConfigC9: SiteConfig = {
   SAMPLE_TROUPE_ID: 'mXhRByDNxX',
 };
 
+/**
+ * The Heroku deployment.
+ *
+ * Present in the legacy `siteconfig.js` and missed by the first pass of this
+ * port, which mattered the moment a build could be pointed at a named site:
+ * `gulp heroku` has a target and would have had nothing to select.
+ */
+const ConfigHeroku: SiteConfig = {
+  serverURL: 'https://young-plateau-55863.herokuapp.com/parse/1',
+  facebookAppId: '202279720650237',
+  redirect_uri: 'https://sheets.ourislandgeorgia.net/index.html',
+  SAMPLE_TROUPE_ID: 'mXhRByDNxX',
+};
+
 const ConfigGreensboro: SiteConfig = {
   serverURL: 'https://greensboro-yorick.herokuapp.com/parse/1',
   facebookAppId: '202279720650237',
   redirect_uri: 'https://sheets.ourislandgeorgia.net/index.html',
   SAMPLE_TROUPE_ID: 'mXhRByDNxX',
+};
+
+/**
+ * The site names a build may be pointed at, and what each selects.
+ *
+ * The keys are the four gulp targets, and they are the contract described in
+ * `clients.js`: `YORICK_SITE=greensboro` must reach the same server that
+ * `siteconfig-greensboro` gives the legacy client.
+ */
+export const SITE_CONFIGS: Record<string, SiteConfig> = {
+  pubstorm: ConfigPubstorm,
+  patron: ConfigPatron,
+  heroku: ConfigHeroku,
+  greensboro: ConfigGreensboro,
 };
 
 /** Unreferenced here, exactly as in the original, but kept for parity. */
@@ -71,6 +114,23 @@ function resolve(): SiteConfig {
       return { ...ConfigLocalhost, serverURL: `${window.location.origin}/parse/1` };
     }
   }
+
+  // Named at build time, after the same-origin check and before the fallback,
+  // which is exactly where the legacy client's `return ConfigX;` sits once gulp
+  // has rewritten it. A deployed build reaches this line; a local one does not.
+  const named = typeof __YORICK_SITE__ === 'string' ? __YORICK_SITE__ : '';
+  if (named) {
+    const chosen = SITE_CONFIGS[named];
+    if (!chosen) {
+      // Loud, because the alternative is silently talking to the dead
+      // development host and discovering it as "everything 404s".
+      throw new Error(
+        `Unknown YORICK_SITE "${named}". Known sites: ${Object.keys(SITE_CONFIGS).join(', ')}.`,
+      );
+    }
+    return chosen;
+  }
+
   return ConfigC9;
 }
 

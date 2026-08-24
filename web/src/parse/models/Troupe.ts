@@ -1,4 +1,5 @@
 import { Parse } from '../init';
+import { PORTRAIT_FALLBACK } from '@/config/assets';
 
 /**
  * The Troupe class.
@@ -106,7 +107,7 @@ export class Troupe extends Parse.Object {
   thumbnailUrl(size: number): string {
     const portrait = this.get('portrait') as Parse.Object | undefined;
     const file = portrait?.get(`thumb_${size}`) as Parse.File | undefined;
-    return file?.url() ?? 'head_skull.png';
+    return file?.url() ?? PORTRAIT_FALLBACK;
   }
 
   /**
@@ -132,10 +133,10 @@ export class Troupe extends Parse.Object {
   /** The portrait thumbnail URL, fetching the portrait if it is a stub. */
   async fetchThumbnailUrl(size: number): Promise<string> {
     const portrait = this.get('portrait') as Parse.Object | undefined;
-    if (!portrait) return 'head_skull.png';
+    if (!portrait) return PORTRAIT_FALLBACK;
     const fetched = await portrait.fetch();
     const file = fetched.get(`thumb_${size}`) as Parse.File | undefined;
-    return file?.url() ?? 'head_skull.png';
+    return file?.url() ?? PORTRAIT_FALLBACK;
   }
 }
 
