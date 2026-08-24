@@ -56,52 +56,105 @@ async function gotoHashUnchecked(page, hash) {
 }
 
 /**
- * Visit one of the six admin screens that share `#descriptions-sections`, and
- * report on the category select **belonging to the view that route drives**.
+ * The Parse class each of these admin routes edits.
  *
- * `owner` is 'rules' or 'descriptions'. The distinction is not pedantry: the
- * five rule editors and the Descriptions screen are separate memoised views
- * sharing one region (see R3), so "the select in the region" can belong to
- * either of them, and a wait that does not check ownership can be satisfied by
- * the *previous* screen's leftover select. R2's test was written that way and
- * silently stopped detecting its own bug - it passed against fully reverted
- * sources. Everything here waits for the right view to own the node first.
+ * The route name is not the class name, and the mapping lives in the client
+ * (`mobileRouter.js`'s six handlers, `web/src/parse/models/Description.ts`'s
+ * table). It is repeated here because the assertion below needs to know what
+ * the screen *ought* to be showing, and asking the client would mean trusting
+ * the thing under test.
  */
-async function visitAdminCategoryScreen(page, route, owner) {
+const ADMIN_CATEGORY_CLASSES = {
+  'administration/descriptions': 'Description',
+  'administration/bnsmetv1_clan_rules': 'bnsmetv1_ClanRule',
+  'administration/bnsctdbs_kith_rules': 'bnsctdbs_KithRule',
+  'administration/bnsmetv1_ritual_rules': 'bnsmetv1_RitualRule'
+};
+
+/**
+ * The categories a class actually has, according to the server.
+ *
+ * Read through the SDK rather than off the screen, because it is the answer the
+ * screen is being judged against. Rows with no `category` are skipped, which is
+ * #19: an object key is a string, so accumulating them wrote the key
+ * "undefined" and the dropdown offered an option reading exactly that.
+ */
+async function categoriesOnServer(page, className) {
+  const found = await runInApp(page, ['parse'], `
+    var Parse = mods[0];
+    var q = new Parse.Query(arg.className);
+    q.select("category");
+    var seen = {};
+    return q.each(function (row) {
+      var c = row.get("category");
+      if (c) seen[c] = 1;
+    }).then(function () { return Object.keys(seen); });
+  `, { className });
+  return found.slice().sort();
+}
+
+/**
+ * Visit one of the admin screens that share the category select, and report on
+ * what it is showing once it has finished showing it.
+ *
+ * The readiness wait is the whole difficulty. It cannot be "a select exists
+ * with 'All' in it", because R3 shows that on the legacy client the select
+ * sitting in that region can be the PREVIOUS screen's - R2's test was written
+ * that way and silently stopped detecting its own bug, passing against fully
+ * reverted sources. It also cannot ask which Marionette view owns the node,
+ * which is what replaced it: that is a mechanism only one of the three clients
+ * has, and this file runs against all of them.
+ *
+ * So it waits for the select to hold exactly the categories the SERVER says
+ * this route's class has. That is satisfiable only by the right content, from a
+ * source outside the client, so a screen showing another class's categories --
+ * or its own, but stale -- times out here rather than being read and asserted
+ * on. R2's other property, that the select is jQM-enhanced, stays independent
+ * of it.
+ */
+async function visitAdminCategoryScreen(page, route) {
+  const className = ADMIN_CATEGORY_CLASSES[route];
+  if (!className) throw new Error(`no Parse class recorded for the route ${route}`);
+  const expected = await categoriesOnServer(page, className);
+
   await navigateToHash(page, route, '#administration-descriptions');
-  await page.waitForFunction((which) => {
-    const r = window.router;
-    const dom = document.querySelector('#descriptions-sections select');
-    if (!dom) return false;
-    const view = which === 'rules'
-      ? r.administrationEditRules
-      : r.administrationDescriptionsView;
-    const owns = !!(view && view.sections && view.sections.currentView &&
-      view.sections.currentView.el && view.sections.currentView.el.contains(dom));
-    // "All" is pushed unconditionally by `update_categories`, so it is the
-    // signal that the list has been rebuilt - and unlike a bare option count
-    // it does not depend on the rows happening to contain anything.
-    return owns && Array.from(dom.options).some((o) => o.text === 'All');
-  }, owner, { timeout: 30000 });
+  try {
+    await page.waitForFunction((want) => {
+      const dom = document.querySelector('#descriptions-sections select');
+      if (!dom) return false;
+      const shown = Array.from(dom.options).map((o) => o.text);
+      // "All" is appended unconditionally by every client, so it is the signal
+      // that the list was rebuilt rather than left holding a placeholder.
+      if (!shown.includes('All')) return false;
+      const categories = shown.filter((o) => o !== 'All').slice().sort();
+      return categories.length === want.length &&
+        categories.every((c, i) => c === want[i]);
+    }, expected, { timeout: 30000 });
+  } catch (err) {
+    const shown = await page.evaluate(() => {
+      const dom = document.querySelector('#descriptions-sections select');
+      return dom ? Array.from(dom.options).map((o) => o.text) : null;
+    }).catch(() => null);
+    throw new Error(
+      `${route} never showed ${className}'s own categories. Expected ` +
+      `[${expected.join(', ')}] plus "All"; the select holds ` +
+      (shown ? `[${shown.join(', ')}]` : 'no select at all') + '.'
+    );
+  }
   // These admin routes hide their spinner only on the failure path, so the
   // overlay would otherwise swallow the next navigation.
   await clearStuckLoader(page);
 
-  return page.evaluate((which) => {
-    const r = window.router;
+  return page.evaluate(() => {
     const dom = document.querySelector('#descriptions-sections select');
-    const own = (v) => !!(v && v.sections && v.sections.currentView &&
-      v.sections.currentView.el && dom && v.sections.currentView.el.contains(dom));
     return {
       options: Array.from(dom.options).map((o) => o.text),
-      enhanced: !!dom.closest('.ui-select'),
-      ownedByRules: own(r.administrationEditRules),
-      ownedByDescriptions: own(r.administrationDescriptionsView),
-      ownedByExpected: which === 'rules'
-        ? own(r.administrationEditRules)
-        : own(r.administrationDescriptionsView)
+      // jQuery Mobile wraps an enhanced `<select>` in `.ui-select`. Every
+      // client either produces that wrapper or does not; none of them needs to
+      // be asked which one it is.
+      enhanced: !!dom.closest('.ui-select')
     };
-  }, owner);
+  });
 }
 
 /**
@@ -626,7 +679,10 @@ test.describe('Legacy bugs found during the React port', () => {
       var V = mods[0];
       return V.create_test_character("r20_a").then(function (a) {
         return V.create_test_character("r20_b").then(function (b) {
-          return { a: a.id, b: b.id };
+          return {
+            a: a.id, b: b.id,
+            aName: a.get("name"), bName: b.get("name")
+          };
         });
       });
     `);
@@ -644,8 +700,12 @@ test.describe('Legacy bugs found during the React port', () => {
     await waitForActivePage(page, 'character');
     await page.waitForFunction(() => window.scrollY <= 5, null, { timeout: 30000 });
 
-    expect(await page.evaluate(() => window.router.characterMainPage.model.id),
-      'the sheet should be showing the second character').toBe(chars.b);
+    // Which character the sheet is showing, from the header rather than from
+    // the router's memoised view: "opened at the top" would be trivially true
+    // of a sheet that never navigated, and every client puts the name here.
+    await expect(page.locator('#character #insertheader'),
+      'the sheet should be showing the second character')
+      .toContainText(chars.bName, { timeout: 30000 });
   });
 
   test('#20 opening a second character\'s wizard opens at the top', async ({ page }) => {
@@ -873,17 +933,31 @@ test.describe('Legacy bugs found during the React port', () => {
       '#charactercreate/simpletext/archetype/archetype/' + character.id + '/pick');
     await waitForActivePage(page, 'simpletext-new');
 
-    expect(await page.evaluate(() => window.router.characterCreateView.backToTop),
-      'the wizard routes record on the wizard view').toBe(OFFSET);
-
+    // That the offset was recorded is not asserted directly -- where a client
+    // keeps it is its own business, and the legacy answer
+    // (`router.characterCreateView.backToTop`) is a property only one of the
+    // three has. The return trip below is the same claim, observably: it can
+    // only land back at OFFSET if something recorded it.
     await gotoHashUnchecked(page, '#charactercreate/' + character.id);
     await waitForActivePage(page, 'character-create');
     await page.waitForFunction((y) => Math.abs(window.scrollY - y) <= 5, OFFSET,
       { timeout: 30000 });
 
-    // Consumed, so a later visit the reader never scrolled starts at the top.
-    expect(await page.evaluate(() => window.router.characterCreateView.backToTop))
-      .toBe(0);
+    // Main also asserted the offset is CONSUMED -- `backToTop` reading back as
+    // 0 -- and that half is deliberately not reproduced here, because it has no
+    // client-independent meaning.
+    //
+    // Measured: both ports record the scroll position on every departure
+    // (`shell/scrollMemory.ts` records in its unmount cleanup), so leaving this
+    // wizard a second time records the offset it was just restored to and
+    // coming back restores it again. That is "remember where I was" applied
+    // consistently, not a failure to consume; the legacy client forgets after
+    // one use instead. Asserting either shape would be asserting a mechanism.
+    //
+    // Nothing is lost by leaving it out. What the consumption was FOR -- a
+    // visit the reader never scrolled opening at the top -- is what the sibling
+    // test "#20 opening a second character's wizard opens at the top" checks,
+    // observably, on all three clients.
   });
 
   // -------------------------------------------------------------------------
@@ -914,15 +988,14 @@ test.describe('Legacy bugs found during the React port', () => {
   test('R3 a rule editor shows its own categories after the Descriptions screen', async ({ page }) => {
     await loginAsAdmin(page);
 
-    const rulesFirst = await visitAdminCategoryScreen(
-      page, 'administration/bnsmetv1_clan_rules', 'rules');
-    expect(rulesFirst.ownedByRules,
-      'the rule editor should own the shared region on a first visit').toBe(true);
+    // Each of these four calls fails inside the helper if the screen never
+    // shows its own class's categories, which is the defect itself. The
+    // assertions here are the shape of what it showed, so a failure says
+    // which screen and what it held instead.
+    await visitAdminCategoryScreen(page, 'administration/bnsmetv1_clan_rules');
 
     const descriptions = await visitAdminCategoryScreen(
-      page, 'administration/descriptions', 'descriptions');
-    expect(descriptions.ownedByDescriptions,
-      'the Descriptions screen should take the region when visited').toBe(true);
+      page, 'administration/descriptions');
     // Descriptions has a category per Description row; the rule classes have
     // at most a couple. This is what the rule editor used to show afterwards.
     expect(descriptions.options.length).toBeGreaterThan(10);
@@ -931,10 +1004,7 @@ test.describe('Legacy bugs found during the React port', () => {
     // The regression: back to a rule editor, which used to render into a
     // detached form while the screen kept showing the list above.
     const rulesAgain = await visitAdminCategoryScreen(
-      page, 'administration/bnsctdbs_kith_rules', 'rules');
-    expect(rulesAgain.ownedByRules,
-      'the rule editor must take the shared region back').toBe(true);
-    expect(rulesAgain.ownedByDescriptions).toBe(false);
+      page, 'administration/bnsctdbs_kith_rules');
     expect(rulesAgain.options,
       'the rule editor is showing the Descriptions category list')
       .not.toContain('academics_specializations');
@@ -945,9 +1015,7 @@ test.describe('Legacy bugs found during the React port', () => {
     // And symmetrically - fixing only the rule editors would have moved the
     // defect rather than removed it.
     const descriptionsAgain = await visitAdminCategoryScreen(
-      page, 'administration/descriptions', 'descriptions');
-    expect(descriptionsAgain.ownedByDescriptions,
-      'the Descriptions screen must take the region back too').toBe(true);
+      page, 'administration/descriptions');
     expect(descriptionsAgain.options).toContain('academics_specializations');
   });
 
@@ -979,17 +1047,9 @@ test.describe('Legacy bugs found during the React port', () => {
     ];
 
     for (const [route, label] of screens) {
-      await navigateToHash(page, route, '#administration-descriptions');
-      await page.waitForFunction(() => {
-        const sel = document.querySelector(
-          '#administration-descriptions #descriptions-sections select');
-        return !!sel && Array.from(sel.options).some((o) => o.text === 'All');
-      }, { timeout: 30000 });
-      await clearStuckLoader(page);
-
-      const options = await page.evaluate(() => Array.from(document.querySelectorAll(
-        '#administration-descriptions #descriptions-sections select option'))
-        .map((o) => o.text));
+      // Through the helper, so this cannot read the previous screen's select
+      // and report on the wrong class -- see R2, which was written that way.
+      const { options } = await visitAdminCategoryScreen(page, route);
 
       // "All" is pushed unconditionally, so its presence proves the dropdown
       // was rebuilt rather than left holding its placeholder.
@@ -1034,10 +1094,12 @@ test.describe('Legacy bugs found during the React port', () => {
   test('R2 the admin category select is styled whatever the visit order', async ({ page }) => {
     await loginAsAdmin(page);
 
-    const check = async (route, owner, label) => {
-      const state = await visitAdminCategoryScreen(page, route, owner);
-      expect(state.ownedByExpected,
-        `${label}: the wrong view owns the shared region - see R3`).toBe(true);
+    // The helper already refuses to return until the screen shows its own
+    // class's categories -- which is R3, and is what stops this test from
+    // reading the previous screen's leftover select and passing against its own
+    // bug. All that is left to assert here is the styling.
+    const check = async (route, label) => {
+      const state = await visitAdminCategoryScreen(page, route);
       expect(state.enhanced,
         `${label}: the category select is not jQM-enhanced`).toBe(true);
       return state;
@@ -1045,18 +1107,18 @@ test.describe('Legacy bugs found during the React port', () => {
 
     // Order A: a rule editor first, then Descriptions. The second visit is
     // the one that used to come back raw.
-    await check('administration/bnsmetv1_clan_rules', 'rules', 'rule editor first');
+    await check('administration/bnsmetv1_clan_rules', 'rule editor first');
     const descriptionsSecond = await check(
-      'administration/descriptions', 'descriptions', 'Descriptions second');
+      'administration/descriptions', 'Descriptions second');
     // Descriptions has a category per Description row; the rule classes have
     // at most a couple. Distinct shapes prove both screens really rendered.
     expect(descriptionsSecond.options.length).toBeGreaterThan(10);
 
     // Order B: fresh app, Descriptions first, then two different rule editors.
     await hardReload(page);
-    await check('administration/descriptions', 'descriptions', 'Descriptions first');
-    await check('administration/bnsctdbs_kith_rules', 'rules', 'kith rules second');
-    await check('administration/bnsmetv1_ritual_rules', 'rules', 'ritual rules third');
+    await check('administration/descriptions', 'Descriptions first');
+    await check('administration/bnsctdbs_kith_rules', 'kith rules second');
+    await check('administration/bnsmetv1_ritual_rules', 'ritual rules third');
   });
 
   // -------------------------------------------------------------------------

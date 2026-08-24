@@ -11,8 +11,11 @@ import { PORTRAIT_FALLBACK } from '@/config/assets';
  * as classes.
  */
 export class Referendum extends Parse.Object {
-  constructor() {
+  // Forwarded rather than dropped -- see the note on the same
+  // constructor in models/Patronage.ts.
+  constructor(attributes?: Record<string, unknown>) {
     super('Referendum');
+    if (attributes) this.set(attributes);
   }
 
   get name(): string {
@@ -60,8 +63,9 @@ export class Referendum extends Parse.Object {
 Parse.Object.registerSubclass('Referendum', Referendum);
 
 export class ReferendumBallot extends Parse.Object {
-  constructor() {
+  constructor(attributes?: Record<string, unknown>) {
     super('ReferendumBallot');
+    if (attributes) this.set(attributes);
   }
 
   /** The option field name voted for -- "option_0", not the option's text. */

@@ -16,6 +16,15 @@ const test = require('node:test');
 const assert = require('node:assert');
 
 // Backbone 1.1.2 finds underscore on the global in a CommonJS context.
+//
+// `underscore` is also a real devDependency because of the line below it:
+// `public/scripts/lib/backbone.js:24` does `require('underscore')` when loaded
+// under CommonJS, so the npm package has to be installed even though the app
+// itself is served the vendored copy. It was undeclared and these five test
+// files passed anyway, resolving it out of a stale `node_modules` in the
+// enclosing checkout; reinstalling that tree took the whole compat suite down
+// with "Cannot find module 'underscore'" and dropped the run from 291 tests to
+// 211. Declared now, at 1.13.8 -- 1.13.7 and earlier carry GHSA-qpx9-hpmf-5gmw.
 global._ = require('../public/scripts/lib/lodash.js');
 const Backbone = require('../public/scripts/lib/backbone.js');
 const CompatPromise = require('../public/scripts/lib/parse-compat/promise');

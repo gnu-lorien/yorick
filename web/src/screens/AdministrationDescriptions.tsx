@@ -148,10 +148,13 @@ export function AdministrationDescriptions({ route }: ScreenProps) {
   const types = data?.types ?? EMPTY_TYPES;
 
   // Backform renders the option matching the model's value as `selected`, and
-  // when none matches the browser falls back to the first option. That is not
-  // cosmetic on the five rule routes: their only real option is the string
-  // "undefined" (see loadCategories), so the select shows "undefined" while the
-  // model still says "attributes", and picking "undefined" is a no-op change.
+  // when none matches the browser falls back to the first option. That still
+  // matters on the five rule routes: the filter model starts at "attributes",
+  // which is a Description category and not a rule one, so nothing matches and
+  // the select shows whatever sorts first. Since #19 that is a real category
+  // for `bnsctdbs_KithRule` and "All" for the four classes whose rows carry no
+  // category at all -- where it used to be the string "undefined", an option
+  // that queried every row of the class and said nothing about it.
   const shown = categories.includes(category) ? category : categories[0];
 
   async function pick(next: string) {

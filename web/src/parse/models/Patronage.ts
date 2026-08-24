@@ -16,8 +16,20 @@ import { Parse } from '../init';
  * in the app does, which is why this has never surfaced.
  */
 export class Patronage extends Parse.Object {
-  constructor() {
+  /**
+   * `attributes` is forwarded, because `new Parse.Object(attrs)` is the SDK's
+   * contract and dropping it fails silently.
+   *
+   * This class declared `constructor()` and called `super(className)`, so
+   * everything handed to it went nowhere: `new Patronage({owner: user, ...})`
+   * saved a row with no owner and no amount, the server's `afterSave` hook then
+   * threw on `patronage.get("owner").id`, and the screen correctly showed an
+   * empty list. Nothing anywhere reported a dropped attribute. Found by the
+   * legacy #18 regression test, whose fixture builds its rows that way.
+   */
+  constructor(attributes?: Record<string, unknown>) {
     super('Patronage');
+    if (attributes) this.set(attributes);
   }
 
   /**

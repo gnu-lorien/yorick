@@ -23,8 +23,11 @@ import { Parse } from '../init';
  */
 
 export class Description extends Parse.Object {
-  constructor() {
+  // Forwarded rather than dropped -- see the note on the same
+  // constructor in models/Patronage.ts.
+  constructor(attributes?: Record<string, unknown>) {
     super('Description');
+    if (attributes) this.set(attributes);
   }
 }
 
@@ -89,13 +92,22 @@ export function adminAcl(): Parse.ACL {
 /**
  * The distinct `category` values in a class, as the select's options.
  *
- * `update_categories` accumulates them into a plain object keyed by the value,
- * so a class whose rows have no `category` at all -- all five rule classes
- * except `bnsctdbs_KithRule` -- yields the single string key `"undefined"`.
- * That option is then unusable, because picking it queries for the literal
- * string; "All" is the only one that shows anything. Reproduced, because it is
- * what the screen does today and e2e/helpers/rules.js documents it as the
- * reason its own helpers always select "All".
+ * Rows with no `category` are skipped, and that is the fix for #19 rather than
+ * a tidy-up. `update_categories` accumulated the values into a plain object
+ * keyed by the value, and an object key is a string -- so a class whose rows
+ * have no `category` at all wrote the key `"undefined"` and the dropdown
+ * offered an option reading exactly that. `bnsmetv1_ClanRule` is the case in
+ * the seed: 42 rows carrying `clan` and no `category`, so the class offered
+ * precisely two options, "undefined" and "All".
+ *
+ * Picking it built `equalTo("category", undefined)`, which parse-server reads
+ * as "category does not exist" -- every row of the class. So it was a
+ * worse-named duplicate of "All", with nothing on screen to say so.
+ *
+ * This port reproduced that faithfully, because it was what the screen did.
+ * The legacy client has since fixed it in both views (`EditRules.js` and
+ * `DescriptionsView.js`), so this follows; a `Set` makes it one guard instead
+ * of two.
  *
  * Sorted by label with lodash's default comparator -- bare `<`/`>` on the
  * strings, so code-unit order -- and then "All" is appended, which is why it
@@ -106,7 +118,9 @@ export async function loadCategories(className: string): Promise<string[]> {
   const query = new Parse.Query<Parse.Object>(className);
   query.select('category');
   await query.each((row) => {
-    categories.add(String(row.get('category')));
+    const category = row.get('category');
+    if (!category) return;
+    categories.add(String(category));
   });
   const sorted = [...categories].sort((l, r) => (l > r ? 1 : l < r ? -1 : 0));
   sorted.push('All');

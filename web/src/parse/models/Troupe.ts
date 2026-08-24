@@ -21,8 +21,11 @@ export const TROUPE_TITLES = ['LST', 'AST', 'Narrator'] as const;
 export type TroupeTitle = (typeof TROUPE_TITLES)[number];
 
 export class Troupe extends Parse.Object {
-  constructor() {
+  // Forwarded rather than dropped -- see the note on the same
+  // constructor in models/Patronage.ts.
+  constructor(attributes?: Record<string, unknown>) {
     super('Troupe');
+    if (attributes) this.set(attributes);
   }
 
   /** Called by the SDK for new objects only, not on ones loaded from a query. */

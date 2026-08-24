@@ -1,3 +1,22 @@
+/*
+ * `events` is a real dependency of the bundled ports, and not one any source
+ * file here imports.
+ *
+ * Parse's own `EventEmitter.js` does `require('events').EventEmitter` inside a
+ * `try {} catch (_) {}` and assigns whatever it got -- so when nothing supplies
+ * the module, `CoreManager.getEventEmitter()` returns `undefined` and the first
+ * `new Emitter()` inside `Parse.initialize` throws
+ * "TypeError: Emitter is not a constructor". Nothing fails at build time: the
+ * catch swallows it, and a bundler resolving a Node builtin for the browser
+ * leaves a stub behind without an error.
+ *
+ * It was absent from package.json and the build worked anyway, because a stale
+ * `node_modules` in the enclosing checkout happened to have it hoisted. Running
+ * `npm install` there pruned it, and every React E2E test then failed in
+ * `waitForAppReady` -- 32 of 32, with the app never booting and nothing in the
+ * suite output naming the cause. Declared now so no tree's layout can decide
+ * whether the app starts.
+ */
 import Parse from 'parse';
 import { APPLICATION_ID, JAVASCRIPT_KEY, siteconfig } from '@/config/siteconfig';
 

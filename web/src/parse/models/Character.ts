@@ -29,8 +29,11 @@ export type VenueName = 'Vampire' | 'Werewolf' | 'ChangelingBetaSlice';
 export const CHARACTER_CLASS_NAME = 'Vampire';
 
 export class Character extends Parse.Object {
-  constructor() {
+  // Forwarded rather than dropped -- see the note on the same
+  // constructor in models/Patronage.ts.
+  constructor(attributes?: Record<string, unknown>) {
     super(CHARACTER_CLASS_NAME);
+    if (attributes) this.set(attributes);
   }
 
   /**
