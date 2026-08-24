@@ -136,6 +136,25 @@ router.beforeEach(async (to, from) => {
       // A failed role check must not strand the user on a blank screen; fall
       // through to the flag we already have.
     }
+    /*
+     * A cached "not an admin" must never be the last word (legacy defect #6).
+     *
+     * `refreshAdminStatus` is rate-limited to one role query per five minutes,
+     * which is right for ordinary navigation and wrong for a refusal: someone
+     * promoted a moment ago has a stale `false` on their user record and a
+     * throttle window that suppresses the very recount that would clear it, so
+     * they are locked out for up to five minutes with no way to force it.
+     *
+     * Only the refusal path pays for this. An admin whose flag is already true
+     * never reaches here, so the common case still costs no extra query.
+     */
+    if (!auth.isAdmin) {
+      try {
+        await auth.refreshAdminStatus(true)
+      } catch {
+        // As above.
+      }
+    }
     if (!auth.isAdmin) {
       /*
        * The BANNER, not the popup.
@@ -173,6 +192,16 @@ router.beforeEach(async (to, from) => {
       await auth.refreshAdminStatus()
     } catch {
       // As above: fall through to the flag we already have.
+    }
+    // Same reason as the `admin` gate above, and more important here: this
+    // refusal is SILENT, so a wrongly-cached flag would strand the user with
+    // no banner to explain why nothing happened.
+    if (!auth.isAdmin) {
+      try {
+        await auth.refreshAdminStatus(true)
+      } catch {
+        // As above.
+      }
     }
     if (!auth.isAdmin) return false
   }

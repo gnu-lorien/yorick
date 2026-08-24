@@ -18,6 +18,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef } from 'vue'
 import Parse from '@/parse'
+import { track } from '@/parse/reactivity'
 
 /** How long an administrator-role check is trusted, matching the old router. */
 const ADMIN_CHECK_TTL_MS = 300000
@@ -45,18 +46,36 @@ export const useAuthStore = defineStore('auth', () => {
     return !!user.value
   })
 
+  /*
+   * These read FIELDS off the user, so they subscribe to that object's own
+   * revision as well as to `revision`.
+   *
+   * `revision` alone covers the store's own writes -- login, logout,
+   * `refreshAdminStatus` -- because those all call `bump`. It does not cover a
+   * mutation made anywhere else, and `Parse.User.current()` is reachable from
+   * the whole app: `AdministrationUserViewPage` writes `admininterface` when a
+   * storyteller edits a user, and that user can be the current one. Without
+   * `track`, the footer's links and every admin gate would go on reporting the
+   * value as of the last `bump`.
+   *
+   * `track` is the same subscription the character screens use, so a Parse
+   * mutation reaches these the way it reaches everything else.
+   */
   const username = computed(() => {
     void revision.value
+    if (user.value) track(user.value)
     return (user.value?.get('username') as string) || ''
   })
 
   const isAdmin = computed(() => {
     void revision.value
+    if (user.value) track(user.value)
     return !!user.value?.get('admininterface')
   })
 
   const isStoryteller = computed(() => {
     void revision.value
+    if (user.value) track(user.value)
     return !!user.value?.get('storytellerinterface')
   })
 
