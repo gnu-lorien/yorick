@@ -198,15 +198,15 @@ npm run test:diff -- runs/legacy.json runs/react.json
 
     0  NEW-FAIL   regressions
     0  new-pass   fixed, or baseline was flaky
-  471  same-pass
+  474  same-pass
     0  same-fail
     0  added
     0  removed
-    6  skipped
+    2  skipped
     1  flaky
 ```
 
-Legacy takes 14.4 minutes, React 5.9.
+Legacy takes 14.0 minutes, React 5.8.
 
 The two skips are the two the suite has always carried. There were four more,
 held back on React by `skipLegacyInternals`, until those tests were rewritten to
