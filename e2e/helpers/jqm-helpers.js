@@ -42,11 +42,6 @@ async function detectApp(page) {
   }).catch(() => 'unknown');
 }
 
-/** Shorthand for the one branch that comes up most often. */
-async function isReact(page) {
-  return (await detectApp(page)) === 'react';
-}
-
 /**
  * Wait for the app to finish bootstrapping.
  *
@@ -642,7 +637,6 @@ async function runInApp(page, modules, fnBody, arg) {
 module.exports = {
   DEFAULT_TIMEOUT,
   detectApp,
-  isReact,
   waitForAppReady,
   waitForJqmLoader,
   activePageId,
