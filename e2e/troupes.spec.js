@@ -173,7 +173,7 @@
  * negative, off-canvas x-coordinate. `window.router` is a genuine global (the
  * app assigns `this.router = new Mobile()` from a non-strict top-level
  * `require()` callback), which is what makes the live vis.js `Network`
- * instance (`window.router.tcrnv.network`) and its underlying node/edge
+ * instance (the published `tcrnv.network`) and its underlying node/edge
  * `data` reachable at all for a real click-driven interaction plus an
  * assertion-side read of the rendered graph's own state - the "assert
  * whatever is genuinely observable" the assignment asks for when a graph is
@@ -396,11 +396,14 @@ async function readPrintedCharacterText(page, characterName) {
 /** The live vis.js network's own node/edge data - see file-level finding 6. */
 async function readNetworkGraph(page) {
   return page.evaluate(() => {
-    const r = window.router;
-    if (!r || !r.tcrnv || !r.tcrnv.data) return null;
+    // vis.js draws into a canvas, so there is no DOM to read the graph from --
+    // both front ends publish the view instead. The legacy one is the router's
+    // memoised `tcrnv`; React's is the same three fields on its test bridge.
+    const v = (window.__yorick && window.__yorick.tcrnv) || (window.router && window.router.tcrnv);
+    if (!v || !v.data) return null;
     return {
-      nodes: r.tcrnv.data.nodes.map((n) => ({ id: n.id, label: n.label })),
-      edges: r.tcrnv.data.edges.map((e) => ({ from: e.from, to: e.to }))
+      nodes: v.data.nodes.map((n) => ({ id: n.id, label: n.label })),
+      edges: v.data.edges.map((e) => ({ from: e.from, to: e.to }))
     };
   });
 }
@@ -409,7 +412,10 @@ async function readNetworkGraph(page) {
 async function getStableNetworkPositions(page, { attempts = 25, interval = 300 } = {}) {
   let prev = null;
   for (let i = 0; i < attempts; i++) {
-    const pos = await page.evaluate(() => window.router.tcrnv.network.getPositions());
+    const pos = await page.evaluate(() => {
+      const v = (window.__yorick && window.__yorick.tcrnv) || window.router.tcrnv;
+      return v.network.getPositions();
+    });
     if (prev) {
       const ids = Object.keys(pos);
       const stable = ids.length > 0 && ids.every((k) => Math.abs(pos[k].x - prev[k].x) < 1 && Math.abs(pos[k].y - prev[k].y) < 1);
@@ -423,14 +429,18 @@ async function getStableNetworkPositions(page, { attempts = 25, interval = 300 }
 
 /** Absolute page coordinates for every node currently in the network, ready for `page.mouse.click`. */
 async function computeNodeScreenCoordinates(page) {
-  await page.evaluate(() => window.router.tcrnv.network.fit());
+  await page.evaluate(() => {
+    const v = (window.__yorick && window.__yorick.tcrnv) || window.router.tcrnv;
+    v.network.fit();
+  });
   await page.waitForTimeout(500);
 
   const canvasBox = await page.locator(`${NETWORK_PAGE} canvas`).boundingBox();
   const positions = await getStableNetworkPositions(page);
   const domCoords = await page.evaluate((positions) => {
     const out = {};
-    for (const id of Object.keys(positions)) out[id] = window.router.tcrnv.network.canvasToDOM(positions[id]);
+    const v = (window.__yorick && window.__yorick.tcrnv) || window.router.tcrnv;
+    for (const id of Object.keys(positions)) out[id] = v.network.canvasToDOM(positions[id]);
     return out;
   }, positions);
 
@@ -940,7 +950,7 @@ test.describe('Task 7 - Troupes Populated With Real Characters', () => {
     await page.waitForTimeout(1000);
 
     const graph = await readNetworkGraph(page);
-    expect(graph, 'the vis.js Network view is reachable via window.router.tcrnv').toBeTruthy();
+    expect(graph, 'the vis.js Network view publishes its graph').toBeTruthy();
     expect(graph.nodes).toHaveLength(3);
 
     const labels = graph.nodes.map((n) => n.id + '|' + n.label).sort();
@@ -966,7 +976,10 @@ test.describe('Task 7 - Troupes Populated With Real Characters', () => {
     await page.keyboard.up('Control');
     await page.waitForTimeout(300);
 
-    const selected = await page.evaluate(() => window.router.tcrnv.selected_nodes.slice());
+    const selected = await page.evaluate(() => {
+      const v = (window.__yorick && window.__yorick.tcrnv) || window.router.tcrnv;
+      return v.selected_nodes.slice();
+    });
     expect([...selected].sort()).toEqual([state.vampire.id, state.werewolf.id].sort());
 
     const createButton = page.locator(`${NETWORK_PAGE} .make-relationship`);

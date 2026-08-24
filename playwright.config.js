@@ -18,6 +18,30 @@ const CI = !!process.env.CI;
 const WORKERS = workerCount();
 
 /**
+ * Which front end the run exercises.
+ *
+ * `E2E_FRONTEND=react` serves `dist-react/` -- the Vite build -- instead of
+ * `public/`, with `public/` still mounted behind it for the assets the React
+ * build does not contain (see PUBLIC_FALLBACK in index.js). Everything else
+ * about the run is identical: same server, same database, same specs.
+ *
+ * The specs are not forked and take no flag. Helpers that have to behave
+ * differently ask the page which app answered -- `window.__yorick` is present
+ * on one and `window.require` on the other -- so a spec never has to know.
+ *
+ * The React build is not made here. Run `npm run build:react` first; building
+ * inside the config would rebuild once per worker process.
+ */
+const REACT = process.env.E2E_FRONTEND === 'react';
+const path = require('path');
+const FRONTEND_ENV = REACT
+  ? {
+      PUBLIC_BASE: path.join(__dirname, 'dist-react'),
+      PUBLIC_FALLBACK: path.join(__dirname, 'public')
+    }
+  : {};
+
+/**
  * Suites that mutate records shared across a whole database.
  *
  * These no longer need to be kept away from the others - per-worker databases
@@ -157,7 +181,9 @@ module.exports = defineConfig({
       // 27017, `index.js` uses that instead and the exemption does not apply.
       // Setting this explicitly means the suite seeds either way. Deployed
       // environments must never set it.
-      YORICK_ALLOW_SEED: '1'
+      YORICK_ALLOW_SEED: '1',
+
+      ...FRONTEND_ENV
     }
   }))
 });

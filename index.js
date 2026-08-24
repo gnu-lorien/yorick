@@ -388,6 +388,21 @@ async function startServer() {
   // moved nothing and 404ed nothing. Now it does what it says.
   app.use(settings.mountPath, api.app);
   app.use(serveStatic(process.env.PUBLIC_BASE || path.join(__dirname, 'public')));
+  // A second, lower-priority document root.
+  //
+  // The React front end is served by pointing PUBLIC_BASE at its build output,
+  // and that build contains only what it imports. Several assets are referenced
+  // as bare runtime strings instead -- `head_skull.png` is the portrait
+  // fallback every listing falls back to -- so they live in `public/` and are
+  // not bundled. Mounting `public/` behind the primary root is what lets the
+  // React build be served without copying those files into it, which would make
+  // them two files that have to stay identical.
+  //
+  // Unset in every normal run, including production: the legacy front end IS
+  // `public/`, so there is nothing behind it to reach.
+  if (process.env.PUBLIC_FALLBACK) {
+    app.use(serveStatic(process.env.PUBLIC_FALLBACK));
+  }
 
   app.use(bodyParser.urlencoded({extended: false}));
   app.use(bodyParser.json());

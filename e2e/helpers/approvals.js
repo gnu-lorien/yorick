@@ -412,7 +412,24 @@ async function attemptOpenApproval(page, characterId, { timeout = 15000 } = {}) 
   return {
     activePage: await activePageId(page),
     hash: await page.evaluate(() => window.location.hash),
-    approveControls: await page.locator(`${PAGE} .approve-change`).count()
+    approveControls: await page.locator(`${PAGE} .approve-change`).count(),
+    // How much of the approval UI actually rendered.
+    //
+    // This is the front-end-neutral way to ask "did the approval view render".
+    // jQuery Mobile keeps every page in the document and simply does not
+    // transition when a route fails, so the legacy app leaves the previous page
+    // active and this one empty; React has no page to withhold -- the hash
+    // decides what is shown -- so the page is active and its regions render
+    // nothing. Counting what is *inside* the regions is zero either way, and
+    // does not count an error banner as content, which React shows and the
+    // legacy only writes to the console.
+    approvalWidgets: await page.evaluate((sel) => {
+      const regions = ['#approval-changes', '#approval-approvals', '#approval-edit', '#approval-sheet'];
+      return regions.reduce((total, id) => {
+        const region = document.querySelector(sel + ' ' + id);
+        return total + (region ? region.querySelectorAll('*').length : 0);
+      }, 0);
+    }, PAGE)
   };
 }
 

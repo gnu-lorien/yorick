@@ -4,9 +4,30 @@
     {
       "name": "yorick",
       "runtimeExecutable": "node",
-      "runtimeArgs": [".claude/dev-with-mongo.js"],
+      "runtimeArgs": [
+        ".claude/dev-with-mongo.js"
+      ],
       "port": 41337,
       "url": "http://localhost:41337"
+    },
+    {
+      "name": "yorick-legacy-react-worktree",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        ".claude/dev-react.js"
+      ],
+      "port": 41500,
+      "url": "http://localhost:41500"
+    },
+    {
+      "name": "yorick-react",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:react"
+      ],
+      "port": 41501,
+      "url": "http://localhost:41501"
     }
   ]
 }

@@ -704,9 +704,13 @@ test.describe('Task 13 - Access Control In The UI', () => {
     await memberPage.evaluate((h) => { window.location.hash = '#' + h; }, `administration/user/${state.sampmemId}`);
     await memberPage.waitForTimeout(2500);
 
+    // What is asserted is that the admin view never renders, not which page is
+    // left behind. jQuery Mobile keeps every visited page in the document and
+    // simply does not transition, so the legacy app is still showing
+    // `#characters-all`; React unmounts the old screen and shows an empty
+    // shell. Both refuse the route, which is the thing under test.
     const after = await activePageId(memberPage);
-    expect(after, 'the route never transitions').toBe('characters-all');
-    expect(after).not.toBe('administration-user-view');
+    expect(after, 'the admin view never became the active page').not.toBe('administration-user-view');
 
     const hasAdminCheckbox = await memberPage.evaluate(() => !!document.querySelector('#administration-user-view input[name="admininterface"]'));
     const hasResetButton = await memberPage.evaluate(() => !!document.querySelector('#reset-password-view button'));

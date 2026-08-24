@@ -25,8 +25,19 @@ async function loginAs(page, username, password) {
     await logout(page);
   }
 
-  // Transition to login page
+  // Transition to the login page.
+  //
+  // The two apps get there differently, and neither way works on the other.
+  // `#login` is a jQuery Mobile page id, not a route: the legacy app shows it
+  // with `changePage`, and `enforce_logged_in` does the same. React has no
+  // `login` route either -- the login screen is what a *guarded* route renders
+  // while there is no session, exactly as `enforce_logged_in` does, and
+  // `#login` would match no route at all and render the not-found page.
   await page.evaluate(() => {
+    if (window.__yorick) {
+      window.location.hash = '#start';
+      return;
+    }
     window.location.hash = '#login';
     if (window.jQuery && window.jQuery.mobile) {
       window.jQuery.mobile.changePage('#login', { reverse: false, changeHash: false });

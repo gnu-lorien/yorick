@@ -10,19 +10,62 @@
 
 const DEFAULT_TIMEOUT = parseInt(process.env.E2E_NAV_TIMEOUT || '20000', 10);
 
-/** Wait for RequireJS, jQuery Mobile, and the Parse SDK to finish bootstrapping. */
+/**
+ * Which front end answered.
+ *
+ * The suite runs unchanged against both: `E2E_FRONTEND=react` serves the Vite
+ * build instead of `public/`, and the helpers below ask the page rather than
+ * take a flag, so no spec has to know which one it is driving.
+ *
+ * Detected from the page rather than from the environment variable, because
+ * what matters is what actually loaded. A run pointed at a stale build would
+ * otherwise report a confusing failure three helpers later.
+ */
+async function isReact(page) {
+  return page.evaluate(() => !!window.__yorick).catch(() => false);
+}
+
+/**
+ * Wait for the app to finish bootstrapping.
+ *
+ * Legacy: RequireJS, jQuery Mobile and the Parse SDK. React: the test bridge
+ * and the Parse SDK. `Parse.applicationId` is checked on both because
+ * `window.Parse` exists a moment before `initialize` has run, and every helper
+ * after this one assumes the SDK will answer.
+ */
 async function waitForAppReady(page, timeout = DEFAULT_TIMEOUT) {
   await page.waitForFunction(() => {
+    if (typeof window.Parse === 'undefined' || !window.Parse.applicationId) return false;
+    if (window.__yorick) return true;
     return typeof window.jQuery !== 'undefined' &&
            typeof window.jQuery.mobile !== 'undefined' &&
-           typeof window.Parse !== 'undefined' &&
-           !!window.Parse.applicationId &&
            typeof window.require === 'function';
   }, { timeout });
 }
 
-/** Wait for the jQuery Mobile loading spinner to clear. */
+/**
+ * Wait for the app to stop working.
+ *
+ * On the legacy front end that means the jQuery Mobile spinner, and the check
+ * is deliberately generous because several admin routes leave it up forever
+ * (see `clearStuckLoader`) -- a timeout here is swallowed rather than failing a
+ * test for a known UI bug.
+ *
+ * React answers directly instead, and it has to. The stylesheet gives
+ * `.ui-loader` `position: fixed`, which makes `offsetParent` null whether it is
+ * showing or not, so the DOM check below passes the moment it is asked. On the
+ * legacy app that is survivable -- its route handlers finish rendering before
+ * the promise chain resolves -- but React saves and re-renders asynchronously,
+ * so "the spinner is clear" was answering yes while the row being edited still
+ * held its old value.
+ */
 async function waitForJqmLoader(page, timeout = 15000) {
+  const react = await isReact(page);
+  if (react) {
+    await page.waitForFunction(() => !window.__yorick.busy(), { timeout })
+      .catch(() => { /* nothing was in flight */ });
+    return;
+  }
   await page.waitForFunction(() => {
     const loader = document.querySelector('.ui-loader');
     if (!loader) return true;
@@ -95,9 +138,18 @@ async function navigateToHash(page, hash, targetSelector = null, timeout = DEFAU
       return null;
     }
     // The hash is already what we want, so no hashchange will fire and the
-    // route handler would never run. Bouncing through a dummy hash to force one
-    // races jQuery Mobile's transition queue and can strand the app mid
-    // transition, so drive Backbone's router directly instead.
+    // route handler would never run.
+    //
+    // React renders from the hash, so an unchanged hash renders nothing new;
+    // what "go there again" means there is "discard what is on screen and
+    // fetch it fresh", which is what the bridge does. On the legacy side,
+    // bouncing through a dummy hash to force a hashchange races jQuery
+    // Mobile's transition queue and can strand the app mid transition, so
+    // Backbone's router is driven directly instead.
+    if (window.__yorick) {
+      window.__yorick.redispatch();
+      return null;
+    }
     return new Promise((resolve) => {
       window.require(['backbone'], function (Backbone) {
         Backbone.history.loadUrl(h);
@@ -142,16 +194,45 @@ async function navigateToHash(page, hash, targetSelector = null, timeout = DEFAU
 async function hardReload(page, timeout = DEFAULT_TIMEOUT) {
   await page.evaluate(() => { window.location.reload(); });
   await waitForAppReady(page, timeout);
+  // React survives the reload with a warm query cache in memory only, so this
+  // is already a fresh app -- but the caller's intent is "forget everything",
+  // and a reload that leaves a service-worker-style cache behind would make a
+  // React run quietly easier than a legacy one.
+  await page.evaluate(() => { if (window.__yorick) window.__yorick.hardReset(); });
 }
 
-/** Set a jQuery Mobile slider and fire the change event the view listens for. */
+/**
+ * Set a slider and fire the event the app listens for.
+ *
+ * Two apps, two mechanisms. jQuery Mobile keeps the real value on the hidden
+ * input and needs `slider("refresh")` to redraw the handle, and it listens for
+ * a jQuery-triggered `change`. React owns the input's value through its own
+ * state, so assigning `.value` is discarded on the next render unless the
+ * assignment goes through the *native* value setter -- React tracks the last
+ * value it wrote on the DOM node and skips any event whose value looks
+ * unchanged. Both an `input` and a `change` event are dispatched because
+ * controlled inputs listen for the former and `<select>`-style handlers for the
+ * latter.
+ */
 async function setJqmSlider(page, selector, value) {
   await page.waitForSelector(selector, { state: 'attached' });
   await page.evaluate(({ sel, val }) => {
-    const el = window.jQuery(sel);
-    el.val(val);
-    try { el.slider('refresh'); } catch (e) { /* not enhanced as a slider */ }
-    el.trigger('change');
+    if (window.jQuery) {
+      const el = window.jQuery(sel);
+      el.val(val);
+      try { el.slider('refresh'); } catch (e) { /* not enhanced as a slider */ }
+      el.trigger('change');
+      return;
+    }
+    const el = document.querySelector(sel);
+    if (!el) throw new Error('no element matches ' + sel);
+    const proto = el instanceof HTMLTextAreaElement
+      ? HTMLTextAreaElement.prototype
+      : HTMLInputElement.prototype;
+    const setter = Object.getOwnPropertyDescriptor(proto, 'value').set;
+    setter.call(el, String(val));
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
   }, { sel: selector, val: value });
 }
 
@@ -380,18 +461,31 @@ function normalize(text) {
 }
 
 /**
- * Run a function against RequireJS modules inside the page and surface failures
- * as real errors.
+ * Run a function against the app's own models inside the page, and surface
+ * failures as real errors.
  *
- * Parse 1.9 promises are jQuery-style: a rejection may arrive via `.fail`
- * instead of the second `.then` argument, so both are wired up. `fnBody` is a
- * function body string receiving `(mods, arg)`.
+ * This is how the suite does fixture setup and assertion read-back: through the
+ * models rather than the UI, so a test that drives the UI is not also asserting
+ * against the UI. `fnBody` is a function body string receiving `(mods, arg)`.
+ *
+ * Two things the bodies must not assume, because they run on both front ends:
+ * lodash is not a global on the React side, so write plain JS; and a rejection
+ * may arrive via `.fail` rather than the second `.then` argument, because Parse
+ * 1.9's promises are jQuery-style -- both are wired up below.
  */
 async function runInApp(page, modules, fnBody, arg) {
   return page.evaluate(({ modules, fnBody, arg }) => {
     return new Promise((resolve, reject) => {
       const fail = (e) => reject(new Error(e && e.message ? e.message : String(e)));
-      window.require(modules, function () {
+      // RequireJS on the legacy front end; the test bridge on React, which
+      // answers the same module names with the same method names over the
+      // ported modules. See web/src/shell/e2eModelApi.ts.
+      const load = window.require || (window.__yorick && window.__yorick.require);
+      if (typeof load !== 'function') {
+        fail(new Error('no module loader: neither window.require nor window.__yorick'));
+        return;
+      }
+      load(modules, function () {
         const mods = Array.prototype.slice.call(arguments);
         let result;
         try {
@@ -414,6 +508,7 @@ async function runInApp(page, modules, fnBody, arg) {
 
 module.exports = {
   DEFAULT_TIMEOUT,
+  isReact,
   waitForAppReady,
   waitForJqmLoader,
   activePageId,

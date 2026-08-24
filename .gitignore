@@ -120,3 +120,7 @@ runs/
 # parse8-migration-handoff.md) writes traces here; one investigation produced
 # 239MB. The instrument itself lives in e2e/helpers/, which is what to reuse.
 tmp-probes/
+
+# The React front end's build output. Committed builds are the legacy
+# app's dist/ only, which is what Netlify deploy previews serve.
+dist-react/

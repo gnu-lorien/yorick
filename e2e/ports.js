@@ -20,7 +20,25 @@
 
 const os = require('os');
 
-const BASE_PORT = Number(process.env.E2E_BASE_PORT || 1337);
+/**
+ * The React run gets its own port block, 50 above the legacy one.
+ *
+ * Not cosmetic. Playwright reuses an already-running server on the port it
+ * wants (`reuseExistingServer`), and the two front ends differ only in the
+ * server's `PUBLIC_BASE` -- so alternating between a legacy run and a React run
+ * on one port silently tests whichever app happened to still be up. That
+ * produced a "legacy regression check" that was really a second React run and
+ * looked entirely clean.
+ *
+ * Separate blocks mean both can be up at once and each run reuses its own.
+ * `global-setup.js` still asserts the served app matches, because a wrong
+ * answer here should fail loudly rather than be trusted.
+ */
+const REACT_PORT_OFFSET = 50;
+
+const BASE_PORT =
+  Number(process.env.E2E_BASE_PORT || 1337) +
+  (process.env.E2E_FRONTEND === 'react' ? REACT_PORT_OFFSET : 0);
 
 /**
  * How many workers - and therefore how many backends - to run.
