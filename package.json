@@ -46,6 +46,8 @@
     "karma-jasmine": "~4.0.2",
     "karma-requirejs": "~1.1.0",
     "mongodb-memory-server": "^11.2.0",
+    "pixelmatch": "^5.3.0",
+    "pngjs": "^6.0.0",
     "requirejs": "^2.3.8"
   },
   "repository": {
@@ -86,6 +88,8 @@
     "test:e2e:longtexts": "playwright test e2e/long-texts.spec.js",
     "test:e2e:descriptions": "playwright test e2e/descriptions-by-creature.spec.js",
     "test:e2e:lifecycle": "playwright test e2e/lifecycle-vampire.spec.js e2e/lifecycle-werewolf.spec.js e2e/lifecycle-changeling.spec.js",
-    "test:e2e:access": "playwright test e2e/access-control.spec.js"
+    "test:e2e:access": "playwright test e2e/access-control.spec.js",
+    "mirror": "node e2e/mirror/run.js",
+    "mirror:record": "node e2e/mirror/record.js"
   }
 }
