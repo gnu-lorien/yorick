@@ -109,6 +109,21 @@ render correct markup and only the data behind it differed:
   up forever and swallows every subsequent click.
 - `data-icon` was missing from list rows. jQuery Mobile leaves it in place and
   the suite selects on it; attributes are exactly what `compare:dom` ignores.
+- The session store never re-rendered on an in-place change. It snapshotted
+  `Parse.User.current()`, which answers with the same instance every time, so
+  `useSyncExternalStore` compared the snapshot to itself and skipped the
+  render. Logging in and out looked fine -- both produce a different object --
+  and everything written *onto* the user was invisible: a role recount, or a
+  storyteller ticking Administrator on an account that happens to be the one
+  logged in. It watches a revision counter now and reads the user during render.
+- A stale "not an admin" was the last word. Legacy defect #6 was fixed in the
+  legacy client by recounting the roles on the refusal path of `enforce_admin`,
+  and the port had only appeared to fix it: it had no recount at all. Two halves
+  were missing, and only one of them is what the test caught. The throttled
+  recount on ordinary navigation (`enforce_logged_in`, one query per five
+  minutes) is what corrects the cached flag in the background -- without it a
+  promoted player never even sees the Administration tab, because the tab is
+  drawn from that same flag.
 
 The spinner leak is also the reason a React run was *slow*: with the overlay
 stuck, every "wait for the app to settle" burned its full timeout. Fixing it
@@ -118,6 +133,34 @@ same file against the legacy app, which takes 36.
 ## Where the suite stands
 
 Every spec file is green on both front ends, with no unexpected failures.
+
+## Tests that used to name Backbone objects
+
+Five tests in `legacy-bug-regressions.spec.js` asserted against the legacy
+client's own internals -- `router.characterMainPage.backToTop`,
+`router._character.transform_description`, `router.characterCreateView`,
+`router.lastadminchecktime`. Each pinned a defect to the mechanism that
+happened to carry it, so no port could be held to it however correct it was.
+They were skipped on React at first, which is the wrong trade: the four skips
+were four regressions nobody would have caught.
+
+The Vue port rewrote them as assertions about what a person can observe, and
+that work is merged here rather than duplicated:
+
+| | now asserted as |
+| --- | --- |
+| #14 | an ordinary printable sheet carries no diff markup, after the approval screen has been required to draw its own |
+| #17 | the sheet returns to the offset it was left at |
+| #17 | the wizard's unpick route works from cold, with the wizard genuinely not built yet |
+| #6 | the poisoned flag is written through `Parse.User.current()`, which every client shares, and the throttle is left fresh by not touching it |
+
+Five tests become four; #13 changed with them, from reading the owner pointer's
+client-side state to asserting that no query asked for `include=owner`.
+
+Two properties are deliberately not asserted, because they hold on the ports
+and not on the legacy client: a second character's sheet opening at the top,
+and the wizard restoring its own offset. Asserting them here would fail the
+baseline and so be forgiven on every run afterwards. The file records them.
 
 ## Two differences the suite had to be told about
 
@@ -165,10 +208,10 @@ npm run test:diff -- runs/legacy.json runs/react.json
 
 Legacy takes 14.4 minutes, React 5.9.
 
-The six skips are the two the suite has always carried plus four that
-`skipLegacyInternals` holds back on React -- they reach into `window.require` for
-a Backbone view, and there is nothing on the other side to reach for. The one
-flake is troupes 140, below.
+The two skips are the two the suite has always carried. There were four more,
+held back on React by `skipLegacyInternals`, until those tests were rewritten to
+assert behaviour instead of Backbone objects -- see below. The one flake is
+troupes 140, below.
 
 Five legacy tests print as failures in the list reporter and are neither failures
 nor flakes: they are `test.fail()`, standing records of legacy defects the port

@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Header, Footer, navTabsFor } from '@/jqm/Toolbar';
 import { LoadingProvider } from '@/jqm/Loader';
 import { ChromeContext } from '@/jqm/chrome';
@@ -6,7 +6,13 @@ import { useHashRoute } from '@/router/useHashRoute';
 import { navigate, currentFragment } from '@/router/router';
 import { screenMap } from '@/router/screenMap';
 import { titleFor } from '@/router/pageTitles';
-import { useSession, useLogOut, type Session } from '@/parse/session';
+import {
+  useSession,
+  useLogOut,
+  maybeRecountAdminStatus,
+  recountAdminStatus,
+  type Session,
+} from '@/parse/session';
 import { useBackTarget } from '@/shell/backButton';
 import { errorRegionOnNavigate, showError } from '@/shell/reportError';
 import { useScreenGeneration } from '@/shell/testBridge';
@@ -108,6 +114,15 @@ export function App() {
     window.scrollTo(0, 0);
   }, [fragment]);
 
+  // `enforce_logged_in` recounts the administrative roles on any route, at most
+  // once every five minutes, and writes the answer back onto the user. Without
+  // it a promoted player never sees the Administration tab, because the tab is
+  // drawn from the cached flag. Throttled inside, and never awaited: it is a
+  // correction, not a precondition.
+  useEffect(() => {
+    maybeRecountAdminStatus();
+  }, [fragment]);
+
   if (!route) {
     // `#login` matches no route in either app, and in both it shows the login
     // page anyway. In the legacy that is jQuery Mobile, not Backbone: jQM's own
@@ -149,7 +164,7 @@ export function App() {
 
   const adminGate = ADMIN_HANDLERS.get(handler);
   if (adminGate && !session.admin) {
-    return <AdminRefusal mode={adminGate} session={session} />;
+    return <AdminGate mode={adminGate} session={session} />;
   }
 
   const pageId = screenMap[handler]?.pageId ?? handler;
@@ -168,6 +183,41 @@ export function App() {
       )}
     </Shell>
   );
+}
+
+/**
+ * The cached "not an admin" is never the last word.
+ *
+ * `enforce_admin` recounts the roles before refusing, and only on the path
+ * that was about to refuse anyway, so the five-minute throttle still spares
+ * every ordinary navigation. The case it exists for: someone promoted a moment
+ * ago carries a stale `false` AND a throttle window that suppresses the very
+ * recount that would clear it, and is turned away for up to five minutes with
+ * no way to hurry it along.
+ *
+ * Nothing renders while the count is in flight -- not the admin screen, which
+ * would be a flash of a page they may not be allowed, and not the refusal,
+ * which may be about to be wrong. If the recount says yes it writes the flag,
+ * `useSession` re-reads, and this component is gone before it renders again.
+ */
+function AdminGate({ mode, session }: { mode: 'redirect' | 'silent'; session: Session }) {
+  const [refused, setRefused] = useState(false);
+  const asked = useRef(false);
+
+  useEffect(() => {
+    if (asked.current) return;
+    asked.current = true;
+    recountAdminStatus()
+      .then((isAdmin) => {
+        // On `true` the session bump re-renders the app past this gate; there
+        // is nothing to do here but stay out of the way.
+        if (!isAdmin) setRefused(true);
+      })
+      .catch(() => setRefused(true));
+  }, []);
+
+  if (!refused) return <Shell session={session} />;
+  return <AdminRefusal mode={mode} session={session} />;
 }
 
 /**
