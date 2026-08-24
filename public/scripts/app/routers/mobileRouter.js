@@ -606,7 +606,7 @@ define([
                 self.characterCreateView.setup({
                     character: character
                 })
-                self.characterCreateView.scroll_back_after_page_change();
+                self.characterCreateView.restore_scroll_after_page_change();
                 $.mobile.changePage("#character-create", { reverse: false, changeHash: false });
             }).always(function () {
                 $.mobile.loading("hide");

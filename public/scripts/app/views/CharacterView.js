@@ -39,10 +39,16 @@ define([
          * usually landed at the top, and occasionally, when the render won the
          * race, did not. Inconsistent either way.
          *
-         * Deliberately a NEW method on this view rather than an edit to the
-         * one the creation wizard uses. The wizard has its own copy in
-         * `CharacterCreateViewNew.js` where the immediate scroll works, and
-         * that file is not touched: nothing here can reach it.
+         * Deliberately a NEW method on this view rather than an edit to a
+         * shared one. There is no shared one: `CharacterCreateViewNew.js` and
+         * `CharacterCreateView.js` each carry their own copy, so changing this
+         * cannot reach either.
+         *
+         * An earlier version of this comment claimed the wizard's copy "works".
+         * That was repeated from the report that raised the defect and never
+         * measured, and it is wrong - the wizard raced the render exactly as
+         * the sheet did. It now carries the same treatment, separately, in
+         * `CharacterCreateViewNew.restore_scroll_after_page_change`.
          *
          * Bounded, because "wait until it is tall enough" must not become
          * "spin forever" on a sheet that never gets there - a character whose
@@ -57,6 +63,23 @@ define([
                 // not be reused by the next visit.
                 self.backToTop = 0;
                 if (!_.isFinite(top) || top <= 0) {
+                    // No offset to restore, so this is a fresh arrival - open
+                    // at the top.
+                    //
+                    // Not redundant. Every character sheet is the SAME jQuery
+                    // Mobile page, `#character`, so moving from one character
+                    // to another is a same-page transition and neither the
+                    // browser nor jQuery Mobile resets the scroll position.
+                    // Measured: scroll character A, leave through a text
+                    // picker, come back (restores to 400 as intended), then
+                    // open character B - the window stayed at 400, on a
+                    // character the reader had never scrolled.
+                    //
+                    // `pagechange` DOES fire on that navigation, which is why
+                    // this is the right place for it: the handler runs, finds
+                    // nothing to restore, and until now returned having done
+                    // nothing at all.
+                    $.mobile.silentScroll(0);
                     return;
                 }
 

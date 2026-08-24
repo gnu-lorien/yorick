@@ -24,6 +24,7 @@ const {
   navigateToHash,
   hardReload,
   clearStuckLoader,
+  selectBackformOption,
   activePageId,
   normalize,
   runInApp
@@ -40,6 +41,55 @@ const ERROR_REGION = '#global-error-region';
 async function gotoHashUnchecked(page, hash) {
   await page.evaluate((h) => { window.location.hash = h; }, hash);
   await waitForJqmLoader(page);
+}
+
+/**
+ * Visit one of the six admin screens that share `#descriptions-sections`, and
+ * report on the category select **belonging to the view that route drives**.
+ *
+ * `owner` is 'rules' or 'descriptions'. The distinction is not pedantry: the
+ * five rule editors and the Descriptions screen are separate memoised views
+ * sharing one region (see R3), so "the select in the region" can belong to
+ * either of them, and a wait that does not check ownership can be satisfied by
+ * the *previous* screen's leftover select. R2's test was written that way and
+ * silently stopped detecting its own bug - it passed against fully reverted
+ * sources. Everything here waits for the right view to own the node first.
+ */
+async function visitAdminCategoryScreen(page, route, owner) {
+  await navigateToHash(page, route, '#administration-descriptions');
+  await page.waitForFunction((which) => {
+    const r = window.router;
+    const dom = document.querySelector('#descriptions-sections select');
+    if (!dom) return false;
+    const view = which === 'rules'
+      ? r.administrationEditRules
+      : r.administrationDescriptionsView;
+    const owns = !!(view && view.sections && view.sections.currentView &&
+      view.sections.currentView.el && view.sections.currentView.el.contains(dom));
+    // "All" is pushed unconditionally by `update_categories`, so it is the
+    // signal that the list has been rebuilt - and unlike a bare option count
+    // it does not depend on the rows happening to contain anything.
+    return owns && Array.from(dom.options).some((o) => o.text === 'All');
+  }, owner, { timeout: 30000 });
+  // These admin routes hide their spinner only on the failure path, so the
+  // overlay would otherwise swallow the next navigation.
+  await clearStuckLoader(page);
+
+  return page.evaluate((which) => {
+    const r = window.router;
+    const dom = document.querySelector('#descriptions-sections select');
+    const own = (v) => !!(v && v.sections && v.sections.currentView &&
+      v.sections.currentView.el && dom && v.sections.currentView.el.contains(dom));
+    return {
+      options: Array.from(dom.options).map((o) => o.text),
+      enhanced: !!dom.closest('.ui-select'),
+      ownedByRules: own(r.administrationEditRules),
+      ownedByDescriptions: own(r.administrationDescriptionsView),
+      ownedByExpected: which === 'rules'
+        ? own(r.administrationEditRules)
+        : own(r.administrationDescriptionsView)
+    };
+  }, owner);
 }
 
 /**
@@ -579,6 +629,412 @@ test.describe('Legacy bugs found during the React port', () => {
   });
 
   // -------------------------------------------------------------------------
+  // #20 Opening a second character's sheet kept the first one's scroll
+  // -------------------------------------------------------------------------
+  //
+  // Scroll a sheet, leave through a text picker, return (it restores, as #17
+  // intends), then open a DIFFERENT character. The window stayed where it was,
+  // so the reader landed in the middle of a character they had never scrolled.
+  //
+  // The report left this undiagnosed and guessed that no `pagechange` fires
+  // because both sheets are the same jQuery Mobile page. Half right: it IS the
+  // same page, `#character`, so neither the browser nor jQuery Mobile resets
+  // the scroll - but `pagechange` does fire. Measured:
+  //
+  //   scrollY after opening character B    400   (A's offset)
+  //   pagechange events since navigating   ["character"]
+  //   characterMainPage.backToTop          0     (consumed, not stale)
+  //
+  // So the restore handler ran, found nothing to restore, and returned having
+  // done nothing. It now scrolls to the top in that case. The wizard had the
+  // identical defect for the same reason - measured, not assumed - and got the
+  // same treatment in its own copy.
+
+  test('#20 opening a second character opens at the top', async ({ page }) => {
+    await loginAsAdmin(page);
+
+    const chars = await runInApp(page, ['app/models/Vampire'], `
+      var V = mods[0];
+      return V.create_test_character("r20_a").then(function (a) {
+        return V.create_test_character("r20_b").then(function (b) {
+          return { a: a.id, b: b.id };
+        });
+      });
+    `);
+
+    // The full #17 path first, so the sheet really is scrolled and really did
+    // restore - otherwise "opens at the top" would be trivially true.
+    const OFFSET = await scrollSheetAndLeave(page, chars.a);
+    await gotoHashUnchecked(page, '#character?' + chars.a);
+    await waitForActivePage(page, 'character');
+    await page.waitForFunction((y) => Math.abs(window.scrollY - y) <= 5, OFFSET,
+      { timeout: 30000 });
+
+    // Now a different character, which used to inherit that offset.
+    await gotoHashUnchecked(page, '#character?' + chars.b);
+    await waitForActivePage(page, 'character');
+    await page.waitForFunction(() => window.scrollY <= 5, null, { timeout: 30000 });
+
+    expect(await page.evaluate(() => window.router.characterMainPage.model.id),
+      'the sheet should be showing the second character').toBe(chars.b);
+  });
+
+  test('#20 opening a second character\'s wizard opens at the top', async ({ page }) => {
+    // Same defect, same cause, measured separately rather than assumed from
+    // the sheet: every wizard is the same page, `#character-create`.
+    await loginAsAdmin(page);
+
+    const chars = await runInApp(page, ['app/models/Vampire'], `
+      var V = mods[0];
+      return V.create_test_character("r20w_a").then(function (a) {
+        return V.create_test_character("r20w_b").then(function (b) {
+          return { a: a.id, b: b.id };
+        });
+      });
+    `);
+
+    await navigateToHash(page, 'charactercreate/' + chars.a, '#character-create');
+    await page.waitForFunction(
+      () => document.documentElement.scrollHeight - window.innerHeight > 200,
+      null, { timeout: 30000 });
+    await page.waitForTimeout(1500);
+
+    const OFFSET = await page.evaluate(() => {
+      const room = document.documentElement.scrollHeight - window.innerHeight;
+      const target = Math.min(400, Math.floor(room / 2));
+      window.scrollTo(0, target);
+      return target;
+    });
+    expect(OFFSET).toBeGreaterThan(50);
+    await page.waitForFunction((y) => Math.abs(window.scrollY - y) <= 2, OFFSET,
+      { timeout: 15000 });
+
+    await gotoHashUnchecked(page, '#charactercreate/' + chars.b);
+    await waitForActivePage(page, 'character-create');
+    await page.waitForFunction(() => window.scrollY <= 5, null, { timeout: 30000 });
+  });
+
+  // -------------------------------------------------------------------------
+  // #18 Seven more lists lost their rounded ends, the same way #16's roster did
+  // -------------------------------------------------------------------------
+  //
+  // #16 fixed `CharactersListView`. Seven other lists write `<li>`s into a
+  // `data-role="listview"` that jQuery Mobile has already enhanced, and never
+  // re-enhance, so the rows never receive `ui-first-child` / `ui-last-child` -
+  // the classes that round the top and bottom of an inset list.
+  //
+  // Five of them are patronage lists, and all five are the SAME view
+  // (`PatronagesView`, a Marionette.CollectionView) bound straight to an
+  // enhanced `<ul>`. Fixed once there rather than at five call sites.
+  //
+  // The other two are the filterable rosters. The report says they "call
+  // `enhanceWithin()`" and that `enhanceWithin` skips an already-enhanced
+  // element. The second half is right and the first is not: every enhancement
+  // call in both files is commented out. Same effect, same fix - only
+  // `listview("refresh")` re-walks the rows.
+
+  test('#18 patronage lists keep their rounded ends', async ({ page }) => {
+    await loginAsAdmin(page);
+
+    // The lists need rows, and a fresh per-worker database has none.
+    const created = await runInApp(page, ['parse'], `
+      var Parse = mods[0];
+      var Patronage = Parse.Object.extend("Patronage");
+      var rows = [];
+      for (var i = 0; i < 3; i++) {
+        var p = new Patronage({
+          owner: Parse.User.current(),
+          amount: 10 + i,
+          expiresOn: new Date(arg.base + (i + 1) * 86400000),
+          paidOn: new Date(arg.base - (i + 1) * 86400000)
+        });
+        var acl = new Parse.ACL();
+        acl.setPublicReadAccess(true);
+        acl.setWriteAccess(Parse.User.current(), true);
+        p.setACL(acl);
+        rows.push(p);
+      }
+      return Parse.Object.saveAll(rows).then(function () { return rows.length; });
+    `, { base: Date.now() });
+    expect(created).toBe(3);
+
+    const checkList = async (selector, label) => {
+      await page.waitForFunction((sel) => {
+        const ul = document.querySelector(sel);
+        return !!ul && ul.querySelectorAll('li').length > 0;
+      }, selector, { timeout: 30000 });
+      const state = await page.evaluate((sel) => {
+        const ul = document.querySelector(sel);
+        const lis = Array.from(ul.children).filter((n) => n.tagName === 'LI');
+        return {
+          rows: lis.length,
+          first: lis[0].classList.contains('ui-first-child'),
+          last: lis[lis.length - 1].classList.contains('ui-last-child')
+        };
+      }, selector);
+      expect(state.rows, `${label}: needs rows to mean anything`).toBeGreaterThan(0);
+      expect(state.first, `${label}: first row lost ui-first-child`).toBe(true);
+      expect(state.last, `${label}: last row lost ui-last-child`).toBe(true);
+    };
+
+    // `#usp-patronage-list` lives in a template and is created per render, so
+    // whether it looked right was a race between the patronage fetch and the
+    // page enhancement - which is why #profile compared clean only sometimes.
+    await navigateToHash(page, 'profile', '#user-settings-profile');
+    await checkList('#usp-patronage-list', 'profile patronage list');
+
+    // This one is declared in index.html, so it is enhanced once at
+    // `pagecreate` and every row arriving afterwards was bare.
+    await navigateToHash(page, 'administration/patronages', '#administration-patronages-view');
+    await clearStuckLoader(page);
+    await checkList('#administration-patronages-view-list', 'admin patronages list');
+  });
+
+  test('#18 the filterable roster keeps its rounded ends across a filter change', async ({ page }) => {
+    await loginAsAdmin(page);
+
+    // The summarize roster reached through #administration needs no troupe
+    // fixture, unlike the troupe one, and drives the same view.
+    //
+    // The characters need an `attributes` trait. The roster's default filter
+    // is `category: "attributes"` with `resulttype: "onlycat"`, which shows
+    // only characters that have something in that category - and
+    // `create_test_character` seeds Humanity, health levels and Willpower but
+    // no attributes. Without this the roster renders zero rows and the test
+    // waits for rows that are never coming.
+    await runInApp(page, ['app/models/Vampire'], `
+      var Vampire = mods[0];
+      return Vampire.create_test_character("r18_a").then(function (a) {
+        return a.update_trait("Physical", 1, "attributes", 0, true);
+      }).then(function () {
+        return Vampire.create_test_character("r18_b");
+      }).then(function (b) {
+        return b.update_trait("Physical", 2, "attributes", 0, true);
+      });
+    `);
+
+    const readRows = () => page.evaluate(() => {
+      const ul = document.querySelector('#troupe-summarize-characters-list ul');
+      if (!ul) return { missing: true };
+      const lis = Array.from(ul.children).filter((n) => n.tagName === 'LI');
+      return {
+        rows: lis.length,
+        first: lis.length ? lis[0].classList.contains('ui-first-child') : null,
+        last: lis.length ? lis[lis.length - 1].classList.contains('ui-last-child') : null
+      };
+    });
+
+    await navigateToHash(page, 'administration/characters/summarize',
+      '#troupe-summarize-characters-all');
+    await clearStuckLoader(page);
+    await page.waitForFunction(() => {
+      const ul = document.querySelector('#troupe-summarize-characters-list ul');
+      return !!ul && ul.querySelectorAll('li').length > 0;
+    }, null, { timeout: 30000 });
+
+    const first = await readRows();
+    expect(first.rows).toBeGreaterThan(0);
+    expect(first.first, 'first render lost ui-first-child').toBe(true);
+    expect(first.last, 'first render lost ui-last-child').toBe(true);
+
+    // Changing a filter runs `filterwith`, which calls `collection.reset(...)`
+    // and replaces every row. That is where these two used to lose the classes
+    // - they looked right until the reader touched a filter.
+    //
+    // The antecedence filter rather than the category one on purpose: category
+    // is what decides which characters qualify at all (`resulttype: onlycat`),
+    // so changing it would empty the list and leave nothing to check. Widening
+    // antecedence from "PC" to "All" keeps the same rows and still forces the
+    // reset.
+    await expect(page.locator('#sections select[name="antecedence"]')).toBeAttached();
+    await selectBackformOption(page, '#sections select[name="antecedence"]', 'All');
+    await page.waitForTimeout(2000);
+
+    const after = await readRows();
+    expect(after.rows, 'the filter should leave rows to check').toBeGreaterThan(0);
+    expect(after.first, 'after a filter change the first row lost ui-first-child').toBe(true);
+    expect(after.last, 'after a filter change the last row lost ui-last-child').toBe(true);
+  });
+
+  // -------------------------------------------------------------------------
+  // #21 The wizard's scroll-restore fired before the wizard had grown
+  // -------------------------------------------------------------------------
+  //
+  // The half of #17 that was fixed for the sheet and not the wizard. Worse: the
+  // comment left in `CharacterView.js` when the sheet was fixed asserted that
+  // "the wizard has its own copy ... where the immediate scroll works". That
+  // was repeated from the report and never measured, and it is wrong - the
+  // wizard raced the render in exactly the same way. The comment is corrected
+  // and the wizard now carries the same bounded wait, as its own copy.
+  //
+  // The wizard also never cleared `backToTop`, so an offset survived its own
+  // use and could be re-applied on a later visit the reader never scrolled.
+  // Measured after the fix: 4 of 4 return trips landed on the recorded offset,
+  // and the offset read back 0 each time.
+
+  test('#21 the wizard returns to where the reader left it, and consumes the offset', async ({ page }) => {
+    await loginAsAdmin(page);
+
+    const character = await runInApp(page, ['app/models/Vampire'], `
+      return mods[0].create_test_character("r21_wizard").then(function (v) {
+        return { id: v.id };
+      });
+    `);
+
+    await navigateToHash(page, 'charactercreate/' + character.id, '#character-create');
+    await page.waitForFunction(
+      () => document.documentElement.scrollHeight - window.innerHeight > 200,
+      { timeout: 30000 });
+    // Let the wizard's own restore fire and consume its offset before we
+    // scroll, or it drags the page back under us.
+    await page.waitForTimeout(1500);
+
+    const OFFSET = await page.evaluate(() => {
+      const room = document.documentElement.scrollHeight - window.innerHeight;
+      const target = Math.min(400, Math.floor(room / 2));
+      window.scrollTo(0, target);
+      return target;
+    });
+    expect(OFFSET, 'the wizard must be scrollable for this to mean anything')
+      .toBeGreaterThan(50);
+    await page.waitForFunction((y) => Math.abs(window.scrollY - y) <= 2, OFFSET,
+      { timeout: 15000 });
+
+    await gotoHashUnchecked(page,
+      '#charactercreate/simpletext/archetype/archetype/' + character.id + '/pick');
+    await waitForActivePage(page, 'simpletext-new');
+
+    expect(await page.evaluate(() => window.router.characterCreateView.backToTop),
+      'the wizard routes record on the wizard view').toBe(OFFSET);
+
+    await gotoHashUnchecked(page, '#charactercreate/' + character.id);
+    await waitForActivePage(page, 'character-create');
+    await page.waitForFunction((y) => Math.abs(window.scrollY - y) <= 5, OFFSET,
+      { timeout: 30000 });
+
+    // Consumed, so a later visit the reader never scrolled starts at the top.
+    expect(await page.evaluate(() => window.router.characterCreateView.backToTop))
+      .toBe(0);
+  });
+
+  // -------------------------------------------------------------------------
+  // R3 A rule editor showed the Descriptions screen's category list
+  // -------------------------------------------------------------------------
+  //
+  // Not in the document; found while re-verifying R2, and the reason R2's own
+  // test was unreliable.
+  //
+  // `EditRules` and `DescriptionsView` are separate memoised instances that
+  // share BOTH an `el` and the region selector `#descriptions-sections`. Their
+  // `el` matches nothing - it says `div[data-role='main']`, the markup says
+  // `<div role="main">` - so Marionette resolves the region globally and both
+  // views' regions point at the same DOM node. `setup()` runs once per view,
+  // so whichever showed its child views last owns the node and the other never
+  // gets it back.
+  //
+  // Measured before the fix, visiting clan rules -> Descriptions -> kith rules:
+  //
+  //   DOM select                 68 options, "academics_specializations" ...
+  //   editRules.formInDocument   false
+  //   editRules' own form        2 options, correct, and detached
+  //
+  // So one visit to Descriptions left every rule editor showing Descriptions'
+  // categories for the rest of the session, and filtering by one of them
+  // queried the rule class for a category it does not have.
+
+  test('R3 a rule editor shows its own categories after the Descriptions screen', async ({ page }) => {
+    await loginAsAdmin(page);
+
+    const rulesFirst = await visitAdminCategoryScreen(
+      page, 'administration/bnsmetv1_clan_rules', 'rules');
+    expect(rulesFirst.ownedByRules,
+      'the rule editor should own the shared region on a first visit').toBe(true);
+
+    const descriptions = await visitAdminCategoryScreen(
+      page, 'administration/descriptions', 'descriptions');
+    expect(descriptions.ownedByDescriptions,
+      'the Descriptions screen should take the region when visited').toBe(true);
+    // Descriptions has a category per Description row; the rule classes have
+    // at most a couple. This is what the rule editor used to show afterwards.
+    expect(descriptions.options.length).toBeGreaterThan(10);
+    expect(descriptions.options).toContain('academics_specializations');
+
+    // The regression: back to a rule editor, which used to render into a
+    // detached form while the screen kept showing the list above.
+    const rulesAgain = await visitAdminCategoryScreen(
+      page, 'administration/bnsctdbs_kith_rules', 'rules');
+    expect(rulesAgain.ownedByRules,
+      'the rule editor must take the shared region back').toBe(true);
+    expect(rulesAgain.ownedByDescriptions).toBe(false);
+    expect(rulesAgain.options,
+      'the rule editor is showing the Descriptions category list')
+      .not.toContain('academics_specializations');
+    expect(rulesAgain.options.length,
+      'the rule editor should show its own short category list')
+      .toBeLessThan(descriptions.options.length);
+
+    // And symmetrically - fixing only the rule editors would have moved the
+    // defect rather than removed it.
+    const descriptionsAgain = await visitAdminCategoryScreen(
+      page, 'administration/descriptions', 'descriptions');
+    expect(descriptionsAgain.ownedByDescriptions,
+      'the Descriptions screen must take the region back too').toBe(true);
+    expect(descriptionsAgain.options).toContain('academics_specializations');
+  });
+
+  // -------------------------------------------------------------------------
+  // #19 The rule editor offered a category literally labelled "undefined"
+  // -------------------------------------------------------------------------
+  //
+  // Both copies of `update_categories` built the dropdown by walking every row
+  // and using its category as an object key. An object key is a string, so a
+  // row with no `category` column wrote the key `"undefined"` and the dropdown
+  // offered an option reading exactly that. `bnsmetv1_ClanRule` is the case in
+  // the seed: its 42 rows carry `clan` and no `category`.
+  //
+  // Selecting it built `equalTo("category", undefined)`, which parse-server
+  // reads as "category does not exist" - every row of the class. So it was a
+  // worse-named duplicate of "All", with nothing on screen to say so.
+  //
+  // I saw this in my own probe output while fixing R2 (`["undefined", "All"]`)
+  // and did not chase it; it came back from the Vue port as #19.
+
+  test('#19 no rule editor offers a category called "undefined"', async ({ page }) => {
+    await loginAsAdmin(page);
+
+    const screens = [
+      ['administration/bnsmetv1_clan_rules', 'clan rules'],
+      ['administration/bnsctdbs_kith_rules', 'kith rules'],
+      ['administration/bnsmetv1_ritual_rules', 'ritual rules'],
+      ['administration/descriptions', 'descriptions']
+    ];
+
+    for (const [route, label] of screens) {
+      await navigateToHash(page, route, '#administration-descriptions');
+      await page.waitForFunction(() => {
+        const sel = document.querySelector(
+          '#administration-descriptions #descriptions-sections select');
+        return !!sel && Array.from(sel.options).some((o) => o.text === 'All');
+      }, { timeout: 30000 });
+      await clearStuckLoader(page);
+
+      const options = await page.evaluate(() => Array.from(document.querySelectorAll(
+        '#administration-descriptions #descriptions-sections select option'))
+        .map((o) => o.text));
+
+      // "All" is pushed unconditionally, so its presence proves the dropdown
+      // was rebuilt rather than left holding its placeholder.
+      expect(options, `${label}: the category list should have been rebuilt`)
+        .toContain('All');
+      expect(options, `${label}: offered a category literally called "undefined"`)
+        .not.toContain('undefined');
+      // And nothing empty crept in as a blank-looking option either.
+      expect(options.filter((o) => !o || !o.trim()),
+        `${label}: offered a blank category`).toEqual([]);
+    }
+  });
+
+  // -------------------------------------------------------------------------
   // R2 The admin category select was styled or not depending on visit order
   // -------------------------------------------------------------------------
   //
@@ -609,47 +1065,29 @@ test.describe('Legacy bugs found during the React port', () => {
   test('R2 the admin category select is styled whatever the visit order', async ({ page }) => {
     await loginAsAdmin(page);
 
-    const selectIsEnhanced = () => page.evaluate(() => {
-      const sel = document.querySelector(
-        '#administration-descriptions #descriptions-sections select');
-      if (!sel) return { found: false };
-      return {
-        found: true,
-        enhanced: !!sel.closest('.ui-select'),
-        optionCount: sel.options.length
-      };
-    });
-
-    const visit = async (route, label) => {
-      await navigateToHash(page, route, '#administration-descriptions');
-      // These admin routes hide their spinner only on the failure path, so the
-      // overlay would otherwise swallow the next navigation. See
-      // clearStuckLoader's note.
-      await page.waitForFunction(() => {
-        const sel = document.querySelector(
-          '#administration-descriptions #descriptions-sections select');
-        return !!sel && sel.options.length > 1;
-      }, { timeout: 30000 });
-      await clearStuckLoader(page);
-      const state = await selectIsEnhanced();
-      expect(state.found, `${label}: the category select should be rendered`).toBe(true);
-      expect(state.enhanced, `${label}: the category select is not jQM-enhanced`).toBe(true);
+    const check = async (route, owner, label) => {
+      const state = await visitAdminCategoryScreen(page, route, owner);
+      expect(state.ownedByExpected,
+        `${label}: the wrong view owns the shared region - see R3`).toBe(true);
+      expect(state.enhanced,
+        `${label}: the category select is not jQM-enhanced`).toBe(true);
       return state;
     };
 
-    // Order A: a rule editor first, then Descriptions. The second visit is the
-    // one that used to come back raw.
-    await visit('administration/bnsmetv1_clan_rules', 'rule editor first');
-    const descriptionsSecond = await visit('administration/descriptions', 'Descriptions second');
-    // Descriptions has a category per Description row; the rule editors have a
-    // handful. Distinct counts prove the two screens really did both render.
-    expect(descriptionsSecond.optionCount).toBeGreaterThan(10);
+    // Order A: a rule editor first, then Descriptions. The second visit is
+    // the one that used to come back raw.
+    await check('administration/bnsmetv1_clan_rules', 'rules', 'rule editor first');
+    const descriptionsSecond = await check(
+      'administration/descriptions', 'descriptions', 'Descriptions second');
+    // Descriptions has a category per Description row; the rule classes have
+    // at most a couple. Distinct shapes prove both screens really rendered.
+    expect(descriptionsSecond.options.length).toBeGreaterThan(10);
 
     // Order B: fresh app, Descriptions first, then two different rule editors.
     await hardReload(page);
-    await visit('administration/descriptions', 'Descriptions first');
-    await visit('administration/bnsctdbs_kith_rules', 'kith rules second');
-    await visit('administration/bnsmetv1_ritual_rules', 'ritual rules third');
+    await check('administration/descriptions', 'descriptions', 'Descriptions first');
+    await check('administration/bnsctdbs_kith_rules', 'rules', 'kith rules second');
+    await check('administration/bnsmetv1_ritual_rules', 'rules', 'ritual rules third');
   });
 
   // -------------------------------------------------------------------------

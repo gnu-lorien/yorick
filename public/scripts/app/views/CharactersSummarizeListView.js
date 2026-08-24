@@ -120,8 +120,45 @@ define([
             /*
             self.$el.enhanceWithin();
             */
+            self.refresh_listview();
         },
-        
+
+        /**
+         * Re-enhance the list whenever its rows change.
+         *
+         * The `<ul>` is this CollectionView's own element, enhanced once by
+         * jQuery Mobile at `pagecreate`, while `filterwith` replaces every row
+         * through `collection.reset(...)`. So the rows look right until the
+         * reader changes a filter and lose their `ui-first-child` /
+         * `ui-last-child` - the rounded ends - from the first change onwards.
+         * Same defect as #16's roster.
+         *
+         * Note what this is NOT: the report that raised it said this view
+         * "calls `enhanceWithin()`", and that `enhanceWithin` skips an already
+         * enhanced element. The second half is true and the first is not -
+         * every enhancement call in this file is commented out, just above.
+         * The effect is the same either way, and so is the fix: `refresh`
+         * re-walks the rows, which is the only call that restores the position
+         * classes.
+         *
+         * Guarded because the first render happens before jQuery Mobile has
+         * enhanced the page, and the widget bridge throws if the widget does
+         * not exist yet.
+         */
+        refresh_listview: function () {
+            var self = this;
+            if (self.$el.data("mobile-listview")) {
+                self.$el.listview("refresh");
+            }
+        },
+
+        onAddChild: function() {
+            this.refresh_listview();
+        },
+
+        onRemoveChild: function() {
+            this.refresh_listview();
+        },
         /*
         onAddChild: function() {
             var self = this;

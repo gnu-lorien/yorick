@@ -119,8 +119,30 @@ define([
             /*
             self.$el.enhanceWithin();
             */
+            self.refresh_listview();
         },
-        
+
+        /**
+         * Re-enhance the list whenever its rows change. See the same method in
+         * views/CharactersSummarizeListView.js for the reasoning: the `<ul>` is
+         * enhanced once at `pagecreate` while `filterwith` replaces every row
+         * through `collection.reset(...)`, so the rounded ends are lost from
+         * the reader's first filter change onwards.
+         */
+        refresh_listview: function () {
+            var self = this;
+            if (self.$el.data("mobile-listview")) {
+                self.$el.listview("refresh");
+            }
+        },
+
+        onAddChild: function() {
+            this.refresh_listview();
+        },
+
+        onRemoveChild: function() {
+            this.refresh_listview();
+        },
         /*
         onAddChild: function() {
             var self = this;
