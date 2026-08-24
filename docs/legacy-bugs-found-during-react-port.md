@@ -747,6 +747,160 @@ rosters are only wrong after a filter change, which the harness does not make.
 
 ---
 
+## Found from the Vue port, not the React one
+
+Entries 19-22 were measured against the legacy client while porting it to Vue,
+on `claude/migrate-project-vue-cb0512`. They are recorded here because this is
+where the legacy defects live, not because React found them.
+
+Line numbers below are as of `main` on 2026-08-23 (after the #15/#16/#17 fixes
+merged), so they may not match an older branch. The function names will.
+
+---
+
+## 19. The rule editor offers a category literally labelled "undefined"
+
+**`public/scripts/app/views/EditRules.js:340`,
+`public/scripts/app/views/DescriptionsView.js:212`**
+
+Both copies of `update_categories` build the dropdown by walking every row and
+using its category as an object key:
+
+```js
+categories[d.get("category")] = 1;
+```
+
+A row with no `category` column at all gives `undefined`, and an object key is a
+string — so this writes the key `"undefined"`, which then renders as an option
+with that text. `bnsmetv1_ClanRule` is the case in the seed: its 42 rows carry
+`clan` and no `category`, so the class offers exactly two options, `All` and
+`undefined`.
+
+Selecting it builds `new Parse.Query(ruleName).equalTo("category", undefined)`,
+which parse-server reads as "category does not exist" — every row of that class.
+So it is a worse-named duplicate of `All` rather than a filter, and there is no
+way to tell that from the screen.
+
+**Fix:** skip rows with no category, in both copies:
+
+```js
+var category = d.get("category");
+if (!category) { return; }
+categories[category] = 1;
+```
+
+**Careful — this breaks a test that looks unrelated.** The R2 regression test
+waits for the category select to be populated using
+`sel.options.length > 1` (`e2e/legacy-bug-regressions.spec.js:587`). For a rule
+class, the *only* thing that makes that condition true is the `"undefined"`
+option this fix removes. Fixing the defect without changing that wait leaves R2
+hanging until it times out. Change the wait in the same commit.
+
+---
+
+## 20. Opening a second character's sheet keeps the first one's scroll position
+
+**Measured, mechanism not diagnosed.**
+
+Scroll a character sheet down, leave it through a text picker, return (the sheet
+restores correctly, as #17's fix intends), then navigate straight to a
+*different* character's sheet. The window stays where it was rather than opening
+at the top, so the reader lands in the middle of a character they have never
+scrolled.
+
+Measured on the legacy client with the #17 fixes in place: `window.scrollY` was
+still at the first sheet's offset two seconds after the second sheet rendered.
+
+This is **not** a stale `backToTop`. `CharacterView.restore_scroll_after_page_
+change` consumes the offset on sight (`self.backToTop = 0`), and that was
+verified. The likeliest remaining explanation is that both sheets are the same
+jQuery Mobile page — `#character` — so no page *change* occurs and nothing
+resets the scroll; but that was not confirmed, and it should be before anyone
+writes a fix.
+
+**In the Vue port:** does not occur. The router scrolls to 0 on every
+navigation, so a sheet the reader never scrolled always opens at the top. That
+asymmetry is why this is not asserted in `legacy-bug-regressions.spec.js`: the
+test would fail the legacy baseline, and `gate.js` forgives a baseline failure
+on every run afterwards.
+
+---
+
+## 21. The wizard's scroll-restore fires before the wizard has grown
+
+**`public/scripts/app/views/CharacterCreateViewNew.js:478`**
+
+The half of #17 that was fixed for the sheet and not for the wizard.
+
+`#17` has two defects in it: the offset recorded on the wrong object, and the
+restore firing on `pagechange`, which jQuery Mobile emits before the page has
+finished growing. The sheet got both fixed —
+`CharacterView.restore_scroll_after_page_change` now waits for the page to be
+tall enough, retries, bails out if the reader scrolls for themselves, and
+consumes the offset. The wizard still carries the original:
+
+```js
+scroll_back_after_page_change: function() {
+    $(document).one("pagechange", function() {
+        var top = _.parseInt(self.backToTop);
+        $.mobile.silentScroll(top);
+    });
+}
+```
+
+The comment in `CharacterView.js` states that "the wizard has its own copy in
+`CharacterCreateViewNew.js` where the immediate scroll works". **Measured
+otherwise:** scroll the wizard, leave through
+`charactercreate/simpletext/:category/:target/:cid/pick`, return to
+`#charactercreate/:cid`, and the page never reaches the recorded offset — 30s,
+then give up.
+
+Everything else about the path is correct, which is what narrows this to
+timing rather than a repeat of #17's wrong-object bug:
+
+- `self.characterCreateView` really is a `CharacterCreateViewNew`
+  (`mobileRouter.js:507-508`), so the routes record on the object the helper
+  reads.
+- The restore really is called on the way back in: `charactercreate:`
+  (`mobileRouter.js:597`) calls it at `:609`, immediately before `changePage`.
+
+There is a second, smaller defect in the same four lines: the wizard never
+clears `backToTop`. The sheet's rewritten helper does it explicitly, with a
+comment saying why. So a wizard offset survives its own use and can be applied
+again on a later visit the reader never scrolled.
+
+**Fix:** give the wizard the same treatment the sheet got, and consume the
+offset. The sheet's helper is written to be copied — it is a new method rather
+than an edit to the shared one precisely so the wizard could be done separately.
+
+---
+
+## 22. The R2 regression test times out against the legacy client
+
+**`e2e/legacy-bug-regressions.spec.js`, test `R2`.**
+
+Not a defect in the app, and recorded because of what it costs.
+
+R2 covers the admin category select being styled or not depending on visit
+order, fixed on `main` in `90e1ca1`. Against the legacy client, with that fix in
+place, the test **times out at 120s on both attempts** — measured in a full
+suite run on 2026-08-23. It is not diagnosed: either the fix does not cover
+every path the test walks, or the test's own readiness wait cannot be satisfied
+(see the warning in #19, which is one way that happens).
+
+**Why it is worth fixing rather than ignoring.** `gate.js` compares a candidate
+run against a recorded baseline, and R2 fails *in the baseline*. A test that
+fails on both sides is scored `same-fail` and forgiven on every run from then
+on — the gate says so itself:
+
+> 1 test(s) already failed in the baseline. Nothing is stranded behind them, so
+> no coverage is dark — but the oracle calls them same-fail on every run from
+> here, which forgives them permanently. Record a clean baseline.
+
+So R2 is not currently protecting anything, and nothing will say so again.
+
+---
+
 ## Not bugs — checked and cleared
 
 Recorded so nobody spends time on them again.
@@ -790,6 +944,18 @@ be the live path is how the above happened — but it is a tidy-up, not a defect
 10. **#9**, **#2**, **#10** — tidy-ups with no user-visible effect today.
 11. **#6** and **#13** — decide whether they are defects at all before touching
     them.
+
+For 19-22, which came from the Vue port:
+
+**#22 first, ahead of everything above it.** Not because it is the worst, but
+because it is the one that hides the others: while R2 fails in the baseline the
+gate forgives it on every run, and it will forgive anything that breaks the same
+way without saying so again.
+
+Then **#21** (the half of #17 the sheet's fix left behind — the sheet's new
+helper is written to be copied), then **#19** (one guard in two files; change
+the R2 wait in the same commit or you will spend an afternoon on a test that
+looks unrelated), then **#20**, which needs diagnosing before it needs fixing.
 
 ## Before you change any of these
 
