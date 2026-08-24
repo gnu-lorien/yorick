@@ -99,7 +99,59 @@ async function verifyBackend(baseUrl) {
   return { users: users.length, counts };
 }
 
+/**
+ * Build the Vue client before the suite drives it.
+ *
+ * The two front ends are NOT served the same way, and the asymmetry is a trap.
+ * The legacy client is served straight out of `public/` -- RequireJS loads the
+ * source files, so a legacy run always tests what is on disk. The Vue client is
+ * served out of `client/dist` (see `playwright.config.js`, PUBLIC_BASE), which
+ * is a build artefact, and nothing regenerated it.
+ *
+ * So a Vue run tested whatever `vite build` last produced, which could be any
+ * age. That is not a slow feedback loop, it is a WRONG one: edit the client, run
+ * the suite, and the result describes code you no longer have. It cost three
+ * successive wrong conclusions before anyone noticed -- an experiment that
+ * "proved" a change was not the cause was really running the unmodified bundle.
+ *
+ * Building here restores the property the legacy side already has: what runs is
+ * what is on disk. It costs about six seconds and it is not optional.
+ *
+ * Set `YORICK_E2E_SKIP_BUILD=1` to skip it -- only when you have deliberately
+ * built something else and want it measured, and never to save time.
+ */
+async function buildVueClient() {
+  if (process.env.YORICK_E2E_CLIENT !== 'vue') return;
+  if (process.env.PUBLIC_BASE) return; // an explicit base is the caller's business
+  if (process.env.YORICK_E2E_SKIP_BUILD) {
+    console.warn('[e2e] YORICK_E2E_SKIP_BUILD set: the Vue bundle is NOT being rebuilt, ' +
+      'so this run measures whatever client/dist already holds.');
+    return;
+  }
+
+  const { spawnSync } = require('child_process');
+  const path = require('path');
+  const started = Date.now();
+
+  // `shell: true` on Windows: spawning `npx.cmd` without a shell fails with
+  // EINVAL since the CVE-2024-27980 fix.
+  const result = spawnSync('npx', ['vite', 'build'], {
+    cwd: path.join(__dirname, '..'),
+    encoding: 'utf8',
+    shell: process.platform === 'win32'
+  });
+
+  if (result.status !== 0) {
+    throw new Error(
+      '[e2e] the Vue client failed to build, so there is nothing valid to test:\n' +
+      (result.stderr || result.stdout || '(no output)')
+    );
+  }
+  console.log(`[e2e] built the Vue client into client/dist in ${Date.now() - started}ms`);
+}
+
 module.exports = async () => {
+  await buildVueClient();
   await ensureFixtures();
 
   const ports = allPorts();
