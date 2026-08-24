@@ -89,8 +89,8 @@ const ConfigGreensboro: SiteConfig = {
  * The site names a build may be pointed at, and what each selects.
  *
  * The keys are the four gulp targets, and they are the contract described in
- * `clients.js`: `YORICK_SITE=greensboro` must reach the same server that
- * `siteconfig-greensboro` gives the legacy client.
+ * `build/frontends.js`: `YORICK_SITE=greensboro` must reach the same server
+ * that `siteconfig-greensboro` gives the legacy client.
  */
 export const SITE_CONFIGS: Record<string, SiteConfig> = {
   pubstorm: ConfigPubstorm,

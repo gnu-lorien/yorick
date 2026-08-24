@@ -11,32 +11,62 @@
 const DEFAULT_TIMEOUT = parseInt(process.env.E2E_NAV_TIMEOUT || '20000', 10);
 
 /**
- * Which front end answered.
+ * Three front ends, one suite.
  *
- * The suite runs unchanged against both: `E2E_FRONTEND=react` serves the Vite
- * build instead of `public/`, and the helpers below ask the page rather than
- * take a flag, so no spec has to know which one it is driving.
+ * Both ports keep the DOM contract this file is written against: one
+ * `.ui-page-active` element carrying the same page id, a `div[role="main"]`
+ * inside it, a `.ui-loader` while work is in flight, and the same hash URLs. So
+ * almost every helper below works unchanged against any of the three.
  *
- * Detected from the page rather than from the environment variable, because
- * what matters is what actually loaded. A run pointed at a stale build would
- * otherwise report a confusing failure three helpers later.
+ * The handful that cannot are the ones that reach for a library rather than for
+ * the DOM: bootstrapping (`window.jQuery.mobile`, `window.require`), the jQuery
+ * slider widget, and `runInApp`'s AMD module loading. Those branch on which app
+ * answered, so the suite can be run against the legacy app to capture a
+ * baseline and against a port to compare -- which is the only way to tell a
+ * migration regression from a defect that was always there.
+ *
+ * Detection is by capability, not by configuration: what matters is what
+ * actually loaded, not what `YORICK_E2E_CLIENT` asked for. A run pointed at a
+ * stale build would otherwise report a confusing failure three helpers later.
+ *
+ * Each port hangs its own bridge on `window`: React's is `__yorick` (see
+ * `web/src/shell/testBridge.ts`), the Vue client's is `__yorickApi`. Neither is
+ * present on the other, and neither is present on the legacy app.
  */
+async function detectApp(page) {
+  return page.evaluate(() => {
+    if (window.__yorick) return 'react';
+    if (window.__yorickApi || window.__yorickReady) return 'vue';
+    if (window.jQuery && window.jQuery.mobile) return 'legacy';
+    return 'unknown';
+  }).catch(() => 'unknown');
+}
+
+/** Shorthand for the one branch that comes up most often. */
 async function isReact(page) {
-  return page.evaluate(() => !!window.__yorick).catch(() => false);
+  return (await detectApp(page)) === 'react';
 }
 
 /**
  * Wait for the app to finish bootstrapping.
  *
- * Legacy: RequireJS, jQuery Mobile and the Parse SDK. React: the test bridge
- * and the Parse SDK. `Parse.applicationId` is checked on both because
- * `window.Parse` exists a moment before `initialize` has run, and every helper
- * after this one assumes the SDK will answer.
+ * `Parse.applicationId` is checked on all three because `window.Parse` exists a
+ * moment before `initialize` has run, and every helper after this one assumes
+ * the SDK will answer. What "booted" means beyond that differs per app.
  */
 async function waitForAppReady(page, timeout = DEFAULT_TIMEOUT) {
   await page.waitForFunction(() => {
-    if (typeof window.Parse === 'undefined' || !window.Parse.applicationId) return false;
+    // The Parse SDK is common to all three and is what every fixture uses.
+    const parseReady = typeof window.Parse !== 'undefined' && !!window.Parse.applicationId;
+    if (!parseReady) return false;
+
+    // React client: the test bridge is up.
     if (window.__yorick) return true;
+
+    // Vue client: mounted and the first navigation has resolved.
+    if (window.__yorickReady) return true;
+
+    // Legacy client: RequireJS and jQuery Mobile are both up.
     return typeof window.jQuery !== 'undefined' &&
            typeof window.jQuery.mobile !== 'undefined' &&
            typeof window.require === 'function';
@@ -46,32 +76,76 @@ async function waitForAppReady(page, timeout = DEFAULT_TIMEOUT) {
 /**
  * Wait for the app to stop working.
  *
- * On the legacy front end that means the jQuery Mobile spinner, and the check
- * is deliberately generous because several admin routes leave it up forever
- * (see `clearStuckLoader`) -- a timeout here is swallowed rather than failing a
- * test for a known UI bug.
+ * `ui-loading` on `<html>` is the authoritative signal on the two apps that
+ * have a jQuery Mobile spinner at all: jQuery Mobile's `$.mobile.loading`
+ * toggles it (jquery.mobile-1.4.5.js:1494) and `JqmLoader.vue` toggles it. It
+ * has to be a class on the root rather than anything about the spinner element,
+ * because the stylesheet's only rule that reveals the spinner is
+ * `.ui-loading .ui-loader`.
  *
- * React answers directly instead, and it has to. The stylesheet gives
- * `.ui-loader` `position: fixed`, which makes `offsetParent` null whether it is
- * showing or not, so the DOM check below passes the moment it is asked. On the
- * legacy app that is survivable -- its route handlers finish rendering before
- * the promise chain resolves -- but React saves and re-renders asynchronously,
- * so "the spinner is clear" was answering yes while the row being edited still
- * held its old value.
+ * The element checks below it are kept as a fallback, but one of them was
+ * silently disabling this whole helper: `.ui-loader` is `position: fixed`
+ * (themes/default/jquery.mobile-1.4.5.min.css), and a fixed element's
+ * `offsetParent` is ALWAYS null -- so `loader.offsetParent === null` read as
+ * "cleared" the entire time the spinner was on screen, and every call here
+ * returned on its first poll. The suite has therefore never actually waited for
+ * a request to finish; it has been racing the app and winning on timing.
+ *
+ * That surfaced on troupe creation against the Vue client: the helper returned
+ * while the form was still saving, the next navigation read an empty directory,
+ * and the form's own redirect then landed on top of the page the navigation was
+ * waiting for.
+ *
+ * React answers directly instead of through the DOM, and it has to: that same
+ * `offsetParent` hole let "the spinner is clear" answer yes while the row being
+ * edited still held its old value, because React saves and re-renders
+ * asynchronously where the legacy route handlers finish rendering before the
+ * promise chain resolves.
+ *
+ * The wait is deliberately generous because several legacy admin routes leave
+ * the spinner up forever (see `clearStuckLoader`) -- a timeout here is
+ * swallowed rather than failing a test for a known UI bug.
+ *
+ * ## Why the `ui-loading` gate is not applied to the legacy client
+ *
+ * It arrived with the Vue port, which measured it there: `JqmLoader.vue`
+ * toggles the class honestly, so gating on it is what finally made the helper
+ * wait for a save to finish instead of racing it.
+ *
+ * On the legacy client the same gate is not a stricter version of the old
+ * behaviour, it is a different one, because that client has a bug the Vue
+ * client does not: those admin routes hide the spinner only on the failure
+ * path, so `ui-loading` is set and never cleared. Gating on it there makes
+ * every navigation to one of those screens pay the full budget. Measured: with
+ * the gate on, `R3`, `#19` and `R2` -- three of the newest tests on main, all
+ * of them visiting four rule editors in a row -- exceed a 120s test timeout;
+ * with it off they finish in about four seconds each, and the other 29 tests in
+ * the file are unaffected either way.
+ *
+ * So the legacy path keeps exactly the semantics main's suite is green against,
+ * and the ported clients get the stricter wait the port measured a need for.
+ * Removing this asymmetry means fixing the stuck spinner in the legacy client,
+ * which is an app fix and belongs with the other entries in
+ * `docs/legacy-bugs-fixed.md`, not in the harness.
  */
 async function waitForJqmLoader(page, timeout = 15000) {
-  const react = await isReact(page);
-  if (react) {
+  const app = await detectApp(page);
+
+  if (app === 'react') {
     await page.waitForFunction(() => !window.__yorick.busy(), { timeout })
       .catch(() => { /* nothing was in flight */ });
     return;
   }
-  await page.waitForFunction(() => {
+
+  const gateOnLoadingClass = app === 'vue';
+
+  await page.waitForFunction((gate) => {
+    if (gate && document.documentElement.classList.contains('ui-loading')) return false;
     const loader = document.querySelector('.ui-loader');
     if (!loader) return true;
     const style = window.getComputedStyle(loader);
     return style.display === 'none' || style.visibility === 'hidden' || loader.offsetParent === null;
-  }, { timeout }).catch(() => { /* loader may never have appeared */ });
+  }, gateOnLoadingClass, { timeout }).catch(() => { /* loader may never have appeared */ });
 }
 
 /** The id of the currently active jQuery Mobile page, or null. */
@@ -138,17 +212,19 @@ async function navigateToHash(page, hash, targetSelector = null, timeout = DEFAU
       return null;
     }
     // The hash is already what we want, so no hashchange will fire and the
-    // route handler would never run.
+    // route handler would never run. Bouncing through a dummy hash to force one
+    // races jQuery Mobile's transition queue and can strand the app mid
+    // transition, so each app's router is driven directly instead.
     //
-    // React renders from the hash, so an unchanged hash renders nothing new;
-    // what "go there again" means there is "discard what is on screen and
-    // fetch it fresh", which is what the bridge does. On the legacy side,
-    // bouncing through a dummy hash to force a hashchange races jQuery
-    // Mobile's transition queue and can strand the app mid transition, so
-    // Backbone's router is driven directly instead.
+    // Both ports render from the hash, so an unchanged hash renders nothing
+    // new; what "go there again" means there is "discard what is on screen and
+    // fetch it fresh", which is what each bridge does.
     if (window.__yorick) {
       window.__yorick.redispatch();
       return null;
+    }
+    if (window.__yorickApi && window.__yorickApi.reload) {
+      return Promise.resolve(window.__yorickApi.reload(h)).then(() => null);
     }
     return new Promise((resolve) => {
       window.require(['backbone'], function (Backbone) {
@@ -202,37 +278,53 @@ async function hardReload(page, timeout = DEFAULT_TIMEOUT) {
 }
 
 /**
- * Set a slider and fire the event the app listens for.
+ * Set a slider and fire the events the view listens for.
  *
- * Two apps, two mechanisms. jQuery Mobile keeps the real value on the hidden
- * input and needs `slider("refresh")` to redraw the handle, and it listens for
- * a jQuery-triggered `change`. React owns the input's value through its own
- * state, so assigning `.value` is discarded on the next render unless the
- * assignment goes through the *native* value setter -- React tracks the last
- * value it wrote on the DOM node and skips any event whose value looks
- * unchanged. Both an `input` and a `change` event are dispatched because
- * controlled inputs listen for the former and `<select>`-style handlers for the
- * latter.
+ * Every front end renders the slider's *original input* with the id the specs
+ * address -- jQuery Mobile re-typed `input[type=range]` to `type=number` in
+ * place and added `class=ui-slider-input`, and both ports emit exactly that
+ * markup -- so the selector is the same in all three. What differs is how the
+ * change is announced.
+ *
+ * jQuery Mobile keeps the real value on the hidden input, needs
+ * `slider("refresh")` to redraw the handle, and listens for a jQuery-triggered
+ * `change` -- which does not invoke a native listener, so it cannot be the only
+ * event fired.
+ *
+ * The ports own the input's value through their own state, so assigning
+ * `.value` is discarded on the next render unless the assignment goes through
+ * the *native* value setter: React tracks the last value it wrote on the DOM
+ * node and skips any event whose value looks unchanged. Both an `input` and a
+ * `change` event are dispatched, because controlled inputs and Vue's `v-model`
+ * listen for the former and `<select>`-style handlers for the latter.
  */
 async function setJqmSlider(page, selector, value) {
   await page.waitForSelector(selector, { state: 'attached' });
   await page.evaluate(({ sel, val }) => {
-    if (window.jQuery) {
+    const node = document.querySelector(sel);
+
+    // `window.jQuery.mobile`, not `window.jQuery`: the slider widget is what
+    // this branch is for, and jQuery alone does not imply it.
+    if (window.jQuery && window.jQuery.mobile) {
       const el = window.jQuery(sel);
       el.val(val);
       try { el.slider('refresh'); } catch (e) { /* not enhanced as a slider */ }
       el.trigger('change');
       return;
     }
-    const el = document.querySelector(sel);
-    if (!el) throw new Error('no element matches ' + sel);
-    const proto = el instanceof HTMLTextAreaElement
+
+    if (!node) throw new Error('no element matches ' + sel);
+    // Assign through the native setter so each port's own input tracking sees
+    // it; writing `.value` directly is enough for the DOM, but React skips any
+    // event whose value matches the last one it wrote.
+    const proto = node instanceof HTMLTextAreaElement
       ? HTMLTextAreaElement.prototype
       : HTMLInputElement.prototype;
-    const setter = Object.getOwnPropertyDescriptor(proto, 'value').set;
-    setter.call(el, String(val));
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-    el.dispatchEvent(new Event('change', { bubbles: true }));
+    const setter = Object.getOwnPropertyDescriptor(proto, 'value');
+    if (setter && setter.set) setter.set.call(node, String(val));
+    else node.value = String(val);
+    node.dispatchEvent(new Event('input', { bubbles: true }));
+    node.dispatchEvent(new Event('change', { bubbles: true }));
   }, { sel: selector, val: value });
 }
 
@@ -424,6 +516,10 @@ async function selectBackformOption(page, selectSelector, optionText) {
 async function clearStuckLoader(page) {
   await page.evaluate(() => {
     if (window.jQuery && window.jQuery.mobile) window.jQuery.mobile.loading('hide');
+    // Nothing to clear under the Vue client: its loader is a reference count
+    // released in a `finally`, so an early return cannot strand it the way an
+    // unmatched `$.mobile.loading("show")` could. Left callable so the spec
+    // files that guard against the legacy bug need no edit.
   });
 }
 
@@ -468,8 +564,8 @@ function normalize(text) {
  * models rather than the UI, so a test that drives the UI is not also asserting
  * against the UI. `fnBody` is a function body string receiving `(mods, arg)`.
  *
- * Two things the bodies must not assume, because they run on both front ends:
- * lodash is not a global on the React side, so write plain JS; and a rejection
+ * Two things the bodies must not assume, because they run on every front end:
+ * lodash is not a global on either port, so write plain JS; and a rejection
  * may arrive via `.fail` rather than the second `.then` argument, because Parse
  * 1.9's promises are jQuery-style -- both are wired up below.
  */
@@ -477,12 +573,49 @@ async function runInApp(page, modules, fnBody, arg) {
   return page.evaluate(({ modules, fnBody, arg }) => {
     return new Promise((resolve, reject) => {
       const fail = (e) => reject(new Error(e && e.message ? e.message : String(e)));
-      // RequireJS on the legacy front end; the test bridge on React, which
-      // answers the same module names with the same method names over the
-      // ported modules. See web/src/shell/e2eModelApi.ts.
+
+      /*
+       * The Vue client has no RequireJS, so it publishes a module map keyed by
+       * the SAME AMD paths the specs already name -- `app/models/Vampire`,
+       * `app/views/CharacterExperienceView`, and so on. Keeping the keys means
+       * all 18 `runInApp` call sites are unchanged; only this lookup differs.
+       *
+       * A path the Vue app does not publish is a hard error naming the path,
+       * because the alternative is `mods[0]` being `undefined` and the failure
+       * surfacing as "cannot read property 'create' of undefined" somewhere
+       * else entirely.
+       */
+      if (window.__yorickApi && window.__yorickApi.modules) {
+        const map = window.__yorickApi.modules;
+        const missing = modules.filter((m) => !(m in map));
+        if (missing.length) {
+          fail(new Error('the Vue client publishes no test module for: ' + missing.join(', ')));
+          return;
+        }
+        let result;
+        try {
+          // eslint-disable-next-line no-new-func
+          result = new Function('mods', 'arg', fnBody)(modules.map((m) => map[m]), arg);
+        } catch (e) {
+          fail(e);
+          return;
+        }
+        Promise.resolve(result).then(resolve, fail);
+        return;
+      }
+
+      /*
+       * RequireJS on the legacy front end; the React port's test bridge answers
+       * the same module names with the same method names over the ported
+       * modules, so it can stand in for the loader itself. See
+       * `web/src/shell/e2eModelApi.ts`.
+       */
       const load = window.require || (window.__yorick && window.__yorick.require);
       if (typeof load !== 'function') {
-        fail(new Error('no module loader: neither window.require nor window.__yorick'));
+        fail(new Error(
+          'no module loader: none of window.require, window.__yorick or ' +
+          'window.__yorickApi.modules is present'
+        ));
         return;
       }
       load(modules, function () {
@@ -508,6 +641,7 @@ async function runInApp(page, modules, fnBody, arg) {
 
 module.exports = {
   DEFAULT_TIMEOUT,
+  detectApp,
   isReact,
   waitForAppReady,
   waitForJqmLoader,

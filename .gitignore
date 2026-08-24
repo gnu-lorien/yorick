@@ -113,6 +113,23 @@ toimport/
 *master_key*
 *.un~
 
+# The Vue client's build output.
+#
+# `vite build` writes here; only `npm run publish:vue` writes to the tracked
+# `dist/` that Netlify serves. Committing this would put two copies of the built
+# app in the tree and make every build a diff.
+client/dist/
+
+# The Netlify preview build (`gulp vue3`). Built on the deploy, never tracked --
+# unlike `dist/`, which is.
+dist-vue3/
+
+# Scratch output for combined builds. `YORICK_OUT_DIR` exists so a build can be
+# tried somewhere other than the tracked `dist/`, and those trials are not
+# artifacts anyone should commit.
+dist-combined/
+dist-swapped/
+
 # Captured Playwright JSON runs, compared by diff-runs.js. Local artefacts.
 runs/
 

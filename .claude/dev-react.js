@@ -17,7 +17,7 @@
  *   27317       mongo, React migration worktree
  *   1500-1507   E2E workers, React migration worktree (E2E_BASE_PORT=1500)
  *   1550-1557   E2E workers again, when the suite runs against the React
- *               front end. `e2e/ports.js` adds 50 for `E2E_FRONTEND=react` so
+ *               front end. `e2e/ports.js` adds 50 for `YORICK_E2E_CLIENT=react` so
  *               a React run cannot reuse a still-running legacy server, and
  *               vice versa -- see the note there.
  *

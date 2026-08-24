@@ -2,7 +2,7 @@
 /**
  * Run the Playwright suite against the React front end.
  *
- * `E2E_FRONTEND=react npx playwright test` is all this does, plus building the
+ * `YORICK_E2E_CLIENT=react npx playwright test` is all this does, plus building the
  * app first. It exists because the environment variable is the whole mechanism
  * and `VAR=x cmd` is not a thing on Windows, where this repo is developed --
  * an npm script would work in bash and silently do the wrong thing in cmd.
@@ -16,7 +16,7 @@ const { spawnSync } = require('node:child_process');
 
 const env = {
   ...process.env,
-  E2E_FRONTEND: 'react',
+  YORICK_E2E_CLIENT: 'react',
   E2E_RUN_NAME: process.env.E2E_RUN_NAME || 'react',
 };
 

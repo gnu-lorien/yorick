@@ -11,6 +11,16 @@
       "url": "http://localhost:41337"
     },
     {
+      "name": "yorick-vue",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:vue"
+      ],
+      "port": 5273,
+      "url": "http://localhost:5273"
+    },
+    {
       "name": "yorick-legacy-react-worktree",
       "runtimeExecutable": "node",
       "runtimeArgs": [
@@ -28,6 +38,15 @@
       ],
       "port": 41501,
       "url": "http://localhost:41501"
+    },
+    {
+      "name": "yorick-combined",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        ".claude/serve-combined.js"
+      ],
+      "port": 42437,
+      "url": "http://localhost:42437"
     }
   ]
 }

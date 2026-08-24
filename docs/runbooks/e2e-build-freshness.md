@@ -20,7 +20,7 @@ the freshness of the artifact to whoever typed the command. So:
 | how it is run | builds first? |
 | --- | --- |
 | `node e2e/run-react.js` | yes, and a failed build aborts before any test |
-| `E2E_FRONTEND=react npx playwright test` | **no** -- serves whatever is in `dist-react/` |
+| `YORICK_E2E_CLIENT=react npx playwright test` | **no** -- serves whatever is in `dist-react/` |
 
 Both are things people type. The second is what you reach for when re-running a
 single spec, which is exactly when you have been editing.
@@ -68,7 +68,7 @@ Three behaviours worth copying exactly:
 
 Change three things and the rest transfers:
 
-1. **The env var that selects the front end.** Here it is `E2E_FRONTEND=react`;
+1. **The env var that selects the front end.** Here it is `YORICK_E2E_CLIENT=react`;
    use whatever yours is, and gate the check on it so legacy runs skip it.
 2. **The two directories.** Source and build -- `web/` and `dist-react/` here.
    Point them at yours.

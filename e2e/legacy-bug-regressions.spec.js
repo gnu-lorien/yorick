@@ -277,7 +277,8 @@ test.describe('Legacy bugs found during the React port', () => {
   // the test however correct it was.
   //
   // The visible defect is a sheet drawing a diff it has no business drawing.
-  // `formatSkill` (`helpers/VampirePrintHelper.js`, `web/src/print/format.ts`)
+  // `formatSkill` (`helpers/VampirePrintHelper.js`, `web/src/print/format.ts`,
+  // `client/src/domain/print.ts`)
   // applies one only when it is handed a `transform_description`, so an
   // ORDINARY printable sheet must contain no diff markup at all. Measured
   // before the fix: a trait whose value had simply been raised to 4 printed as
@@ -512,10 +513,11 @@ test.describe('Legacy bugs found during the React port', () => {
    * The scroll sites are the sheet and the wizard, which every client has
    * (`views/CharacterView.js`, `views/CharacterCreateView.js` and
    * `CharacterCreateViewNew.js`; `screens/CharacterSheet.tsx` and
-   * `screens/CharacterCreate.tsx`, both through `shell/scrollMemory.ts`). The
-   * Vue client restores a third place, the trait category listing, which
-   * neither the legacy client nor this one does -- so that one is not asserted
-   * here, where it would fail the baseline rather than the port.
+   * `screens/CharacterCreate.tsx`, both through `shell/scrollMemory.ts`;
+   * `CharacterPage.vue` and `CharacterCreatePage.vue`). The Vue client restores
+   * a third place, the trait category listing, which neither of the others
+   * does -- so that one is not asserted here, where it would fail the baseline
+   * rather than the port.
    */
 
   test('#17 the sheet returns to where the reader left it', async ({ page }) => {
@@ -544,18 +546,18 @@ test.describe('Legacy bugs found during the React port', () => {
   /*
    * Two further properties were written here and then removed, because they
    * hold on the ported clients and not on the legacy one, and this file is run
-   * against both:
+   * against all three:
    *
    *   - A different character's sheet opening at the top. The ported routers
-   *     scroll to 0 on every navigation (`App.tsx`, on the fragment); the
-   *     legacy client does not, so opening a second sheet while the first is
-   *     scrolled leaves the window where it was. Measured: `window.scrollY`
-   *     was still at the first sheet's offset.
+   *     scroll to 0 on every navigation (`App.tsx`, on the fragment; the Vue
+   *     router likewise); the legacy client does not, so opening a second sheet
+   *     while the first is scrolled leaves the window where it was. Measured:
+   *     `window.scrollY` was still at the first sheet's offset.
    *   - The WIZARD restoring its own offset. `charactercreatepicksimpletext`
    *     records it (`mobileRouter.js:721`), but the legacy restore is still
    *     subject to the fire-before-the-page-grows race that was fixed for the
    *     sheet alone. Measured: the return trip never reached the recorded
-   *     offset in 30s. The port restores it (`scrollMemory.ts`), which is the
+   *     offset in 30s. The ports restore it (`scrollMemory.ts`), which is the
    *     defect being reported here rather than a difference to reproduce.
    *
    * Both look like legacy defects rather than port ones. Neither is asserted
@@ -1474,15 +1476,17 @@ test.describe('Legacy bugs found during the React port', () => {
   // It asserts the QUERY, not the pointer's client-side state, and that
   // distinction is load-bearing. The original read `owner.get("username")` back
   // and required it to be null, on the reasoning that only an `include` could
-  // have filled it in. That inference holds only where each object carries its
-  // own state -- the legacy client through `parse-compat/index.js`, this one
-  // through `Parse.Object.disableSingleInstance()` in `web/src/parse/init.ts`.
-  // A client that leaves the SDK's shared instance cache on, as the Vue port
-  // does, makes the pointer and `Parse.User.current()` one bag of state, and
-  // the current user is fully loaded by definition -- so on a PLAYER'S OWN
-  // roster, where every owner is the current user, the pointer answers with
-  // the username no matter what the server sent. The old assertion failed
-  // there against a client that was doing nothing wrong.
+  // have filled it in. That inference holds only under the unique-instance
+  // state controller, where each object carries its own state: the Backbone
+  // client runs it through `parse-compat/index.js` and the React port through
+  // `Parse.Object.disableSingleInstance()` in `web/src/parse/init.ts`, while
+  // the Vue client deliberately does not (`client/src/parse/index.ts`, which
+  // explains why). Under a shared controller the pointer and
+  // `Parse.User.current()` are one bag of state, and the current user is fully
+  // loaded by definition -- so on a PLAYER'S OWN roster, where every owner is
+  // the current user, the pointer answers with the username no matter what the
+  // server sent. The old assertion therefore failed on a client that was doing
+  // nothing wrong.
   //
   // Reading the request removes the inference. `include=owner` is the thing
   // that was dangerous; look for it directly.

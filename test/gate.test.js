@@ -26,6 +26,20 @@
  *     runs/` returns. Name an untracked record and the test stops being a test
  *     for everyone but the machine that happens to have the file.
  *
+ * `runs/gate-selftest-baseline.json` is frozen, and must stay frozen.
+ *
+ * These tests used to pair `runs/baseline.json` with `runs/m18.json` and assert
+ * exact counts against it -- 447 same-pass, one added test. But
+ * `runs/baseline.json` is the LIVE baseline: `gate.js` compares real runs
+ * against it, and it is re-recorded whenever the suite legitimately changes
+ * size. One file was doing two jobs, and re-recording it silently broke three
+ * tests here that have nothing to do with the change that caused it.
+ *
+ * So the self-tests now own a copy that nothing re-records. If the numbers
+ * below ever need updating, replace this file DELIBERATELY and update the
+ * assertions with it -- do not point these back at `runs/baseline.json`, which
+ * would put the trap back.
+ *
  * Run: npm run test:node
  */
 
@@ -333,13 +347,13 @@ test('the unnamed-failure assertion fires on no recorded pair', (t) => {
   // A check that blocks the migration must not fire on a good run. Measured at
   // zero across every recorded pair the gate is expected to judge.
   const names = [
-    'baseline.json', 'm18.json', 'm19.json', 's10-baseA.json', 's10-step13e-3.json'
+    'gate-selftest-baseline.json', 'm18.json', 'm19.json', 's10-baseA.json', 's10-step13e-3.json'
   ];
   if (needRuns(t, names)) return;
   const pairs = [
-    ['baseline.json', 'm18.json'],
+    ['gate-selftest-baseline.json', 'm18.json'],
     ['m18.json', 'm19.json'],
-    ['baseline.json', 'm19.json'],
+    ['gate-selftest-baseline.json', 'm19.json'],
     // The S10 migration's own before/after: the legacy stack against the
     // first clean run on the migrated one, the widest change any recorded
     // pair spans.
@@ -363,8 +377,8 @@ test('the unnamed-failure assertion fires on no recorded pair', (t) => {
 });
 
 test('baseline vs m18 passes -- the gate does not cry wolf on the clean run', (t) => {
-  if (needRuns(t, ['baseline.json', 'm18.json'])) return;
-  const r = judge(run('baseline.json'), run('m18.json'));
+  if (needRuns(t, ['gate-selftest-baseline.json', 'm18.json'])) return;
+  const r = judge(run('gate-selftest-baseline.json'), run('m18.json'));
   assert.strictEqual(r.verdict, 'PASS', r.failures.concat(r.integrityFailed).join(' | '));
   assert.strictEqual(r.exitCode, gate.EXIT_PASS);
   assert.strictEqual(r.numbers.samePass, 447);
@@ -373,8 +387,8 @@ test('baseline vs m18 passes -- the gate does not cry wolf on the clean run', (t
 });
 
 test('the count tolerance forgives the one added test but not a lost tail', (t) => {
-  if (needRuns(t, ['baseline.json', 'm18.json'])) return;
-  const r = judge(run('baseline.json'), run('m18.json'));
+  if (needRuns(t, ['gate-selftest-baseline.json', 'm18.json'])) return;
+  const r = judge(run('gate-selftest-baseline.json'), run('m18.json'));
   const band = Math.max(
     gate.COUNT_TOLERANCE_FLOOR,
     Math.ceil(r.numbers.baselineKeys * gate.COUNT_TOLERANCE_FRACTION)
@@ -428,8 +442,8 @@ test('quarantine cannot launder a real regression: m18 vs m19 still fails', (t) 
 });
 
 test('the quarantine section prints even when the quarantined tests passed', (t) => {
-  if (needRuns(t, ['baseline.json', 'm18.json'])) return;
-  const r = judge(run('baseline.json'), run('m18.json'), { quarantine: RETIRED_QUARANTINE });
+  if (needRuns(t, ['gate-selftest-baseline.json', 'm18.json'])) return;
+  const r = judge(run('gate-selftest-baseline.json'), run('m18.json'), { quarantine: RETIRED_QUARANTINE });
   assert.strictEqual(r.verdict, 'PASS');
   const text = r.lines.join('\n');
   assert.ok(text.includes('QUARANTINE'), 'nobody should be able to forget these exist');
@@ -725,7 +739,7 @@ test('specIndex agrees with diff-runs flatten on every key', (t) => {
     fix('serial-tail-lost.json'),
     path.join(__dirname, 'fixtures', 'diff-runs', 'baseline.json'),
     path.join(__dirname, 'fixtures', 'diff-runs', 'candidate.json')
-  ].concat(['baseline.json', 'm18.json', 'm19.json'].map(run).filter(fs.existsSync));
+  ].concat(['gate-selftest-baseline.json', 'm18.json', 'm19.json'].map(run).filter(fs.existsSync));
 
   for (const f of files) {
     const report = JSON.parse(fs.readFileSync(f, 'utf8'));

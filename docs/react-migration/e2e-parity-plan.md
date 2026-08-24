@@ -11,16 +11,17 @@ node e2e/run-react.js e2e/troupes.spec.js  # arguments pass through
 npx playwright test                        # the legacy app, as before
 ```
 
-`E2E_FRONTEND=react` is the whole mechanism. It points the per-worker server's
+`YORICK_E2E_CLIENT=react` is the whole mechanism. It points the per-worker server's
 document root at `dist-react/` instead of `public/`, with `public/` mounted
 behind it (`PUBLIC_FALLBACK` in index.js) for the assets the React build
 references as bare runtime strings rather than imports -- `head_skull.png` is
 the one every listing falls back to.
 
-## The two front ends get separate ports
+## Each front end gets its own ports
 
-`E2E_FRONTEND=react` adds 50 to `E2E_BASE_PORT`, and this is not cosmetic.
-Playwright reuses a server already listening on the port it wants, and the two
+`YORICK_E2E_CLIENT` selects one, and `e2e/ports.js` gives each an offset from
+`E2E_BASE_PORT` -- legacy 0, react 50, vue 100. This is not cosmetic.
+Playwright reuses a server already listening on the port it wants, and the
 apps differ only in that server's document root -- so alternating between a
 legacy run and a React run on one port silently tests whichever app happened to
 still be up. That is not a hypothetical: a "legacy regression check" during this

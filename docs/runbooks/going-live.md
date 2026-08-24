@@ -120,11 +120,12 @@ fails loudly at deploy instead of quietly at the first upload.
 **Build command: confirmed as `gulp greensboro`.** That target now exists on
 this branch and produces correct output; verified locally, exits 0.
 
-That target now builds every client in `clients.js`, not only the legacy app:
-the legacy client at the root and each port in a subdirectory of the same
-`dist/`, so one deployment carries both and they can be compared side by side.
-Nothing about the command changes. See `deploying-more-than-one-client.md` for
-the layout, the two flags that move it, and what a port's build is handed.
+That target now builds every front end in `build/frontends.js`, not only the
+legacy app: the Backbone client at the root and each port in a subdirectory of
+the same `dist/`, so one deployment carries all three and they can be compared
+side by side. Nothing about the command changes. See
+`deploying-more-than-one-client.md` for the layout, the two flags that move it,
+and what a port's build is handed.
 
 **But the Node version is a problem, and it is not the cosmetic warning it
 looks like.**

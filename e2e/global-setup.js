@@ -6,10 +6,11 @@
  * auth or empty-picker failures.
  */
 
-const { ensureFixtures } = require('./helpers/images');
-const { allPorts, urlForIndex } = require('./ports');
 const fs = require('node:fs');
 const path = require('node:path');
+
+const { ensureFixtures } = require('./helpers/images');
+const { allPorts, urlForIndex, FRONTENDS, FRONTEND } = require('./ports');
 
 const REQUIRED_USERS = ['devuser', 'sampmem', 'sampast', 'sampstranger'];
 
@@ -102,10 +103,49 @@ async function verifyBackend(baseUrl) {
 }
 
 /**
+/**
+ * Refuse to run against the wrong front end.
+ *
+ * `reuseExistingServer` means Playwright will happily adopt a server already
+ * listening on the port it wants, and the front ends differ only in that
+ * server's document root. So a run can be handed a different app and report a
+ * clean suite about it -- during the React port that produced a "legacy
+ * regression check" which was really a second React run, 26 green tests against
+ * the wrong app.
+ *
+ * `e2e/ports.js` gives each front end its own port block so this should not
+ * arise. This asserts it anyway, because the failure mode is silent success.
+ *
+ * The markers live in that same table; see the note there on why they are what
+ * they are.
+ */
+async function verifyServedApp(baseUrl, expected) {
+  const res = await fetch(`${baseUrl}/`);
+  if (!res.ok) {
+    throw new Error(`Could not fetch index.html from ${baseUrl} (HTTP ${res.status}).`);
+  }
+  const html = await res.text();
+
+  if (FRONTENDS[expected].marker.test(html)) return;
+
+  const served = Object.keys(FRONTENDS).find((name) => FRONTENDS[name].marker.test(html));
+  throw new Error(
+    `[e2e] ${baseUrl} is serving the ${served || 'UNRECOGNISED'} front end, but this run ` +
+    `asked for ${expected}. Playwright reuses a server already listening on the port it ` +
+    'wants, so a leftover server from another client will be adopted silently and the ' +
+    'whole run will describe the wrong app. Stop the process on that port and re-run.'
+  );
+}
+
+/**
  * The newest modification time anywhere under a directory, in milliseconds.
  *
  * Returns 0 for a directory that does not exist, which the one caller reads as
  * "there is no build".
+ *
+ * FILE mtimes only, never directory mtimes: a directory's mtime changes when a
+ * temp file is created and deleted inside it, which makes the comparison fire
+ * at random for no reason a reader can see.
  */
 function newestMtime(dir, skip = []) {
   let newest = 0;
@@ -128,38 +168,71 @@ function newestMtime(dir, skip = []) {
 }
 
 /**
- * Refuse to run React specs against a build older than the source.
+ * Refuse to run a port's specs against a build older than its source.
  *
- * The suite serves `dist-react/` as a static document root; it does not build,
- * and it does not run Vite's dev server. So `E2E_FRONTEND=react npx playwright
- * test` tests whatever happens to be sitting in that directory -- which, after
- * an afternoon of editing, is the app as it was that morning. Nothing about the
- * run says so. The tests pass or fail against code no longer on disk.
+ * `playwright.config.js` serves a static document root and deliberately does
+ * not build -- with N workers that would be N bundler runs. So freshness is
+ * left to whoever typed the command, and the two ways of starting a run do not
+ * agree: a wrapper that builds first is safe, while
+ * `YORICK_E2E_CLIENT=vue npx playwright test` serves whatever is already in
+ * `client/dist`. The second is what you type to re-run one spec, which is
+ * exactly when you have been editing.
  *
- * `node e2e/run-react.js` builds first and is the reason this is usually fine.
- * This makes it fine either way.
+ * There is no symptom. A green run can describe code that is no longer on
+ * disk, and a red run sends you chasing a bug you already fixed. That happened
+ * here: an experiment that "proved" `disableSingleInstance()` was not the cause
+ * of the costs-view failures was running the unmodified bundle, and the same
+ * experiment against a real build proved the opposite.
+ *
+ * The legacy client is deliberately NOT checked, and needs no special case to
+ * say so: it is served straight out of `public/`, which is its own source, so
+ * it has no `sourceDir` in the table and cannot be stale.
  *
  * Set `E2E_ALLOW_STALE_BUILD=1` to run anyway -- bisecting a build, or checking
  * a report against the artifact that produced it.
  */
-function assertFreshReactBuild() {
+function assertFreshBuild(name) {
+  const frontend = FRONTENDS[name];
+  if (!frontend.sourceDir) return;
+
   const root = path.join(__dirname, '..');
-  const built = newestMtime(path.join(root, 'dist-react'));
+  const outDir = frontend.docRoot.join('/');
+  const built = newestMtime(path.join(root, ...frontend.docRoot));
   if (built === 0) {
     throw new Error(
-      '[e2e] there is no dist-react/ to serve. The React suite runs against the ' +
-      'build, not a dev server: run `node e2e/run-react.js` (which builds first) ' +
-      'or `npm run build:react`.'
+      `[e2e] there is no ${outDir}/ to serve. The ${name} suite runs against the ` +
+      `build, not a dev server. Build it first:\n  ${frontend.rebuild}`
     );
   }
-  // `web/` is the whole React app -- src, index.html, the Vite config. Skip
-  // the directories a build writes into or reads from rather than is built
-  // from, so neither one can look like a source edit.
-  const source = newestMtime(path.join(root, 'web'), ['node_modules', 'dist', 'dist-react']);
+
+  let source = newestMtime(path.join(root, ...frontend.sourceDir), frontend.sourceIgnore);
+
+  // Build config living outside the source tree still decides what the bundle
+  // contains, so an edit to it has to count as an edit to the app. The Vue
+  // build is invoked with `root: client` and its config sits at the repo root,
+  // so a walk of `client/` alone would miss it.
+  for (const configFile of frontend.extraSourceFiles || []) {
+    try {
+      source = Math.max(source, fs.statSync(path.join(root, configFile)).mtimeMs);
+    } catch {
+      // Absent is fine; it simply contributes nothing.
+    }
+  }
+
   if (source <= built) return;
 
-  const age = Math.round((source - built) / 60000);
-  const stale = `dist-react/ is older than web/ by ${age} minute(s)`;
+  /*
+   * Seconds under a minute. Rounding straight to minutes prints "older by 0
+   * minute(s)", which reads as a bug in the check rather than as the very
+   * recent edit it actually is -- and a just-edited file is the commonest way
+   * to arrive here.
+   */
+  const gap = source - built;
+  const age = gap < 60000
+    ? `${Math.max(1, Math.round(gap / 1000))} second(s)`
+    : `${Math.round(gap / 60000)} minute(s)`;
+  const stale = `${outDir}/ is older than the ${name} source by ${age}`;
+
   if (process.env.E2E_ALLOW_STALE_BUILD === '1') {
     console.warn(
       `[e2e] ${stale}. E2E_ALLOW_STALE_BUILD is set, so the run continues against ` +
@@ -169,19 +242,33 @@ function assertFreshReactBuild() {
   }
   throw new Error(
     `[e2e] ${stale}, so this run would test a stale build rather than the working ` +
-    'tree. Run `node e2e/run-react.js` (it builds first), or set ' +
-    'E2E_ALLOW_STALE_BUILD=1 to run against the build as it is.'
+    `tree. Rebuild with \`${frontend.rebuild}\`, or set E2E_ALLOW_STALE_BUILD=1 to ` +
+    'run against the build as it is.'
   );
 }
 
 module.exports = async () => {
-  // First, because it is a filesystem read and it invalidates the whole run.
-  // Nothing is gained by seeding databases for a run that cannot be believed.
-  if (process.env.E2E_FRONTEND === 'react') assertFreshReactBuild();
+  /*
+   * First, before fixtures and before any backend is touched. It is a
+   * filesystem read and it invalidates the whole run: nothing is gained by
+   * seeding databases for a run that cannot be believed.
+   *
+   * Skipped when PUBLIC_BASE is set by hand: someone is then pointing the suite
+   * at a document root of their own choosing, and the table's idea of where
+   * that front end's build lives does not apply to it.
+   */
+  if (!process.env.PUBLIC_BASE) assertFreshBuild(FRONTEND);
 
   await ensureFixtures();
 
   const ports = allPorts();
+
+  /*
+   * Assert the app before the data. A backend serving the wrong front end makes
+   * every later result meaningless, however well seeded it is.
+   */
+  await Promise.all(ports.map((port, i) => verifyServedApp(urlForIndex(i), FRONTEND)));
+
   const results = await Promise.all(ports.map((port, i) => verifyBackend(urlForIndex(i))));
 
   // Portrait uploads need publicServerURL to point at the server serving them,
@@ -198,29 +285,15 @@ module.exports = async () => {
     );
   }
 
-  // Which front end each backend is actually serving.
-  //
-  // The two differ only in the server's document root, so nothing about a run
-  // says which one answered -- and a stale server on the right port is reused
-  // rather than replaced. Getting this wrong is not a visible failure, it is a
-  // clean-looking run of the wrong app, so it is asserted rather than assumed.
-  const wanted = process.env.E2E_FRONTEND === 'react' ? 'react' : 'legacy';
-  for (const [i, port] of ports.entries()) {
-    const html = await fetch(`${urlForIndex(i)}/index.html`).then((r) => r.text());
-    const served = html.includes('id="root"') ? 'react' : 'legacy';
-    if (served !== wanted) {
-      throw new Error(
-        `[e2e] the backend on ${port} is serving the ${served} front end, but this run ` +
-        `asked for ${wanted}. Playwright reuses a server already listening on the port ` +
-        `it wants, so stop that process and run again.`
-      );
-    }
-  }
-
   const first = results[0];
   console.log(
-    `[e2e] setup ok: ${wanted} front end, ${ports.length} backend(s) on ${ports.join(', ')}, each seeded ` +
+    `[e2e] setup ok: ${FRONTEND} front end, ${ports.length} backend(s) on ${ports.join(', ')}, each seeded ` +
     `independently; ${first.users} users; required description categories present ` +
     `(${REQUIRED_CATEGORIES.map((c) => c + '=' + first.counts[c]).join(', ')})`
   );
 };
+
+// Exposed so the guard's four states can be exercised without a full run.
+module.exports.assertFreshBuild = assertFreshBuild;
+module.exports.newestMtime = newestMtime;
+module.exports.verifyServedApp = verifyServedApp;
