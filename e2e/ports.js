@@ -20,7 +20,24 @@
 
 const os = require('os');
 
-const BASE_PORT = Number(process.env.E2E_BASE_PORT || 1337);
+/**
+ * The Vue run gets its own port block, 50 above the legacy one.
+ *
+ * Not cosmetic. Playwright reuses an already-running server on the port it
+ * wants (`reuseExistingServer`), and the two front ends differ ONLY in that
+ * server's `PUBLIC_BASE` -- so alternating a legacy run and a Vue run on one
+ * port silently tests whichever app happened to still be up. A "legacy
+ * regression check" that is really a second Vue run looks entirely clean.
+ *
+ * Separate blocks mean both can be up at once and each run reuses its own.
+ * `global-setup.js` still asserts the served app matches what was asked for,
+ * because a wrong answer here has to fail loudly rather than be trusted.
+ */
+const VUE_PORT_OFFSET = 50;
+
+const BASE_PORT =
+  Number(process.env.E2E_BASE_PORT || 1337) +
+  (process.env.YORICK_E2E_CLIENT === 'vue' ? VUE_PORT_OFFSET : 0);
 
 /**
  * How many workers - and therefore how many backends - to run.
@@ -72,6 +89,7 @@ function portForThisProcess() {
 
 module.exports = {
   BASE_PORT,
+  VUE_PORT_OFFSET,
   workerCount,
   portForIndex,
   allPorts,

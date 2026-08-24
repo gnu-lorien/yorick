@@ -24,7 +24,6 @@
 import Parse from 'parse'
 import siteconfig from '@/config/siteconfig'
 import { installParseReactivity } from '@/parse/reactivity'
-import { installSaveReattachment } from '@/parse/reattach'
 import { registerYorickClasses } from '@/parse/classes'
 
 let initialised = false
@@ -35,43 +34,49 @@ export function initParse(): typeof Parse {
     Parse.serverURL = siteconfig.serverURL
 
     /*
-     * Per-object state, as the Backbone client has.
+     * The single-instance state controller stays ON here, which is the SDK's
+     * own default for a browser build and NOT what the Backbone client does.
      *
-     * The two load different builds of parse 8.6.0 -- `public/scripts/lib` ships
-     * the browser UMD, this imports the npm package -- and they default the
-     * state controller differently. Measured with the same probe in both: write
-     * to one pointer via `_finishFetch`, then read a second pointer to the same
-     * id. The legacy's second pointer sees nothing; this one saw the write.
+     * The two load different builds of parse 8.6.0 -- `public/scripts/lib`
+     * ships the browser UMD, this imports the npm package -- and
+     * `parse-compat/index.js:123` turns single instance off for the legacy
+     * client, because Parse 1.5 had no object registry. It is tempting to
+     * match that here. It was tried, and it is wrong for this client. The
+     * measurements are in `singleInstance.spec.ts`; the short version:
      *
-     * That difference is not academic. `usersStore.hydrate` fills in an owner's
-     * display name on the rosters that need one, and under a shared state
-     * controller that hydration is GLOBAL and PERMANENT: visit the admin roster
-     * once and every `_User` pointer anywhere in the session answers with a
-     * username for the rest of the session. A player's own roster then started
-     * printing their own name on every row -- redundant by design -- and, worse,
-     * it is the same shape as the `include("owner")` defect that made
-     * parse-server delete unreadable pointers and `get_me_acl` rewrite ACLs to
-     * the viewer. A hydration that leaks past the screen that asked for it is a
-     * hazard whatever it happens to do today.
+     * Turning it off costs two things, and only one of them is fixable by the
+     * re-attach wrap the compat layer carries.
      *
-     * So this is deliberate and load-bearing, not a tidy-up.
+     *   1. A save response's bare pointers unfetch children already loaded.
+     *      `parse-compat/events.js:385` fixes exactly this, and that wrap was
+     *      ported and did work.
+     *   2. `Parse.Object.fetchAllIfNeeded` hands back objects that are still
+     *      unfetched. The wrap does not touch this path, and `calculate_total_
+     *      cost` goes straight through it -- so the costs view rendered rows
+     *      with an empty name and `_getServerData()` completely empty, and the
+     *      four "costs view reconciles" tests failed across every venue.
+     *      Measured by reverting and rebuilding: the same row came back as
+     *      `Athletics: 3` with all ten fields present.
+     *
+     * The hazard that motivated turning it off was real -- `usersStore.hydrate`
+     * writing an owner's display name into a pointer, where a shared state
+     * controller makes that hydration global and permanent for the session.
+     * But the fix for THAT is to decide the owner line per screen, which
+     * `CharacterSummary` now does explicitly, rather than to change the object
+     * model underneath the whole app and depend on a hydration not leaking.
+     *
+     * If this is ever revisited, both costs above have to be paid, not just the
+     * first, and the gate has to be run against a REBUILT bundle -- see
+     * `e2e/global-setup.js` on why that is not automatic history.
+     *
+     * Stated EXPLICITLY rather than left to the default, because the default is
+     * not one thing: the SDK picks it as `!CoreManager.get('IS_NODE')`
+     * (`parse-8.6.0.js:43086`). So a browser gets shared state and vitest, which
+     * runs under node even with the jsdom environment, gets per-object state --
+     * and the unit suite would be exercising a different object model from the
+     * one that ships. Saying it out loud makes the two agree.
      */
-    Parse.Object.disableSingleInstance()
-    /*
-     * The other half of that decision, and not optional.
-     *
-     * Per-object state means a save response's bare pointers really do replace
-     * the children already loaded, instead of resolving to the same shared
-     * state. `installSaveReattachment` puts them back, exactly as
-     * `parse-compat/events.js:385` does for the Backbone client. Without it,
-     * saving one attribute leaves the character holding dataless traits and the
-     * next edit silently does nothing.
-     *
-     * Before `installParseReactivity`, so the reactivity bump ends up on the
-     * OUTSIDE and screens re-render after the children are back rather than
-     * during the window where they are empty.
-     */
-    installSaveReattachment()
+    Parse.Object.enableSingleInstance()
     // Before any object exists, so no instance escapes untracked.
     installParseReactivity()
     registerYorickClasses()

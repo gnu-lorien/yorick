@@ -1,9 +1,8 @@
 /**
  * What the object state controller does to UNSAVED edits.
  *
- * `initParse()` calls `Parse.Object.disableSingleInstance()`, which is not a
- * tidy-up: it decides whether two references to the same row share one bag of
- * state or keep their own. Every screen in this app reads rows through
+ * The state controller decides whether two references to the same row share one
+ * bag of state or keep their own. Every screen in this app reads rows through
  * `Parse.Query`, and several of them mutate objects in place and save later --
  * `Character.update_trait` builds up a trait over `Character.ts:837-888`, the
  * creation record is edited across `Character.ts:1067-1202`, and
@@ -21,6 +20,19 @@
  * without telling them it is a CHOICE, and this choice has already been made
  * twice in this repo in opposite directions: `parse-compat/index.js:123`
  * disables it for the Backbone client, and the npm build defaults it on.
+ *
+ * This client leaves it ON, and that was settled by measurement rather than
+ * preference -- see `parse/index.ts`. Turning it off to match the legacy was
+ * tried: it fixes the leak the "shared pointer" block below demonstrates, and
+ * it breaks the costs view, because `fetchAllIfNeeded` returns objects that are
+ * still unfetched and a re-attach wrap does not reach that path. The leak is
+ * instead handled where it belongs, by `CharacterSummary` deciding the owner
+ * line per screen.
+ *
+ * So the "single instance OFF" tests here describe a configuration the app does
+ * NOT use. They stay because they are the record of what that configuration
+ * costs, and because the leak they show is real and is the reason someone will
+ * be tempted to switch again.
  *
  * These need no server: pending operations live entirely on the client.
  */
@@ -47,7 +59,8 @@ function underSingleInstance<T>(enabled: boolean, fn: () => T): T {
     else Parse.Object.disableSingleInstance()
     return fn()
   } finally {
-    Parse.Object.disableSingleInstance()
+    // Back to what `initParse` sets, not to a hardcoded guess.
+    Parse.Object.enableSingleInstance()
   }
 }
 
@@ -90,12 +103,15 @@ function hydrate(pointer: Parse.Object, username: string): void {
 }
 
 describe('the object state controller and unsaved edits', () => {
-  it('is disabled by initParse, so the app runs on per-object state', () => {
-    // Pins the app's actual configuration. If this flips, everything below
-    // describes the wrong client.
+  it('is left ON by initParse, so the app shares state per row', () => {
+    /*
+     * Pins the app's actual configuration. If this flips, everything below
+     * describes the wrong client -- and see `parse/index.ts` for why turning it
+     * off was tried and reverted.
+     */
     const [a, b] = twoScreensReading('Vampire', 'cfg1', { name: 'Ancilla' })
     a.set('name', 'edited')
-    expect(b.get('name'), 'two references must not share state under initParse()').toBe('Ancilla')
+    expect(b.get('name'), 'two references share one bag of state under initParse()').toBe('edited')
   })
 
   describe('a screen editing a character while another screen holds it', () => {
@@ -302,7 +318,7 @@ describe('the object state controller and unsaved edits', () => {
       })
     })
 
-    it('keeps the child fetched (single instance OFF, via the re-attach wrap)', () => {
+    it('unfetches the child (single instance OFF)', () => {
       underSingleInstance(false, () => {
         const character = withFetchedChild('sav2')
         expect(character.get('creation').get('remaining_skills')).toBe(3)
@@ -310,26 +326,26 @@ describe('the object state controller and unsaved edits', () => {
         applySaveResponse(character)
 
         /*
-         * Per-object state alone would leave this undefined -- that is what the
-         * SDK does, and it is what this test asserted before
-         * `installSaveReattachment` existed. The wrap is the only reason the
-         * editing flow survives, so this is the test that guards it.
+         * This is the first of the two costs of turning single instance off.
+         * The Backbone client pays it with a re-attach wrap
+         * (`parse-compat/events.js:385`), which was ported here and did fix
+         * exactly this case -- and was still not enough, because
+         * `fetchAllIfNeeded` unfetches through a different path the wrap does
+         * not touch. See `parse/index.ts`.
          */
         expect(
           character.get('creation').get('remaining_skills'),
-          'the save response must not unfetch a child already loaded',
-        ).toBe(3)
-        expect(character.get('creation').get('completed')).toBe(false)
+          'per-object state drops a fetched child unless the save response is re-attached',
+        ).toBeUndefined()
       })
     })
 
-    it('keeps ARRAY-valued children fetched, which is how this first showed up', () => {
+    it('unfetches ARRAY-valued children too, which is the common case here', () => {
       /*
-       * The measured symptom on the Backbone client
-       * (`parse-compat/events.js:385`): saving one attribute change on a
-       * completed Vampire left `attributes` holding three DATALESS
-       * SimpleTraits, so the listing rendered three rows of " x" and the next
-       * `update_trait` could not find the trait it was handed.
+       * The measured symptom on the Backbone client before its wrap: saving one
+       * attribute change on a completed Vampire left `attributes` holding three
+       * DATALESS SimpleTraits, so the listing rendered three rows of " x" and
+       * the next `update_trait` could not find the trait it was handed.
        *
        * Array columns are the common case in this app -- every trait category
        * is one -- so they get their own test rather than riding on the scalar.
@@ -356,9 +372,16 @@ describe('the object state controller and unsaved edits', () => {
         )
 
         const traits = character.get('attributes_physical') as Parse.Object[]
-        expect(traits.map((t) => t.get('name'))).toEqual(['Strength', 'Dexterity'])
-        expect(traits.map((t) => t.get('value'))).toEqual([3, 2])
+        expect(traits.map((t) => t.get('name'))).toEqual([undefined, undefined])
       })
+    })
+
+    it('keeps both fetched under the controller the app actually uses', () => {
+      // The reason none of the above is a live defect: shared state means the
+      // decoded bare pointer resolves to the data already loaded.
+      const character = withFetchedChild('sav4')
+      applySaveResponse(character)
+      expect(character.get('creation').get('remaining_skills')).toBe(3)
     })
   })
 

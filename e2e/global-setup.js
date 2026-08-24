@@ -6,6 +6,9 @@
  * auth or empty-picker failures.
  */
 
+const fs = require('fs');
+const path = require('path');
+
 const { ensureFixtures } = require('./helpers/images');
 const { allPorts, urlForIndex } = require('./ports');
 
@@ -100,61 +103,180 @@ async function verifyBackend(baseUrl) {
 }
 
 /**
- * Build the Vue client before the suite drives it.
+ * Which front end a document root is actually serving.
  *
- * The two front ends are NOT served the same way, and the asymmetry is a trap.
- * The legacy client is served straight out of `public/` -- RequireJS loads the
- * source files, so a legacy run always tests what is on disk. The Vue client is
- * served out of `client/dist` (see `playwright.config.js`, PUBLIC_BASE), which
- * is a build artefact, and nothing regenerated it.
- *
- * So a Vue run tested whatever `vite build` last produced, which could be any
- * age. That is not a slow feedback loop, it is a WRONG one: edit the client, run
- * the suite, and the result describes code you no longer have. It cost three
- * successive wrong conclusions before anyone noticed -- an experiment that
- * "proved" a change was not the cause was really running the unmodified bundle.
- *
- * Building here restores the property the legacy side already has: what runs is
- * what is on disk. It costs about six seconds and it is not optional.
- *
- * Set `YORICK_E2E_SKIP_BUILD=1` to skip it -- only when you have deliberately
- * built something else and want it measured, and never to save time.
+ * The Vue build emits a module script out of `/assets/`; the legacy client
+ * loads its libraries from `scripts/lib/`. Neither marker can appear in the
+ * other's `index.html`.
  */
-async function buildVueClient() {
-  if (process.env.YORICK_E2E_CLIENT !== 'vue') return;
-  if (process.env.PUBLIC_BASE) return; // an explicit base is the caller's business
-  if (process.env.YORICK_E2E_SKIP_BUILD) {
-    console.warn('[e2e] YORICK_E2E_SKIP_BUILD set: the Vue bundle is NOT being rebuilt, ' +
-      'so this run measures whatever client/dist already holds.');
-    return;
+const APP_MARKERS = {
+  vue: /<script[^>]*type="module"[^>]*src="\/assets\//,
+  legacy: /src="scripts\/lib\//
+};
+
+/**
+ * Refuse to run against the wrong front end.
+ *
+ * `reuseExistingServer` means Playwright will happily adopt a server already
+ * listening on the port it wants, and the two clients differ only in that
+ * server's document root. So a run can be handed the other app and report a
+ * clean suite about it -- during the React port that produced a "legacy
+ * regression check" which was really a second React run, 26 green tests against
+ * the wrong app.
+ *
+ * `e2e/ports.js` gives each front end its own port block so this should not
+ * arise. This asserts it anyway, because the failure mode is silent success.
+ */
+async function verifyServedApp(baseUrl, expected) {
+  const res = await fetch(`${baseUrl}/`);
+  if (!res.ok) {
+    throw new Error(`Could not fetch index.html from ${baseUrl} (HTTP ${res.status}).`);
   }
+  const html = await res.text();
 
-  const { spawnSync } = require('child_process');
-  const path = require('path');
-  const started = Date.now();
+  if (APP_MARKERS[expected].test(html)) return;
 
-  // `shell: true` on Windows: spawning `npx.cmd` without a shell fails with
-  // EINVAL since the CVE-2024-27980 fix.
-  const result = spawnSync('npx', ['vite', 'build'], {
-    cwd: path.join(__dirname, '..'),
-    encoding: 'utf8',
-    shell: process.platform === 'win32'
-  });
+  const served = Object.keys(APP_MARKERS).find((name) => APP_MARKERS[name].test(html));
+  throw new Error(
+    `[e2e] ${baseUrl} is serving the ${served || 'UNRECOGNISED'} front end, but this run ` +
+    `asked for ${expected}. Playwright reuses a server already listening on the port it ` +
+    'wants, so a leftover server from the other client will be adopted silently and the ' +
+    'whole run will describe the wrong app. Stop the process on that port and re-run.'
+  );
+}
 
-  if (result.status !== 0) {
+/**
+ * The newest modification time anywhere under a directory, in milliseconds.
+ *
+ * Returns 0 for a directory that does not exist, which the one caller reads as
+ * "there is no build".
+ *
+ * FILE mtimes only, never directory mtimes: a directory's mtime changes when a
+ * temp file is created and deleted inside it, which makes the comparison fire
+ * at random for no reason a reader can see.
+ */
+function newestMtime(dir, skip = []) {
+  let newest = 0;
+  let entries;
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return 0;
+  }
+  for (const entry of entries) {
+    if (skip.includes(entry.name)) continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      newest = Math.max(newest, newestMtime(full, skip));
+    } else {
+      newest = Math.max(newest, fs.statSync(full).mtimeMs);
+    }
+  }
+  return newest;
+}
+
+/**
+ * Refuse to run the Vue suite against a build older than its source.
+ *
+ * `playwright.config.js` serves a static document root and deliberately does
+ * not build -- with N workers that would be N bundler runs. So freshness is
+ * left to whoever typed the command, and the two ways of starting a run do not
+ * agree: a wrapper that builds first is safe, while
+ * `YORICK_E2E_CLIENT=vue npx playwright test` serves whatever is already in
+ * `client/dist`. The second is what you type to re-run one spec, which is
+ * exactly when you have been editing.
+ *
+ * There is no symptom. A green run can describe code that is no longer on
+ * disk, and a red run sends you chasing a bug you already fixed. That happened
+ * here: an experiment that "proved" `disableSingleInstance()` was not the cause
+ * of the costs-view failures was running the unmodified bundle, and the same
+ * experiment against a real build proved the opposite.
+ *
+ * The legacy client is deliberately NOT checked. It is served straight out of
+ * `public/`, which is its own source, so it cannot be stale.
+ *
+ * Set `E2E_ALLOW_STALE_BUILD=1` to run anyway -- bisecting a build, or checking
+ * a report against the artifact that produced it.
+ */
+function assertFreshVueBuild() {
+  const root = path.join(__dirname, '..');
+  const built = newestMtime(path.join(root, 'client', 'dist'));
+  if (built === 0) {
     throw new Error(
-      '[e2e] the Vue client failed to build, so there is nothing valid to test:\n' +
-      (result.stderr || result.stdout || '(no output)')
+      '[e2e] there is no client/dist/ to serve. The Vue suite runs against the ' +
+      'build, not a dev server. Build it first:\n' +
+      '  npx vite build'
     );
   }
-  console.log(`[e2e] built the Vue client into client/dist in ${Date.now() - started}ms`);
+
+  /*
+   * `client/` is the whole app -- src, index.html, public assets. Skip
+   * `node_modules` and `dist`: `dist` is the build OUTPUT and lives inside the
+   * source tree, so counting it would make every run look stale by definition.
+   */
+  let source = newestMtime(path.join(root, 'client'), ['node_modules', 'dist']);
+
+  /*
+   * The build config lives at the REPO ROOT, not under `client/` -- vite is
+   * invoked with `root: client`. A walk of `client/` alone would miss an edit
+   * to either, and both change what the bundle contains.
+   */
+  for (const configFile of ['vite.config.ts', 'tsconfig.json']) {
+    try {
+      source = Math.max(source, fs.statSync(path.join(root, configFile)).mtimeMs);
+    } catch {
+      // Absent is fine; it simply contributes nothing.
+    }
+  }
+
+  if (source <= built) return;
+
+  /*
+   * Seconds under a minute. Rounding straight to minutes prints "older by 0
+   * minute(s)", which reads as a bug in the check rather than as the very
+   * recent edit it actually is -- and a just-edited file is the commonest way
+   * to arrive here.
+   */
+  const gap = source - built;
+  const age = gap < 60000
+    ? `${Math.max(1, Math.round(gap / 1000))} second(s)`
+    : `${Math.round(gap / 60000)} minute(s)`;
+  const stale = `client/dist/ is older than the Vue source by ${age}`;
+  if (process.env.E2E_ALLOW_STALE_BUILD === '1') {
+    console.warn(
+      `[e2e] ${stale}. E2E_ALLOW_STALE_BUILD is set, so the run continues against ` +
+      'the build as it is -- its results describe that build, not the working tree.'
+    );
+    return;
+  }
+  throw new Error(
+    `[e2e] ${stale}, so this run would test a stale build rather than the working ` +
+    'tree. Rebuild with `npx vite build`, or set E2E_ALLOW_STALE_BUILD=1 to run ' +
+    'against the build as it is.'
+  );
 }
 
 module.exports = async () => {
-  await buildVueClient();
+  /*
+   * First, before fixtures and before any backend is touched. It is a
+   * filesystem read and it invalidates the whole run: nothing is gained by
+   * seeding databases for a run that cannot be believed.
+   */
+  if (process.env.YORICK_E2E_CLIENT === 'vue' && !process.env.PUBLIC_BASE) {
+    assertFreshVueBuild();
+  }
+
   await ensureFixtures();
 
   const ports = allPorts();
+
+  /*
+   * Assert the app before the data. A backend serving the wrong front end makes
+   * every later result meaningless, however well seeded it is.
+   */
+  const expectedApp = process.env.YORICK_E2E_CLIENT === 'vue' ? 'vue' : 'legacy';
+  await Promise.all(ports.map((port, i) => verifyServedApp(urlForIndex(i), expectedApp)));
+
   const results = await Promise.all(ports.map((port, i) => verifyBackend(urlForIndex(i))));
 
   // Portrait uploads need publicServerURL to point at the server serving them,
@@ -178,3 +300,8 @@ module.exports = async () => {
     `(${REQUIRED_CATEGORIES.map((c) => c + '=' + first.counts[c]).join(', ')})`
   );
 };
+
+// Exposed so the guard's four states can be exercised without a full run.
+module.exports.assertFreshVueBuild = assertFreshVueBuild;
+module.exports.newestMtime = newestMtime;
+module.exports.verifyServedApp = verifyServedApp;
