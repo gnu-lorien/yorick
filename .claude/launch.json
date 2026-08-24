@@ -4,16 +4,30 @@
     {
       "name": "yorick",
       "runtimeExecutable": "node",
-      "runtimeArgs": [".claude/dev-with-mongo.js"],
+      "runtimeArgs": [
+        ".claude/dev-with-mongo.js"
+      ],
       "port": 42337,
       "url": "http://localhost:42337"
     },
     {
       "name": "yorick-vue",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev:vue"],
+      "runtimeArgs": [
+        "run",
+        "dev:vue"
+      ],
       "port": 5273,
       "url": "http://localhost:5273"
+    },
+    {
+      "name": "yorick-combined",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        ".claude/serve-combined.js"
+      ],
+      "port": 42437,
+      "url": "http://localhost:42437"
     }
   ]
 }

@@ -20,6 +20,19 @@ import vue from '@vitejs/plugin-vue'
  */
 export default defineConfig({
   root: fileURLToPath(new URL('./client', import.meta.url)),
+  /*
+   * Where this build will be SERVED from, which is not always the site root.
+   *
+   * A combined deploy puts one front end at `/` and mounts the others under a
+   * path of their own -- `/vue/` -- and Vite writes the asset URLs into
+   * `index.html` at build time, so it has to be told. Built with the default
+   * `/` and served from `/vue/`, every request goes to `/assets/...`, misses,
+   * and the page renders blank with no error worth reading.
+   *
+   * `build/frontends.js` owns the layout and passes this in; the default stays
+   * `/` so a plain `vite build` is unchanged.
+   */
+  base: process.env.YORICK_BUILD_BASE || '/',
   plugins: [
     vue({
       /*
@@ -86,7 +99,21 @@ export default defineConfig({
         import.meta.url,
       ),
     ),
-    emptyOutDir: true,
+    /*
+     * Emptying the output directory is right for a build that owns it, and
+     * destructive for one that does not.
+     *
+     * In a combined build the front end served at `/` has the whole tree as its
+     * `outDir`, and the others are directories inside it. Emptying then deletes
+     * front ends already built -- measured: with `YORICK_DEFAULT_FRONTEND=vue`
+     * the Vue build removed the `legacy/` directory the gulp pipeline had just
+     * written, leaving a tree with one app in it and no error anywhere.
+     *
+     * `gulp` empties the whole tree once, up front, in its `clean` task, so
+     * nothing is stale and no individual build needs to. It sets this to `0`.
+     * A standalone `vite build` still owns its directory and still empties it.
+     */
+    emptyOutDir: process.env.YORICK_BUILD_EMPTY_OUT_DIR !== '0',
     sourcemap: true,
   },
   /*

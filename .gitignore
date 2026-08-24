@@ -124,6 +124,12 @@ client/dist/
 # unlike `dist/`, which is.
 dist-vue3/
 
+# Scratch output for combined builds. `YORICK_OUT_DIR` exists so a build can be
+# tried somewhere other than the tracked `dist/`, and those trials are not
+# artifacts anyone should commit.
+dist-combined/
+dist-swapped/
+
 # Captured Playwright JSON runs, compared by diff-runs.js. Local artefacts.
 runs/
 
