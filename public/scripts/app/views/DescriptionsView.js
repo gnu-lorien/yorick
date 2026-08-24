@@ -203,13 +203,52 @@ define([
             this.$el.enhanceWithin();
             return self;
         },
+        /**
+         * Take the shared region back if `EditRules` has rendered into it.
+         *
+         * See the long note on the same method in views/EditRules.js: the two
+         * views are separate instances sharing one `el` and one region
+         * selector, their `el` matches nothing so Marionette resolves the
+         * region globally, and `setup()` runs once - so whichever showed its
+         * child views last owns the node and the other renders into a detached
+         * element that nobody can see.
+         *
+         * Symmetrical on purpose. Fixing only the rule editors would have
+         * moved the defect rather than removed it: the Descriptions screen
+         * would then show the last rule class's categories instead.
+         */
+        reattach_if_detached: function () {
+            var self = this;
+            var form = self.sections.currentView;
+            if (form && form.el && document.contains(form.el)) {
+                return;
+            }
+            var options = self.options || {};
+            self.showChildView('sections', new Form({
+                model: self.filterOptions
+            }), options);
+            self.showChildView('list', new DataForm({
+                model: self.data
+            }), options);
+        },
         update_categories: function () {
             var self = this;
+            // Before anything reads `self.sections.currentView` below.
+            self.reattach_if_detached();
             var q = new Parse.Query("Description");
             q.select("category");
             var categories = {};
             return q.each(function (d) {
-                categories[d.get("category")] = 1;
+                // Skip a row with no category. See the note on the same line
+                // in views/EditRules.js: `categories[undefined]` writes the
+                // string key "undefined", and the dropdown then offers an
+                // option reading exactly that, which filters to every row of
+                // the class rather than to anything.
+                var category = d.get("category");
+                if (!category) {
+                    return;
+                }
+                categories[category] = 1;
             }).then(function () {
                 console.log(categories);
                 var form = self.sections.currentView;

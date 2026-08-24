@@ -330,14 +330,72 @@ define([
             }
             ruleName = inRuleName;
         },
+        /**
+         * Take the shared region back if another view has rendered into it.
+         *
+         * `EditRules` and `DescriptionsView` are separate memoised instances
+         * that share BOTH an `el` and the region selector
+         * `#descriptions-sections`. Their `el` matches nothing - it says
+         * `div[data-role='main']` and the markup says `<div role="main">` - so
+         * Marionette resolves that region globally, and both views' regions
+         * point at the same DOM node. `setup()` runs once per view, so
+         * whichever showed its child views last owns the node and the other
+         * never gets it back.
+         *
+         * Measured, visiting clan rules then Descriptions then kith rules:
+         *
+         *   DOM select                    68 options, Descriptions' categories
+         *   editRules.formInDocument      false
+         *   editRules' own form           2 options, correct, detached
+         *
+         * So after one visit to the Descriptions screen, every one of the five
+         * rule editors showed Descriptions' category list for the rest of the
+         * session, and filtering by one of those queried the rule class for a
+         * category it does not have. Rendering a detached form updates
+         * nothing the reader can see.
+         */
+        reattach_if_detached: function () {
+            var self = this;
+            var form = self.sections.currentView;
+            if (form && form.el && document.contains(form.el)) {
+                return;
+            }
+            var options = self.options || {};
+            self.showChildView('sections', new Form({
+                model: self.filterOptions
+            }), options);
+            self.showChildView('list', new DataForm({
+                model: self.data
+            }), options);
+        },
         update_categories: function () {
             var self = this;
+            // Before anything reads `self.sections.currentView` below.
+            self.reattach_if_detached();
             var q = new Parse.Query(ruleName);
             q.select("category");
             var categories = {};
             return learn_field_types().then(function () {
                 return q.each(function (d) {
-                    categories[d.get("category")] = 1;
+                    // Skip a row with no category at all.
+                    //
+                    // An object key is a string, so `categories[undefined]`
+                    // writes the key "undefined" and the dropdown then offers
+                    // an option reading exactly that. `bnsmetv1_ClanRule` is
+                    // the case in the seed: its 42 rows carry `clan` and no
+                    // `category`, so the class offered precisely two options,
+                    // "undefined" and "All".
+                    //
+                    // Selecting it built
+                    // `new Parse.Query(ruleName).equalTo("category", undefined)`,
+                    // which parse-server reads as "category does not exist" -
+                    // every row of the class. So it was a worse-named
+                    // duplicate of "All", with nothing on screen to say so.
+                    var category = d.get("category");
+                    if (!category) {
+                        return;
+                    }
+                    categories[category] = 1;
                 });
             }).then(function () {
                 console.log(categories);

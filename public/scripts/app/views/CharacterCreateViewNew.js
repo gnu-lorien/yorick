@@ -46,6 +46,14 @@ define([
     complete_html
 ) {
 
+    // Must match the same constants in views/CharacterView.js, where the
+    // reasoning for the bounded retry is recorded. The two restores are
+    // deliberately separate copies - one per view - so that changing either
+    // cannot disturb the other.
+    var SCROLL_RESTORE_MAX_ATTEMPTS = 40;
+    var SCROLL_RESTORE_INTERVAL_MS = 50;
+    var SCROLL_RESTORE_TOP_SLACK = 2;
+
     var Description = Marionette.ItemView.extend({
         template: _.template(description_html),
         templateHelpers: function() {
@@ -460,7 +468,7 @@ define([
             _.bindAll(
                 this,
                 "setup_regions",
-                "scroll_back_after_page_change");
+                "restore_scroll_after_page_change");
         },
         setup: function(options) {
             var self = this;
@@ -475,11 +483,62 @@ define([
 
             return self;
         },
-        scroll_back_after_page_change: function() {
+        /**
+         * Return the wizard to the offset the router recorded, once it is tall
+         * enough to go there.
+         *
+         * The same treatment `CharacterView.restore_scroll_after_page_change`
+         * got, and for the same reason: this used to scroll the instant
+         * `pagechange` fired, and jQuery Mobile fires that before the page has
+         * finished growing, so `silentScroll` ran against a page with nowhere
+         * to go and nothing ran again afterwards.
+         *
+         * The comment left in `CharacterView.js` when the sheet was fixed said
+         * "the wizard has its own copy ... where the immediate scroll works".
+         * That was repeated from the report that raised it and never measured.
+         * It is wrong: scroll the wizard, leave through
+         * `charactercreate/simpletext/:category/:target/:cid/pick`, return, and
+         * the page never reaches the offset. That comment is corrected.
+         *
+         * Also consumes the offset. The old version never cleared
+         * `backToTop`, so a wizard offset survived its own use and could be
+         * applied again on a later visit the reader had never scrolled.
+         */
+        restore_scroll_after_page_change: function() {
             var self = this;
             $(document).one("pagechange", function() {
                 var top = _.parseInt(self.backToTop);
-                $.mobile.silentScroll(top);
+                self.backToTop = 0;
+                if (!_.isFinite(top) || top <= 0) {
+                    // No offset to restore: open at the top. Every character's
+                    // wizard is the same jQuery Mobile page,
+                    // `#character-create`, so moving between two characters is
+                    // a same-page transition and nothing resets the scroll.
+                    // Measured, the same way #20 was measured on the sheet:
+                    // scroll character A's wizard, open character B's, and the
+                    // window stayed at 400.
+                    $.mobile.silentScroll(0);
+                    return;
+                }
+
+                var attempts = 0;
+                var attempt = function () {
+                    attempts++;
+                    // The reader scrolling for themselves takes precedence -
+                    // do not yank the page from under them.
+                    if (window.scrollY > SCROLL_RESTORE_TOP_SLACK) {
+                        return;
+                    }
+                    var room = document.documentElement.scrollHeight - window.innerHeight;
+                    if (room >= top) {
+                        $.mobile.silentScroll(top);
+                        return;
+                    }
+                    if (attempts < SCROLL_RESTORE_MAX_ATTEMPTS) {
+                        _.delay(attempt, SCROLL_RESTORE_INTERVAL_MS);
+                    }
+                };
+                attempt();
             });
         }
     });

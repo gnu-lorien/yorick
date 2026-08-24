@@ -2,7 +2,7 @@
 
 Companion to `legacy-bugs-found-during-react-port.md` (written on the React
 port branch, `claude/migrate-project-react-69c438`). That document catalogues
-eighteen defects in `public/scripts/`; this one records what was done about
+twenty-three defects in `public/scripts/`; this one records what was done about
 each, and where the resolution differs from what it prescribed.
 
 Every entry is covered by a test. Two files hold them:
@@ -10,12 +10,12 @@ Every entry is covered by a test. Two files hold them:
 - `test/legacy-bug-regressions.test.js` — 20 tests, `npm run test:node`, about
   150ms. Anything decidable without a browser: collection ordering, the
   clan-rule page size, template guards, markup shape.
-- `e2e/legacy-bug-regressions.spec.js` — 26 tests, `npx playwright test
+- `e2e/legacy-bug-regressions.spec.js` — 33 tests, `npx playwright test
   e2e/legacy-bug-regressions.spec.js`, about a minute. Anything that needs a
   rendered page and a real server.
 
 Both suites were run against the **unfixed** sources before being trusted.
-Twelve of the twenty node tests and twenty-one of the twenty-six E2E tests fail
+Twelve of the twenty node tests and twenty-eight of the thirty-three E2E tests fail
 there.
 The rest are deliberate controls — a correct-behaviour anchor beside each
 defect, so a test cannot pass by breaking the thing next to it.
@@ -42,6 +42,12 @@ defect, so a test cannot pass by breaking the thing next to it.
 | 15 | `limit(1000)` on both experience-ledger fetches | `models/Character.js`, `views/CharacterExperienceView.js` |
 | 16 | Guarded `listview("refresh")` after writing the rows | `views/CharactersListView.js` |
 | 17 | Record the scroll offset on the view that reads it; `withCharacterCreateView()` added to the wizard's odd one out; new `restore_scroll_after_page_change` that waits for the sheet's height | `routers/mobileRouter.js`, `views/CharacterView.js` |
+| 18 | Guarded `listview("refresh")` in `PatronagesView` (all five patronage lists) and in the two filterable rosters | `views/PatronagesView.js`, `views/CharactersSummarizeListView.js`, `views/CharactersSelectToPrintView.js` |
+| 19 | Skip rows with no category, so no dropdown offers "undefined" | `views/EditRules.js`, `views/DescriptionsView.js` |
+| 20 | Scroll to the top when there is no offset to restore, on the sheet AND the wizard | `views/CharacterView.js`, `views/CharacterCreateViewNew.js` |
+| 21 | The wizard gets its own `restore_scroll_after_page_change`, waiting for height and consuming the offset | `views/CharacterCreateViewNew.js` |
+| 22 | R2's test rewritten to be ownership-aware; see below | `e2e/legacy-bug-regressions.spec.js` |
+| **R3** | `reattach_if_detached()` so a view takes the shared region back | `views/EditRules.js`, `views/DescriptionsView.js` |
 | **R2** | Re-enhance the category select after `update_categories()` re-renders the form, in both views | `views/EditRules.js`, `views/DescriptionsView.js` |
 | **R1** | `<%= name %>` instead of `<%= attributes.name %>`. Not in the document — found here; see below | `views/UserSettingsProfileView.js` |
 
@@ -215,6 +221,77 @@ neither create view is touched, so nothing here can reach the wizard's
 restore, which works as it is. The sheet's own now-unused
 `scroll_back_after_page_change` is removed rather than left as dead code.
 
+**R3 is the biggest thing in this batch, it is not in the document, and it is
+why R2's own test had stopped working.** `EditRules` and `DescriptionsView` are
+separate memoised instances sharing BOTH an `el` and the region selector
+`#descriptions-sections`. Their `el` matches nothing, so Marionette resolves
+that region globally and both views' regions point at the same DOM node.
+`setup()` runs once per view, so whichever showed its child views last owns the
+node and the other never gets it back. Measured, clan rules → Descriptions →
+kith rules:
+
+```
+DOM select                 68 options, "academics_specializations" ...
+editRules.formInDocument   false
+editRules' own form        2 options, correct, and detached
+```
+
+One visit to the Descriptions screen therefore left every rule editor showing
+Descriptions' categories for the rest of the session, and filtering by one of
+them queried the rule class for a category it does not have. Fixed
+symmetrically with `reattach_if_detached()` in both views — fixing only the
+rule editors would have moved the defect, not removed it.
+
+**#22 is not a defect in the app, and the honest answer is that R2's test was
+wrong.** It reported R2 timing out at 120s against the legacy client. I could
+not reproduce the timeout, but chasing it found something worse: R2 **passed
+against fully reverted sources**, twice. It had been asserting on "whatever
+select is in the shared region", which R3 shows can belong to the other view
+entirely — so it was reading a leftover, already-enhanced select from the
+previous screen. A test that passes against its own bug is worse than no test.
+
+Rewritten around `visitAdminCategoryScreen`, which waits for the view that
+route drives to *own* the DOM node before asserting anything. Verified the
+hard way: with R3's fix in place and only R2's own fix removed, it fails at
+`Descriptions second: the category select is not jQM-enhanced`. The readiness
+wait also moved off `options.length > 1`, which #19 correctly warned was true
+only because of the "undefined" option #19 removes.
+
+**#18's description of the two rosters is wrong, and it does not matter to the
+fix.** The document says `CharactersSummarizeListView` and
+`CharactersSelectToPrintView` "do call something — but they call
+`enhanceWithin()`". They do not: every enhancement call in both files is
+commented out. The second half of the claim — that `enhanceWithin` would skip
+an already-enhanced element anyway — is right, and the fix is the same either
+way. The five patronage lists are all the same view, so they are fixed once in
+`PatronagesView` rather than at five call sites.
+
+**#20's mechanism, which the document left undiagnosed, is not what it
+guessed.** It suggested no `pagechange` fires because both sheets are the same
+jQuery Mobile page. The page part is right; the event part is not. Measured
+after opening a second character:
+
+```
+scrollY                              400   (the first character's offset)
+pagechange events since navigating   ["character"]
+characterMainPage.backToTop          0     (consumed, not stale)
+```
+
+`pagechange` fires, the restore handler runs, finds nothing to restore, and —
+until now — returned having done nothing, while neither the browser nor jQuery
+Mobile resets scroll on a same-page transition. It now scrolls to the top in
+that case. The wizard had the identical defect; that was measured rather than
+assumed, and fixed in its own copy.
+
+**#21 corrects a claim I made in a code comment.** When the sheet's restore was
+fixed I wrote that "the wizard has its own copy ... where the immediate scroll
+works". That was repeated from the report that raised #17 and never measured,
+and it is wrong — the wizard raced the render exactly as the sheet did. The
+comment is corrected and the wizard now carries the same bounded wait, as a
+separate copy, plus the offset consumption it never had. Verified by swapping
+only the method body back to the original immediate scroll, keeping the name,
+so the test exercises the timing rather than a missing method.
+
 **#9's prescribed fix is necessary but not sufficient, and the failure it
 describes happens earlier than stated.** The document says a character with no
 creation record throws a `TypeError` at `creation.addUnique(...)`, three lines
@@ -271,9 +348,9 @@ None of this can be done from this branch, which carries no `web/`.
 - The React port reproduces most of this behaviour on purpose, and
   `npm run compare:dom` asserts the two front ends render the same DOM. Every
   screen touched here will now diverge — correctly. `#administration` (#11),
-  the profile page (#3 and R1), the troupe staff list (#10), the character
-  sheet header (#4) and the character roster's rounded ends (#16) are the
-  visible ones.
+  the profile page (#3, R1 and #18's patronage list), the troupe staff list
+  (#10), the character sheet header (#4), the rounded ends on eight lists (#16
+  and #18) and the admin category dropdowns (#19, R2, R3) are the visible ones.
 - `docs/react-migration/README.md` lists which divergences are currently
   deliberate. Six of them have just gone away: the port's divergence on #0
   (it guards `transformedForRange`, legacy crashed), on #1
