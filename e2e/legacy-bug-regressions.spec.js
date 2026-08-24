@@ -1060,8 +1060,52 @@ test.describe('Legacy bugs found during the React port', () => {
   // rewrote its ACL to the viewer.
   //
   // This pins the observable half so the change cannot be made by accident.
+  //
+  // It asserts the QUERY, not the pointer's client-side state, and that
+  // distinction is load-bearing. The original read `owner.get("username")` back
+  // and required it to be null, on the reasoning that only an `include` could
+  // have filled it in. That inference holds only under the unique-instance
+  // state controller, which the Backbone client runs (`parse-compat/index.js`)
+  // and the Vue client does not (`client/src/parse/index.ts`, which explains
+  // why). Under a shared controller the pointer and `Parse.User.current()` are
+  // one bag of state, and the current user is fully loaded by definition -- so
+  // on a PLAYER'S OWN roster, where every owner is the current user, the
+  // pointer answers with the username no matter what the server sent. The old
+  // assertion therefore failed on a client that was doing nothing wrong.
+  //
+  // Reading the request removes the inference. `include=owner` is the thing
+  // that was dangerous; look for it directly.
 
-  test('#13 a player\'s own roster leaves the owner pointer unhydrated', async ({ page }) => {
+  /**
+   * Every Parse query the page issues against the character table.
+   *
+   * All three venues share the `Vampire` class, so that one path covers the
+   * lot. The SDK posts queries with the real verb in `_method`, which puts the
+   * `include` list in the POST body rather than the URL -- but read both, so a
+   * transport change cannot silently make this stop looking.
+   */
+  function captureCharacterQueries(page) {
+    const seen = [];
+    page.on('request', (request) => {
+      if (!/\/parse\/1\/classes\/Vampire/.test(request.url())) return;
+      let body = {};
+      try {
+        body = request.postDataJSON() || {};
+      } catch {
+        // Not a JSON body; the URL is still worth recording.
+      }
+      const fromUrl = new URL(request.url()).searchParams.get('include') || '';
+      const fromBody = body.include || '';
+      seen.push({
+        url: request.url(),
+        include: [fromUrl, Array.isArray(fromBody) ? fromBody.join(',') : fromBody]
+          .filter(Boolean).join(',')
+      });
+    });
+    return seen;
+  }
+
+  test('#13 a player\'s own roster never asks the server to include the owner', async ({ page }) => {
     await loginAsMember(page);
 
     await runInApp(page, ['app/models/Vampire'], `
@@ -1070,33 +1114,41 @@ test.describe('Legacy bugs found during the React port', () => {
       });
     `);
 
+    const queries = captureCharacterQueries(page);
+
     await navigateToHash(page, 'characters?all', '#characters-all');
     await expect(page.locator('#characters-all li').first()).toBeVisible({ timeout: 30000 });
 
+    // Without this the test passes when it sees NOTHING -- a renamed endpoint
+    // or a changed transport would read as "no query included the owner".
+    expect(queries.length,
+      'the roster must have queried the character table for this to mean anything')
+      .toBeGreaterThan(0);
+
+    const offending = queries.filter((q) => /(^|,)\s*owner\s*(,|$)/.test(q.include));
+    expect(offending.map((q) => q.include),
+      'the roster query must not include("owner"): it makes parse-server DELETE the ' +
+      'pointer for a private owner, and get_me_acl reads a missing owner as "no owner" ' +
+      'and grants the viewer read and write')
+      .toEqual([]);
+
+    // The pointer must still be there. A missing owner renders as DELETED, and
+    // is the state the include defect actually produced.
     const owners = await runInApp(page, ['app/models/Vampire', 'parse'], `
       var Vampire = mods[0], Parse = mods[1];
       var q = new Parse.Query(Vampire);
       q.equalTo("owner", Parse.User.current());
       return q.find().then(function (rows) {
-        return rows.map(function (r) {
-          var o = r.get("owner");
-          return {
-            hasOwner: r.has("owner"),
-            // A bare pointer has an id and no attributes; a hydrated one
-            // would answer with the username.
-            username: (o && typeof o.get === "function") ? (o.get("username") || null) : null
-          };
-        });
+        return rows.map(function (r) { return { hasOwner: r.has("owner") }; });
       });
     `);
 
     expect(owners.length).toBeGreaterThan(0);
     for (const row of owners) {
       expect(row.hasOwner, 'the pointer must survive - a missing owner reads as DELETED').toBe(true);
-      expect(row.username, 'the roster query must not include("owner")').toBeNull();
     }
 
-    // And so the rows carry no owner line.
+    // And the rows carry no owner line, which is the visible half.
     const roster = await page.locator('#characters-all').innerText();
     expect(roster).not.toContain('sampmem');
   });
