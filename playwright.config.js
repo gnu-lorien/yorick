@@ -1,5 +1,5 @@
 const { defineConfig, devices } = require('@playwright/test');
-const { workerCount, allPorts, urlForIndex, portForThisProcess } = require('./e2e/ports');
+const { workerCount, allPorts, urlForIndex, portForThisProcess, FRONTENDS, FRONTEND } = require('./e2e/ports');
 
 /**
  * Playwright E2E configuration for Yorick.
@@ -16,6 +16,38 @@ const { workerCount, allPorts, urlForIndex, portForThisProcess } = require('./e2
 
 const CI = !!process.env.CI;
 const WORKERS = workerCount();
+
+/**
+ * Which front end the run exercises.
+ *
+ * `YORICK_E2E_CLIENT` selects it and `e2e/ports.js` owns the table: which
+ * document root each one is served from, and which port block it runs in. All
+ * this does is turn that entry into the server's environment.
+ *
+ * `index.js` serves whatever `PUBLIC_BASE` points at, so one variable switches
+ * the whole suite between the legacy Backbone client in `public/`, the React
+ * build in `dist-react/` and the Vue build in `client/dist`. `PUBLIC_FALLBACK`
+ * keeps `public/` mounted behind a port for the assets its build does not
+ * contain -- images, the jQuery Mobile stylesheet -- which both ports rely on.
+ *
+ * The specs are not forked and take no flag. Helpers that have to behave
+ * differently ask the page which app answered (`jqm-helpers.js#detectApp`), so
+ * the same suite runs against all three. That is what makes a migration
+ * regression distinguishable from a defect that was always there: record a run
+ * against `legacy`, record one against a port, and diff them with `gate.js`.
+ *
+ * No build happens here. Building inside the config would rebuild once per
+ * worker process; `global-setup.js` refuses a stale one instead.
+ */
+const path = require('path');
+const FRONTEND_ENV = process.env.PUBLIC_BASE
+  ? { PUBLIC_BASE: process.env.PUBLIC_BASE }
+  : FRONTENDS[FRONTEND].docRoot
+    ? {
+        PUBLIC_BASE: path.join(__dirname, ...FRONTENDS[FRONTEND].docRoot),
+        PUBLIC_FALLBACK: path.join(__dirname, 'public')
+      }
+    : {};
 
 /**
  * Suites that mutate records shared across a whole database.
@@ -132,6 +164,9 @@ module.exports = defineConfig({
     stderr: 'pipe',
     env: {
       PORT: String(port),
+
+      // Which front end this backend serves. Resolved once, above.
+      ...FRONTEND_ENV,
 
       // Each worker gets its own database name, not just its own port.
       //

@@ -324,15 +324,26 @@ test.describe('Task 8a - Vampire Creation In The UI', () => {
     await waitForActivePage(page, 'character');
     expect(await activePageId(page)).toBe('character');
 
-    // The row the form actually wrote. Vampires carry no `type` attribute at
-    // all (only Werewolf and ChangelingBetaSlice set one), so the venue is
-    // proven below by the Vampire-specific region the wizard renders.
+    // The row the form actually wrote.
+    //
+    // `type` is asserted as "absent, or Vampire" rather than as absent, because
+    // the two front ends legitimately differ here. The legacy app leaves it
+    // unset for Vampires -- each venue is its own constructor over the shared
+    // "Vampire" class, so the class name carries the venue and the attribute is
+    // only written for Werewolf and ChangelingBetaSlice. The React app has one
+    // class and no constructor to carry anything, so the venue has to be on the
+    // row from the first save or the character reads back as a vampire by
+    // accident rather than on purpose (web/src/parse/character/create.ts).
+    //
+    // What both must never do is write some *other* venue, which is what this
+    // now checks. The venue itself is proven below by the Vampire-specific
+    // region the wizard renders.
     const created = await page.evaluate((id) => {
       const q = new window.Parse.Query('Vampire');
       return q.get(id).then((c) => ({ id: c.id, name: c.get('name'), type: c.get('type') || null }));
     }, cid);
     expect(created.name).toBe(name);
-    expect(created.type).toBeNull();
+    expect([null, 'Vampire']).toContain(created.type);
 
     // Exactly one wizard affordance, rendered by the sheet's
     // `if (character.is_being_created())` branch, and it goes to this character.

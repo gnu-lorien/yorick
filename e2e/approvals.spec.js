@@ -276,11 +276,21 @@ test.describe('Task 5 - Approvals', () => {
   }
 
   /** Every `VampireApproval` row for the character, straight from Parse, oldest first. */
+  /**
+   * `Model.createWithoutData(id)`, not `new Model({ id })`.
+   *
+   * The second form makes a pointer under Parse 1.5, where the constructor read
+   * `id` as the objectId. Under parse@8 it is an ordinary attribute, so the
+   * object stays unsaved and using it as a pointer throws "Cannot create a
+   * pointer to an unsaved ParseObject". The legacy front end gets away with it
+   * because `parse-compat` puts the 1.5 constructor back; the React app has no
+   * shim, so the suite has to say what it means.
+   */
   async function readApprovalRows(page, cid) {
     return page.evaluate(async (id) => {
       const Vampire = window.Parse.Object.extend('Vampire');
       const q = new window.Parse.Query('VampireApproval');
-      q.equalTo('owner', new Vampire({ id }));
+      q.equalTo('owner', Vampire.createWithoutData(id));
       q.include('approver');
       q.ascending('createdAt');
       q.limit(1000);
@@ -335,10 +345,10 @@ test.describe('Task 5 - Approvals', () => {
         const VampireChange = window.Parse.Object.extend('VampireChange');
         let change;
         if (changeId) {
-          change = new VampireChange({ id: changeId });
+          change = VampireChange.createWithoutData(changeId);
         } else {
           const q = new window.Parse.Query('VampireChange');
-          q.equalTo('owner', new Vampire({ id }));
+          q.equalTo('owner', Vampire.createWithoutData(id));
           q.ascending('createdAt');
           q.limit(1000);
           const changes = await q.find();
@@ -353,7 +363,7 @@ test.describe('Task 5 - Approvals', () => {
           approved: true,
           change: change,
           approver: window.Parse.User.current(),
-          owner: new Vampire({ id })
+          owner: Vampire.createWithoutData(id)
         });
         const saved = await a.save();
         return { ok: true, id: saved.id };
@@ -368,7 +378,7 @@ test.describe('Task 5 - Approvals', () => {
     return page.evaluate((id) => {
       const Vampire = window.Parse.Object.extend('Vampire');
       const q = new window.Parse.Query('VampireChange');
-      q.equalTo('owner', new Vampire({ id }));
+      q.equalTo('owner', Vampire.createWithoutData(id));
       return q.count();
     }, cid);
   }
@@ -1045,8 +1055,11 @@ test.describe('Task 5 - Approvals', () => {
     await navigateToHash(strangerPage, 'characters?all', '#characters-all');
     expect(await activePageId(strangerPage)).toBe('characters-all');
 
+    // What is asserted is that the approval view never renders, not which page
+    // is left behind -- see `attemptOpenApproval` for why those are different
+    // questions on the two front ends.
     const landed = await A.attemptOpenApproval(strangerPage, cid);
-    expect(landed.activePage, 'the approval route leaves the stranger where they were').toBe('characters-all');
+    expect(landed.approvalWidgets, 'the approval view rendered nothing').toBe(0);
     expect(landed.hash, 'even though the hash did change').toContain('/approval');
     expect(landed.approveControls, 'no approve control is rendered anywhere').toBe(0);
     console.log('[e2e approvals] 95 stranger landed on:', JSON.stringify(landed));
@@ -1092,7 +1105,7 @@ test.describe('Task 5 - Approvals', () => {
 
     await navigateToHash(strangerPage, 'troupes', '#troupes-list');
     const landed = await A.attemptOpenApproval(strangerPage, cid);
-    expect(landed.activePage, 'the approval route leaves the other troupe\'s AST where they were').toBe('troupes-list');
+    expect(landed.approvalWidgets, 'the approval view rendered nothing').toBe(0);
     expect(landed.approveControls).toBe(0);
 
     // And the server-side rule refuses independently of the ACL. This is the

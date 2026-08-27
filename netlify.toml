@@ -1,0 +1,87 @@
+# Netlify build for preview deploys: EVERY front end, one site.
+#
+# WHAT IT PUBLISHES
+#
+# `dist/`, built here by `npx gulp pubstorm`, containing every front end at
+# once:
+#
+#     /          the Backbone client   (the default)
+#     /react     the React client
+#     /vue       the Vue 3 client
+#     /legacy    a redirect to /       (so the default has a stable address too)
+#
+# `build/frontends.js` decides that layout and `gulpfile.js` builds whatever it
+# is handed, so a fourth front end is an entry in that table and no change here.
+#
+# WHICH ONE IS AT `/`
+#
+# A build-time choice, not a hardcoded one:
+#
+#     YORICK_DEFAULT_FRONTEND = "vue"
+#
+# in the environment blocks below swaps them over — Vue at `/`, Backbone at
+# `/legacy`, and `/vue` becomes the redirect. React stays at `/react` either
+# way. Nothing else changes, and links to `/react`, `/vue` and `/legacy` keep
+# meaning the same app whichever is default. That is the whole reason the
+# default gets an alias rather than only living at `/`.
+#
+# WHY `gulp pubstorm` AND NOT `gulp greensboro`
+#
+# `pubstorm` is the staging API. A preview is something people click around in,
+# and clicking around this app writes data — characters, XP, approvals. Pointed
+# at `patron` or `greensboro`, a preview would be strangers editing live
+# records.
+#
+# The task name now sets the backend for EVERY front end, so both apps in a
+# preview talk to the same server. They used to be chosen separately — a gulp
+# task for the Backbone app, `VITE_YORICK_TARGET` for the Vue one — which meant
+# a build could ship two apps pointed at two different databases and look fine.
+#
+# WHY THE SETTINGS ARE SCOPED TO PREVIEW CONTEXTS
+#
+# `command` and `publish` live under `[context.deploy-preview]` and
+# `[context.branch-deploy]`, not under a bare `[build]`. Netlify reads its
+# configuration from the commit it is building, so a bare `[build]` block would
+# be harmless today — this file only exists on the Vue branch — and would
+# silently redirect PRODUCTION the day somebody merges. Scoping it means
+# `[context.production]` is untouched: after a merge, production keeps building
+# exactly as the site's own settings say, and switching it over stays a
+# deliberate act rather than a side effect.
+#
+# NO SPA REDIRECT, ON PURPOSE
+#
+# Every route in both apps is a hash — `#character?abc123`, `#troupes` — so the
+# only paths the server is ever asked for are `/`, `/vue` and `/legacy`, all of
+# which are real files. A catch-all rewrite would buy nothing and would cost
+# something: `/*  /index.html  200` also swallows requests for assets that are
+# genuinely missing, turning a broken build into a page that renders and
+# misbehaves instead of a 404 that says so.
+
+[context.deploy-preview]
+  command = "npx gulp pubstorm"
+  publish = "dist"
+
+[context.branch-deploy]
+  command = "npx gulp pubstorm"
+  publish = "dist"
+
+[context.deploy-preview.environment]
+  # `package.json` engines allow 20.19+, 22.13+ or 24.11+. "22" tracks the
+  # newest 22.x, which satisfies that and keeps getting security patches.
+  NODE_VERSION = "22"
+
+  # Netlify can run the install with NODE_ENV=production, and `vite`, `gulp` and
+  # `vue-tsc` are all devDependencies — without this the build fails at the
+  # first command with "gulp: not found".
+  NPM_FLAGS = "--include=dev"
+
+  # `mongodb-memory-server` is a devDependency of the E2E suite and its
+  # postinstall downloads a MongoDB binary. Nothing in this build needs a
+  # database; skipping it saves a ~100MB download on every deploy and removes a
+  # network dependency that has no business failing a front-end build.
+  MONGOMS_DISABLE_POSTINSTALL = "1"
+
+[context.branch-deploy.environment]
+  NODE_VERSION = "22"
+  NPM_FLAGS = "--include=dev"
+  MONGOMS_DISABLE_POSTINSTALL = "1"

@@ -616,7 +616,7 @@ test.describe('Task 12b - Werewolf lifecycle and dual audit log', () => {
 
     const categories = await runInApp(memberPage, ['app/models/Werewolf'], `
       return mods[0].get_character(arg.id, []).then(function (c) {
-        return _.map(c.all_simpletrait_categories(), function (e) { return e[0]; });
+        return c.all_simpletrait_categories().map(function (e) { return e[0]; });
       });
     `, { id: cid });
     expect(categories.length, 'the Werewolf model declares its categories').toBeGreaterThan(20);
@@ -1020,7 +1020,14 @@ test.describe('Task 12b - Werewolf lifecycle and dual audit log', () => {
       }
 
       const sheet = await L.readHistorySheetText(memberPage);
-      expect(sheet.length, `index ${index} renders a printable snapshot`).toBeGreaterThan(400);
+      // Whitespace-stripped, for the reason lifecycle-vampire.spec.js gives at
+      // the same assertion: the two front ends render the same sheet and differ
+      // only in template indentation, so a raw-length threshold measures the
+      // indentation rather than the snapshot.
+      expect(
+        sheet.replace(/\s+/g, '').length,
+        `index ${index} renders a printable snapshot`
+      ).toBeGreaterThan(300);
       steps.push({ index, applied: tables.applied.name, sheetLength: sheet.length });
     }
     expect(steps.length).toBeGreaterThanOrEqual(10);

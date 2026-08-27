@@ -1,6 +1,18 @@
 /**
  * Regression tests for the defects catalogued in
- * `docs/legacy-bugs-found-during-react-port.md`.
+ * `docs/legacy-bugs-found-during-react-port.md`, with their resolutions in
+ * `docs/legacy-bugs-fixed.md`.
+ *
+ * Entries numbered plainly (#0, #6, #14) come from those documents. Entries
+ * prefixed R (R1, R2) were found while writing these tests and are described
+ * in `legacy-bugs-fixed.md` under their own headings. Note that `R1`-`R51`
+ * elsewhere in `docs/` means the unrelated access-control remediation.
+ *
+ * Nothing here asks which client it is talking to. Several of these tests once
+ * did -- reaching for `window.router.characterMainPage`, `router._character`,
+ * `router.lastadminchecktime` -- and each one pinned a defect to the mechanism
+ * that happened to carry it, so no port could be held to it however correct it
+ * was. They now assert what a person can observe, and run against every client.
  *
  * The ones here are the ones that need a rendered page and a real server: a
  * whole section of the start page that was silently empty, a history entry that
@@ -44,59 +56,112 @@ async function gotoHashUnchecked(page, hash) {
 }
 
 /**
- * Visit one of the six admin screens that share `#descriptions-sections`, and
- * report on the category select **belonging to the view that route drives**.
+ * The Parse class each of these admin routes edits.
  *
- * `owner` is 'rules' or 'descriptions'. The distinction is not pedantry: the
- * five rule editors and the Descriptions screen are separate memoised views
- * sharing one region (see R3), so "the select in the region" can belong to
- * either of them, and a wait that does not check ownership can be satisfied by
- * the *previous* screen's leftover select. R2's test was written that way and
- * silently stopped detecting its own bug - it passed against fully reverted
- * sources. Everything here waits for the right view to own the node first.
+ * The route name is not the class name, and the mapping lives in the client
+ * (`mobileRouter.js`'s six handlers, `web/src/parse/models/Description.ts`'s
+ * table). It is repeated here because the assertion below needs to know what
+ * the screen *ought* to be showing, and asking the client would mean trusting
+ * the thing under test.
  */
-async function visitAdminCategoryScreen(page, route, owner) {
+const ADMIN_CATEGORY_CLASSES = {
+  'administration/descriptions': 'Description',
+  'administration/bnsmetv1_clan_rules': 'bnsmetv1_ClanRule',
+  'administration/bnsctdbs_kith_rules': 'bnsctdbs_KithRule',
+  'administration/bnsmetv1_ritual_rules': 'bnsmetv1_RitualRule'
+};
+
+/**
+ * The categories a class actually has, according to the server.
+ *
+ * Read through the SDK rather than off the screen, because it is the answer the
+ * screen is being judged against. Rows with no `category` are skipped, which is
+ * #19: an object key is a string, so accumulating them wrote the key
+ * "undefined" and the dropdown offered an option reading exactly that.
+ */
+async function categoriesOnServer(page, className) {
+  const found = await runInApp(page, ['parse'], `
+    var Parse = mods[0];
+    var q = new Parse.Query(arg.className);
+    q.select("category");
+    var seen = {};
+    return q.each(function (row) {
+      var c = row.get("category");
+      if (c) seen[c] = 1;
+    }).then(function () { return Object.keys(seen); });
+  `, { className });
+  return found.slice().sort();
+}
+
+/**
+ * Visit one of the admin screens that share the category select, and report on
+ * what it is showing once it has finished showing it.
+ *
+ * The readiness wait is the whole difficulty. It cannot be "a select exists
+ * with 'All' in it", because R3 shows that on the legacy client the select
+ * sitting in that region can be the PREVIOUS screen's - R2's test was written
+ * that way and silently stopped detecting its own bug, passing against fully
+ * reverted sources. It also cannot ask which Marionette view owns the node,
+ * which is what replaced it: that is a mechanism only one of the three clients
+ * has, and this file runs against all of them.
+ *
+ * So it waits for the select to hold exactly the categories the SERVER says
+ * this route's class has. That is satisfiable only by the right content, from a
+ * source outside the client, so a screen showing another class's categories --
+ * or its own, but stale -- times out here rather than being read and asserted
+ * on. R2's other property, that the select is jQM-enhanced, stays independent
+ * of it.
+ */
+async function visitAdminCategoryScreen(page, route) {
+  const className = ADMIN_CATEGORY_CLASSES[route];
+  if (!className) throw new Error(`no Parse class recorded for the route ${route}`);
+  const expected = await categoriesOnServer(page, className);
+
   await navigateToHash(page, route, '#administration-descriptions');
-  await page.waitForFunction((which) => {
-    const r = window.router;
-    const dom = document.querySelector('#descriptions-sections select');
-    if (!dom) return false;
-    const view = which === 'rules'
-      ? r.administrationEditRules
-      : r.administrationDescriptionsView;
-    const owns = !!(view && view.sections && view.sections.currentView &&
-      view.sections.currentView.el && view.sections.currentView.el.contains(dom));
-    // "All" is pushed unconditionally by `update_categories`, so it is the
-    // signal that the list has been rebuilt - and unlike a bare option count
-    // it does not depend on the rows happening to contain anything.
-    return owns && Array.from(dom.options).some((o) => o.text === 'All');
-  }, owner, { timeout: 30000 });
+  try {
+    await page.waitForFunction((want) => {
+      const dom = document.querySelector('#descriptions-sections select');
+      if (!dom) return false;
+      const shown = Array.from(dom.options).map((o) => o.text);
+      // "All" is appended unconditionally by every client, so it is the signal
+      // that the list was rebuilt rather than left holding a placeholder.
+      if (!shown.includes('All')) return false;
+      const categories = shown.filter((o) => o !== 'All').slice().sort();
+      return categories.length === want.length &&
+        categories.every((c, i) => c === want[i]);
+    }, expected, { timeout: 30000 });
+  } catch (err) {
+    const shown = await page.evaluate(() => {
+      const dom = document.querySelector('#descriptions-sections select');
+      return dom ? Array.from(dom.options).map((o) => o.text) : null;
+    }).catch(() => null);
+    throw new Error(
+      `${route} never showed ${className}'s own categories. Expected ` +
+      `[${expected.join(', ')}] plus "All"; the select holds ` +
+      (shown ? `[${shown.join(', ')}]` : 'no select at all') + '.'
+    );
+  }
   // These admin routes hide their spinner only on the failure path, so the
   // overlay would otherwise swallow the next navigation.
   await clearStuckLoader(page);
 
-  return page.evaluate((which) => {
-    const r = window.router;
+  return page.evaluate(() => {
     const dom = document.querySelector('#descriptions-sections select');
-    const own = (v) => !!(v && v.sections && v.sections.currentView &&
-      v.sections.currentView.el && dom && v.sections.currentView.el.contains(dom));
     return {
       options: Array.from(dom.options).map((o) => o.text),
-      enhanced: !!dom.closest('.ui-select'),
-      ownedByRules: own(r.administrationEditRules),
-      ownedByDescriptions: own(r.administrationDescriptionsView),
-      ownedByExpected: which === 'rules'
-        ? own(r.administrationEditRules)
-        : own(r.administrationDescriptionsView)
+      // jQuery Mobile wraps an enhanced `<select>` in `.ui-select`. Every
+      // client either produces that wrapper or does not; none of them needs to
+      // be asked which one it is.
+      enhanced: !!dom.closest('.ui-select')
     };
-  }, owner);
+  });
 }
 
 /**
  * Open a character sheet, scroll down it, and leave through a text picker.
  * Returns the offset that was scrolled to.
  *
- * Shared by the two #17 tests. The waits are the whole difficulty: the sheet
+ * Shared by the #17 restore tests. The waits are the whole difficulty: the sheet
  * grows as Marionette fills its regions, so scrolling too early silently lands
  * at 0, and the sheet's own restore fires on `pagechange` and would drag the
  * page back under us if it landed after our scroll.
@@ -256,21 +321,27 @@ test.describe('Legacy bugs found during the React port', () => {
   // plainly or as "old struck through in red, new in green", so the next sheet
   // drawn from the cached character inherited this screen's diff.
   //
-  // Asserted at the leak, not at the pixels. Measured before the fix:
+  // Asserted through what the next sheet DRAWS.
   //
-  //   router._character.transform_description        7 entries, after leaving
-  //   history sheet's attributes view model          === router._character
-  //   that view's own format_attribute_value(trait)  "<i class='fa fa-minus'>2
-  //                                                   ...<i class='fa fa-plus'>4"
+  // This used to reach into `router.characterApprovalView`, `router._character`
+  // and the history view's `format_attribute_value`, which is the right shape
+  // for finding the bug and the wrong shape to keep -- all three exist only
+  // because the legacy client is Backbone, so no other client could be held to
+  // the test however correct it was.
   //
-  // ...for a trait whose value had simply been raised to 4. Whether those
-  // markers reach the DOM depends on when that view last rendered, which is
-  // exactly why this survived - the document notes it appears only after a
-  // particular navigation. Counting `.fa-minus` in the DOM would therefore be
-  // a flaky test of a real bug; calling the renderer is deterministic and
-  // tests the same thing one layer down.
+  // The visible defect is a sheet drawing a diff it has no business drawing.
+  // `formatSkill` (`helpers/VampirePrintHelper.js`, `web/src/print/format.ts`,
+  // `client/src/domain/print.ts`)
+  // applies one only when it is handed a `transform_description`, so an
+  // ORDINARY printable sheet must contain no diff markup at all. Measured
+  // before the fix: a trait whose value had simply been raised to 4 printed as
+  // "<i class='fa fa-minus'>2 ... <i class='fa fa-plus'>4".
+  //
+  // The approval screen is checked FIRST, and required to show its own diff.
+  // Without that, "no diff markers on the printable sheet" would pass just as
+  // well on a client that had lost the ability to draw diffs anywhere.
 
-  test('#14 the approval screen leaves no diff on the cached character', async ({ page }) => {
+  test('#14 the approval screen leaves no diff on the sheets drawn after it', async ({ page }) => {
     await loginAsAdmin(page);
 
     const character = await runInApp(page, ['app/models/Vampire'], `
@@ -281,64 +352,24 @@ test.describe('Legacy bugs found during the React port', () => {
       });
     `);
 
+    // The positive control: the approval screen SHOULD diff, and does.
     await navigateToHash(page, 'character/' + character.id + '/approval', '#character-approval');
-
-    // The approval screen must still draw its OWN diff - the description goes
-    // on the clone it renders, and removing it from the model must not take it
-    // from there too.
     await expect(page.locator('#approval-sheet')).toBeVisible();
-    const ownDiff = await page.evaluate(() => {
-      const cpv = window.router.characterApprovalView.getChildView('sheet');
-      const clone = cpv.override.get('character');
-      return {
-        cloneHasDescription: !!(clone && clone.transform_description &&
-                                clone.transform_description.length > 0),
-        cachedHasDescription: !!(window.router._character &&
-                                 window.router._character.transform_description &&
-                                 window.router._character.transform_description.length > 0)
-      };
-    });
-    expect(ownDiff.cloneHasDescription,
-      'the approval sheet renders the clone and still needs its diff').toBe(true);
-    expect(ownDiff.cachedHasDescription,
-      'the cached character must not carry this screen\'s diff').toBe(false);
 
-    // Now leave, and ask the next screen's renderer directly.
-    await navigateToHash(page, 'character/' + character.id + '/history/0', '#character-history');
+    const approvalMarkup = await page.locator('#approval-sheet').innerHTML();
+    expect(/fa-(minus|plus)/.test(approvalMarkup),
+      'the approval screen must still draw its own diff, or the check below is vacuous')
+      .toBe(true);
 
-    const after = await page.evaluate(() => {
-      const r = window.router;
-      const cached = r._character;
-      const cpv = r.characterHistoryView.getChildView('sheet');
-      const mgr = cpv._regionManager || cpv.regionManager;
-      let renderedPhysical = null;
-      let viewModelIsCached = null;
-      mgr.each(function (region) {
-        const v = region.currentView;
-        if (!v || typeof v.format_attribute_value !== 'function') return;
-        const attrs = (v.model.get('attributes') || [])
-          .filter(function (a) { return a.get('name') === 'Physical'; });
-        if (!attrs.length) return;
-        viewModelIsCached = v.model === cached;
-        renderedPhysical = v.format_attribute_value(attrs[0]);
-      });
-      return {
-        cachedDescription: cached && cached.transform_description
-          ? cached.transform_description.length : null,
-        viewModelIsCached: viewModelIsCached,
-        renderedPhysical: renderedPhysical
-      };
-    });
+    // Now an ordinary sheet, which must not have inherited it.
+    await navigateToHash(page, 'character/' + character.id + '/print', '#printable-sheet');
+    await expect(page.locator('#printable-sheet')).toBeVisible();
+    await expect(page.locator('#printable-sheet')).toContainText('Physical');
 
-    expect(after.cachedDescription,
-      'the approval screen must not write onto the router-cached character')
-      .toBeFalsy();
-    // The renderer is reached from the cached object, which is what made the
-    // leak visible. If that ever stops being true this test would pass for the
-    // wrong reason, so it is asserted rather than assumed.
-    expect(after.viewModelIsCached).toBe(true);
-    expect(after.renderedPhysical, 'the history sheet must draw the value plainly')
-      .toBe(4);
+    const printMarkup = await page.locator('#printable-sheet').innerHTML();
+    expect(/fa-(minus|plus)/.test(printMarkup),
+      'an ordinary sheet must draw values plainly, not with the approval screen diff')
+      .toBe(false);
   });
 
   // -------------------------------------------------------------------------
@@ -521,47 +552,33 @@ test.describe('Legacy bugs found during the React port', () => {
   // because the helper sets `self.backToTop = 0` after each use. Either way
   // the sheet always went back to the top.
 
-  test('#17 the sheet records its scroll offset on the view that reads it', async ({ page }) => {
-    await loginAsAdmin(page);
-
-    const character = await runInApp(page, ['app/models/Vampire'], `
-      return mods[0].create_test_character("r17_scroll").then(function (v) {
-        return { id: v.id };
-      });
-    `);
-
-    // Leaves the sheet through `simpletextpick`, one of the two routes that
-    // record the offset.
-    const OFFSET = await scrollSheetAndLeave(page, character.id);
-
-    const recorded = await page.evaluate(() => ({
-      onTheView: window.router.characterMainPage.backToTop,
-      onTheRouteHandler: window.router.character.backToTop
-    }));
-    expect(recorded.onTheView,
-      'the offset must be recorded on the view its helper reads').toBe(OFFSET);
-    expect(recorded.onTheRouteHandler,
-      'nothing should be written onto the `character` route handler').toBeUndefined();
-
-    // The restore itself is asserted by the next test.
-  });
+  /*
+   * These three used to assert WHERE the offset was stored --
+   * `router.characterMainPage.backToTop` versus the `character` route handler.
+   * That was the right shape for finding the bug, and the wrong shape to keep:
+   * both objects exist only because the legacy client is Backbone, so the tests
+   * could never run against a client built any other way, and a port could not
+   * be held to them however correct it was.
+   *
+   * What a reader actually cares about is that the page comes back where they
+   * left it. That is observable, and it is the same sentence on either client.
+   *
+   * The scroll sites are the sheet and the wizard, which every client has
+   * (`views/CharacterView.js`, `views/CharacterCreateView.js` and
+   * `CharacterCreateViewNew.js`; `screens/CharacterSheet.tsx` and
+   * `screens/CharacterCreate.tsx`, both through `shell/scrollMemory.ts`;
+   * `CharacterPage.vue` and `CharacterCreatePage.vue`). The Vue client restores
+   * a third place, the trait category listing, which neither of the others
+   * does -- so that one is not asserted here, where it would fail the baseline
+   * rather than the port.
+   */
 
   test('#17 the sheet returns to where the reader left it', async ({ page }) => {
-    // The other half, and a second defect on top of the recording.
-    //
-    // `restore_scroll_after_page_change` used to be `scroll_back_after_page_
-    // change`, which scrolled the instant `pagechange` fired. jQuery Mobile
-    // fires that before the sheet has finished growing. Measured on return,
-    // with 400 correctly recorded:
-    //
-    //   t+0      scrollY 0, scrollable room   81   (offset already consumed)
-    //   t+8000   scrollY 0, scrollable room 1879
-    //
-    // `silentScroll(400)` against an 81px page goes nowhere, and nothing ran
-    // again once the sheet had its height. Occasionally the render won the
-    // race and it worked, which made the old behaviour inconsistent rather
-    // than merely absent. Waiting for the height first: 6 of 6 return trips
-    // landed on exactly the recorded offset.
+    // The restore used to fire on `pagechange`, which jQuery Mobile emits
+    // before the sheet has finished growing. Measured then: `silentScroll(400)`
+    // against an 81px page went nowhere, and nothing ran again once the sheet
+    // had its height, so it landed on 0. Occasionally the render won the race,
+    // which made it inconsistent rather than merely absent.
     await loginAsAdmin(page);
 
     const character = await runInApp(page, ['app/models/Vampire'], `
@@ -572,26 +589,45 @@ test.describe('Legacy bugs found during the React port', () => {
 
     const OFFSET = await scrollSheetAndLeave(page, character.id);
 
-    // Back to the sheet. The restore waits for the sheet to be tall enough,
-    // so this is now deterministic rather than a race.
     await gotoHashUnchecked(page, '#character?' + character.id);
     await waitForActivePage(page, 'character');
+
     await page.waitForFunction((y) => Math.abs(window.scrollY - y) <= 5, OFFSET,
       { timeout: 30000 });
-
-    // And the offset is consumed, so the next visit starts clean rather than
-    // re-scrolling to a stale position.
-    expect(await page.evaluate(() => window.router.characterMainPage.backToTop))
-      .toBe(0);
   });
 
-  test('#17 the wizard unpick route records on the wizard view, from cold', async ({ page }) => {
-    // The odd one out, twice over: it belongs to the wizard's group of four
-    // but recorded the way the sheet's two did, and it was the only one of the
-    // four that never called `withCharacterCreateView()`. The second half only
-    // starts to matter once the first is fixed - pointing it at
-    // `characterCreateView` without ensuring the view exists would throw for
-    // anyone arriving here before the wizard had been opened.
+  /*
+   * Two further properties were written here and then removed, because they
+   * hold on the ported clients and not on the legacy one, and this file is run
+   * against all three:
+   *
+   *   - A different character's sheet opening at the top. The ported routers
+   *     scroll to 0 on every navigation (`App.tsx`, on the fragment; the Vue
+   *     router likewise); the legacy client does not, so opening a second sheet
+   *     while the first is scrolled leaves the window where it was. Measured:
+   *     `window.scrollY` was still at the first sheet's offset.
+   *   - The WIZARD restoring its own offset. `charactercreatepicksimpletext`
+   *     records it (`mobileRouter.js:721`), but the legacy restore is still
+   *     subject to the fire-before-the-page-grows race that was fixed for the
+   *     sheet alone. Measured: the return trip never reached the recorded
+   *     offset in 30s. The ports restore it (`scrollMemory.ts`), which is the
+   *     defect being reported here rather than a difference to reproduce.
+   *
+   * Both look like legacy defects rather than port ones. Neither is asserted
+   * here, where it would fail the BASELINE and so be forgiven on every run
+   * afterwards. They belong in their own entries if they are worth fixing.
+   */
+
+  test('#17 the wizard unpick route works from cold', async ({ page }) => {
+    /*
+     * `charactercreate/simpletext/.../unpick` was the only one of the wizard's
+     * four exits that recorded its offset the way the SHEET's two did, and the
+     * only one that never ensured the wizard view existed -- so pointing it at
+     * the wizard threw for anyone arriving before the wizard had been opened.
+     *
+     * The hard reload is what makes "before" real, and is not decoration: it is
+     * the difference between exercising the bug and walking past it.
+     */
     const pageErrors = [];
     page.on('pageerror', (e) => pageErrors.push(e.message));
 
@@ -602,30 +638,16 @@ test.describe('Legacy bugs found during the React port', () => {
       });
     `);
 
-    // Reload so the lazily-built wizard view genuinely does not exist yet.
+    // Cold: nothing has built the wizard yet, on either client.
     await hardReload(page);
-    expect(await page.evaluate(() => !!window.router.characterCreateView),
-      'the fixture must start with no wizard view or this proves nothing').toBe(false);
-
     pageErrors.length = 0;
+
     await gotoHashUnchecked(page,
       '#charactercreate/simpletext/archetype/archetype/' + character.id + '/unpick');
     await waitForActivePage(page, 'character-create');
 
-    const state = await page.evaluate(() => ({
-      wizardViewExists: !!window.router.characterCreateView,
-      onTheWizardView: window.router.characterCreateView
-        ? window.router.characterCreateView.backToTop : null,
-      onTheRouteHandler: window.router.character.backToTop
-    }));
-
-    expect(pageErrors, 'the route must not throw when the wizard view is cold').toEqual([]);
-    expect(state.wizardViewExists,
-      'the route must ensure the view it records on exists').toBe(true);
-    expect(Number.isFinite(state.onTheWizardView),
-      'the offset must land on the wizard view as a number').toBe(true);
-    expect(state.onTheRouteHandler,
-      'nothing should be written onto the `character` route handler').toBeUndefined();
+    expect(pageErrors, 'the unpick route must not throw when the wizard is cold').toEqual([]);
+    await expect(page.locator(ERROR_REGION)).toHaveCount(0);
   });
 
   // -------------------------------------------------------------------------
@@ -657,7 +679,10 @@ test.describe('Legacy bugs found during the React port', () => {
       var V = mods[0];
       return V.create_test_character("r20_a").then(function (a) {
         return V.create_test_character("r20_b").then(function (b) {
-          return { a: a.id, b: b.id };
+          return {
+            a: a.id, b: b.id,
+            aName: a.get("name"), bName: b.get("name")
+          };
         });
       });
     `);
@@ -675,8 +700,12 @@ test.describe('Legacy bugs found during the React port', () => {
     await waitForActivePage(page, 'character');
     await page.waitForFunction(() => window.scrollY <= 5, null, { timeout: 30000 });
 
-    expect(await page.evaluate(() => window.router.characterMainPage.model.id),
-      'the sheet should be showing the second character').toBe(chars.b);
+    // Which character the sheet is showing, from the header rather than from
+    // the router's memoised view: "opened at the top" would be trivially true
+    // of a sheet that never navigated, and every client puts the name here.
+    await expect(page.locator('#character #insertheader'),
+      'the sheet should be showing the second character')
+      .toContainText(chars.bName, { timeout: 30000 });
   });
 
   test('#20 opening a second character\'s wizard opens at the top', async ({ page }) => {
@@ -904,17 +933,31 @@ test.describe('Legacy bugs found during the React port', () => {
       '#charactercreate/simpletext/archetype/archetype/' + character.id + '/pick');
     await waitForActivePage(page, 'simpletext-new');
 
-    expect(await page.evaluate(() => window.router.characterCreateView.backToTop),
-      'the wizard routes record on the wizard view').toBe(OFFSET);
-
+    // That the offset was recorded is not asserted directly -- where a client
+    // keeps it is its own business, and the legacy answer
+    // (`router.characterCreateView.backToTop`) is a property only one of the
+    // three has. The return trip below is the same claim, observably: it can
+    // only land back at OFFSET if something recorded it.
     await gotoHashUnchecked(page, '#charactercreate/' + character.id);
     await waitForActivePage(page, 'character-create');
     await page.waitForFunction((y) => Math.abs(window.scrollY - y) <= 5, OFFSET,
       { timeout: 30000 });
 
-    // Consumed, so a later visit the reader never scrolled starts at the top.
-    expect(await page.evaluate(() => window.router.characterCreateView.backToTop))
-      .toBe(0);
+    // Main also asserted the offset is CONSUMED -- `backToTop` reading back as
+    // 0 -- and that half is deliberately not reproduced here, because it has no
+    // client-independent meaning.
+    //
+    // Measured: both ports record the scroll position on every departure
+    // (`shell/scrollMemory.ts` records in its unmount cleanup), so leaving this
+    // wizard a second time records the offset it was just restored to and
+    // coming back restores it again. That is "remember where I was" applied
+    // consistently, not a failure to consume; the legacy client forgets after
+    // one use instead. Asserting either shape would be asserting a mechanism.
+    //
+    // Nothing is lost by leaving it out. What the consumption was FOR -- a
+    // visit the reader never scrolled opening at the top -- is what the sibling
+    // test "#20 opening a second character's wizard opens at the top" checks,
+    // observably, on all three clients.
   });
 
   // -------------------------------------------------------------------------
@@ -945,15 +988,14 @@ test.describe('Legacy bugs found during the React port', () => {
   test('R3 a rule editor shows its own categories after the Descriptions screen', async ({ page }) => {
     await loginAsAdmin(page);
 
-    const rulesFirst = await visitAdminCategoryScreen(
-      page, 'administration/bnsmetv1_clan_rules', 'rules');
-    expect(rulesFirst.ownedByRules,
-      'the rule editor should own the shared region on a first visit').toBe(true);
+    // Each of these four calls fails inside the helper if the screen never
+    // shows its own class's categories, which is the defect itself. The
+    // assertions here are the shape of what it showed, so a failure says
+    // which screen and what it held instead.
+    await visitAdminCategoryScreen(page, 'administration/bnsmetv1_clan_rules');
 
     const descriptions = await visitAdminCategoryScreen(
-      page, 'administration/descriptions', 'descriptions');
-    expect(descriptions.ownedByDescriptions,
-      'the Descriptions screen should take the region when visited').toBe(true);
+      page, 'administration/descriptions');
     // Descriptions has a category per Description row; the rule classes have
     // at most a couple. This is what the rule editor used to show afterwards.
     expect(descriptions.options.length).toBeGreaterThan(10);
@@ -962,10 +1004,7 @@ test.describe('Legacy bugs found during the React port', () => {
     // The regression: back to a rule editor, which used to render into a
     // detached form while the screen kept showing the list above.
     const rulesAgain = await visitAdminCategoryScreen(
-      page, 'administration/bnsctdbs_kith_rules', 'rules');
-    expect(rulesAgain.ownedByRules,
-      'the rule editor must take the shared region back').toBe(true);
-    expect(rulesAgain.ownedByDescriptions).toBe(false);
+      page, 'administration/bnsctdbs_kith_rules');
     expect(rulesAgain.options,
       'the rule editor is showing the Descriptions category list')
       .not.toContain('academics_specializations');
@@ -976,9 +1015,7 @@ test.describe('Legacy bugs found during the React port', () => {
     // And symmetrically - fixing only the rule editors would have moved the
     // defect rather than removed it.
     const descriptionsAgain = await visitAdminCategoryScreen(
-      page, 'administration/descriptions', 'descriptions');
-    expect(descriptionsAgain.ownedByDescriptions,
-      'the Descriptions screen must take the region back too').toBe(true);
+      page, 'administration/descriptions');
     expect(descriptionsAgain.options).toContain('academics_specializations');
   });
 
@@ -1010,17 +1047,9 @@ test.describe('Legacy bugs found during the React port', () => {
     ];
 
     for (const [route, label] of screens) {
-      await navigateToHash(page, route, '#administration-descriptions');
-      await page.waitForFunction(() => {
-        const sel = document.querySelector(
-          '#administration-descriptions #descriptions-sections select');
-        return !!sel && Array.from(sel.options).some((o) => o.text === 'All');
-      }, { timeout: 30000 });
-      await clearStuckLoader(page);
-
-      const options = await page.evaluate(() => Array.from(document.querySelectorAll(
-        '#administration-descriptions #descriptions-sections select option'))
-        .map((o) => o.text));
+      // Through the helper, so this cannot read the previous screen's select
+      // and report on the wrong class -- see R2, which was written that way.
+      const { options } = await visitAdminCategoryScreen(page, route);
 
       // "All" is pushed unconditionally, so its presence proves the dropdown
       // was rebuilt rather than left holding its placeholder.
@@ -1065,10 +1094,12 @@ test.describe('Legacy bugs found during the React port', () => {
   test('R2 the admin category select is styled whatever the visit order', async ({ page }) => {
     await loginAsAdmin(page);
 
-    const check = async (route, owner, label) => {
-      const state = await visitAdminCategoryScreen(page, route, owner);
-      expect(state.ownedByExpected,
-        `${label}: the wrong view owns the shared region - see R3`).toBe(true);
+    // The helper already refuses to return until the screen shows its own
+    // class's categories -- which is R3, and is what stops this test from
+    // reading the previous screen's leftover select and passing against its own
+    // bug. All that is left to assert here is the styling.
+    const check = async (route, label) => {
+      const state = await visitAdminCategoryScreen(page, route);
       expect(state.enhanced,
         `${label}: the category select is not jQM-enhanced`).toBe(true);
       return state;
@@ -1076,18 +1107,18 @@ test.describe('Legacy bugs found during the React port', () => {
 
     // Order A: a rule editor first, then Descriptions. The second visit is
     // the one that used to come back raw.
-    await check('administration/bnsmetv1_clan_rules', 'rules', 'rule editor first');
+    await check('administration/bnsmetv1_clan_rules', 'rule editor first');
     const descriptionsSecond = await check(
-      'administration/descriptions', 'descriptions', 'Descriptions second');
+      'administration/descriptions', 'Descriptions second');
     // Descriptions has a category per Description row; the rule classes have
     // at most a couple. Distinct shapes prove both screens really rendered.
     expect(descriptionsSecond.options.length).toBeGreaterThan(10);
 
     // Order B: fresh app, Descriptions first, then two different rule editors.
     await hardReload(page);
-    await check('administration/descriptions', 'descriptions', 'Descriptions first');
-    await check('administration/bnsctdbs_kith_rules', 'rules', 'kith rules second');
-    await check('administration/bnsmetv1_ritual_rules', 'rules', 'ritual rules third');
+    await check('administration/descriptions', 'Descriptions first');
+    await check('administration/bnsctdbs_kith_rules', 'kith rules second');
+    await check('administration/bnsmetv1_ritual_rules', 'ritual rules third');
   });
 
   // -------------------------------------------------------------------------
@@ -1305,23 +1336,27 @@ test.describe('Legacy bugs found during the React port', () => {
   // exactly that state without having to mutate a role: the client believes the
   // user is not an admin, the server says they are, and the throttle would
   // suppress the recount that settles it.
+  //
+  // The throttle is left fresh by NOT touching it. Logging in and opening the
+  // administration page has just run the check on either client, so the window
+  // is already open and the recount is already suppressed -- which is precisely
+  // the position a just-promoted user is in. The original set
+  // `router.lastadminchecktime` by hand, which pinned the test to one client's
+  // internals for a state the fixture arrives in anyway.
+  //
+  // `Parse.User.current()` is common to both clients and is where both keep the
+  // flag (`stores/auth.ts`, `routers/mobileRouter.js`), so the poison itself
+  // needs no client-specific hook.
 
   test('#6 a stale "not an admin" cache does not keep a real admin out', async ({ page }) => {
     await loginAsAdmin(page);
     await navigateToHash(page, 'administration', '#administration');
 
-    const state = await page.evaluate(() => {
+    const cached = await page.evaluate(() => {
       window.Parse.User.current().set('admininterface', false);
-      // Recent enough that enforce_logged_in's 300000ms throttle skips its
-      // own recount - the situation a just-promoted user is in.
-      window.router.lastadminchecktime = new Date();
-      return {
-        cached: window.Parse.User.current().get('admininterface'),
-        throttled: !!window.router.lastadminchecktime
-      };
+      return window.Parse.User.current().get('admininterface');
     });
-    expect(state.cached).toBe(false);
-    expect(state.throttled).toBe(true);
+    expect(cached, 'the client must actually believe the user is not an admin').toBe(false);
 
     await gotoHashUnchecked(page, '#profile');
     await waitForActivePage(page, 'user-settings-profile');
@@ -1330,7 +1365,8 @@ test.describe('Legacy bugs found during the React port', () => {
     await expect(page.locator('#administration')).toBeVisible();
     await expect(page.locator(ERROR_REGION)).toHaveCount(0);
 
-    // And the recount wrote the true answer back over the poisoned cache.
+    // And the recount wrote the true answer back over the poisoned cache,
+    // rather than letting the admin in while still believing otherwise.
     expect(await page.evaluate(() => window.Parse.User.current().get('admininterface'))).toBe(true);
   });
 
@@ -1498,8 +1534,55 @@ test.describe('Legacy bugs found during the React port', () => {
   // rewrote its ACL to the viewer.
   //
   // This pins the observable half so the change cannot be made by accident.
+  //
+  // It asserts the QUERY, not the pointer's client-side state, and that
+  // distinction is load-bearing. The original read `owner.get("username")` back
+  // and required it to be null, on the reasoning that only an `include` could
+  // have filled it in. That inference holds only under the unique-instance
+  // state controller, where each object carries its own state: the Backbone
+  // client runs it through `parse-compat/index.js` and the React port through
+  // `Parse.Object.disableSingleInstance()` in `web/src/parse/init.ts`, while
+  // the Vue client deliberately does not (`client/src/parse/index.ts`, which
+  // explains why). Under a shared controller the pointer and
+  // `Parse.User.current()` are one bag of state, and the current user is fully
+  // loaded by definition -- so on a PLAYER'S OWN roster, where every owner is
+  // the current user, the pointer answers with the username no matter what the
+  // server sent. The old assertion therefore failed on a client that was doing
+  // nothing wrong.
+  //
+  // Reading the request removes the inference. `include=owner` is the thing
+  // that was dangerous; look for it directly.
 
-  test('#13 a player\'s own roster leaves the owner pointer unhydrated', async ({ page }) => {
+  /**
+   * Every Parse query the page issues against the character table.
+   *
+   * All three venues share the `Vampire` class, so that one path covers the
+   * lot. The SDK posts queries with the real verb in `_method`, which puts the
+   * `include` list in the POST body rather than the URL -- but read both, so a
+   * transport change cannot silently make this stop looking.
+   */
+  function captureCharacterQueries(page) {
+    const seen = [];
+    page.on('request', (request) => {
+      if (!/\/parse\/1\/classes\/Vampire/.test(request.url())) return;
+      let body = {};
+      try {
+        body = request.postDataJSON() || {};
+      } catch {
+        // Not a JSON body; the URL is still worth recording.
+      }
+      const fromUrl = new URL(request.url()).searchParams.get('include') || '';
+      const fromBody = body.include || '';
+      seen.push({
+        url: request.url(),
+        include: [fromUrl, Array.isArray(fromBody) ? fromBody.join(',') : fromBody]
+          .filter(Boolean).join(',')
+      });
+    });
+    return seen;
+  }
+
+  test('#13 a player\'s own roster never asks the server to include the owner', async ({ page }) => {
     await loginAsMember(page);
 
     await runInApp(page, ['app/models/Vampire'], `
@@ -1508,33 +1591,41 @@ test.describe('Legacy bugs found during the React port', () => {
       });
     `);
 
+    const queries = captureCharacterQueries(page);
+
     await navigateToHash(page, 'characters?all', '#characters-all');
     await expect(page.locator('#characters-all li').first()).toBeVisible({ timeout: 30000 });
 
+    // Without this the test passes when it sees NOTHING -- a renamed endpoint
+    // or a changed transport would read as "no query included the owner".
+    expect(queries.length,
+      'the roster must have queried the character table for this to mean anything')
+      .toBeGreaterThan(0);
+
+    const offending = queries.filter((q) => /(^|,)\s*owner\s*(,|$)/.test(q.include));
+    expect(offending.map((q) => q.include),
+      'the roster query must not include("owner"): it makes parse-server DELETE the ' +
+      'pointer for a private owner, and get_me_acl reads a missing owner as "no owner" ' +
+      'and grants the viewer read and write')
+      .toEqual([]);
+
+    // The pointer must still be there. A missing owner renders as DELETED, and
+    // is the state the include defect actually produced.
     const owners = await runInApp(page, ['app/models/Vampire', 'parse'], `
       var Vampire = mods[0], Parse = mods[1];
       var q = new Parse.Query(Vampire);
       q.equalTo("owner", Parse.User.current());
       return q.find().then(function (rows) {
-        return rows.map(function (r) {
-          var o = r.get("owner");
-          return {
-            hasOwner: r.has("owner"),
-            // A bare pointer has an id and no attributes; a hydrated one
-            // would answer with the username.
-            username: (o && typeof o.get === "function") ? (o.get("username") || null) : null
-          };
-        });
+        return rows.map(function (r) { return { hasOwner: r.has("owner") }; });
       });
     `);
 
     expect(owners.length).toBeGreaterThan(0);
     for (const row of owners) {
       expect(row.hasOwner, 'the pointer must survive - a missing owner reads as DELETED').toBe(true);
-      expect(row.username, 'the roster query must not include("owner")').toBeNull();
     }
 
-    // And so the rows carry no owner line.
+    // And the rows carry no owner line, which is the visible half.
     const roster = await page.locator('#characters-all').innerText();
     expect(roster).not.toContain('sampmem');
   });
