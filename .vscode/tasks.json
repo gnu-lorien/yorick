@@ -2,6 +2,43 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Dev: Full stack (app + Vue client)",
+            "dependsOn": [
+                "Dev: App + Mongo",
+                "Dev: Vue client"
+            ],
+            "dependsOrder": "parallel",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Dev: App + Mongo",
+            "type": "shell",
+            "command": "node .claude/dev-with-mongo.js",
+            "problemMatcher": [],
+            "isBackground": true,
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "group": "dev"
+            }
+        },
+        {
+            "label": "Dev: Vue client",
+            "type": "shell",
+            "command": "npm run dev:vue",
+            "problemMatcher": [],
+            "isBackground": true,
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "group": "dev"
+            }
+        },
+        {
             "label": "Playwright: Open Interactive UI Mode",
             "type": "shell",
             "command": "npx playwright test --ui",
