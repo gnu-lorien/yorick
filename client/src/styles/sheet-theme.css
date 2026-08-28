@@ -1,0 +1,836 @@
+/*
+ * The character sheet's own look -- "Nightfall", approved 2026-08-27.
+ *
+ * Every rule here is scoped under `.sheet-redesign`, which only
+ * `CharacterPage.vue` sets. That containment is deliberate and load-bearing:
+ * the rest of the app is still styled by the verbatim jQuery Mobile 1.4.5
+ * stylesheet, and an unscoped `h2` or `a` rule in this file would repaint
+ * fifty screens that nobody has designed yet. Widening a selector past the
+ * root class is the one change to avoid making here.
+ *
+ * The design came out of /design-shotgun (see
+ * `~/.gstack/projects/gnu-lorien-yorick/designs/character-sheet-20260827/`,
+ * `approved.json` for the decision record and `variant-D.html` for the
+ * reference rendering). It replaces a grid of ~59 identically-styled link
+ * tiles -- the old `ui-grid-b` / `SheetTile` construction -- in which nothing
+ * showed a value, so reading your own character meant opening 29 screens.
+ *
+ * Three ideas carry it:
+ *   1. Counts inline. `character.get(category)` is a pointer column on the
+ *      row, so `.length` is free without hydrating a single trait. Every
+ *      category shows what it holds before you tap it.
+ *   2. Seven accordions, not fifty-nine tiles.
+ *   3. A filter over every destination, for people who know where they are
+ *      going.
+ *
+ * Mobile is the real target: Yorick gets opened on a phone, at a game, in a
+ * dim room. The breakpoint at 720px is not a shrink of the desktop layout,
+ * it is a different arrangement. See the block at the bottom.
+ */
+
+.sheet-redesign {
+  --sr-ground: #14101a;
+  --sr-raised: #1e1826;
+  --sr-rail: #191320;
+  --sr-edge: #2c2436;
+  --sr-bone: #ede6da;
+  --sr-muted: #9a8fa6;
+  --sr-brass: #c9a227;
+  --sr-brass-dim: #8a6f1b;
+  --sr-spent: #6b5f78;
+
+  background: var(--sr-ground);
+  color: var(--sr-bone);
+  font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  font-weight: 300;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * `.ui-content` is jQuery Mobile's padded content box. The masthead has to
+ * bleed to the window edges, so the padding is removed here and reinstated
+ * per-region below.
+ */
+.sheet-redesign .ui-content,
+.ui-page.sheet-redesign > [role='main'] {
+  padding: 0;
+  margin: 0;
+  background: var(--sr-ground);
+}
+
+.sheet-redesign a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.sheet-redesign .sr-display {
+  font-family: 'Archivo Narrow', 'Arial Narrow', 'Helvetica Neue', sans-serif;
+}
+
+/* ============================================================ MASTHEAD ==== */
+
+.sheet-redesign .sr-masthead {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  /*
+   * A definite height, never min-height. The portrait is a 2:3 photograph and
+   * its intrinsic ratio will drive this band to 500px+ and open a dead gap
+   * under the name if the height is left to content.
+   */
+  height: 330px;
+  overflow: hidden;
+  background:
+    radial-gradient(110% 120% at 12% 10%, #33273f 0%, rgba(51, 39, 63, 0) 64%),
+    linear-gradient(160deg, #221a2d 0%, #14101a 72%);
+  border-bottom: 1px solid var(--sr-edge);
+}
+
+.sheet-redesign .sr-mast-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 30px 26px 24px 34px;
+}
+
+/*
+ * `#insertheader` and its child carry the character's own id and Parse class
+ * name, and the E2E suite reads BOTH -- `legacy-bug-regressions.spec.js` takes
+ * `#character #insertheader`'s firstElementChild and asserts on it. So the
+ * masthead does not re-implement the identity block: it styles the one
+ * `CharacterSummary` already renders there. The `h2` below is that component's
+ * name element, and the `p` runs are its venue-specific lines.
+ */
+.sheet-redesign .sr-identity {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sheet-redesign .sr-identity h2 {
+  font-family: 'Archivo Narrow', 'Arial Narrow', sans-serif;
+  /* Character names are free text and nothing enforces a length or a space in
+     them. Without this a long one runs off the side of a phone. */
+  overflow-wrap: anywhere;
+  font-size: 48px;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  line-height: 1.03;
+  margin: 0;
+  color: var(--sr-bone);
+}
+
+.sheet-redesign .sr-identity p {
+  margin: 4px 0 0;
+  color: var(--sr-muted);
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+/*
+ * CharacterSummary's portrait. In the old sheet this was a thumbnail above the
+ * name; here it is the large image in the upper right that the design is built
+ * around. Positioned out of the text column entirely.
+ */
+.sheet-redesign .sr-mast-text .character-link-portrait,
+.sheet-redesign .sr-identity a:has(.character-link-portrait) {
+  display: none;
+}
+
+.sheet-redesign .sr-portrait {
+  position: relative;
+  flex: none;
+  width: 340px;
+  overflow: hidden;
+  -webkit-mask: linear-gradient(to left, #000 66%, transparent 100%);
+  mask: linear-gradient(to left, #000 66%, transparent 100%);
+}
+
+.sheet-redesign .sr-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 22%;
+  filter: saturate(0.74) contrast(1.04) brightness(0.86);
+}
+
+.sheet-redesign .sr-portrait::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(20, 16, 26, 0.82) 0%,
+    rgba(20, 16, 26, 0.1) 46%,
+    rgba(20, 16, 26, 0.28) 100%
+  );
+}
+
+.sheet-redesign .sr-badge {
+  align-self: flex-start;
+  margin-top: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--sr-brass);
+  border: 1px solid var(--sr-brass-dim);
+  border-radius: 2px;
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+
+/* ---- XP summary ---------------------------------------------------------
+ * The three labels render their full text -- "Earned XP:", "Spent XP:",
+ * "Available XP:" -- because `character-sheet.spec.js:118-120` asserts each is
+ * visible by exact string. `text-transform` changes the rendering only; the
+ * DOM text those assertions read is untouched. Shortening the label to
+ * "EARNED" in CSS content would break all three.
+ */
+.sheet-redesign .sr-xp {
+  margin-top: auto;
+  padding-top: 24px;
+  max-width: 620px;
+}
+
+.sheet-redesign .sr-xp-nums {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 30px;
+  align-items: baseline;
+  margin-bottom: 9px;
+}
+
+.sheet-redesign .sr-xp-nums > span {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.sheet-redesign .sr-xp-k {
+  font-size: 10.5px;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+  color: var(--sr-muted);
+  white-space: nowrap;
+}
+
+.sheet-redesign .sr-xp-v {
+  font-family: 'Archivo Narrow', 'Arial Narrow', sans-serif;
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.sheet-redesign .sr-xp-avail .sr-xp-v {
+  color: var(--sr-brass);
+}
+
+.sheet-redesign .sr-bar {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--sr-edge);
+  overflow: hidden;
+}
+
+.sheet-redesign .sr-bar i {
+  display: block;
+  height: 100%;
+}
+
+.sheet-redesign .sr-bar .sr-bar-spent {
+  background: var(--sr-spent);
+}
+
+.sheet-redesign .sr-bar .sr-bar-free {
+  background: var(--sr-brass);
+}
+
+.sheet-redesign .sr-bar-note {
+  margin-top: 7px;
+  font-size: 12.5px;
+  color: var(--sr-muted);
+}
+
+/* ============================================================= TOOLBAR ==== */
+
+.sheet-redesign .sr-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 20px;
+  background: var(--sr-raised);
+  border-bottom: 1px solid var(--sr-edge);
+}
+
+.sheet-redesign .sr-rail-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: transparent;
+  border: 1px solid var(--sr-edge);
+  border-radius: 6px;
+  color: var(--sr-bone);
+  font: inherit;
+  font-size: 13.5px;
+  padding: 7px 13px;
+  cursor: pointer;
+}
+
+.sheet-redesign .sr-rail-toggle:hover {
+  border-color: var(--sr-brass-dim);
+  color: var(--sr-brass);
+}
+
+.sheet-redesign .sr-search {
+  position: relative;
+  flex: 1;
+  max-width: 520px;
+}
+
+.sheet-redesign .sr-search input {
+  width: 100%;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 300;
+  padding: 8px 12px 8px 34px;
+  background: var(--sr-ground);
+  color: var(--sr-bone);
+  border: 1px solid var(--sr-edge);
+  border-radius: 6px;
+  outline: none;
+}
+
+.sheet-redesign .sr-search input::placeholder {
+  color: var(--sr-muted);
+}
+
+.sheet-redesign .sr-search input:focus {
+  border-color: var(--sr-brass-dim);
+  box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.09);
+}
+
+.sheet-redesign .sr-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 8px;
+  color: var(--sr-muted);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.sheet-redesign .sr-toolbar-count {
+  margin-left: auto;
+  color: var(--sr-muted);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+/* =============================================================== SHELL ==== */
+
+.sheet-redesign .sr-shell {
+  display: flex;
+  align-items: flex-start;
+}
+
+.sheet-redesign .sr-rail {
+  flex: none;
+  width: 246px;
+  padding: 14px 10px 40px;
+  background: var(--sr-rail);
+  border-right: 1px solid var(--sr-edge);
+  align-self: stretch;
+}
+
+/* Desktop: the toggle collapses the rail. Mobile inverts this; see below. */
+.sheet-redesign.sr-nav-toggled .sr-rail {
+  display: none;
+}
+
+.sheet-redesign .sr-rail-group {
+  padding: 11px 11px 5px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+  color: var(--sr-muted);
+}
+
+.sheet-redesign .sr-rail a,
+.sheet-redesign .sr-rail button {
+  display: flex;
+  box-sizing: border-box;
+  width: 100%;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 1px;
+  padding: 7px 11px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--sr-bone);
+  font: inherit;
+  font-size: 14.5px;
+  line-height: 1.35;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.sheet-redesign .sr-rail a:hover,
+.sheet-redesign .sr-rail button:hover {
+  background: rgba(201, 162, 39, 0.07);
+}
+
+.sheet-redesign .sr-rail a .sr-count,
+.sheet-redesign .sr-rail button .sr-count {
+  margin-left: auto;
+  color: var(--sr-muted);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sheet-redesign .sr-content {
+  flex: 1;
+  min-width: 0;
+  max-width: 900px;
+  padding: 24px 30px 70px;
+}
+
+/* ============================================================ SECTIONS ==== */
+
+.sheet-redesign .sr-section {
+  border-bottom: 1px solid var(--sr-edge);
+}
+
+.sheet-redesign .sr-section:first-of-type {
+  border-top: 1px solid var(--sr-edge);
+}
+
+.sheet-redesign .sr-section > summary {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 17px 4px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.sheet-redesign .sr-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.sheet-redesign .sr-glyph {
+  width: 12px;
+  color: var(--sr-brass);
+  font-size: 13px;
+  transition: transform 0.15s ease;
+}
+
+.sheet-redesign .sr-section[open] .sr-glyph {
+  transform: rotate(90deg);
+}
+
+.sheet-redesign .sr-section-title {
+  flex: 1;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.sheet-redesign .sr-tally {
+  color: var(--sr-muted);
+  font-size: 14px;
+  text-align: right;
+}
+
+.sheet-redesign .sr-section-body {
+  padding: 2px 0 18px 28px;
+}
+
+/* ================================================================ ROWS ==== */
+
+.sheet-redesign .sr-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 4px;
+  border-bottom: 1px solid rgba(44, 36, 54, 0.6);
+}
+
+.sheet-redesign .sr-row:hover {
+  background: rgba(201, 162, 39, 0.05);
+}
+
+.sheet-redesign .sr-row-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 300;
+}
+
+.sheet-redesign .sr-row-detail {
+  max-width: 52%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--sr-muted);
+  font-size: 13.5px;
+}
+
+.sheet-redesign .sr-row-value {
+  min-width: 1.6em;
+  text-align: right;
+  font-weight: 600;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  color: var(--sr-brass);
+}
+
+.sheet-redesign .sr-row-value.sr-none {
+  color: var(--sr-muted);
+  font-weight: 300;
+}
+
+/* Quick actions */
+.sheet-redesign .sr-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-bottom: 24px;
+}
+
+.sheet-redesign .sr-quick a {
+  border: 1px solid var(--sr-edge);
+  border-radius: 999px;
+  padding: 6px 15px;
+  font-size: 13.5px;
+  color: var(--sr-muted);
+}
+
+.sheet-redesign .sr-quick a:hover {
+  color: var(--sr-bone);
+  border-color: var(--sr-brass-dim);
+}
+
+.sheet-redesign .sr-quick a.sr-key {
+  color: var(--sr-brass);
+  border-color: var(--sr-brass-dim);
+}
+
+/* Filter results */
+.sheet-redesign .sr-results-head {
+  padding: 4px 0 10px;
+  color: var(--sr-muted);
+  font-size: 13px;
+}
+
+.sheet-redesign .sr-empty {
+  padding: 26px 4px;
+  color: var(--sr-muted);
+}
+
+/* Information grid */
+.sheet-redesign .sr-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 30px;
+}
+
+.sheet-redesign .sr-info-item {
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(44, 36, 54, 0.6);
+}
+
+.sheet-redesign .sr-info-k {
+  font-size: 10.5px;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+  color: var(--sr-muted);
+}
+
+.sheet-redesign .sr-info-v {
+  font-size: 16.5px;
+}
+
+.sheet-redesign .sr-info-v.sr-unset {
+  color: var(--sr-muted);
+  font-style: italic;
+}
+
+.sheet-redesign .sr-info-actions {
+  display: flex;
+  gap: 14px;
+  margin-top: 3px;
+}
+
+.sheet-redesign .sr-info-actions a {
+  font-size: 13px;
+  color: var(--sr-brass);
+}
+
+.sheet-redesign .sr-info-actions a:hover {
+  text-decoration: underline;
+}
+
+/* Drawer scrim: inert until the mobile breakpoint turns it on. */
+.sheet-redesign .sr-scrim {
+  display: none;
+}
+
+/* ============================================================== MOBILE ====
+ * Not a squeeze of the desktop layout. Three structural changes:
+ *   1. The portrait goes full-bleed BEHIND the masthead rather than beside it.
+ *      A 340px photo cannot sit next to text on a 390px screen. Desktop takes
+ *      its drama from open space; mobile takes it from the photograph.
+ *   2. The rail becomes an off-canvas drawer. Same markup, same toggle: the
+ *      `sr-nav-toggled` class means "collapse" above the breakpoint and "open"
+ *      below it, which is the right behaviour at each width.
+ *   3. Rows stack -- name and value on one line, detail beneath. Side by side
+ *      truncates to nothing under ~500px.
+ */
+@media (max-width: 720px) {
+  .sheet-redesign .sr-masthead {
+    display: block;
+    height: 350px;
+  }
+
+  .sheet-redesign .sr-mast-text {
+    position: relative;
+    z-index: 2;
+    height: 100%;
+    padding: 16px 16px 18px;
+  }
+
+  .sheet-redesign .sr-portrait {
+    position: absolute;
+    inset: 0;
+    width: auto;
+    -webkit-mask: none;
+    mask: none;
+  }
+
+  .sheet-redesign .sr-portrait img {
+    object-position: 50% 18%;
+  }
+
+  /*
+   * A bottom-only scrim is not enough here. A portrait shot against a bright
+   * background puts its blown-out side wherever the photographer put it, and
+   * the name sits lower-left, so the left edge gets a wash too. Without it the
+   * name disappears into the highlights on exactly the photographs people use.
+   */
+  .sheet-redesign .sr-portrait::after {
+    background:
+      linear-gradient(
+        to top,
+        rgba(20, 16, 26, 0.96) 0%,
+        rgba(20, 16, 26, 0.74) 30%,
+        rgba(20, 16, 26, 0.1) 66%,
+        rgba(20, 16, 26, 0.28) 100%
+      ),
+      linear-gradient(
+        to right,
+        rgba(20, 16, 26, 0.58) 0%,
+        rgba(20, 16, 26, 0.1) 52%,
+        rgba(20, 16, 26, 0) 100%
+      );
+  }
+
+  /* The auto sits on the FIRST child so identity and XP travel down together
+     and the photograph keeps the top of the frame. */
+  .sheet-redesign .sr-identity {
+    margin-top: auto;
+  }
+
+  .sheet-redesign .sr-identity h2 {
+    font-size: 34px;
+  }
+
+  .sheet-redesign .sr-identity p {
+    font-size: 14.5px;
+  }
+
+  .sheet-redesign .sr-badge {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    margin: 0;
+    background: rgba(20, 16, 26, 0.62);
+  }
+
+  /* XP gets a solid band bled to the edges. It will not stay readable over a
+     photograph, and it is the one thing on this screen people check. */
+  .sheet-redesign .sr-xp {
+    margin: 12px -16px -18px;
+    padding: 12px 16px 13px;
+    max-width: none;
+    background: var(--sr-raised);
+    border-top: 1px solid var(--sr-edge);
+  }
+
+  .sheet-redesign .sr-xp-nums {
+    gap: 6px 18px;
+    margin-bottom: 8px;
+  }
+
+  .sheet-redesign .sr-xp-v {
+    font-size: 19px;
+  }
+
+  .sheet-redesign .sr-toolbar {
+    padding: 9px 12px;
+    gap: 9px;
+  }
+
+  .sheet-redesign .sr-toolbar-count {
+    display: none;
+  }
+
+  .sheet-redesign .sr-rail-toggle {
+    padding: 9px 12px;
+    min-height: 44px;
+  }
+
+  .sheet-redesign .sr-rail-toggle .sr-rail-toggle-label {
+    display: none;
+  }
+
+  /* 16px stops iOS zooming the page when the field takes focus. */
+  .sheet-redesign .sr-search input {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .sheet-redesign .sr-search-icon {
+    top: 12px;
+  }
+
+  .sheet-redesign .sr-shell {
+    display: block;
+  }
+
+  .sheet-redesign .sr-rail {
+    position: fixed;
+    /* Clears jQuery Mobile's fixed header, which is drawn over anything that
+       starts at 0 and swallowed this drawer's first group heading. */
+    top: 45px;
+    left: 0;
+    bottom: 0;
+    z-index: 60;
+    width: 282px;
+    height: auto;
+    overflow-y: auto;
+    padding: 16px 12px 30px;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
+  }
+
+  .sheet-redesign.sr-nav-toggled .sr-rail {
+    display: block;
+    transform: translateX(0);
+  }
+
+  /* Both kinds of entry, or the drawer shows two different row heights: the
+     trait groups render as buttons and everything else as links. */
+  .sheet-redesign .sr-rail a,
+  .sheet-redesign .sr-rail button {
+    padding: 11px 12px;
+    min-height: 44px;
+  }
+
+  .sheet-redesign .sr-scrim {
+    display: block;
+    position: fixed;
+    top: 45px;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 50;
+    background: rgba(8, 6, 11, 0.6);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+
+  .sheet-redesign.sr-nav-toggled .sr-scrim {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .sheet-redesign .sr-content {
+    padding: 16px 14px 60px;
+    max-width: none;
+  }
+
+  .sheet-redesign .sr-quick {
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+
+  .sheet-redesign .sr-quick a {
+    display: flex;
+    align-items: center;
+    padding: 7px 11px;
+    min-height: 36px;
+    font-size: 12.5px;
+  }
+
+  .sheet-redesign .sr-section > summary {
+    padding: 14px 2px;
+    min-height: 52px;
+  }
+
+  .sheet-redesign .sr-section-title {
+    font-size: 18px;
+  }
+
+  .sheet-redesign .sr-tally {
+    font-size: 12.5px;
+    max-width: 42%;
+  }
+
+  .sheet-redesign .sr-section-body {
+    padding-left: 14px;
+  }
+
+  .sheet-redesign .sr-row {
+    flex-wrap: wrap;
+    padding: 11px 4px;
+    min-height: 44px;
+  }
+
+  .sheet-redesign .sr-row-name {
+    flex: 1 1 auto;
+    font-size: 15.5px;
+  }
+
+  .sheet-redesign .sr-row-value {
+    order: 2;
+  }
+
+  .sheet-redesign .sr-row-detail {
+    order: 3;
+    flex: 1 0 100%;
+    max-width: none;
+    margin-top: 2px;
+    white-space: normal;
+    font-size: 13px;
+  }
+
+  .sheet-redesign .sr-info {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Respect the system setting; the transitions here are decorative. */
+@media (prefers-reduced-motion: reduce) {
+  .sheet-redesign .sr-rail,
+  .sheet-redesign .sr-scrim,
+  .sheet-redesign .sr-glyph {
+    transition: none;
+  }
+}

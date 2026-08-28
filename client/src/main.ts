@@ -13,6 +13,7 @@
  */
 import { createApp } from 'vue'
 import '@/styles/jqm-structural.css'
+import '@/styles/sheet-theme.css'
 import { createPinia } from 'pinia'
 import App from '@/App.vue'
 import { initParse } from '@/parse'
