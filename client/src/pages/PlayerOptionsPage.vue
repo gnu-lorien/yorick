@@ -30,7 +30,7 @@
  * race with itself.
  */
 import { computed, onMounted, ref } from 'vue'
-import { JqmPage } from '@/components/jqm'
+import { JqmListItem, JqmListview, JqmPage } from '@/components/jqm'
 import TroupeList from '@/components/TroupeList.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRolesStore } from '@/stores/roles'
