@@ -20,24 +20,6 @@
             "command": "node .claude/dev-with-mongo.js",
             "problemMatcher": [],
             "isBackground": true,
-            "options": {
-                "env": {
-                    // parse-server bakes this origin into every Parse.File URL,
-                    // and cloud/main.js reads each uploaded portrait BACK over
-                    // HTTP from it to build the thumbnails.
-                    //
-                    // dev-with-mongo.js otherwise points it at the tailnet
-                    // hostname, so that a phone can upload. On a desktop that
-                    // is a trap: `tailscale serve` on this machine proxies / to
-                    // 127.0.0.1:3773, which is the editor, not Yorick. The
-                    // readback then fetches HTML, hands it to Jimp, and the
-                    // upload fails with "Could not find MIME for Buffer".
-                    //
-                    // Unset this (and run `tailscale serve --bg 41337`) if you
-                    // actually want to reach the dev server from a phone.
-                    "PUBLIC_SERVER_URL": "http://localhost:41337/parse/1"
-                }
-            },
             "presentation": {
                 "reveal": "always",
                 "panel": "dedicated",
