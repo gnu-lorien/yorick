@@ -102,32 +102,72 @@ function tailscaleHostname() {
 }
 
 /**
- * Warn when the tailnet proxy points somewhere this process is not.
+ * The tailnet origin that reaches THIS app, read out of `tailscale serve`.
  *
- * A `tailscale serve --bg` mapping outlives the process it was pointed at, so
- * a stale one survives a port change and answers 502 forever after -- which
- * reads as the app being broken rather than the proxy being stale.
+ * Not assembled from the hostname alone. `serve` publishes on whatever https
+ * port it was given, and on this machine port 443 is already spoken for -- `/`
+ * there proxies to the editor. Guessing `https://<host>` therefore produced a
+ * PUBLIC_SERVER_URL that resolved, answered 200, and returned the editor's
+ * HTML; cloud/main.js fed that to Jimp and every portrait upload died with
+ * "Could not find MIME for Buffer". A URL that answers is not a URL that is
+ * right, so this reads the actual mapping instead of predicting it.
  *
- * Warn, do not "fix". Rewriting a serve config changes how this machine is
+ * Returns an origin like `https://host:8443` such that origin + MOUNT_PATH
+ * reaches this process, or null when no mapping does.
+ *
+ * `serve status` looks like:
+ *
+ *   https://host.tailnet.ts.net (tailnet only)
+ *   |-- / proxy http://127.0.0.1:3773
+ *
+ *   https://host.tailnet.ts.net:8443 (tailnet only)
+ *   |-- /      proxy http://127.0.0.1:5273
+ *   |-- /parse proxy http://127.0.0.1:41337/parse
+ *
+ * Still only ever reads. Rewriting a serve config changes how this machine is
  * reachable from other people's devices, and that is the operator's call.
  */
-function checkServeMapping() {
+function tailnetOrigin() {
+  var out;
   try {
-    var out = execFileSync('tailscale', ['serve', 'status'], {
+    out = execFileSync('tailscale', ['serve', 'status'], {
       encoding: 'utf8',
       timeout: 5000,
       stdio: ['ignore', 'pipe', 'ignore']
     });
-    if (out.indexOf('proxy') === -1) return;
-    if (out.indexOf(':' + APP_PORT) === -1) {
-      console.warn('[dev-mongo] WARNING: `tailscale serve` does not point at ' + APP_PORT + ':');
-      out.split(/\r?\n/).forEach(function (l) {
-        if (l.trim()) console.warn('[dev-mongo]   ' + l);
-      });
-      console.warn('[dev-mongo] The tailnet URL will answer 502. Repoint it with:');
-      console.warn('[dev-mongo]   tailscale serve --bg ' + APP_PORT);
+  } catch (e) {
+    return null; // tailscale absent or stopped; nothing to read
+  }
+
+  var origin = null;
+  var match = null;
+  out.split(/\r?\n/).forEach(function (line) {
+    var text = line.trim();
+    var head = /^(https:\/\/\S+?)(?:\s|$)/.exec(text);
+    if (head && text.indexOf('|--') !== 0) {
+      origin = head[1].replace(/\/$/, '');
+      return;
     }
-  } catch (e) { /* tailscale absent; nothing to check */ }
+    var mount = /^\|--\s+(\S+)\s+proxy\s+(\S+)/.exec(text);
+    if (!mount || !origin || match) return;
+
+    var mountPath = mount[1].replace(/\/$/, '');       // '/parse', or '' for '/'
+    var target = mount[2];
+    if (target.indexOf(':' + APP_PORT) === -1) return;
+
+    // Tailscale strips the mount path and appends the rest to the target's
+    // own path, so the two have to agree or the app is handed a truncated
+    // URL. `/parse -> :41337/parse` is identity; `/parse -> :41337` turns
+    // /parse/1/... into /1/... and 404s everything.
+    var targetPath = (/^https?:\/\/[^/]+(\/.*)?$/.exec(target) || [])[1] || '';
+    targetPath = targetPath.replace(/\/$/, '');
+    if (targetPath !== mountPath) return;
+    if (mountPath && MOUNT_PATH.indexOf(mountPath + '/') !== 0 && MOUNT_PATH !== mountPath) return;
+
+    match = origin;
+  });
+
+  return match;
 }
 
 function canConnect(port) {
@@ -243,13 +283,19 @@ async function main() {
   // phone resolves to the phone and the save is refused. See
   // resolvePublicServerURL in index.js.
   if (!env.PUBLIC_SERVER_URL) {
-    var host = tailscaleHostname();
-    if (host) {
-      env.PUBLIC_SERVER_URL = 'https://' + host + MOUNT_PATH;
-      console.log('[dev-mongo] Tailnet URL: https://' + host);
+    var origin = tailnetOrigin();
+    if (origin) {
+      env.PUBLIC_SERVER_URL = origin + MOUNT_PATH;
+      console.log('[dev-mongo] Tailnet URL: ' + origin);
+    } else if (tailscaleHostname()) {
+      console.warn('[dev-mongo] WARNING: no `tailscale serve` mapping reaches port ' + APP_PORT + '.');
+      console.warn('[dev-mongo] Portrait uploads will fail from anywhere but this machine.');
+      console.warn('[dev-mongo] Add one (443 is taken by the editor -- use another port):');
+      console.warn('[dev-mongo]   tailscale serve --bg --https=8443 --set-path=' + MOUNT_PATH.replace(/\/1$/, '') +
+                   ' http://127.0.0.1:' + APP_PORT + MOUNT_PATH.replace(/\/1$/, ''));
+      console.warn('[dev-mongo] See docs/runbooks/tailscale-dev-environment.md.');
     }
   }
-  checkServeMapping();
 
   var app = spawn(process.execPath, ['index.js'], {
     cwd: appDir,

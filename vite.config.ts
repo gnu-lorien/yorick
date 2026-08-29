@@ -76,6 +76,46 @@ export default defineConfig({
   server: {
     port: Number(process.env.VITE_PORT || 5273),
     strictPort: true,
+    /*
+     * IPv4 loopback, spelled out.
+     *
+     * Vite's default is the NAME `localhost`, and Node binds the single
+     * address that resolves to -- ::1 or 127.0.0.1 depending on the machine's
+     * resolver order, not on anything in this repo. `tailscale serve` below
+     * dials a literal 127.0.0.1, so on a machine that lands on ::1 the proxy
+     * gets connection refused and returns a bare 502 while the dev server sits
+     * there reporting itself ready. Binding the address rather than the name
+     * removes the coin flip.
+     */
+    host: '127.0.0.1',
+    /*
+     * This dev server is normally reached over the tailnet, not on localhost.
+     *
+     * `tailscale serve` fronts it with TLS on a MagicDNS name and forwards to
+     * 127.0.0.1, so the socket stays on loopback -- no `host: true`, and
+     * nothing new exposed to the LAN. What DOES change is the `Host` header:
+     * Vite rejects any host it was not told about with "Blocked request",
+     * which is a blank page with the reason only in the terminal.
+     *
+     * `.ts.net` names resolve only through a tailnet's own DNS and cannot be
+     * pointed at this machine by anyone outside it, so allowing the suffix is
+     * not the DNS-rebinding hole a wildcard would be.
+     */
+    allowedHosts: ['.ts.net'],
+    /*
+     * HMR, when something is proxying in front of us.
+     *
+     * The browser is on https://<host>:8443 but Vite tells its client to dial
+     * the port IT is listening on (5273) over plain ws, which is not open to
+     * the tailnet -- so hot reload silently stops working and edits appear
+     * only on a manual refresh. `YORICK_SERVE_PORT` is the public port the
+     * proxy answers on; the hostname is left unset so the client keeps using
+     * whatever host the page was loaded from. Unset, HMR is untouched, and a
+     * plain `npm run dev:vue` on localhost behaves exactly as before.
+     */
+    hmr: process.env.YORICK_SERVE_PORT
+      ? { protocol: 'wss', clientPort: Number(process.env.YORICK_SERVE_PORT) }
+      : undefined,
     proxy: {
       '/parse': {
         target: `http://127.0.0.1:${process.env.PORT || 41337}`,

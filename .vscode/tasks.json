@@ -32,6 +32,15 @@
             "command": "npm run dev:vue",
             "problemMatcher": [],
             "isBackground": true,
+            "options": {
+                "env": {
+                    // The https port `tailscale serve` publishes this on, so
+                    // Vite tells its HMR client to dial the proxy instead of
+                    // its own unreachable 5273. See vite.config.ts and
+                    // docs/runbooks/tailscale-dev-environment.md.
+                    "YORICK_SERVE_PORT": "8443"
+                }
+            },
             "presentation": {
                 "reveal": "always",
                 "panel": "dedicated",

@@ -4,11 +4,30 @@ A dev environment you can open on a phone — or any device on your tailnet —
 backed by a real MongoDB that keeps its data between restarts. Nothing is
 exposed to the public internet, and the E2E suite is entirely unaffected.
 
-    npm run dev:tailnet          # or: node .claude/dev-with-mongo.js
-    tailscale serve --bg 41337   # once per machine
+Once per machine, publish the two dev servers on one https port:
 
-Then open `https://<machine>.<tailnet>.ts.net` on the phone. The launcher
+    tailscale serve --bg --https=8443 --set-path=/     http://127.0.0.1:5273
+    tailscale serve --bg --https=8443 --set-path=/parse http://127.0.0.1:41337/parse
+
+Then, per session:
+
+    npm run dev:tailnet     # app + mongo  (or: node .claude/dev-with-mongo.js)
+    YORICK_SERVE_PORT=8443 npm run dev:vue
+
+Or run the `Dev: Full stack (app + Vue client)` task in the editor, which does
+both. Open `https://<machine>.<tailnet>.ts.net:8443` on the phone; the launcher
 prints the exact URL at startup.
+
+**Why 8443 and not 443.** `tailscale serve` publishes on whatever https port it
+is given, and on a machine that already serves something at `/` on 443 — a web
+editor, say — repointing it takes that down. A second port costs nothing and
+touches nothing.
+
+**Why both front end and API on one origin.** `siteconfig` recognises a
+`.ts.net` hostname and uses `window.location.origin + '/parse/1'` as the API
+base, so a single origin means no CORS and no configuration. The `/parse` mount
+goes straight to the app rather than through Vite, so uploaded-file URLs keep
+working even when the Vue dev server is not running.
 
 ---
 
@@ -18,7 +37,9 @@ Three things in this repo make the naive version fail, each of them quietly.
 
 ### 1. The client picks its API server by hostname
 
-`public/scripts/app/siteconfig.js` chooses a config from
+Both front ends do this: `public/scripts/app/siteconfig.js` for the legacy
+client and `client/src/config/siteconfig.ts` for the Vue one. Each chooses a
+config from
 `window.location.hostname`. Until recently only `localhost` and `127.0.0.1`
 resolved to "same origin as this page"; everything else fell through to
 `ConfigGnuLorienDev`, which points at a Cloud9 host that stopped existing years
@@ -35,6 +56,10 @@ same-origin:
 Both are private by construction — `.ts.net` names resolve only through the
 tailnet's own DNS, and `100.64/10` is not routable on the public internet — so
 neither can ever match a deployed host. The four deployed configs are untouched.
+
+This is also why the tailnet URL puts the app and the API on **one origin**: the
+same-origin branch is the only one that resolves to a working backend, so any
+layout that splits them across two ports has to be configured by hand instead.
 
 ### 2. A real database is never seeded automatically
 
@@ -88,9 +113,9 @@ Hence **41337** for the app and **27117** for the database. Leave 1337–1344 an
 1. Starts `mongod` on `127.0.0.1:27117` with a persistent dbpath, or reuses one
    already listening there.
 2. Waits for it to accept connections.
-3. Derives this machine's MagicDNS name from `tailscale status --json` and sets
-   `PUBLIC_SERVER_URL` from it.
-4. Warns if `tailscale serve` points at some other port.
+3. Reads `tailscale serve status`, finds the mapping that actually reaches the
+   app's port, and sets `PUBLIC_SERVER_URL` from it — origin *and* https port.
+4. Warns, with the command to fix it, if no mapping reaches the app.
 5. Starts `index.js` with `MONGODB_URI` pointed at the persistent database.
 6. On exit, stops the `mongod` **it started** — never one it merely found.
 
@@ -116,11 +141,12 @@ is one `git clean -xdf` away from deletion.
 
 ## Exposing it to the tailnet
 
-    tailscale serve --bg 41337
+    tailscale serve --bg --https=8443 --set-path=/     http://127.0.0.1:5273
+    tailscale serve --bg --https=8443 --set-path=/parse http://127.0.0.1:41337/parse
 
-This proxies `https://<machine>.<tailnet>.ts.net` to `127.0.0.1:41337`, with a
-real certificate. It is **tailnet-only** — not Funnel, so nothing is published
-to the public internet.
+This proxies `https://<machine>.<tailnet>.ts.net:8443` to the two dev servers
+with a real certificate. It is **tailnet-only** — not Funnel, so nothing is
+published to the public internet.
 
 Two reasons to prefer it over hitting `100.x.y.z:41337` directly:
 
@@ -131,7 +157,30 @@ Two reasons to prefer it over hitting `100.x.y.z:41337` directly:
 
 To tear it down:
 
-    tailscale serve --https=443 off
+    tailscale serve --https=8443 off
+
+### The mount path and the target path have to agree
+
+Tailscale strips the mount path and appends what is left to the target's *own*
+path. `--set-path=/parse` onto `http://127.0.0.1:41337/parse` is therefore the
+identity, and `/parse/1/health` arrives as `/parse/1/health`. Drop the `/parse`
+from the target and the app is handed `/1/health` instead, and 404s the entire
+API. The launcher checks the two agree before trusting a mapping.
+
+### Vite needs two things to sit behind this
+
+Set in `vite.config.ts`, so a plain `npm run dev:vue` is unchanged:
+
+- `allowedHosts: ['.ts.net']`. Vite rejects a `Host` header it was not told
+  about with "Blocked request" — a blank page, reason only in the terminal.
+- `host: '127.0.0.1'`. Vite's default is the *name* `localhost`, and Node binds
+  the single address that resolves to. Land on `::1` and the proxy, which dials
+  literal `127.0.0.1`, gets a bare 502 while Vite reports itself ready.
+
+And `YORICK_SERVE_PORT=8443` in the environment, which is what the
+`Dev: Vue client` task sets. Without it Vite tells its HMR client to dial port
+5273, which is not exposed, and hot reload silently stops working — edits show
+up only on a manual refresh.
 
 ### The serve mapping outlives the app
 
@@ -148,7 +197,7 @@ operator decision.
 
 - It binds `127.0.0.1`, not `0.0.0.0` — a connection to `<tailscale-ip>:27117`
   is refused.
-- `tailscale serve` forwards exactly one port, the app's.
+- `tailscale serve` forwards two ports, the app's and the Vue dev server's.
 - It is not on 27017, so `index.js`'s probe never finds it and neither does
   anything else looking in the usual place.
 
@@ -159,13 +208,13 @@ reach it. If you ever change the bind address, add credentials first.
 
 ## Verifying it works
 
-    curl -s https://<machine>.<tailnet>.ts.net/parse/1/health \
+    curl -s https://<machine>.<tailnet>.ts.net:8443/parse/1/health \
       -H "X-Parse-Application-Id: APPLICATION_ID"
 
 Expect `{"status":"ok"}`. To confirm the database is actually seeded rather than
 merely reachable, log in — an empty database answers this with an error:
 
-    curl -s -X POST https://<machine>.<tailnet>.ts.net/parse/1/login \
+    curl -s -X POST https://<machine>.<tailnet>.ts.net:8443/parse/1/login \
       -H "X-Parse-Application-Id: APPLICATION_ID" \
       -H "Content-Type: application/json" \
       -d '{"username":"devuser","password":"thedumbness"}'
@@ -173,12 +222,37 @@ merely reachable, log in — an empty database answers this with an error:
 Seeded test accounts are listed in `seed_db.js`: `devuser` (admin/storyteller),
 `sampmem`, `sampast`, `sampstranger`, `sampprivate`.
 
+### Verifying portrait uploads specifically
+
+This is the one thing a reachable app can still get wrong, so check it directly
+rather than inferring it. Upload a file and fetch the URL the server hands back
+— that URL is the one `cloud/main.js` will read from:
+
+    curl -s -X POST --data-binary @test_character_picture.jpg \
+      -H "X-Parse-Application-Id: APPLICATION_ID" \
+      -H "X-Parse-Master-Key: MASTER_KEY" \
+      -H "Content-Type: image/jpeg" \
+      http://127.0.0.1:41337/parse/1/files/portrait.jpg
+
+    curl -sI "<the url from the response>"
+
+The response URL must carry the tailnet host **and the `:8443`**, and the fetch
+must come back `Content-Type: image/jpeg`. Anything HTML means the URL resolves
+to something that is not this app, and every portrait save will fail with
+`Could not find MIME for Buffer`. Clean up after yourself:
+
+    curl -X DELETE -H "X-Parse-Application-Id: APPLICATION_ID" \
+      -H "X-Parse-Master-Key: MASTER_KEY" \
+      http://127.0.0.1:41337/parse/1/files/<name from the response>
+
 ---
 
 ## Troubleshooting
 
-**502 from the tailnet URL.** Either the app is not running or `tailscale serve`
-points at the wrong port. Check with `tailscale serve status`.
+**502 from the tailnet URL.** Nothing is listening where `tailscale serve` is
+dialling. Check with `tailscale serve status`, then check the target is up *on
+the address in that mapping* -- a dev server bound to `::1` refuses a
+`127.0.0.1` connection while looking perfectly healthy in its own terminal.
 
 **The app loads but every API call fails.** The hostname is not being recognised
 as same-origin. Check what `siteconfig.js` resolves to for your hostname — if
@@ -196,10 +270,21 @@ a culprit, from an elevated prompt while it is free:
     netsh int ipv4 add excludedportrange protocol=tcp startport=41337 numberofports=1 store=persistent
 
 **Portrait uploads are refused.** `cloud/main.js` reads each uploaded portrait
-back over HTTP from `publicServerURL`. If that points at `127.0.0.1` while you
-are uploading from a phone, it resolves to the phone and the save is refused —
-with an orphaned blob left in GridFS each time. The launcher sets it from the
-Tailscale hostname to avoid exactly this.
+back over HTTP from `publicServerURL`, so that URL has to reach *this app* from
+this machine. Two ways it does not:
+
+- Left at the `127.0.0.1` default, it resolves to the phone you are uploading
+  from, and the save is refused — with an orphaned blob left in GridFS each
+  time.
+- Assembled from the hostname alone, as `https://<machine>.<tailnet>.ts.net`, it
+  lands on whatever holds `/` on port 443 — here, the editor. That URL resolves,
+  answers `200`, and returns HTML; Jimp is handed a web page and the upload dies
+  with **`Could not find MIME for Buffer`**. A URL that answers is not a URL
+  that is right.
+
+The launcher reads the mapping out of `tailscale serve status` rather than
+predicting it, which is what keeps the second case from coming back. Run the
+portrait check above to confirm.
 
 ---
 
