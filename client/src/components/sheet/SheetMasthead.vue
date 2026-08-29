@@ -60,11 +60,34 @@ const bar = computed(() => {
   return { spent: `${pct}%`, free: `${100 - pct}%` }
 })
 
-/** The portrait, at masthead size rather than the old 128px thumbnail. */
+/**
+ * The largest thumbnail that exists, which is 256 -- not a design choice.
+ *
+ * `crop_and_thumb` in `cloud/main.js` generates exactly `[32, 64, 128, 256]`.
+ * Asking for a size outside that list is not an error and does not fall back
+ * to a smaller one: `get_thumbnail_sync` reads `thumb_<size>`, finds nothing,
+ * and returns the missing-portrait skull for a character that has a perfectly
+ * good portrait. Adding 512 to that list would only take effect for portraits
+ * saved afterwards, so it is a server change with a migration behind it rather
+ * than a one-line fix here.
+ */
+const PORTRAIT_SIZE = 256
+
+/**
+ * The portrait, or nothing.
+ *
+ * `get_thumbnail_sync` answers `head_skull.png` for every missing case, which
+ * is right for a list row that needs to occupy its space either way. The
+ * masthead is the opposite: it lays out around the portrait, and a character
+ * without one should get the plain gradient rather than a skull dimmed by the
+ * portrait's own filter and overlay into an unidentifiable smudge. So the
+ * sentinel is filtered out here instead of being rendered.
+ */
 const portrait = computed(() => {
   const c = props.character as unknown as { get_thumbnail_sync?: (n: number) => string }
   trackAll()
-  return c.get_thumbnail_sync?.(512)
+  const url = c.get_thumbnail_sync?.(PORTRAIT_SIZE)
+  return url && url !== 'head_skull.png' ? url : undefined
 })
 </script>
 
