@@ -237,8 +237,7 @@ require.config({
     paths: {
 
         // Core Libraries
-        //jquery: "jquery",
-        jquery: "//cdnjs.cloudflare.com/ajax/libs/jquery/1.11.2/jquery",
+        jquery: "jquery",
         
         jquerymobile: "jquery.mobile-1.4.5",
         underscore: "lodash",
