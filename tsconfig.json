@@ -16,7 +16,7 @@
     "noEmit": true,
     "types": ["node", "vite/client"],
     "baseUrl": ".",
-    "paths": { "@/*": ["client/src/*"] }
+    "paths": { "@/*": ["client/src/*"], "@yorick/venues/*": ["packages/venues/src/*"] }
   },
   "include": ["client/src/**/*.ts", "client/src/**/*.vue", "vite.config.ts"],
   "exclude": ["node_modules", "dist"]
