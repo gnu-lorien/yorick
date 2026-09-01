@@ -99,6 +99,7 @@ export default defineConfig({
       // script tag rather than an import -- see jqm/vis.ts.
       '@legacy-lib': resolve(__dirname, '../public/scripts/lib'),
       '@': resolve(__dirname, 'src'),
+      '@yorick/venues': resolve(__dirname, '../packages/venues/src/index'),
     },
   },
   server: {
