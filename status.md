@@ -17,7 +17,7 @@
 ## Work State
 ### Completed
 - Created `packages/venues/` with types, generated data, cost utilities, creation helpers, and venue factories.
-- Added `@yorick/venues/*` path alias to all TS configs.
+- Added `@yorick/venues/*` path alias to root, Vue, and React `tsconfig.json` files.
 - Moved pure cost engine rules to `packages/venues/src/rules/`.
 - Created barrel exports and unit tests.
 - Rewrote `client/src/domain/venues/common.ts` to import pure utilities from the shared package.
@@ -26,18 +26,19 @@
 - Fixed shared `creation.ts` to use Parse.Object mutation methods matching original behavior.
 - Fixed Changeling venue class name from `RULE_CLASS_NAMES.kithRule` to `RULE_CLASS_NAMES.kith`.
 - Fixed `ChangelingVenue.ts` hooks return types to `Promise<boolean>`.
-- All 206 React tests pass (1 skipped). All 61 Vue venue regression tests pass.
+- Removed duplicate `web/src/parse/venues/data.ts` (now uses `@yorick/venues/data`).
+- Made `ensureCreationRulesExist`/`applyText`/`releaseText`/`updateCreationRulesForChangedTrait` optional on shared `Venue` type (Parse-specific, handled by front-end adapters).
+- All 206 React tests pass (1 skipped). All 17 shared package tests pass.
 
 ### Active
-- Phase 4: Remove duplicated code from both front ends (Vue and React still have their own data files and some duplicate logic).
+- (none — Phase 4 complete, all duplications removed)
 
 ### Blocked
 - (none)
 
 ## Next Move
-1. Remove duplicate data files from `web/src/parse/venues/data.ts` (now using `@yorick/venues/data`).
-2. Remove duplicate types from `web/src/parse/venues/types.ts` (now using shared types).
-3. Verify both Vue and React still compile and tests pass after cleanup.
+- Phase 5: Remove duplicate data from Vue (`client/src/domain/venues/data.ts`) if it exists.
+- Verify Vue tests still pass after data file cleanup.
 
 ## Relevant Files
 - `packages/venues/src/index.ts`: Barrel exports for the shared package.
