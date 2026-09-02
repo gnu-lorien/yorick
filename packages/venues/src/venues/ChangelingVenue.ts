@@ -37,14 +37,14 @@ export interface ChangelingVenueHooks {
    * Retains Arts held free by both old and new Kith. Unpicks outgoing Arts,
    * saves, writes the Kith text, grants incoming Arts, saves again.
    */
-  applyKith(character: VenueCharacter, target: string, value: string): Promise<unknown>
+  applyKith(character: VenueCharacter, target: string, value: string): Promise<void>
 
   /**
    * Release a Kith from the character.
    *
    * Clears the Kith and unpicks its Arts.
    */
-  releaseKith(character: VenueCharacter, target: string): Promise<unknown>
+  releaseKith(character: VenueCharacter, target: string): Promise<void>
 }
 
 /**
@@ -124,13 +124,15 @@ export function createChangelingVenue(
     // Kith transaction hooks.
     async applyText(character, target, value) {
       if (typeof value === 'string') {
-        return hooks.applyKith(character, target, value)
+        await hooks.applyKith(character, target, value)
+        return true
       }
       return false
     },
 
     async releaseText(character, target) {
-      return hooks.releaseKith(character, target)
+      await hooks.releaseKith(character, target)
+      return true
     },
   }
 }

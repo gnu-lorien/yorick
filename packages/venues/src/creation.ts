@@ -111,10 +111,11 @@ export async function updateCreationRulesForChangedTrait(
   // Fetch the creation record (with error swallowing, matching the source).
   let creation: Parse.Object | undefined
   try {
-    const creations = await Parse.Object.fetchAllIfNeeded(
-      [(character as { get: (attr: string) => unknown }).get('creation')].filter(Boolean),
-    )
-    creation = creations[0] as Parse.Object | undefined
+    const raw = (character as { get: (attr: string) => unknown }).get('creation')
+    if (raw && typeof raw === 'object' && 'id' in raw && 'className' in raw) {
+      const [fetched] = await Parse.Object.fetchAllIfNeeded([raw as Parse.Object])
+      creation = fetched
+    }
   } catch {
     return
   }
