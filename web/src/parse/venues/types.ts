@@ -1,6 +1,6 @@
 import type { Character } from '../models/Character';
 import type { SimpleTrait } from '../models/SimpleTrait';
-import type { VenueData } from './data';
+import type { VenueData } from '@yorick/venues';
 
 /**
  * What distinguishes a vampire from a werewolf from a changeling.

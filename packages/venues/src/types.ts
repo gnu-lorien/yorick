@@ -228,8 +228,11 @@ export interface Venue {
    * Ports `ensure_creation_rules_exist`. Each venue seeds a different set of
    * pool counters, and all three then grant the same 30 experience with the
    * reason "Character Creation XP".
+   *
+   * Note: this requires Parse and is handled by the front-end adapter,
+   * not the factory.
    */
-  ensureCreationRulesExist(
+  ensureCreationRulesExist?(
     character: VenueCharacter,
     addExperienceNotation: (
       character: VenueCharacter,
@@ -256,8 +259,11 @@ export interface Venue {
    * Ports `update_creation_rules_for_changed_trait`. Two guards in every venue
    * matter: outside the sum categories, a change with no free value touches no
    * pool. A completed creation record is left alone.
+   *
+   * Note: this requires Parse and is handled by the front-end adapter,
+   * not the factory.
    */
-  updateCreationRulesForChangedTrait(
+  updateCreationRulesForChangedTrait?(
     character: VenueCharacter,
     category: string,
     trait: VenueTrait,

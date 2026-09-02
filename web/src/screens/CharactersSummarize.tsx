@@ -11,7 +11,7 @@ import { Character, sortCharacters } from '@/parse/models/Character';
 import type { SimpleTrait } from '@/parse/models/SimpleTrait';
 import { Troupe } from '@/parse/models/Troupe';
 import { hydratePointers } from '@/parse/users';
-import { venueData } from '@/parse/venues/data';
+import { venueData } from '@yorick/venues';
 import { useSession } from '@/parse/session';
 import { Form, SelectField, CheckboxField, BACKFORM_OWN_CLASS } from '@/forms/Backform';
 import { registerScreen, type ScreenProps } from './registry';

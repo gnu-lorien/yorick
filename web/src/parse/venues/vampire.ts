@@ -20,7 +20,7 @@ import { addExperienceNotation } from '../character/experience';
 import { sumOfPicks } from '../character/creation';
 import type { Character } from '../models/Character';
 import { fauxTrait, type SimpleTrait } from '../models/SimpleTrait';
-import { venueData } from './data';
+import { venueData } from '@yorick/venues';
 import { MAX_TRAIT_LEVEL, type CostEngine, type Venue, type VenueRulesLoader } from './types';
 
 import {

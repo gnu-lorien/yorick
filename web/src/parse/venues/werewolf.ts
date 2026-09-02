@@ -19,7 +19,7 @@ import type { SimpleTrait } from '../models/SimpleTrait';
 import { traitsIn } from '../character/traits';
 import { addExperienceNotation } from '../character/experience';
 import { sumOfPicks } from '../character/creation';
-import { venueData } from './data';
+import { venueData } from '@yorick/venues';
 import { MAX_TRAIT_LEVEL, type CostEngine, type Venue, type VenueRulesLoader } from './types';
 
 import WerewolfCosts, {

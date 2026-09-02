@@ -21,7 +21,7 @@ import { SimpleTrait } from '../models/SimpleTrait';
 import { addExperienceNotation } from '../character/experience';
 import { sumOfPicks, unpickFromCreation } from '../character/creation';
 import { baseUnpickText, baseUpdateText, updateTrait } from '../character/traits';
-import { venueData } from './data';
+import { venueData } from '@yorick/venues';
 import { MAX_TRAIT_LEVEL, type CostEngine, type Venue, type VenueRulesLoader } from './types';
 
 import {
