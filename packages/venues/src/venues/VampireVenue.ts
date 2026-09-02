@@ -4,11 +4,13 @@
  * Builds a `Venue` object from the generated data and the cost engine.
  * The factory is Parse-free: it provides the static interface, the cost engine
  * wiring, and the rule-loading callback.
+ *
+ * Note: creation rule updates (ensure/update) require Parse and are handled by
+ * the front-end adapter, not this factory.
  */
 import type { Venue, VenueCharacter, VenueTrait } from '../types'
 import { venueData } from '../data'
 import { createCostEngine } from '../costs'
-import { ensureCreationRulesExist, updateCreationRulesForChangedTrait } from '../creation'
 import {
   calculate_trait_cost as _vampireCalculateTraitCost,
   FREE_CATEGORIES,
@@ -88,13 +90,5 @@ export function createVampireVenue(
 
     totalCostCategories: data.totalCostCategories,
     sumCreationCategories: data.sumCreationCategories,
-
-    async ensureCreationRulesExist(character, addExperienceNotation) {
-      await ensureCreationRulesExist(character, data.creationSeed, addExperienceNotation)
-    },
-
-    async updateCreationRulesForChangedTrait(character, category, trait, freeValue) {
-      await updateCreationRulesForChangedTrait(character, data, category, trait, freeValue)
-    },
   }
 }

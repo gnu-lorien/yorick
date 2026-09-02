@@ -17,6 +17,8 @@
 import Parse from '@/parse'
 import * as common from '@/domain/venues/common'
 import { alwaysOf } from '@/domain/venues/types'
+import { createChangelingVenue, updateCreationRulesForChangedTrait as _updateCreation, venueData } from '@yorick/venues'
+import { RULE_CLASS_NAMES } from '@/parse/classes'
 import type {
   CategoryTriple,
   CreateDeps,
@@ -27,11 +29,7 @@ import type {
   VenueStrategy,
   VenueTrait,
 } from '@/domain/venues/types'
-import {
-  get_changeling_costs,
-  ChangelingBetaSliceCosts,
-  type CostCharacter as ChangelingCostCharacter,
-} from '@/domain/rules/BNSCTDBS_ChangelingCosts'
+import { venueData } from '@yorick/venues'
 
 /**
  * PERSISTED DATA. `[column, pretty name, group]`.
@@ -41,44 +39,14 @@ import {
  * category now returns `undefined` and is refused rather than granted for
  * nothing.
  */
-const ALL_SIMPLETRAIT_CATEGORIES: readonly CategoryTriple[] = [
-  ['attributes', 'Attributes', 'Attributes'],
-  ['focus_physicals', 'Physical Focus', 'Attributes'],
-  ['focus_mentals', 'Mental Focus', 'Attributes'],
-  ['focus_socials', 'Social Focus', 'Attributes'],
-  ['health_levels', 'Health Levels', 'Expended'],
-  ['willpower_sources', 'Willpower', 'Expended'],
-  ['skills', 'Skills', 'Skills'],
-  ['lore_specializations', 'Lore Specializations', 'Skills'],
-  ['academics_specializations', 'Academics Specializations', 'Skills'],
-  ['drive_specializations', 'Drive Specializations', 'Skills'],
-  ['linguistics_specializations', 'Languages', 'Skills'],
-  ['ctdbs_arts', 'Arts', 'Arts'],
-  ['ctdbs_arts_affinities_links', 'Arts Affinities', 'Arts'],
-  ['ctdbs_realms', 'Realms', 'Arts'],
-  ['ctdbs_backgrounds', 'Backgrounds', 'Backgrounds'],
-  ['ctdbs_holdings_specializations', 'Holdings Specializations', 'Backgrounds'],
-  ['contacts_specializations', 'Contacts Specializations', 'Backgrounds'],
-  ['allies_specializations', 'Allies Specializations', 'Backgrounds'],
-  ['influence_elite_specializations', 'Influence: Elite', 'Backgrounds'],
-  ['influence_underworld_specializations', 'Influence: Underworld', 'Backgrounds'],
-  ['ctdbs_merits', 'Merits', 'Merits and Flaws'],
-  ['ctdbs_flaws', 'Flaws', 'Merits and Flaws'],
-]
+const ALL_SIMPLETRAIT_CATEGORIES: readonly CategoryTriple[] = venueData.ChangelingBetaSlice.allCategories
 
 /**
  * PERSISTED DATA. The free-text columns.
  *
  * `ctdbs_kith` is not an ordinary one: writing it runs the Kith transaction.
  */
-const TEXT_ATTRIBUTES: readonly string[] = [
-  'archetype',
-  'ctdbs_kith',
-  'ctdbs_fealty_court',
-  'ctdbs_noble_house',
-  'ctdbs_kith_group_type',
-  'antecedence',
-]
+const TEXT_ATTRIBUTES: readonly string[] = venueData.ChangelingBetaSlice.textAttributes
 
 /**
  * Positionally aligned with `TEXT_ATTRIBUTES`.
@@ -86,32 +54,10 @@ const TEXT_ATTRIBUTES: readonly string[] = [
  * "Group" is a function of the character that ignores its argument -- the same
  * half-built hook Vampire has for "Faction". Carried over rather than flattened.
  */
-const TEXT_ATTRIBUTES_PRETTY_NAMES: readonly PrettyName[] = [
-  'Archetype',
-  'Kith',
-  'Court',
-  'House',
-  function () {
-    return 'Group'
-  },
-  'Primary, Secondary, or NPC',
-]
+const TEXT_ATTRIBUTES_PRETTY_NAMES: readonly PrettyName[] = venueData.ChangelingBetaSlice.textPrettyNames
 
 /** The categories whose creation counter is `7 - sum(values)`. PERSISTED DATA. */
-const SUM_CREATION_CATEGORIES: readonly string[] = ['ctdbs_merits', 'ctdbs_flaws']
-
-/** The categories booked against a creation pool. Anything else is booked nowhere. */
-const TRACKED_CREATION_CATEGORIES: readonly string[] = [
-  'ctdbs_flaws',
-  'ctdbs_merits',
-  'focus_mentals',
-  'focus_physicals',
-  'focus_socials',
-  'attributes',
-  'skills',
-  'ctdbs_arts',
-  'ctdbs_backgrounds',
-]
+const SUM_CREATION_CATEGORIES: readonly string[] = venueData.ChangelingBetaSlice.sumCreationCategories
 
 /**
  * THE EXACT POOL SEED for a new Changeling's `VampireCreation` row.
@@ -125,55 +71,13 @@ const TRACKED_CREATION_CATEGORIES: readonly string[] = [
  *
  * `clan: false` is a wizard step flag carried by all three venues and stays.
  */
-const CREATION_SEED: CreationSeed = {
-  completed: false,
-  concept: false,
-  archetype: false,
-  clan: false,
-  attributes: false,
-  focuses: false,
-  skills_4_remaining: 1,
-  skills_3_remaining: 2,
-  skills_2_remaining: 3,
-  skills_1_remaining: 4,
-  ctdbs_backgrounds_3_remaining: 1,
-  ctdbs_backgrounds_2_remaining: 1,
-  ctdbs_backgrounds_1_remaining: 1,
-  attributes_7_remaining: 1,
-  attributes_5_remaining: 1,
-  attributes_3_remaining: 1,
-  ctdbs_arts_1_remaining: 3,
-  focus_mentals_1_remaining: 1,
-  focus_socials_1_remaining: 1,
-  focus_physicals_1_remaining: 1,
-  ctdbs_merits_0_remaining: 7,
-  ctdbs_flaws_0_remaining: 7,
-  phase_1_finished: false,
-  initial_xp: 30,
-  phase_2_finished: false,
-}
+const CREATION_SEED: CreationSeed = venueData.ChangelingBetaSlice.creationSeed
 
 /** The categories `fetch_all_creation_elements` hydrates. */
-const CREATION_LIST_CATEGORIES: readonly string[] = [
-  'ctdbs_flaws',
-  'ctdbs_merits',
-  'focus_mentals',
-  'focus_physicals',
-  'focus_socials',
-  'attributes',
-  'skills',
-  'ctdbs_backgrounds',
-  'ctdbs_arts',
-]
+const CREATION_LIST_CATEGORIES: readonly string[] = venueData.ChangelingBetaSlice.creationListCategories
 
 /** The categories `calculate_total_cost` prices. */
-const TOTAL_COST_CATEGORIES: readonly string[] = [
-  'skills',
-  'ctdbs_backgrounds',
-  'ctdbs_arts',
-  'attributes',
-  'ctdbs_merits',
-]
+const TOTAL_COST_CATEGORIES: readonly string[] = venueData.ChangelingBetaSlice.totalCostCategories
 
 /**
  * Pointer columns `get_character` includes besides `portrait`.
@@ -184,11 +88,7 @@ const TOTAL_COST_CATEGORIES: readonly string[] = [
  * the pointer for a private owner and `get_me_acl` then rewrote the sheet's ACL
  * to whoever opened it.
  */
-const GET_CHARACTER_INCLUDES: readonly string[] = [
-  'ctdbs_backgrounds',
-  'ctdbs_arts_affinities_links',
-  'ctdbs_realms',
-]
+const GET_CHARACTER_INCLUDES: readonly string[] = venueData.ChangelingBetaSlice.getCharacterIncludes
 
 /**
  * The traits a new Changeling starts with.
@@ -197,30 +97,28 @@ const GET_CHARACTER_INCLUDES: readonly string[] = [
  * venues. Changeling has no venue-specific starting trait -- no Humanity, no
  * Gnosis.
  */
-const STARTING_TRAITS: readonly StartingTrait[] = [
-  { name: 'Healthy', value: 3, category: 'health_levels', free_value: 3 },
-  { name: 'Injured', value: 3, category: 'health_levels', free_value: 3 },
-  { name: 'Incapacitated', value: 3, category: 'health_levels', free_value: 3 },
-  { name: 'Willpower', value: 6, category: 'willpower_sources', free_value: 6 },
-]
+const STARTING_TRAITS: readonly StartingTrait[] = venueData.ChangelingBetaSlice.startingTraits
 
 /**
- * The cost engine, holding the Kith rules.
+ * The Kith rule table.
  *
- * `get_changeling_costs()` memoises the PROMISE, so a second caller during the
- * fetch waits rather than receiving an engine with an empty rule table -- which
- * would price every affinity Art at the non-affinity 6-per-level table and
- * would make `get_arts_affinities_for_kith` return nothing, so a Kith would
- * grant no Arts at all.
- *
- * The synchronous handle below starts as an engine with no rules, because
- * `calculate_trait_cost` and the Kith transaction are synchronous entry points
- * and the source read `self.Costs` the same way. Nothing should call them before
- * `initialize_costs` resolves; `get_character` awaits it, exactly as
- * `ChangelingBetaSlice#initialize_costs` did.
+ * `loadall.js:31` built one `Parse.Collection` of these at boot and fetched it
+ * once. There is no `Parse.Collection` here, so it is a module-level array plus
+ * the same fetch-once behaviour.
  */
-let Costs = new ChangelingBetaSliceCosts()
-let costsPromise: Promise<void> | null = null
+let kithRules: unknown[] = []
+let kithRulesPromise: Promise<void> | null = null
+
+/**
+ * `Parse.Collection.fetch` is a bare `new Parse.Query(model).find()` -- no
+ * limit.
+ */
+function fetchKithRules(): Promise<void> {
+  const query = new Parse.Query(RULE_CLASS_NAMES.kith)
+  return query.find().then((rules) => {
+    kithRules = rules
+  })
+}
 
 /**
  * Adapt a character to what the cost engine asks for.
@@ -228,11 +126,9 @@ let costsPromise: Promise<void> | null = null
  * `seeming` and `realms` are venue behaviour, so the engine takes them as
  * supplied methods rather than reading the columns itself.
  */
-function costView(character: VenueCharacter): ChangelingCostCharacter {
+function costView(character: VenueCharacter) {
   return {
-    get(attribute: string) {
-      return character.get(attribute)
-    },
+    get: (attr: string) => character.get(attr),
     seeming: () => seeming(character),
     realms: () => realms(character),
   }
@@ -283,7 +179,31 @@ function realms(character: VenueCharacter): unknown[] | undefined {
  * and nothing else.
  */
 function get_arts_affinities(character: VenueCharacter): Array<string | undefined> {
-  return Costs.get_arts_affinities(costView(character))
+  // Get the kith's affinity Arts.
+  const kith = character.get('ctdbs_kith') as string | undefined
+  let kithArts: (string | undefined)[] = []
+  if (kith) {
+    const kithRule = (kithRules as { get: (key: string) => unknown }[]).find(
+      (r) => r.get('name') === kith,
+    )
+    if (kithRule) {
+      const a1 = kithRule.get('art_1')
+      if (a1) kithArts.push(a1 as string)
+      const a2 = kithRule.get('art_2')
+      if (a2) kithArts.push(a2 as string)
+      const a3 = kithRule.get('art_3')
+      if (a3) kithArts.push(a3 as string)
+    }
+  }
+  // Add affinity links.
+  const links = character.get('ctdbs_arts_affinities_links') as readonly Parse.Object[] | undefined
+  for (const link of links ?? []) {
+    const name = link.get('name')
+    if (name !== undefined && name !== null) {
+      kithArts.push(String(name))
+    }
+  }
+  return kithArts
 }
 
 /**
@@ -326,8 +246,6 @@ function _unpick_previous_arts(
   character: VenueCharacter,
   arts_to_remove: readonly (string | undefined)[],
 ): Promise<unknown> {
-  // The source's `self._updateTraitWrapper = self._updateTraitWrapper ||
-  // Parse.Promise.as()` is the queue's own lazy initialisation now.
   const queue = character.traitQueue
   if (arts_to_remove.length === 0) {
     return queue.tail
@@ -378,7 +296,16 @@ async function _check_kith_art_pool(
       outgoing.some((name) => name === art.get('name')) ||
       outgoing.some((name) => name === art.get_base_name()),
   ).length
-  const granting = (Costs.get_arts_affinities_for_kith(kith) ?? []).length
+  // Count how many arts the kith grants.
+  const kithRule = (kithRules as { get: (key: string) => unknown }[]).find(
+    (r) => r.get('name') === kith,
+  )
+  let granting = 0
+  if (kithRule) {
+    if (kithRule.get('art_1')) granting++
+    if (kithRule.get('art_2')) granting++
+    if (kithRule.get('art_3')) granting++
+  }
   // The source's `|| 0` on a creation counter, not on a cost: a creation row
   // written before this pool existed has no such column.
   const remaining = (creation.get('ctdbs_arts_1_remaining') as number | undefined) || 0
@@ -433,7 +360,19 @@ async function _check_kith_art_pool(
 function _apply_kith(character: VenueCharacter, target: string, value: string): Promise<unknown> {
   const queue = character.traitQueue
   const outgoing = get_arts_affinities(character) ?? []
-  const incoming = Costs.get_arts_affinities_for_kith(value) ?? []
+  // Get incoming kith's arts.
+  const kithRule = (kithRules as { get: (key: string) => unknown }[]).find(
+    (r) => r.get('name') === value,
+  )
+  const incoming: string[] = []
+  if (kithRule) {
+    const a1 = kithRule.get('art_1')
+    if (a1) incoming.push(a1 as string)
+    const a2 = kithRule.get('art_2')
+    if (a2) incoming.push(a2 as string)
+    const a3 = kithRule.get('art_3')
+    if (a3) incoming.push(a3 as string)
+  }
   const owned = (character.get('ctdbs_arts') ?? []) as readonly VenueTrait[]
 
   // `incoming` cannot hold `undefined` -- `get_arts_affinities_for_kith` filters
@@ -562,7 +501,41 @@ function unpick_text(character: VenueCharacter, target: string): Promise<unknown
   return queue.then(() => character)
 }
 
-/** The Changeling strategy. */
+/**
+ * The Changeling strategy.
+ *
+ * Wraps the factory output with the Vue strategy contract and the Kith
+ * transaction (update_text, unpick_text, get_arts_affinities).
+ */
+const _venue = createChangelingVenue(
+  fetchKithRules,
+  {
+    checkKithArtPool: _check_kith_art_pool,
+    applyKith: _apply_kith,
+    releaseKith: async (character, target) => {
+      const queue = character.traitQueue
+      queue.always(() =>
+        Parse.Object.fetchAllIfNeeded((character.get('ctdbs_arts') ?? []) as Parse.Object[]),
+      )
+      _unpick_previous_arts(character, get_arts_affinities(character))
+      queue.then(() => character.base_unpick_text(target))
+      queue.then(() => {
+        const creation = character.get('creation') as Parse.Object | undefined
+        if (!creation) {
+          return character
+        }
+        character.progress("Saving the creation after releasing the Kith's Arts")
+        return creation.save()
+      })
+      return queue.then(() => character)
+    },
+  },
+  (char: VenueCharacter) => ({
+    rawSeeming: () => raw_seeming(char),
+    realms: () => realms(char),
+  }),
+)
+
 export const changelingVenue: VenueStrategy & {
   get_arts_affinities(character: VenueCharacter): Array<string | undefined>
   realms(character: VenueCharacter): unknown[] | undefined
@@ -596,52 +569,59 @@ export const changelingVenue: VenueStrategy & {
    * `ChangelingBetaSlice#initialize_costs` (ChangelingBetaSlice.js:245).
    *
    * The source called a module-level fetcher and stashed the engine on the
-   * character. Here the fetcher's memo does the work and the resolved engine is
-   * installed in the module handle, so the synchronous entry points below see
-   * the loaded rules.
+   * character. Here the fetcher's memo does the work.
    */
   initialize_costs(): Promise<void> {
-    if (!costsPromise) {
-      costsPromise = get_changeling_costs()
-        .then((costs) => {
-          Costs = costs
-        })
-        .catch((error: unknown) => {
-          costsPromise = null
-          throw error
-        })
+    if (!kithRulesPromise) {
+      kithRulesPromise = fetchKithRules().catch((error: unknown) => {
+        kithRulesPromise = null
+        throw error
+      })
     }
-    return costsPromise
+    return kithRulesPromise
   },
 
-  max_trait_value: common.max_trait_value,
+  max_trait_value(trait: VenueTrait): number {
+    return _venue.maxTraitValue(trait)
+  },
 
   calculate_trait_cost(character: VenueCharacter, trait: VenueTrait): number | undefined {
-    return Costs.calculate_trait_cost(costView(character), trait)
+    return _venue.costs.calculateTraitCost(character, trait)
   },
 
   calculate_trait_to_spend(character: VenueCharacter, trait: VenueTrait): number | undefined {
     return common.calculate_trait_to_spend(this.calculate_trait_cost(character, trait), trait)
   },
 
-  ensure_creation_rules_exist(character: VenueCharacter) {
-    return common.ensure_creation_rules_exist(character, CREATION_SEED)
+  async ensure_creation_rules_exist(character: VenueCharacter) {
+    await _updateCreation(
+      character,
+      venueData.ChangelingBetaSlice,
+      async (char, reason, alteration_earned) => {
+        await char.add_experience_notation({
+          reason,
+          earned: 30,
+          alteration_earned,
+        })
+      },
+    )
+    return character
   },
 
-  update_creation_rules_for_changed_trait(
+  async update_creation_rules_for_changed_trait(
     character: VenueCharacter,
     category: string,
     modified_trait: Parse.Object,
     freeValue: number | undefined,
   ) {
-    return common.update_creation_rules_for_changed_trait(
+    await _updateCreation(
       character,
-      SUM_CREATION_CATEGORIES,
-      TRACKED_CREATION_CATEGORIES,
+      venueData.ChangelingBetaSlice,
       category,
       modified_trait,
-      freeValue,
+      freeValue ?? 0,
     )
+    return character
   },
 
   create(name: string, deps: CreateDeps) {

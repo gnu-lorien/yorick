@@ -13,6 +13,10 @@
 import Parse from '@/parse'
 import { SimpleTraitObject } from '@/parse/classes'
 import * as common from '@/domain/venues/common'
+import { createVampireVenue } from '@yorick/venues'
+import { updateCreationRulesForChangedTrait as _updateCreation } from '@yorick/venues'
+import { venueData } from '@yorick/venues'
+import { RULE_CLASS_NAMES } from '@/parse/classes'
 import type {
   CategoryTriple,
   CreateDeps,
@@ -23,14 +27,7 @@ import type {
   VenueStrategy,
   VenueTrait,
 } from '@/domain/venues/types'
-import {
-  createVampireCosts,
-  type ClanRuleRecord,
-  type ClanRules,
-  type CostCharacter as VampireCostCharacter,
-  type VampireCostsEngine,
-} from '@/domain/rules/BNSMETV1_VampireCosts'
-import { RULE_CLASS_NAMES } from '@/parse/classes'
+import { venueData } from '@yorick/venues'
 
 /**
  * PERSISTED DATA. `[column, pretty name, group]`.
@@ -38,47 +35,10 @@ import { RULE_CLASS_NAMES } from '@/parse/classes'
  * The first element of every row is a live Parse column on the shared "Vampire"
  * table. Renaming one orphans a column full of player data.
  */
-const ALL_SIMPLETRAIT_CATEGORIES: readonly CategoryTriple[] = [
-  ['attributes', 'Attributes', 'Attributes'],
-  ['focus_physicals', 'Physical Focus', 'Attributes'],
-  ['focus_mentals', 'Mental Focus', 'Attributes'],
-  ['focus_socials', 'Social Focus', 'Attributes'],
-  ['health_levels', 'Health Levels', 'Expended'],
-  ['willpower_sources', 'Willpower', 'Expended'],
-  ['skills', 'Skills', 'Skills'],
-  ['lore_specializations', 'Lore Specializations', 'Skills'],
-  ['academics_specializations', 'Academics Specializations', 'Skills'],
-  ['drive_specializations', 'Drive Specializations', 'Skills'],
-  ['linguistics_specializations', 'Languages', 'Skills'],
-  ['disciplines', 'Disciplines', 'Disciplines'],
-  ['techniques', 'Techniques', 'Disciplines'],
-  ['elder_disciplines', 'Elder Disciplines', 'Disciplines'],
-  ['luminary_disciplines', 'Luminary Disciplines', 'Disciplines'],
-  ['rituals', 'Rituals', 'Disciplines'],
-  ['extra_in_clan_disciplines', 'Extra In Clan Disciplines', 'Disciplines'],
-  ['paths', 'Path of Enlightenment/Humanity', 'Morality'],
-  ['backgrounds', 'Backgrounds', 'Backgrounds'],
-  ['haven_specializations', 'Haven Specializations', 'Backgrounds'],
-  ['contacts_specializations', 'Contacts Specializations', 'Backgrounds'],
-  ['allies_specializations', 'Allies Specializations', 'Backgrounds'],
-  ['sabbat_rituals', 'Sabbat Ritae', 'Backgrounds'],
-  ['vampiric_texts', 'Vampiric Texts', 'Backgrounds'],
-  ['influence_elite_specializations', 'Influence: Elite', 'Backgrounds'],
-  ['influence_underworld_specializations', 'Influence: Underworld', 'Backgrounds'],
-  ['status_traits', 'Sect Status', 'Backgrounds'],
-  ['merits', 'Merits', 'Merits and Flaws'],
-  ['flaws', 'Flaws', 'Merits and Flaws'],
-]
+const ALL_SIMPLETRAIT_CATEGORIES: readonly CategoryTriple[] = venueData.Vampire.allCategories
 
 /** PERSISTED DATA. The free-text columns. */
-const TEXT_ATTRIBUTES: readonly string[] = [
-  'clan',
-  'archetype',
-  'sect',
-  'faction',
-  'title',
-  'antecedence',
-]
+const TEXT_ATTRIBUTES: readonly string[] = venueData.Vampire.textAttributes
 
 /**
  * Positionally aligned with `TEXT_ATTRIBUTES`.
@@ -87,35 +47,10 @@ const TEXT_ATTRIBUTES: readonly string[] = [
  * a constant -- a hook someone left half-built. Carried over rather than
  * flattened, because flattening it deletes the hook.
  */
-const TEXT_ATTRIBUTES_PRETTY_NAMES: readonly PrettyName[] = [
-  'Clan',
-  'Archetype',
-  'Sect',
-  function () {
-    return 'Faction'
-  },
-  'Title',
-  'Primary, Secondary, or NPC',
-]
+const TEXT_ATTRIBUTES_PRETTY_NAMES: readonly PrettyName[] = venueData.Vampire.textPrettyNames
 
 /** The categories whose creation counter is `7 - sum(values)`. PERSISTED DATA. */
-const SUM_CREATION_CATEGORIES: readonly string[] = ['merits', 'flaws']
-
-/**
- * The categories `update_creation_rules_for_changed_trait` books against a pool.
- * Anything else is booked nowhere, free value or not.
- */
-const TRACKED_CREATION_CATEGORIES: readonly string[] = [
-  'flaws',
-  'merits',
-  'focus_mentals',
-  'focus_physicals',
-  'focus_socials',
-  'attributes',
-  'skills',
-  'disciplines',
-  'backgrounds',
-]
+const SUM_CREATION_CATEGORIES: readonly string[] = venueData.Vampire.sumCreationCategories
 
 /**
  * THE EXACT POOL SEED for a new Vampire's `VampireCreation` row.
@@ -129,60 +64,13 @@ const TRACKED_CREATION_CATEGORIES: readonly string[] = [
  * `clan: false` is a wizard step flag, like `concept` and `archetype`; all three
  * venues carry it, including the two with no clans.
  */
-const CREATION_SEED: CreationSeed = {
-  completed: false,
-  concept: false,
-  archetype: false,
-  clan: false,
-  attributes: false,
-  focuses: false,
-  skills_4_remaining: 1,
-  skills_3_remaining: 2,
-  skills_2_remaining: 3,
-  skills_1_remaining: 4,
-  backgrounds_3_remaining: 1,
-  backgrounds_2_remaining: 1,
-  backgrounds_1_remaining: 1,
-  disciplines_2_remaining: 1,
-  disciplines_1_remaining: 2,
-  attributes_7_remaining: 1,
-  attributes_5_remaining: 1,
-  attributes_3_remaining: 1,
-  focus_mentals_1_remaining: 1,
-  focus_socials_1_remaining: 1,
-  focus_physicals_1_remaining: 1,
-  merits_0_remaining: 7,
-  flaws_0_remaining: 7,
-  phase_1_finished: false,
-  initial_xp: 30,
-  phase_2_finished: false,
-}
+const CREATION_SEED: CreationSeed = venueData.Vampire.creationSeed
 
 /** The categories `fetch_all_creation_elements` hydrates. */
-const CREATION_LIST_CATEGORIES: readonly string[] = [
-  'flaws',
-  'merits',
-  'focus_mentals',
-  'focus_physicals',
-  'focus_socials',
-  'attributes',
-  'skills',
-  'backgrounds',
-  'disciplines',
-]
+const CREATION_LIST_CATEGORIES: readonly string[] = venueData.Vampire.creationListCategories
 
 /** The categories `calculate_total_cost` prices. */
-const TOTAL_COST_CATEGORIES: readonly string[] = [
-  'skills',
-  'backgrounds',
-  'disciplines',
-  'attributes',
-  'merits',
-  'rituals',
-  'techniques',
-  'elder_disciplines',
-  'luminary_disciplines',
-]
+const TOTAL_COST_CATEGORIES: readonly string[] = venueData.Vampire.totalCostCategories
 
 /**
  * Pointer columns `get_character` includes besides `portrait`.
@@ -193,7 +81,7 @@ const TOTAL_COST_CATEGORIES: readonly string[] = [
  * else's sheet rewrote its ACL to the viewer. Without the include the bare
  * pointer survives and nothing on the sheet needs the owner's name.
  */
-const GET_CHARACTER_INCLUDES: readonly string[] = ['backgrounds', 'extra_in_clan_disciplines']
+const GET_CHARACTER_INCLUDES: readonly string[] = venueData.Vampire.getCharacterIncludes
 
 /**
  * The traits a new Vampire starts with.
@@ -202,13 +90,7 @@ const GET_CHARACTER_INCLUDES: readonly string[] = ['backgrounds', 'extra_in_clan
  * all three venues. Every one is granted at `free_value === value`, which is
  * what makes them cost nothing.
  */
-const STARTING_TRAITS: readonly StartingTrait[] = [
-  { name: 'Humanity', value: 5, category: 'paths', free_value: 5 },
-  { name: 'Healthy', value: 3, category: 'health_levels', free_value: 3 },
-  { name: 'Injured', value: 3, category: 'health_levels', free_value: 3 },
-  { name: 'Incapacitated', value: 3, category: 'health_levels', free_value: 3 },
-  { name: 'Willpower', value: 6, category: 'willpower_sources', free_value: 6 },
-]
+const STARTING_TRAITS: readonly StartingTrait[] = venueData.Vampire.startingTraits
 
 /**
  * The clan rule table.
@@ -224,7 +106,7 @@ const STARTING_TRAITS: readonly StartingTrait[] = [
  * array would freeze the engine to its empty pre-fetch state and quietly make
  * every discipline out-of-clan forever.
  */
-let clanRules: ClanRules = []
+let clanRules: unknown[] = []
 let clanRulesPromise: Promise<void> | null = null
 
 /**
@@ -236,27 +118,8 @@ let clanRulesPromise: Promise<void> | null = null
 function fetchClanRules(): Promise<void> {
   const query = new Parse.Query(RULE_CLASS_NAMES.clan)
   return query.find().then((rules) => {
-    clanRules = rules as unknown as readonly ClanRuleRecord[]
+    clanRules = rules
   })
-}
-
-const VampireCosts: VampireCostsEngine = createVampireCosts(() => clanRules)
-
-/**
- * Adapt a character to what the cost engine asks for.
- *
- * The engine is deliberately outside the class graph -- it imports nothing --
- * so it names what it needs structurally. `generation` is venue behaviour and
- * lives here, which is why the engine takes it as a supplied method rather than
- * reading the backgrounds column itself.
- */
-function costView(character: VenueCharacter): VampireCostCharacter {
-  return {
-    get(attribute: string) {
-      return character.get(attribute)
-    },
-    generation: () => generation(character),
-  }
 }
 
 /**
@@ -356,7 +219,33 @@ function morality(character: VenueCharacter): Parse.Object {
   return p
 }
 
-/** The Vampire strategy. */
+/**
+ * `Vampire#get_in_clan_disciplines` (Vampire.js:287).
+ */
+function get_in_clan_disciplines(character: VenueCharacter): (string | undefined)[] {
+  return clanRules.reduce((acc: (string | undefined)[], rule: { get: (key: string) => unknown }) => {
+    const discipline = rule.get('discipline_1')
+    if (discipline) acc.push(discipline)
+    const d2 = rule.get('discipline_2')
+    if (d2) acc.push(d2)
+    const d3 = rule.get('discipline_3')
+    if (d3) acc.push(d3)
+    return acc
+  }, [] as (string | undefined)[])
+}
+
+/**
+ * The Vampire strategy.
+ *
+ * Wraps the factory output (data, cost engine, rule loading) with the Vue
+ * strategy contract that includes Parse-specific methods (create,
+ * ensure_creation_rules_exist, update_creation_rules_for_changed_trait) and
+ * venue-specific readers (morality, get_in_clan_disciplines).
+ */
+const _venue = createVampireVenue(fetchClanRules, (char: VenueCharacter) => ({
+  rawGeneration: () => raw_generation(char),
+}))
+
 export const vampireVenue: VenueStrategy & {
   morality(character: VenueCharacter): Parse.Object
   morality_merit(character: VenueCharacter): string
@@ -405,34 +294,47 @@ export const vampireVenue: VenueStrategy & {
     return clanRulesPromise
   },
 
-  max_trait_value: common.max_trait_value,
+  max_trait_value(trait: VenueTrait): number {
+    return _venue.maxTraitValue(trait)
+  },
 
   calculate_trait_cost(character: VenueCharacter, trait: VenueTrait): number | undefined {
-    return VampireCosts.calculate_trait_cost(costView(character), trait)
+    return _venue.costs.calculateTraitCost(character, trait)
   },
 
   calculate_trait_to_spend(character: VenueCharacter, trait: VenueTrait): number | undefined {
     return common.calculate_trait_to_spend(this.calculate_trait_cost(character, trait), trait)
   },
 
-  ensure_creation_rules_exist(character: VenueCharacter) {
-    return common.ensure_creation_rules_exist(character, CREATION_SEED)
+  async ensure_creation_rules_exist(character: VenueCharacter) {
+    await _updateCreation(
+      character,
+      venueData.Vampire,
+      async (char, reason, alteration_earned) => {
+        await char.add_experience_notation({
+          reason,
+          earned: 30,
+          alteration_earned,
+        })
+      },
+    )
+    return character
   },
 
-  update_creation_rules_for_changed_trait(
+  async update_creation_rules_for_changed_trait(
     character: VenueCharacter,
     category: string,
     modified_trait: Parse.Object,
     freeValue: number | undefined,
   ) {
-    return common.update_creation_rules_for_changed_trait(
+    await _updateCreation(
       character,
-      SUM_CREATION_CATEGORIES,
-      TRACKED_CREATION_CATEGORIES,
+      venueData.Vampire,
       category,
       modified_trait,
-      freeValue,
+      freeValue ?? 0,
     )
+    return character
   },
 
   create(name: string, deps: CreateDeps) {
@@ -447,9 +349,7 @@ export const vampireVenue: VenueStrategy & {
   morality_merit,
 
   /** `Vampire#get_in_clan_disciplines` (Vampire.js:287). */
-  get_in_clan_disciplines(character: VenueCharacter): (string | undefined)[] {
-    return VampireCosts.get_in_clan_disciplines(costView(character))
-  },
+  get_in_clan_disciplines,
 }
 
 export default vampireVenue

@@ -11,8 +11,17 @@
  * callback. This is a semantic part of the creation flow, so the shared adapter
  * takes the callback as a parameter rather than importing it. Each front end
  * passes its own XP-granting function.
+ *
+ * ## Parse dependency
+ *
+ * `updateCreationRulesForChangedTrait` mutates the creation record via
+ * Parse.Object methods (`addUnique`, `set`, `increment`). The caller must
+ * pass a creation record that is a Parse.Object (or a compatible duck type).
+ * The factory bridges the Parse-free zone by calling this function from the
+ * front end layer where Parse is available.
  */
 import type { VenueCharacter, VenueData } from './types'
+import Parse from 'parse'
 
 /**
  * Create the character's creation record if it has none.
@@ -37,27 +46,14 @@ export async function ensureCreationRulesExist(
     alteration_earned: number,
   ) => Promise<void>,
 ): Promise<void> {
-  // Check if already has a creation record.
   if (hasCreation(character)) {
     return
   }
-
-  // Create the record with the venue's seed.
   const creation = createCreationRecord(character, seed)
-
-  // Point the character at it without saving.
   setCreation(character, creation)
-
-  // Book the +30 XP. The character is saved by whatever writes next.
   await addExperienceNotation(character, 'Character Creation XP', 30)
 }
 
-/**
- * Check if a character has a creation record.
- *
- * This is a simplified check — the original does a Parse.Object.fetchAllIfNeeded
- * and catches errors. Each front end should wrap this with its own fetch logic.
- */
 function hasCreation(character: VenueCharacter): boolean {
   return Boolean(getCreation(character))
 }
@@ -112,37 +108,38 @@ export async function updateCreationRulesForChangedTrait(
     return
   }
 
-  // No creation record or completed creation: nothing to update.
-  const creation = getCreation(character)
-  if (!creation) {
+  // Fetch the creation record (with error swallowing, matching the source).
+  let creation: Parse.Object | undefined
+  try {
+    const creations = await Parse.Object.fetchAllIfNeeded(
+      [(character as { get: (attr: string) => unknown }).get('creation')].filter(Boolean),
+    )
+    creation = creations[0] as Parse.Object | undefined
+  } catch {
     return
   }
 
-  const isCompleted = (creation as { get: (attr: string) => unknown }).get('completed')
-  if (isCompleted) {
+  if (!creation || creation.get('completed')) {
     return
   }
 
   const stepName = `${category}_${freeValue}_remaining`
   const listName = `${category}_${freeValue}_picks`
 
-  // Add the trait to the pick list.
-  const picks = (creation as Record<string, unknown[]>)[listName] ?? []
-  ;(creation as Record<string, unknown[]>)[listName] = [...picks, trait]
+  // addUnique — adds to the Parse Array field without duplicating.
+  creation.addUnique(listName, trait as Parse.Object)
 
   if (sumCategories.includes(category)) {
-    // Points spent, not picks taken.
-    const currentValue = trait.get('value') as number | undefined
-    const value = currentValue || 0
-    const existingSum = (picks as unknown[]).reduce((sum: number, p: unknown) => {
-      const v = (p as { get?: (attr: string) => unknown })?.get?.('value')
-      return sum + (Number(v) || 0)
-    }, 0)
-    const newSum = existingSum + value
-    ;(creation as Record<string, number>)[stepName] = 7 - newSum
+    // Points spent, not picks taken. Sum the values of the picks.
+    const picks = creation.get(listName) as Parse.Object[] | undefined
+    let sum = 0
+    for (const pick of picks ?? []) {
+      const v = pick.get('value')
+      sum += Number(v) || 0
+    }
+    creation.set(stepName, 7 - sum)
   } else {
     // Count of picks — decrement by one.
-    const current = (creation as Record<string, number>)[stepName] ?? 0
-    ;(creation as Record<string, number>)[stepName] = current - 1
+    creation.increment(stepName, -1)
   }
 }

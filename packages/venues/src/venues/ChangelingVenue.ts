@@ -10,11 +10,13 @@
  * The Changeling venue is the only one that overrides text editing. The shared
  * adapter exposes `applyText?` and `releaseText?` as optional methods. Each
  * front end provides its own implementation via `ChangelingVenueHooks`.
+ *
+ * Note: creation rule updates (ensure/update) require Parse and are handled by
+ * the front-end adapter, not this factory.
  */
 import type { Venue, VenueCharacter, VenueTrait } from '../types'
 import { venueData } from '../data'
 import { createCostEngine } from '../costs'
-import { ensureCreationRulesExist, updateCreationRulesForChangedTrait } from '../creation'
 import {
   calculate_trait_cost as _changelingCalculateTraitCost,
   FREE_CATEGORIES,
@@ -30,24 +32,19 @@ export { FREE_CATEGORIES, MAX_TRAIT_LEVEL }
  */
 export interface ChangelingVenueHooks {
   /**
-   * Check the art pool before granting a Kith (R22).
-   */
-  checkKithArtPool(character: VenueCharacter, kith: string): boolean
-
-  /**
    * Apply a Kith to the character (R23).
    *
    * Retains Arts held free by both old and new Kith. Unpicks outgoing Arts,
    * saves, writes the Kith text, grants incoming Arts, saves again.
    */
-  applyKith(character: VenueCharacter, target: string, value: string): Promise<boolean>
+  applyKith(character: VenueCharacter, target: string, value: string): Promise<unknown>
 
   /**
    * Release a Kith from the character.
    *
    * Clears the Kith and unpicks its Arts.
    */
-  releaseKith(character: VenueCharacter, target: string): Promise<boolean>
+  releaseKith(character: VenueCharacter, target: string): Promise<unknown>
 }
 
 /**
@@ -123,14 +120,6 @@ export function createChangelingVenue(
 
     totalCostCategories: data.totalCostCategories,
     sumCreationCategories: data.sumCreationCategories,
-
-    async ensureCreationRulesExist(character, addExperienceNotation) {
-      await ensureCreationRulesExist(character, data.creationSeed, addExperienceNotation)
-    },
-
-    async updateCreationRulesForChangedTrait(character, category, trait, freeValue) {
-      await updateCreationRulesForChangedTrait(character, data, category, trait, freeValue)
-    },
 
     // Kith transaction hooks.
     async applyText(character, target, value) {
